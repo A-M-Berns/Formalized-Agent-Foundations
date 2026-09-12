@@ -40,8 +40,8 @@ property families that take `PCWorld.ValuesAt` directly.
 `ArithmeticLUVPresentation` is then satisfied by a real object rather than assumed: a two-tag
 event stream over `Θ`-provability of the threshold schema instance, where tag `0` publishes
 `⌜X > r⌝` and tag `1` its literal negation.  The firing predicate is recursively enumerable
-(`provable_instances_re`), and `luvStage` dovetails it into monotone finite stages.  The
-objects are `luvEventAtom`, `luvEventFires`, `luvStage`, `luvThresholdDP`, and the two
+(`provable_instances_re`), and `dovetailProcess` dovetails it into monotone finite stages.
+The objects are `luvEventAtom`, `luvEventFires`, `luvThresholdDP`, and the two
 candidate worlds `luvWorld` and `truthWorld`.
 
 The two tags publish complementary literals over *one* sentence rather than two separate
@@ -54,8 +54,11 @@ need the semantic world.
 `luvThresholdDP_hworld` (stage-wise non-vacuity) are both consumed by
 `Construction/LUV/Endpoints.lean`.
 The computability certificate `luvThresholdDP_computable` is built here too: one fixed
-partial-recursive program emits the encoded stage `D k` on input `k`, via `luvEventAtom_prim`
-and `luvStage_encode_prim`.
+partial-recursive program emits the encoded stage `D k` on input `k`, from
+`luvEventAtom_prim` through the shared dovetail.  It is what makes the
+`luvThresholdDP`-indexed `_arith`
+endpoints' `[IsLogicalInductor P (L.luvThresholdDP T)]` hypothesis satisfiable on the
+process side.
 
 ## Hypotheses beyond the paper
 
@@ -226,50 +229,22 @@ lemma luvEventFires_re [T.Δ₁] [RepresentsComputations T] :
 
 /-- A partial-recursive semi-decider for `luvEventFires`. -/
 lemma exists_luvEventCode [T.Δ₁] [RepresentsComputations T] :
-    ∃ code : Nat.Partrec.Code, ∀ e, (code.eval e).Dom ↔ L.luvEventFires T e := by
-  obtain ⟨f, hf, hfP⟩ := REPred.iff'.mp (L.luvEventFires_re T)
-  obtain ⟨code, hcode⟩ := Nat.Partrec.Code.exists_code.mp
-    (Partrec.nat_iff.mp (hf.map (Computable.const (0 : ℕ)).to₂))
-  refine ⟨code, fun e => ?_⟩
-  rw [hcode]
-  exact (hfP e).symm
+    ∃ code : Nat.Partrec.Code, ∀ e, (code.eval e).Dom ↔ L.luvEventFires T e :=
+  exists_semiDecider (L.luvEventFires_re T)
 
 /-! ## The stages and the process -/
 
-open Classical in
-/-- Fuel-`k` dovetailer of the fired threshold atoms. -/
-noncomputable def luvStage [T.Δ₁] [RepresentsComputations T] (k : ℕ) : Finset Sentence :=
-  ((Finset.range (k + 1)).filter
-      (fun e => (Nat.Partrec.Code.evaln k (L.exists_luvEventCode T).choose e).isSome = true)).image
-    (luvEventAtom)
-
-lemma luvStage_mono [T.Δ₁] [RepresentsComputations T] (k : ℕ) :
-    L.luvStage T k ⊆ L.luvStage T (k + 1) := by
-  classical
-  intro φ hφ
-  simp only [luvStage, Finset.mem_image, Finset.mem_filter, Finset.mem_range] at hφ ⊢
-  obtain ⟨e, ⟨he, hsome⟩, rfl⟩ := hφ
-  exact ⟨e, ⟨by omega, evaln_isSome_mono (Nat.le_succ k) hsome⟩, rfl⟩
-
-/-- The concrete deductive process enumerating the `Θ`-provable LUV threshold literals. -/
-noncomputable def luvThresholdDP [T.Δ₁] [RepresentsComputations T] :
-    DeductiveProcess where
-  D := L.luvStage T
-  mono := L.luvStage_mono T
+/-- The concrete deductive process enumerating the `Θ`-provable LUV threshold literals:
+the dovetail (`Construction/DeductiveDovetail.lean`) of `exists_luvEventCode`'s
+semi-decider under the naming map `luvEventAtom`. -/
+noncomputable def luvThresholdDP [T.Δ₁] [RepresentsComputations T] : DeductiveProcess :=
+  dovetailProcess luvEventAtom (L.exists_luvEventCode T).choose
 
 /-- Coverage: every fired threshold event's atom eventually appears. -/
 lemma luvThresholdDP_covers [T.Δ₁] [RepresentsComputations T]
     {e : ℕ} (he : L.luvEventFires T e) :
-    ∃ k, luvEventAtom e ∈ (L.luvThresholdDP T).D k := by
-  classical
-  have hspec := (L.exists_luvEventCode T).choose_spec
-  have hdom : ((L.exists_luvEventCode T).choose.eval e).Dom := (hspec e).mpr he
-  obtain ⟨out, hout⟩ := Part.dom_iff_mem.mp hdom
-  obtain ⟨fuel, hfuel⟩ := Nat.Partrec.Code.evaln_complete.mp hout
-  refine ⟨max e fuel, ?_⟩
-  simp only [luvThresholdDP, luvStage, Finset.mem_image, Finset.mem_filter, Finset.mem_range]
-  exact ⟨e, ⟨by omega, evaln_isSome_mono (le_max_right e fuel)
-    (Option.isSome_iff_exists.mpr ⟨out, hfuel⟩)⟩, rfl⟩
+    ∃ k, luvEventAtom e ∈ (L.luvThresholdDP T).D k :=
+  dovetailProcess_covers (((L.exists_luvEventCode T).choose_spec e).mpr he)
 
 /-! ## Worlds consistent with every stage -/
 
@@ -289,7 +264,7 @@ lemma luvWorld_consistent [𝗥₀ ⪯ T] [T.Δ₁] [RepresentsComputations T]
     (k : ℕ) : (L.luvWorld T).ConsistentWith ((L.luvThresholdDP T).D k) := by
   classical
   intro φ hφ
-  simp only [luvThresholdDP, luvStage, Finset.mem_image, Finset.mem_filter, Finset.mem_range] at hφ
+  simp only [luvThresholdDP, dovetailProcess_D, mem_dovetailStage] at hφ
   obtain ⟨e, ⟨_, hsome⟩, rfl⟩ := hφ
   have hfires : L.luvEventFires T e := by
     have hdom : ((L.exists_luvEventCode T).choose.eval e).Dom := by
@@ -307,14 +282,6 @@ lemma luvWorld_consistent [𝗥₀ ⪯ T] [T.Δ₁] [RepresentsComputations T]
     have hpos' : T ⊢ ((L.thresholdSchema T)/[↑e.unpair.2] : ArithmeticSentence) := hpos
     exact (Entailment.Consistent.not_bot (𝓢 := T) inferInstance)
       (by cl_prover [hpos', hprov])
-
-/-- The provability world is consistent with the whole process, not merely with each stage
-separately.  `luvThresholdDP_hworld` is the existential form the property tail's `hworld`
-obligations take. -/
-lemma luvWorld_consistentWithTheory [𝗥₀ ⪯ T] [T.Δ₁] [RepresentsComputations T]
-    [Entailment.Consistent T] :
-    (L.luvWorld T).ConsistentWithTheory (L.luvThresholdDP T) :=
-  fun k => L.luvWorld_consistent T k
 
 /-- **`hworld` non-vacuity.** Every stage of the constructed process has a consistent world. -/
 lemma luvThresholdDP_hworld [𝗥₀ ⪯ T] [T.Δ₁] [RepresentsComputations T]
@@ -364,74 +331,19 @@ lemma luvEventAtom_prim : Primrec (fun e : ℕ => luvEventAtom e) := by
   · simp [luvEventAtom, h, encode_atom]
   · simp [luvEventAtom, h, encode_negAtom]
 
-lemma luvStage_eq_toFinset [T.Δ₁] [RepresentsComputations T]
-    (c : Nat.Partrec.Code) (k : ℕ) :
-    ((Finset.range (k + 1)).filter
-        (fun e => (Nat.Partrec.Code.evaln k c e).isSome = true)).image luvEventAtom =
-      ((List.range (k + 1)).filterMap
-        (fun e => if (Nat.Partrec.Code.evaln k c e).isSome = true then some (luvEventAtom e)
-          else none)).toFinset := by
-  classical
-  ext φ
-  simp only [Finset.mem_image, Finset.mem_filter, Finset.mem_range,
-    List.mem_toFinset, List.mem_filterMap, List.mem_range]
-  constructor
-  · rintro ⟨e, ⟨he, hsome⟩, rfl⟩
-    exact ⟨e, he, by rw [if_pos hsome]⟩
-  · rintro ⟨e, he, hcond⟩
-    by_cases hs : (Nat.Partrec.Code.evaln k c e).isSome = true
-    · rw [if_pos hs] at hcond
-      exact ⟨e, ⟨he, hs⟩, Option.some_inj.mp hcond⟩
-    · rw [if_neg hs] at hcond; exact absurd hcond (by simp)
-
-lemma luvStage_encode_prim [T.Δ₁] [RepresentsComputations T] :
-    Primrec (fun k => Encodable.encode (L.luvStage T k)) := by
-  set c := (L.exists_luvEventCode T).choose with hc
-  have hevaln : Primrec (fun p : ℕ × ℕ => (Nat.Partrec.Code.evaln p.1 c p.2).isSome) :=
-    Primrec.option_isSome.comp
-      (Nat.Partrec.Code.primrec_evaln.comp
-        ((Primrec.fst.pair (Primrec.const c)).pair Primrec.snd))
-  have hguncur : Primrec (fun p : ℕ × ℕ =>
-      if (Nat.Partrec.Code.evaln p.1 c p.2).isSome = true then some (luvEventAtom p.2)
-        else (none : Option Sentence)) := by
-    have hb : Primrec (fun p : ℕ × ℕ =>
-        bif (Nat.Partrec.Code.evaln p.1 c p.2).isSome then some (luvEventAtom p.2)
-          else (none : Option Sentence)) :=
-      Primrec.cond hevaln (Primrec.option_some.comp (luvEventAtom_prim.comp Primrec.snd))
-        (Primrec.const (none : Option Sentence))
-    exact hb.of_eq (fun p => by
-      cases (Nat.Partrec.Code.evaln p.1 c p.2).isSome <;> simp)
-  have hlist : Primrec (fun k : ℕ => (List.range (k + 1)).filterMap
-      (fun e => if (Nat.Partrec.Code.evaln k c e).isSome = true then some (luvEventAtom e)
-        else none)) :=
-    Primrec.listFilterMap (Primrec.list_range.comp Primrec.succ) hguncur.to₂
-  have hkey : (fun k => Encodable.encode (L.luvStage T k)) =
-      (fun k => Encodable.encode
-        ((sentenceDedup ((List.range (k + 1)).filterMap
-          (fun e => if (Nat.Partrec.Code.evaln k c e).isSome = true then some (luvEventAtom e)
-            else none))).insertionSort sentenceCodeLE)) := by
-    funext k
-    rw [show L.luvStage T k = ((Finset.range (k + 1)).filter
-        (fun e => (Nat.Partrec.Code.evaln k c e).isSome = true)).image luvEventAtom from rfl,
-      luvStage_eq_toFinset T c k, encode_toFinset_eq]
-  rw [hkey]
-  exact Primrec.encode.comp (sentenceInsertionSort_prim.comp (sentenceDedup_prim.comp hlist))
-
 /-- **The scheduled provability process is computable.**  One fixed partial-recursive program
 emits the encoded stage `D k` on input `k`.
 
-This is the certificate a `_unconditional` form over `liaHistory (luvThresholdDP T)` consumes,
-through `LIA_is_logical_inductor`.  No such form exists: `Construction/LUV/Endpoints.lean`'s
-`_unconditional` endpoints are stated over the scheduled-reveal process `gridDP`, and its
-`luvThresholdDP`-indexed `_arith` endpoints carry `[IsLogicalInductor P (L.luvThresholdDP T)]`
-as a caller hypothesis. -/
+This is the process half of the instance hypothesis
+`[IsLogicalInductor P (L.luvThresholdDP T)]` that the four `_arith` endpoints in
+`Construction/LUV/Endpoints.lean` bind: `ComputableDeductiveProcess` is one of that class's
+two fields, so without this lemma nothing rules out those endpoints being vacuous.  The
+market half is the caller's.  (`Construction/LUV/Endpoints.lean`'s `_unconditional`
+endpoints run over the scheduled-reveal process `gridDP` instead, whose own certificate is
+`gridDP_computable`.) -/
 lemma luvThresholdDP_computable [T.Δ₁] [RepresentsComputations T] :
-    ComputableDeductiveProcess (L.luvThresholdDP T) := by
-  obtain ⟨code, hcode⟩ := Nat.Partrec.Code.exists_code.mp
-    (Nat.Partrec.of_primrec (Primrec.nat_iff.mp (L.luvStage_encode_prim T)))
-  refine ⟨code, fun k => ?_⟩
-  rw [hcode]
-  exact Part.mem_some _
+    ComputableDeductiveProcess (L.luvThresholdDP T) :=
+  dovetailProcess_computable luvEventAtom_prim _
 
 end ComputableLUV
 

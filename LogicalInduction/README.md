@@ -106,7 +106,7 @@ which CI also runs in check mode. -->
 | `thm:exppolymax` | Expectation Preemptive Learning | `LUVCombination.BoundedSequence.exppolymax_ofSyntax` | Construction/LUV/Syntax.lean | exact |
 | `thm:recurringunbiasednessexp` | Expectation Recurring Unbiasedness | `LUVCombination.BoundedSequence.recurringunbiasednessexp` | Construction/Statistics/HistoricalMaturity.lean | corrected |
 | `thm:wubexp` | Expectation Unbiasedness From Feedback | `FeedbackTruth.luv_wubexp_ofComputation`; `FeedbackTruth.luv_wubexp_ofComputation_unconditional` | Construction/Statistics/FeedbackTruth.lean; Construction/Statistics/Endpoints.lean | exact |
-| `thm:prandexp` | Learning Pseudorandom LUV Sequences | `LUVCombination.BoundedSequence.prandexp`; `LUVCombination.BoundedSequence.prandexp_below`; `LUVCombination.BoundedSequence.prandexp_eq` | Construction/Statistics/HistoricalMaturity.lean | exact |
+| `thm:prandexp` | Learning Pseudorandom LUV Sequences | `LUVCombination.BoundedSequence.prandexp_above`; `LUVCombination.BoundedSequence.prandexp_below`; `LUVCombination.BoundedSequence.prandexp` | Construction/Statistics/HistoricalMaturity.lean | exact |
 | `thm:pac` | Belief in Finitistic Consistency | `lic_belief_finitistic_consistency_unconditional` | Construction/Knowledge/Endpoints.lean | exact |
 | `thm:pazfc` | Belief in the Consistency of a Stronger Theory | `lic_belief_stronger_theory_consistency_unconditional` | Construction/Knowledge/Endpoints.lean | exact |
 | `thm:incons` | Disbelief in Inconsistent Theories | `lic_disbelief_inconsistent_theories_unconditional` | Construction/Knowledge/Endpoints.lean | exact |
@@ -169,7 +169,7 @@ it, because the compiled code's `evaln` run still needs fuel as large as the con
 numeric value. A fuel certificate is a sufficient route in, not a rival definition of
 efficiency. **The two output-sensitive clocks are stated at the machine model too, by
 choosing the input that carries the bound**: `def:deferralfunc`'s condition 2 asks for
-`f(n)` computable in time polynomial in `f(n)` (tex:1243), and `thm:wub`'s feedback premise
+`f(n)` computable in time polynomial in `f(n)` (tex:1244), and `thm:wub`'s feedback premise
 for `Th(φ_{f(n)})` computable in `O(f(n+1))` time (tex:1251) — bounds in the value
 *returned*, which `Complexity.FP` cannot express of a machine handed the day alone. It can
 express them of a machine handed the **unary pair**, whose length dominates the value:
@@ -254,7 +254,8 @@ same funnel; the unconditional endpoints discharge the criterion through `paperL
 `LIA_is_logical_inductor`. What carries the primitive-recursiveness step is
 `MachineTokenStream.primrec` (`Construction/MachineTraderEnumeration.lean`):
 `Complexity.FP ⊆ Primrec` is not available from `complexitylib`, and three consumers
-(`PolySequence.primrec`, `PolyTradeEmulatable.trades_primrec`, `feature_primrec`) need
+(`PolySequence.primrec`, `PolyTradeEmulatable.trades_primrec`,
+`MachineSpliceStream.feature_primrec`) need
 primitive recursiveness of an emission field, so the machine form is proved through the
 trader enumeration's own coverage bridge instead. `PolySequence.termCount_poly` is at
 `UnaryRuler`
@@ -608,7 +609,7 @@ modules it elaborates, the entry module included.
 
 | import | modules | what it buys |
 |---|---|---|
-| `LogicalInduction.Framework` | 40 | the §2–3 vocabulary and the substrate the later directories consume — `Sentence`, `History`, `PCWorld`, `DeductiveProcess`, `EF`, `Strategy`, `Trader`, `Trader.Exploits`, `AffineCombination`, `LUV`, the limit vocabulary, both efficiency classes with `PolyFueledTrader.toEfficientlyComputable` between them, and the `dd:fuel` emission calculus a trader certificate is assembled in. Enough to *state* something new about a market. |
+| `LogicalInduction.Framework` | 39 | the §2–3 vocabulary and the substrate the later directories consume — `Sentence`, `History`, `PCWorld`, `DeductiveProcess`, `EF`, `Strategy`, `Trader`, `Trader.Exploits`, `AffineCombination`, `LUV`, the limit vocabulary, both efficiency classes with `PolyFueledTrader.toEfficientlyComputable` between them, and the `dd:fuel` emission calculus a trader certificate is assembled in. Enough to *state* something new about a market. |
 | `LogicalInduction.Properties` | 58 | that, plus the whole §4 property tail over an arbitrary `[IsLogicalInductor P DP]`, one file per theorem family in the paper's own subsection order, together with the shared §4 proof technology in `Properties/Support/`. Nothing here imports `Construction.*`, so a client proving new consequences of the criterion pays nothing for the §5 construction. |
 | `LogicalInduction.API` | 148 | that, plus §5 and every lane that discharges a §4 interface over the constructed inductor: all 107 canonical endpoints `AxiomAudit.lean` publishes, the constructed inhabitants they are stated over, and the corrected `thm:ifp` under its supported name. This is the documented consumer surface. |
 | `LogicalInduction` | 159 | the same mathematics reached through the roll-up maps — `Framework.lean`, `Construction.lean` and the nine `Construction/` lane maps — which declare nothing themselves. It adds those maps and drops `API.lean`, so the re-exports and the three `thm:ifp` wrappers declared there are reached only through the API import. A reading entry point, not a dependency. |
@@ -782,8 +783,8 @@ LogicalInduction/
       CodeSource  Computable  DigitArith  Emission  FreezeTransducer  RpnComputation
       RpnEmission  RpnSentence  RpnSplice  WriteOut
     Machine/
-      CodeSteps  DigitArithFP  DigitBits  EvalnCompiler  EvalnRegBound  FPFold  TokenFold
-      TraderMachine  WriteOutMachine
+      DigitArithFP  DigitBits  EvalnCompiler  EvalnRegBound  FPFold  Ruler  SentenceMachine
+      SpliceMachine  ThresholdMachine  TokenFold  TraderMachine  Witnesses  WriteOutMachine
 
   Properties.lean                the Properties/ map
   Properties/
@@ -797,9 +798,9 @@ LogicalInduction/
 
   Construction.lean              the Construction/ map
   Construction/
-    Brouwer  Budgeter  ClockedSim  Conditioning  Descriptions  Freeze  Knowledge  LIA
-    LIACompiler  LIAComputation  LUV  MachineTraderEnumeration  MarketMaker  NonDogmatism
-    Paper  Primcodable  Quotation  SemanticExtension  Statistics  TradingFirm
+    Brouwer  Budgeter  ClockedSim  Conditioning  DeductiveDovetail  Descriptions  Freeze
+    Knowledge  LIA  LIACompiler  LIAComputation  LUV  MachineTraderEnumeration  MarketMaker
+    NonDogmatism  Paper  Primcodable  Quotation  SemanticExtension  Statistics  TradingFirm
     Paper/
       ComputationDP  FiniteEntailment  FirstOrder  Market  TheoremDP
     Quotation/
@@ -893,7 +894,7 @@ public surface, asserts that each endpoint depends on no axiom beyond `propext`,
 statement's meaning rests on. Anything it does not name is internal and may be moved or
 inlined.
 
-Seven checkers guard this library. All of them run in CI ahead of the build, and none of them
+Nine checkers guard this library. All of them run in CI ahead of the build, and none of them
 needs Lean:
 
 | script | what it fails on |
@@ -905,6 +906,8 @@ needs Lean:
 | `scripts/check_paper_wiring.py` | a registered paper missing its source, checker, audit coverage or trust-surface rendering |
 | `scripts/check_trust_surface.py` | `docs/trust-surface.html` out of step with its inputs (regenerate with `scripts/gen-trust-surface.py`) |
 | `scripts/check_li_rollcall.py` | a difference between `AxiomAudit.lean`'s canonical inventory and the roll-call in `APITests/LogicalInduction.lean`; a prose endpoint count that disagrees with the inventory; a stale `[𝗜𝚺₁ ⪯ T]` endpoint list above, or a stale `Construction/Primcodable.lean` importer count in `Construction.lean` |
+| `scripts/check_li_census.py` | a printed census that no longer recomputes — the per-class binder tally on the canonical endpoints, the FIELD METERING TABLE and its summary lines, or the module total and the four entry-point closures above — including a table row whose structure, field or metering class has moved, and a boundary-structure field at a metered class with no row at all |
+| `scripts/check_li_class_claims.py` | a strength row or trust-surface reading note that names a metering class as a hypothesis of an endpoint whose signature, and whose bound structures' fields, do not carry it |
 
 Beside them, `scripts/gen-li-node-table.py` regenerates this file's node table and exits
 non-zero when it is stale, and `scripts/li_statement_snapshot.py` is the statement freeze:

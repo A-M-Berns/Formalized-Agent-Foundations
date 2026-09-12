@@ -149,9 +149,9 @@ Two things about that statement, both stated at the declaration:
    primitive is now built — `DigitFP.sqrtRemW_mem_FP` and `DigitFP.unpairW_spec` supply
    base-4 integer square root and `Nat.unpair` inside `Complexity.FP`,
    `FiberTest.fiberW_mem_FP` the escape-leaf decode test on top of them — and the recognizer
-   was rebuilt around it: `RpnFreeze.patterns` replaces the finite spelling list by a finite
-   list of *patterns with holes*, confining the infinite fibre inside a hole predicate, and
-   `PatAuto.ifParse_mem_FP` decides the whole thing in polynomial time.
+   was rebuilt around it: `StructPat.segPatterns` replaces the finite spelling list by a
+   finite list of *patterns with holes*, confining the infinite fibre inside a hole
+   predicate, and `SegRec.ifParseFull_mem_FP` decides the whole thing in polynomial time.
    `FreezeOracle.lic_iff_hardPoint` exercises the difference at `atom 0 ⋏ ⊥`, a
    sentence the previous endpoint provably could not freeze
    (`FreezeOracle.not_recognizable_hardS`).

@@ -32,11 +32,11 @@ builds one for any finite quote table (`runOracleOf`), so `freezeStreamRewriter_
 closes the chain from a finite table to an inhabited `FiniteSupportPatch`.
 
 Deciding whether a buffered run denotes a table sentence is what that construction does, and
-`RpnFreeze.parseRpn_iff_mem_spellings` is why it can: under two syntactic side conditions on
-the target, the complete spellings of a sentence are a *finite explicit list*, so the
-decision is membership in a list of constants rather than the execution of a parser.  The
-falsum half of those conditions is `RpnFreeze.matchRun_eq_matchRunCanon`'s ruling, which is
-what keeps integer square root out of the lookup.
+`SegRec.ifParseFull_mem_FP` is why it can: the recognizer chain walks the target's segment
+patterns with a finite automaton for the shape and the structured payload and a one-counter
+machine for the structured length field, with *no* syntactic side condition on the target.
+It pays for that in integer square root, built rather than avoided
+(`DigitFP.sqrtRemW_mem_FP`, with `FiberTest.fiberW_mem_FP` the escape-leaf test on top).
 
 ## The constant output bound is the paper's erratum, not a convenience
 
@@ -67,9 +67,6 @@ namespace LogicalInduction.FreezeStep
 
 open Complexity Complexity.Cobham LogicalInduction.FPFold LogicalInduction.TokenFold
 open LogicalInduction.CondStep LogicalInduction.RpnConditioning
-
-private def gvCli (v : List Bool) : List Bool := fstBlock (sndBlock v)
-private def gvTok (v : List Bool) : List Bool := sndBlock (sndBlock v)
 
 /-! ## The lookup oracle -/
 
@@ -109,9 +106,9 @@ structure RunOracle (selRun : List ℕ → ℕ → Bool) (quoteRun : List ℕ �
 /-- The freeze pass's word-level emitter: copy the token through, and at a price-day slot
 append the oracle's suffix. -/
 def flatEmitW (R : List Bool → List Bool) (v : List Bool) : List Bool :=
-  if (csMode (gvCli v)).length = 2 then
-    dayBits (gvTok v) ++ R (pair (gvTok v) (csBuf (gvCli v)))
-  else dayBits (gvTok v)
+  if (csMode (midBlock v)).length = 2 then
+    dayBits (lastBlock v) ++ R (pair (lastBlock v) (csBuf (midBlock v)))
+  else dayBits (lastBlock v)
 
 /-- Its block-level reading, which is what `TokenFold.runFold` folds. -/
 def flatEmitR (R : List Bool → List Bool) (cli : List Bool) (cur : List ℕ) : List Bool :=
@@ -125,7 +122,7 @@ depend on the parameter block at all: the freeze needs no day clamp. -/
 lemma flatEmitW_eq (R : List Bool → List Bool) (W cli : List Bool) (cur : List ℕ) :
     flatEmitW R (pair W (pair cli (digitsToBits cur))) = flatEmitR R cli cur := by
   rw [flatEmitW, flatEmitR]
-  simp only [gvCli, gvTok, sndBlock_pair, fstBlock_pair]
+  simp only [midBlock, lastBlock, sndBlock_pair, fstBlock_pair]
 
 /-! ## What the emitter emits -/
 
@@ -170,15 +167,15 @@ lemma decodeBits_flatEmitR {selRun : List ℕ → ℕ → Bool} {quoteRun : List
 `TokenFold`'s block projections. -/
 lemma flatEmitW_mem_FP {selRun : List ℕ → ℕ → Bool} {quoteRun : List ℕ → ℕ → ℕ}
     (E : RunOracle selRun quoteRun) : flatEmitW E.R ∈ FP := by
-  have hcli : gvCli ∈ FP := mem_FP_comp sndBlock_mem_FP fstBlock_mem_FP
-  have htok : gvTok ∈ FP := mem_FP_comp sndBlock_mem_FP sndBlock_mem_FP
-  have hff : (fun v => fstBlock (gvCli v)) ∈ FP := mem_FP_comp hcli fstBlock_mem_FP
-  have hsf : (fun v => sndBlock (gvCli v)) ∈ FP := mem_FP_comp hcli sndBlock_mem_FP
-  have hm : (fun v => csMode (gvCli v)) ∈ FP := mem_FP_comp hff fstBlock_mem_FP
-  have hbuf : (fun v => csBuf (gvCli v)) ∈ FP := mem_FP_comp hsf sndBlock_mem_FP
-  have hr : (fun v => E.R (pair (gvTok v) (csBuf (gvCli v)))) ∈ FP :=
+  have hcli : midBlock ∈ FP := mem_FP_comp sndBlock_mem_FP fstBlock_mem_FP
+  have htok : lastBlock ∈ FP := mem_FP_comp sndBlock_mem_FP sndBlock_mem_FP
+  have hff : (fun v => fstBlock (midBlock v)) ∈ FP := mem_FP_comp hcli fstBlock_mem_FP
+  have hsf : (fun v => sndBlock (midBlock v)) ∈ FP := mem_FP_comp hcli sndBlock_mem_FP
+  have hm : (fun v => csMode (midBlock v)) ∈ FP := mem_FP_comp hff fstBlock_mem_FP
+  have hbuf : (fun v => csBuf (midBlock v)) ∈ FP := mem_FP_comp hsf sndBlock_mem_FP
+  have hr : (fun v => E.R (pair (lastBlock v) (csBuf (midBlock v)))) ∈ FP :=
     mem_FP_comp (pairFn_mem_FP htok hbuf) E.R_FP
-  have hday : (fun v => dayBits (gvTok v)) ∈ FP :=
+  have hday : (fun v => dayBits (lastBlock v)) ∈ FP :=
     appendFn_mem_FP htok (constFn_mem_FP (digitBits 4))
   have h := selectHeadFn_eqLen_mem_FP hm (constFn_mem_FP (uw 2))
     (appendFn_mem_FP hday hr) hday
@@ -191,8 +188,8 @@ lemma flatEmitW_length_le {selRun : List ℕ → ℕ → Bool} {quoteRun : List 
     (E : RunOracle selRun quoteRun) (W cli tok : List Bool) :
     (flatEmitW E.R (pair W (pair cli tok))).length
       ≤ (Polynomial.C (E.R_len + 3)).eval W.length + 1 * (cli.length + tok.length) := by
-  have hcli : gvCli (pair W (pair cli tok)) = cli := by simp [gvCli]
-  have htok : gvTok (pair W (pair cli tok)) = tok := by simp [gvTok]
+  have hcli : midBlock (pair W (pair cli tok)) = cli := by simp [midBlock]
+  have htok : lastBlock (pair W (pair cli tok)) = tok := by simp [lastBlock]
   have hr := E.R_length_le (pair tok (csBuf cli))
   simp only [Polynomial.eval_C]
   rw [flatEmitW, hcli, htok]

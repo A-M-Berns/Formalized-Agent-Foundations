@@ -62,9 +62,17 @@ Three groups of results are stated differently, for one reason each:
   together with the continuous signal
   toolkit every §4 trader is gated by: `buySignal`, the `oneMinus`/`efMin`/`clip01` blocks,
   the threshold indicators of `def:ctsind` at a price leaf and at a feature, the latched
-  `armChain`, and the emission closures of all four stream classes.
-* `Properties.Support.WeightedAverages` — `prefixSum`, `DivergentWeighting`,
-  `weightedAverage` and `weightedBias`: the averaging vocabulary §4.3–4.4 is stated in.
+  `armChain`, and the emission closures of all five stream classes, `MachineSpliceStream`
+  — the row `AffineCombination.PolySequence`'s emission fields are stated at — included.
+  The **scale ladder** is here too: `ladderTrader` and `ladderTrader_exploits`, the rung
+  construction (arm on day `j`, spend one unit at the first full trigger, bank `j − 1`
+  against a total downside of `2`) that the non-dogmatism buy, sell and varying-sentence
+  ladders of `Properties/{NonDogmatism,UniformNonDogmatism}.lean` each instantiate at their
+  own trigger family.
+* `Properties.Support.WeightedAverages` — `prefixSum`, `weightedAverage` and
+  `weightedBias`: the averaging vocabulary §4.3–4.4 is stated in. (`DivergentWeighting`,
+  the `def:fuz` condition on a weighting, is declared beside its consumers in
+  `Properties.Calibration`.)
 * `Properties.Support.SettlementDecision` — `AffineCombination.DeterminedViaTheory` and its
   tolerance form, the decidable settlement tests `SettlementTest` / `SettlementTestBool`
   over finite Boolean worlds, and the finite exact maturity certificates

@@ -61,7 +61,6 @@ namespace FinitePerturbationCounterexample
 open LO LO.FirstOrder LO.FirstOrder.Arithmetic LO.Entailment
 open LO.Propositional
 open Filter Topology
-open Classical
 
 -- `𝗜𝚺₁` is charged here because this file's `cxQuote` runs the `thm:lp` diagonal
 -- (`paradoxResistanceQuoteOfDiagonal`), which reaches Foundation's `parameterized_diagonal₁`.
@@ -157,7 +156,7 @@ lemma settledTest_eq_cond (V : History) (DP : DeductiveProcess) (χ : ℕ → Se
     (m k : ℕ) : settledTest V DP χ m k =
       cond (decide (V m (χ m) < 1 / 2)) (stageEntails (DP.D k) (χ m))
         (stageEntails (DP.D k) (∼(χ m))) := by
-  by_cases h : V m (χ m) < 1 / 2 <;> simp [settledTest, h]
+  by_cases h : V m (χ m) < 1 / 2 <;> simp [settledTest]
 
 lemma settledTestZ_eq_casesOn (V : History) (DP : DeductiveProcess) (χ : ℕ → Sentence)
     (m k : ℕ) : settledTestZ V DP χ m k =
@@ -171,6 +170,8 @@ section
 -- structurally rather than by reduction.
 attribute [local irreducible] Nat.sqrt settledTest settledTestZ
 
+-- `Computable` elaboration over these nested product types unfolds the settled test's
+-- own branch structure during `whnf` and exceeds the default budget.
 set_option maxHeartbeats 1000000 in
 /-- Kind `C`; hypotheses `(a)`. -/
 lemma computable_settledTest (hχ : Computable χ)
@@ -209,6 +210,7 @@ lemma exists_settledTestZ (hdicho : ∀ m, 1 ≤ m → Dichotomy V DP χ m) (m :
 noncomputable def settleTotal (hdicho : ∀ m, 1 ≤ m → Dichotomy V DP χ m) (m : ℕ) : ℕ :=
   Nat.find (exists_settledTestZ hdicho m)
 
+open Classical in
 /-- Off day `0` the total search is the abstract settlement stage.
 Kind `P`; hypotheses `(a)`. -/
 lemma settleTotal_eq (hdicho : ∀ m, 1 ≤ m → Dichotomy V DP χ m) {m : ℕ} (hm : 1 ≤ m) :
@@ -432,6 +434,7 @@ noncomputable def cxQuoteCode := (paperDiagonalQuoteCode T (1 / 2)).toBooleanQuo
 /-- The diagonal family: `χ n` holds exactly when its own day-`n` price is below `1/2`. -/
 noncomputable def cxDiagonal : ℕ → Sentence := (cxQuoteCode T).sentence
 
+omit [Entailment.Consistent T] in
 /-- The diagonal family is efficiently codeable as whole values.
 Kind `C`; hypotheses `(b)` `BooleanQuoteCode.sentence_poly`. -/
 lemma cxDiagonal_poly : PolySentenceCodes (cxDiagonal T) :=
@@ -519,6 +522,7 @@ after. -/
 noncomputable def cxTable (n c : ℕ) : ℚ :=
   if n = 0 then cxRow T c else (paperMarketComputation T).quote n c
 
+omit [Entailment.Consistent T] in
 /-- **The table is exact.**
 Kind `P`; hypotheses `(a)`. -/
 lemma cxPerturbed_eq_cxTable (n : ℕ) (φ : Sentence) :
@@ -567,6 +571,7 @@ lemma cxPerturbed_eq_cxTable (n : ℕ) (φ : Sentence) :
 
 end Computability
 
+omit [Entailment.Consistent T] in
 lemma cxTable_eq_cond (n c : ℕ) :
     cxTable T n c = cond (decide (n = 0)) (cxRow T c)
       ((paperMarketComputation T).quote n c) := by
@@ -576,11 +581,13 @@ lemma cxTable_eq_cond (n c : ℕ) :
 noncomputable def cxProcessComputation : DeductiveProcessComputation (paperDP T) :=
   (paperDP_computable T).nonemptyComputation.some
 
+omit [Entailment.Consistent T] in
 /-- Kind `C`; hypotheses `(a)`. -/
 lemma computable_cxDiagonal : Computable (cxDiagonal T) := by
   obtain ⟨c, hc⟩ := cxDiagonal_poly T
   exact Computable.encode_iff.mp hc.primrec.to_comp
 
+omit [Entailment.Consistent T] in
 /-- Kind `C`; hypotheses `(a)`. -/
 lemma computable_cxQuoteAt : Computable (fun m : ℕ =>
     (paperMarketComputation T).quote m (Encodable.encode (cxDiagonal T m))) :=
@@ -589,6 +596,7 @@ lemma computable_cxQuoteAt : Computable (fun m : ℕ =>
       (Computable.encode.comp (computable_cxDiagonal T)))).of_eq
     (fun _ => by simp [Nat.unpair_pair])
 
+omit [Entailment.Consistent T] in
 /-- Kind `C`; hypotheses `(a)`. -/
 lemma computable_cxLt : Computable
     (fun m => decide (liaHistory (paperDP T) m (cxDiagonal T m) < 1 / 2)) :=
@@ -596,11 +604,13 @@ lemma computable_cxLt : Computable
     rw [(paperMarketComputation T).quote_exact m (cxDiagonal T m)]
     exact decide_eq_decide.mpr (rat_cast_lt_half _).symm)
 
+omit [Entailment.Consistent T] in
 /-- The diagonal dichotomy for the unperturbed market, at every day. -/
 lemma cxDichotomy : ∀ m, 1 ≤ m →
     Dichotomy (liaHistory (paperDP T)) (paperDP T) (cxDiagonal T) m :=
-  fun m hm => dichotomy_of_paradoxQuote (cxQuote T) (fun _ _ _ => rfl) hm
+  fun _ hm => dichotomy_of_paradoxQuote (cxQuote T) (fun _ _ _ => rfl) hm
 
+omit [Entailment.Consistent T] in
 /-- Kind `C`; hypotheses `(a)`. -/
 lemma computable_cxSched :
     Computable (sched (liaHistory (paperDP T)) (paperDP T) (cxDiagonal T)) :=
@@ -608,6 +618,7 @@ lemma computable_cxSched :
     (computable_settleTotal (cxDichotomy T) (computable_cxDiagonal T) (computable_cxLt T)
       (computable_stage (cxProcessComputation T)))
 
+omit [Entailment.Consistent T] in
 /-- **The perturbed quote table is computable.**
 Kind `C`; hypotheses `(a)`. -/
 lemma computable_cxTable : Computable (fun z : ℕ => cxTable T z.unpair.1 z.unpair.2) := by
@@ -642,6 +653,7 @@ lemma computable_cxTable : Computable (fun z : ℕ => cxTable T z.unpair.1 z.unp
 
 /-! ## Computability of the perturbed market -/
 
+omit [Entailment.Consistent T] in
 /-- **The perturbed market is computable** (`def:marketprocess`): prices in `[0,1]` from
 `advicePerturbed_mem_Icc` over the constructed inductor's own market, the rational table
 `cxTable`, and a `Nat.Partrec.Code` for it.
@@ -691,7 +703,7 @@ theorem exists_advice_perturbation_ofTheory :
     LIA_is_logical_inductor (paperDP T) (paperDP_computable T),
     computableMarket_cxPerturbed T,
     advicePerturbed_agree _ _ _,
-    adviceTrader_efficient rpnSentenceCodes_schedAtom rpnSentenceCodes_signAtom
+    adviceTrader_efficient machineSentenceCodes_schedAtom machineSentenceCodes_signAtom
       (MachineSentenceCodes.ofPolySentenceCodes (cxDiagonal_poly T)),
     paperDP_hworld T,
     fun j => dichotomy_of_paradoxQuote (cxQuote T) (advicePerturbed_agree _ _ _)

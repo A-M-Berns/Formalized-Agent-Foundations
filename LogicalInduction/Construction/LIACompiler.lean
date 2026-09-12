@@ -4,8 +4,9 @@ import LogicalInduction.Construction.Primcodable
 /-!
 # Concrete compiler for the bounded LIA evaluator
 
-§5 defines `MarketMaker`, `Budgeter`, `TradingFirm` and the recursively specified market
-`LIA` (`def:lia`) by ordinary mathematics and then asserts that each is computable.  This
+§5 defines `MarketMaker`, `Budgeter`, `TradingFirm` and the recursively specified market of
+`def:lia` — `liaHistory` here — by ordinary mathematics and then asserts that each is
+computable.  This
 file discharges those assertions and states §5's conclusions, `thm:lia` and `thm:li`, the
 latter in the paper's `def:belstate` / `def:belseq` form.  The codes and parser certificates
 it runs on are not built here: `Construction/Primcodable.lean` is that layer, and this file
@@ -385,8 +386,8 @@ private lemma tradeListSupportSentenceList_prim :
       trades.map Prod.snd :=
     Primrec.list_map Primrec.id (Primrec.snd.comp₂ Primrec₂.right)
   have hcanonical : Primrec fun trades : List (EF × Sentence) =>
-      (sentenceDedup (trades.map Prod.snd)).insertionSort r :=
-    sentenceInsertionSort_prim.comp (sentenceDedup_prim.comp hsentences)
+      (List.dedup (trades.map Prod.snd)).insertionSort r :=
+    sentenceInsertionSort_prim.comp (dedup_prim.comp hsentences)
   exact hcanonical.of_eq fun trades => by
     letI : IsTrans Sentence r :=
       ⟨fun _ _ _ hab hbc => hab.trans hbc⟩
@@ -394,10 +395,10 @@ private lemma tradeListSupportSentenceList_prim :
       ⟨fun _ _ hab hba => Encodable.encode_injective (le_antisymm hab hba)⟩
     letI : Std.Total r :=
       ⟨fun φ ψ => le_total (Encodable.encode φ) (Encodable.encode ψ)⟩
-    let l := (sentenceDedup (trades.map Prod.snd)).insertionSort r
+    let l := (List.dedup (trades.map Prod.snd)).insertionSort r
     have hnodup : l.Nodup :=
       (List.perm_insertionSort r _).nodup_iff.mpr
-        (sentenceDedup_nodup (trades.map Prod.snd))
+        (List.nodup_dedup (trades.map Prod.snd))
     have hsorted : l.Pairwise r := List.pairwise_insertionSort r _
     have htoFinset : l.toFinset = tradeListSupport trades := by
       ext φ
@@ -653,6 +654,124 @@ private lemma iterate_add_forward {α : Type*} (f : α → α) (m n : ℕ) (x : 
     f^[m + n] x = f^[n] (f^[m] x) := by
   rw [Nat.add_comm, Function.iterate_add_apply]
 
+/-- **Stack-machine correctness, once.**
+
+Both evaluators below — the exact rational one and the absolute-bound one — are the same
+continuation machine over the same command list and the same instruction count; they differ
+only in what a value *is*, which opcode each connective pops on, and how a leaf is read.
+This lemma carries the induction for all of them: running exactly `efRatMachineSteps e`
+instructions evaluates one feature to `den e rho` and leaves the surrounding
+continuation/value stack untouched.
+
+The `Push` hypotheses say what one instruction does to an evaluation command, the `Pop`
+hypotheses what the opcode does to the two values below it, and `hletDen` is the
+denotation's own binding law.  The opcodes are parameters because the bound machine merges
+`max` into `add` — the bound of a maximum is the sum of the bounds. -/
+private lemma efMachine_correct (f : EFRatMachineState → EFRatMachineState)
+    (den : EF → List ℚ → ℚ) (tAdd tMul tMax tRec : ℕ)
+    (hprice : ∀ (φ : Sentence) (day : ℕ) (rho : List ℚ) (cs : List EFRatCommand)
+      (vs : List ℚ), f (efRatEvalCommand (EF.price φ day) rho :: cs, vs) =
+        (cs, den (EF.price φ day) rho :: vs))
+    (hconst : ∀ (q : ℚ) (rho : List ℚ) (cs : List EFRatCommand) (vs : List ℚ),
+      f (efRatEvalCommand (EF.const q) rho :: cs, vs) = (cs, den (EF.const q) rho :: vs))
+    (hvar : ∀ (i : ℕ) (rho : List ℚ) (cs : List EFRatCommand) (vs : List ℚ),
+      f (efRatEvalCommand (EF.var i) rho :: cs, vs) = (cs, den (EF.var i) rho :: vs))
+    (haddPush : ∀ (a b : EF) (rho : List ℚ) (cs : List EFRatCommand) (vs : List ℚ),
+      f (efRatEvalCommand (EF.add a b) rho :: cs, vs) =
+        (efRatEvalCommand a rho :: efRatEvalCommand b rho :: efRatOpCommand tAdd :: cs, vs))
+    (haddPop : ∀ (a b : EF) (rho : List ℚ) (cs : List EFRatCommand) (vs : List ℚ),
+      f (efRatOpCommand tAdd :: cs, den b rho :: den a rho :: vs) =
+        (cs, den (EF.add a b) rho :: vs))
+    (hmulPush : ∀ (a b : EF) (rho : List ℚ) (cs : List EFRatCommand) (vs : List ℚ),
+      f (efRatEvalCommand (EF.mul a b) rho :: cs, vs) =
+        (efRatEvalCommand a rho :: efRatEvalCommand b rho :: efRatOpCommand tMul :: cs, vs))
+    (hmulPop : ∀ (a b : EF) (rho : List ℚ) (cs : List EFRatCommand) (vs : List ℚ),
+      f (efRatOpCommand tMul :: cs, den b rho :: den a rho :: vs) =
+        (cs, den (EF.mul a b) rho :: vs))
+    (hmaxPush : ∀ (a b : EF) (rho : List ℚ) (cs : List EFRatCommand) (vs : List ℚ),
+      f (efRatEvalCommand (EF.max a b) rho :: cs, vs) =
+        (efRatEvalCommand a rho :: efRatEvalCommand b rho :: efRatOpCommand tMax :: cs, vs))
+    (hmaxPop : ∀ (a b : EF) (rho : List ℚ) (cs : List EFRatCommand) (vs : List ℚ),
+      f (efRatOpCommand tMax :: cs, den b rho :: den a rho :: vs) =
+        (cs, den (EF.max a b) rho :: vs))
+    (hrecPush : ∀ (a : EF) (rho : List ℚ) (cs : List EFRatCommand) (vs : List ℚ),
+      f (efRatEvalCommand (EF.safeRecip a) rho :: cs, vs) =
+        (efRatEvalCommand a rho :: efRatOpCommand tRec :: cs, vs))
+    (hrecPop : ∀ (a : EF) (rho : List ℚ) (cs : List EFRatCommand) (vs : List ℚ),
+      f (efRatOpCommand tRec :: cs, den a rho :: vs) =
+        (cs, den (EF.safeRecip a) rho :: vs))
+    (hletPush : ∀ (x body : EF) (rho : List ℚ) (cs : List EFRatCommand) (vs : List ℚ),
+      f (efRatEvalCommand (EF.letE x body) rho :: cs, vs) =
+        (efRatEvalCommand x rho :: efRatLetBodyCommand body.toNat rho :: cs, vs))
+    (hletBody : ∀ (body : EF) (rho : List ℚ) (q : ℚ) (cs : List EFRatCommand)
+      (vs : List ℚ), f (efRatLetBodyCommand body.toNat rho :: cs, q :: vs) =
+        (efRatEvalCommand body (q :: rho) :: cs, vs))
+    (hletDen : ∀ (x body : EF) (rho : List ℚ),
+      den (EF.letE x body) rho = den body (den x rho :: rho)) :
+    ∀ (e : EF) (rho : List ℚ) (cs : List EFRatCommand) (vs : List ℚ),
+      f^[efRatMachineSteps e] (efRatEvalCommand e rho :: cs, vs) = (cs, den e rho :: vs) := by
+  intro e
+  induction e with
+  | price φ day =>
+      intro rho cs vs
+      simpa only [efRatMachineSteps, Function.iterate_one] using hprice φ day rho cs vs
+  | const q =>
+      intro rho cs vs
+      simpa only [efRatMachineSteps, Function.iterate_one] using hconst q rho cs vs
+  | var i =>
+      intro rho cs vs
+      simpa only [efRatMachineSteps, Function.iterate_one] using hvar i rho cs vs
+  | add a b iha ihb =>
+      intro rho cs vs
+      rw [show efRatMachineSteps (EF.add a b) =
+          1 + (efRatMachineSteps a + (efRatMachineSteps b + 1)) by
+        simp only [efRatMachineSteps]; omega]
+      rw [iterate_add_forward f 1, Function.iterate_one, haddPush,
+        iterate_add_forward f (efRatMachineSteps a),
+        iha rho (efRatEvalCommand b rho :: efRatOpCommand tAdd :: cs) vs,
+        iterate_add_forward f (efRatMachineSteps b),
+        ihb rho (efRatOpCommand tAdd :: cs) (den a rho :: vs),
+        Function.iterate_one, haddPop]
+  | mul a b iha ihb =>
+      intro rho cs vs
+      rw [show efRatMachineSteps (EF.mul a b) =
+          1 + (efRatMachineSteps a + (efRatMachineSteps b + 1)) by
+        simp only [efRatMachineSteps]; omega]
+      rw [iterate_add_forward f 1, Function.iterate_one, hmulPush,
+        iterate_add_forward f (efRatMachineSteps a),
+        iha rho (efRatEvalCommand b rho :: efRatOpCommand tMul :: cs) vs,
+        iterate_add_forward f (efRatMachineSteps b),
+        ihb rho (efRatOpCommand tMul :: cs) (den a rho :: vs),
+        Function.iterate_one, hmulPop]
+  | max a b iha ihb =>
+      intro rho cs vs
+      rw [show efRatMachineSteps (EF.max a b) =
+          1 + (efRatMachineSteps a + (efRatMachineSteps b + 1)) by
+        simp only [efRatMachineSteps]; omega]
+      rw [iterate_add_forward f 1, Function.iterate_one, hmaxPush,
+        iterate_add_forward f (efRatMachineSteps a),
+        iha rho (efRatEvalCommand b rho :: efRatOpCommand tMax :: cs) vs,
+        iterate_add_forward f (efRatMachineSteps b),
+        ihb rho (efRatOpCommand tMax :: cs) (den a rho :: vs),
+        Function.iterate_one, hmaxPop]
+  | safeRecip a iha =>
+      intro rho cs vs
+      rw [show efRatMachineSteps (EF.safeRecip a) = 1 + (efRatMachineSteps a + 1) by
+        simp only [efRatMachineSteps]; omega]
+      rw [iterate_add_forward f 1, Function.iterate_one, hrecPush,
+        iterate_add_forward f (efRatMachineSteps a),
+        iha rho (efRatOpCommand tRec :: cs) vs, Function.iterate_one, hrecPop]
+  | letE x body ihx ihbody =>
+      intro rho cs vs
+      rw [show efRatMachineSteps (EF.letE x body) =
+          1 + (efRatMachineSteps x + (1 + efRatMachineSteps body)) by
+        simp only [efRatMachineSteps]; omega]
+      rw [iterate_add_forward f 1, Function.iterate_one, hletPush,
+        iterate_add_forward f (efRatMachineSteps x),
+        ihx rho (efRatLetBodyCommand body.toNat rho :: cs) vs,
+        iterate_add_forward f 1, Function.iterate_one, hletBody,
+        ihbody (den x rho :: rho) cs vs, hletDen]
+
 /-- Running exactly the structural instruction count evaluates one feature and preserves
 the surrounding continuation/value stack. -/
 private lemma efRatMachine_correct {C : Type*} (V : C → ℕ → Sentence → ℚ)
@@ -660,166 +779,41 @@ private lemma efRatMachine_correct {C : Type*} (V : C → ℕ → Sentence → �
     (values : List ℚ) :
     (efRatMachineStep V ctx)^[efRatMachineSteps e]
         (efRatEvalCommand e rho :: commands, values) =
-      (commands, e.denoteRatWith rho (V ctx) :: values) := by
-  induction e generalizing rho commands values with
-  | price φ day =>
-      simp [efRatMachineSteps, efRatEvalCommand, efRatRawEvalCommand,
-        efRatMachineStep, EF.toNat, EF.denoteRatWith, Encodable.encodek]
-  | const q =>
-      simp [efRatMachineSteps, efRatEvalCommand, efRatRawEvalCommand,
-        efRatMachineStep, EF.toNat, EF.denoteRatWith, Encodable.encodek]
-  | var i =>
-      simp [efRatMachineSteps, efRatEvalCommand, efRatRawEvalCommand,
-        efRatMachineStep, EF.toNat, EF.denoteRatWith]
-  | add a b iha ihb =>
-      let f := efRatMachineStep V ctx
-      rw [show efRatMachineSteps (EF.add a b) =
-          1 + efRatMachineSteps a + efRatMachineSteps b + 1 by
-        simp only [efRatMachineSteps]
-        omega]
-      rw [show 1 + efRatMachineSteps a + efRatMachineSteps b + 1 =
-          1 + (efRatMachineSteps a + efRatMachineSteps b + 1) by omega]
-      rw [iterate_add_forward f 1]
-      simp only [Function.iterate_one]
-      change f^[efRatMachineSteps a + efRatMachineSteps b + 1]
-          (f (efRatEvalCommand (EF.add a b) rho :: commands, values)) = _
-      simp only [f, efRatEvalCommand, efRatRawEvalCommand, efRatMachineStep,
-        EF.toNat, Nat.unpair_pair]
-      rw [show efRatMachineSteps a + efRatMachineSteps b + 1 =
-          efRatMachineSteps a + (efRatMachineSteps b + 1) by omega]
-      rw [iterate_add_forward f (efRatMachineSteps a)]
-      rw [show f^[efRatMachineSteps a]
-          ((0, a.toNat, rho) :: (0, b.toNat, rho) :: efRatOpCommand 1 :: commands, values) =
-          ((0, b.toNat, rho) :: efRatOpCommand 1 :: commands,
-            a.denoteRatWith rho (V ctx) :: values) by
-        simpa only [f, efRatEvalCommand, efRatRawEvalCommand] using
-          iha rho (efRatEvalCommand b rho :: efRatOpCommand 1 :: commands) values]
-      rw [iterate_add_forward f (efRatMachineSteps b) 1]
-      rw [show f^[efRatMachineSteps b]
-          ((0, b.toNat, rho) :: efRatOpCommand 1 :: commands,
-            a.denoteRatWith rho (V ctx) :: values) =
-          (efRatOpCommand 1 :: commands,
-            b.denoteRatWith rho (V ctx) :: a.denoteRatWith rho (V ctx) :: values) by
-        simpa only [f, efRatEvalCommand, efRatRawEvalCommand] using
-          ihb rho (efRatOpCommand 1 :: commands) (a.denoteRatWith rho (V ctx) :: values)]
-      simp [f, efRatMachineStep, efRatOpCommand, EF.denoteRatWith]
-  | mul a b iha ihb =>
-      let f := efRatMachineStep V ctx
-      rw [show efRatMachineSteps (EF.mul a b) =
-          1 + efRatMachineSteps a + efRatMachineSteps b + 1 by
-        simp only [efRatMachineSteps]
-        omega]
-      rw [show 1 + efRatMachineSteps a + efRatMachineSteps b + 1 =
-          1 + (efRatMachineSteps a + efRatMachineSteps b + 1) by omega]
-      rw [iterate_add_forward f 1]
-      simp only [Function.iterate_one]
-      change f^[efRatMachineSteps a + efRatMachineSteps b + 1]
-          (f (efRatEvalCommand (EF.mul a b) rho :: commands, values)) = _
-      simp only [f, efRatEvalCommand, efRatRawEvalCommand, efRatMachineStep,
-        EF.toNat, Nat.unpair_pair]
-      rw [show efRatMachineSteps a + efRatMachineSteps b + 1 =
-          efRatMachineSteps a + (efRatMachineSteps b + 1) by omega]
-      rw [iterate_add_forward f (efRatMachineSteps a)]
-      rw [show f^[efRatMachineSteps a]
-          ((0, a.toNat, rho) :: (0, b.toNat, rho) :: efRatOpCommand 2 :: commands, values) =
-          ((0, b.toNat, rho) :: efRatOpCommand 2 :: commands,
-            a.denoteRatWith rho (V ctx) :: values) by
-        simpa only [f, efRatEvalCommand, efRatRawEvalCommand] using
-          iha rho (efRatEvalCommand b rho :: efRatOpCommand 2 :: commands) values]
-      rw [iterate_add_forward f (efRatMachineSteps b) 1]
-      rw [show f^[efRatMachineSteps b]
-          ((0, b.toNat, rho) :: efRatOpCommand 2 :: commands,
-            a.denoteRatWith rho (V ctx) :: values) =
-          (efRatOpCommand 2 :: commands,
-            b.denoteRatWith rho (V ctx) :: a.denoteRatWith rho (V ctx) :: values) by
-        simpa only [f, efRatEvalCommand, efRatRawEvalCommand] using
-          ihb rho (efRatOpCommand 2 :: commands) (a.denoteRatWith rho (V ctx) :: values)]
-      simp [f, efRatMachineStep, efRatOpCommand, EF.denoteRatWith]
-  | max a b iha ihb =>
-      let f := efRatMachineStep V ctx
-      rw [show efRatMachineSteps (EF.max a b) =
-          1 + efRatMachineSteps a + efRatMachineSteps b + 1 by
-        simp only [efRatMachineSteps]
-        omega]
-      rw [show 1 + efRatMachineSteps a + efRatMachineSteps b + 1 =
-          1 + (efRatMachineSteps a + efRatMachineSteps b + 1) by omega]
-      rw [iterate_add_forward f 1]
-      simp only [Function.iterate_one]
-      change f^[efRatMachineSteps a + efRatMachineSteps b + 1]
-          (f (efRatEvalCommand (EF.max a b) rho :: commands, values)) = _
-      simp only [f, efRatEvalCommand, efRatRawEvalCommand, efRatMachineStep,
-        EF.toNat, Nat.unpair_pair]
-      rw [show efRatMachineSteps a + efRatMachineSteps b + 1 =
-          efRatMachineSteps a + (efRatMachineSteps b + 1) by omega]
-      rw [iterate_add_forward f (efRatMachineSteps a)]
-      rw [show f^[efRatMachineSteps a]
-          ((0, a.toNat, rho) :: (0, b.toNat, rho) :: efRatOpCommand 3 :: commands, values) =
-          ((0, b.toNat, rho) :: efRatOpCommand 3 :: commands,
-            a.denoteRatWith rho (V ctx) :: values) by
-        simpa only [f, efRatEvalCommand, efRatRawEvalCommand] using
-          iha rho (efRatEvalCommand b rho :: efRatOpCommand 3 :: commands) values]
-      rw [iterate_add_forward f (efRatMachineSteps b) 1]
-      rw [show f^[efRatMachineSteps b]
-          ((0, b.toNat, rho) :: efRatOpCommand 3 :: commands,
-            a.denoteRatWith rho (V ctx) :: values) =
-          (efRatOpCommand 3 :: commands,
-            b.denoteRatWith rho (V ctx) :: a.denoteRatWith rho (V ctx) :: values) by
-        simpa only [f, efRatEvalCommand, efRatRawEvalCommand] using
-          ihb rho (efRatOpCommand 3 :: commands) (a.denoteRatWith rho (V ctx) :: values)]
-      simp [f, efRatMachineStep, efRatOpCommand, EF.denoteRatWith]
-  | safeRecip a iha =>
-      let f := efRatMachineStep V ctx
-      rw [show efRatMachineSteps (EF.safeRecip a) =
-          1 + efRatMachineSteps a + 1 by
-        simp only [efRatMachineSteps]
-        omega]
-      rw [show 1 + efRatMachineSteps a + 1 =
-          1 + (efRatMachineSteps a + 1) by omega]
-      rw [iterate_add_forward f 1]
-      simp only [Function.iterate_one]
-      change f^[efRatMachineSteps a + 1]
-          (f (efRatEvalCommand (EF.safeRecip a) rho :: commands, values)) = _
-      simp only [f, efRatEvalCommand, efRatRawEvalCommand, efRatMachineStep,
-        EF.toNat, Nat.unpair_pair]
-      rw [iterate_add_forward f (efRatMachineSteps a) 1]
-      rw [show f^[efRatMachineSteps a]
-          ((0, a.toNat, rho) :: efRatOpCommand 4 :: commands, values) =
-          (efRatOpCommand 4 :: commands, a.denoteRatWith rho (V ctx) :: values) by
-        simpa only [f, efRatEvalCommand, efRatRawEvalCommand] using
-          iha rho (efRatOpCommand 4 :: commands) values]
-      simp [f, efRatMachineStep, efRatOpCommand, EF.denoteRatWith]
-  | letE x body ihx ihbody =>
-      let f := efRatMachineStep V ctx
-      rw [show efRatMachineSteps (EF.letE x body) =
-          1 + efRatMachineSteps x + 1 + efRatMachineSteps body by
-        simp [efRatMachineSteps]; omega]
-      rw [show 1 + efRatMachineSteps x + 1 + efRatMachineSteps body =
-          1 + (efRatMachineSteps x + 1 + efRatMachineSteps body) by omega]
-      rw [iterate_add_forward f 1]
-      simp only [Function.iterate_one]
-      change f^[efRatMachineSteps x + 1 + efRatMachineSteps body]
-          (f (efRatEvalCommand (EF.letE x body) rho :: commands, values)) = _
-      simp only [f, efRatEvalCommand, efRatRawEvalCommand, efRatMachineStep,
-        EF.toNat, Nat.unpair_pair]
-      rw [show efRatMachineSteps x + 1 + efRatMachineSteps body =
-          efRatMachineSteps x + (1 + efRatMachineSteps body) by omega]
-      rw [iterate_add_forward f (efRatMachineSteps x)]
-      rw [show f^[efRatMachineSteps x]
-          ((0, x.toNat, rho) :: efRatLetBodyCommand body.toNat rho :: commands, values) =
-          (efRatLetBodyCommand body.toNat rho :: commands,
-            x.denoteRatWith rho (V ctx) :: values) by
-        simpa only [f, efRatEvalCommand, efRatRawEvalCommand] using
-          ihx rho (efRatLetBodyCommand body.toNat rho :: commands) values]
-      rw [iterate_add_forward f 1 (efRatMachineSteps body)]
-      simp only [Function.iterate_one]
-      simp only [f, efRatMachineStep, efRatLetBodyCommand]
-      rw [show (efRatMachineStep V ctx)^[efRatMachineSteps body]
-          (efRatRawEvalCommand body.toNat (x.denoteRatWith rho (V ctx) :: rho) ::
-            commands, values) =
-          (commands, body.denoteRatWith (x.denoteRatWith rho (V ctx) :: rho) (V ctx) :: values) by
-        simpa only [efRatEvalCommand] using
-          ihbody (x.denoteRatWith rho (V ctx) :: rho) commands values]
-      rfl
+      (commands, e.denoteRatWith rho (V ctx) :: values) :=
+  efMachine_correct (efRatMachineStep V ctx) (fun e rho => e.denoteRatWith rho (V ctx))
+    1 2 3 4
+    (fun φ day rho cs vs => by
+      simp [efRatEvalCommand, efRatRawEvalCommand, efRatMachineStep, EF.toNat,
+        EF.denoteRatWith, Encodable.encodek])
+    (fun q rho cs vs => by
+      simp [efRatEvalCommand, efRatRawEvalCommand, efRatMachineStep, EF.toNat,
+        EF.denoteRatWith, Encodable.encodek])
+    (fun i rho cs vs => by
+      simp [efRatEvalCommand, efRatRawEvalCommand, efRatMachineStep, EF.toNat,
+        EF.denoteRatWith])
+    (fun a b rho cs vs => by
+      simp [efRatEvalCommand, efRatRawEvalCommand, efRatMachineStep, EF.toNat])
+    (fun a b rho cs vs => by
+      simp [efRatMachineStep, efRatOpCommand, EF.denoteRatWith])
+    (fun a b rho cs vs => by
+      simp [efRatEvalCommand, efRatRawEvalCommand, efRatMachineStep, EF.toNat])
+    (fun a b rho cs vs => by
+      simp [efRatMachineStep, efRatOpCommand, EF.denoteRatWith])
+    (fun a b rho cs vs => by
+      simp [efRatEvalCommand, efRatRawEvalCommand, efRatMachineStep, EF.toNat])
+    (fun a b rho cs vs => by
+      simp [efRatMachineStep, efRatOpCommand, EF.denoteRatWith])
+    (fun a rho cs vs => by
+      simp [efRatEvalCommand, efRatRawEvalCommand, efRatMachineStep, EF.toNat])
+    (fun a rho cs vs => by
+      simp [efRatMachineStep, efRatOpCommand, EF.denoteRatWith])
+    (fun x body rho cs vs => by
+      simp [efRatEvalCommand, efRatRawEvalCommand, efRatMachineStep, EF.toNat,
+        efRatLetBodyCommand])
+    (fun body rho q cs vs => by
+      simp [efRatMachineStep, efRatLetBodyCommand, efRatEvalCommand, efRatRawEvalCommand])
+    (fun x body rho => rfl)
+    e rho commands values
 
 /-! ## Primitive-recursive compilation of the evaluator transition -/
 
@@ -1915,17 +1909,17 @@ finite universe.  Keeping that presentation as ordinary data avoids asking the r
 compiler to inspect the quotient representation of `Finset`. -/
 
 private def canonicalNatList (l : List ℕ) : List ℕ :=
-  (listDedup l).insertionSort (fun a b => a ≤ b)
+  (List.dedup l).insertionSort (fun a b => a ≤ b)
 
 private lemma canonicalNatList_prim : Primrec canonicalNatList :=
-  (insertionSort_prim (fun a b : ℕ => a ≤ b) Primrec.nat_le).comp listDedup_prim
+  (insertionSort_prim (fun a b : ℕ => a ≤ b) Primrec.nat_le).comp dedup_prim
 
 private lemma canonicalNatList_eq_sort (l : List ℕ) :
     canonicalNatList l = l.toFinset.sort (fun a b => a ≤ b) := by
   let r : ℕ → ℕ → Prop := fun a b => a ≤ b
   let canonical := canonicalNatList l
   have hnodup : canonical.Nodup :=
-    (List.perm_insertionSort r _).nodup_iff.mpr (listDedup_nodup l)
+    (List.perm_insertionSort r _).nodup_iff.mpr (List.nodup_dedup l)
   have hsorted : canonical.Pairwise r := List.pairwise_insertionSort r _
   have htoFinset : canonical.toFinset = l.toFinset := by
     ext a
@@ -2435,12 +2429,6 @@ private lemma firmRawPriorWorthData_eq
       rw [List.sum_range_succ, Finset.sum_range_succ, ih]
       rfl
 
-private lemma natCastRat_prim : Primrec fun n : ℕ => (n : ℚ) := by
-  exact (ratMk_prim.comp (intOfNat_prim.comp Primrec.id)
-    (Primrec.const 1)).of_eq fun n => by
-      rw [Rat.mkRat_eq_divInt]
-      simp
-
 private abbrev BudgetCoreInput :=
   (((List (Finset Sentence) × List RationalBeliefState) × ℕ) × ℕ) × ℕ
 
@@ -2484,7 +2472,7 @@ private lemma budgetWorthBreachedData_prim : Primrec fun p :
       ((hctx.pair hj).pair (Primrec.nat_add.comp hm (Primrec.const 1)))
   have hnegBudget : Primrec fun p : ((BudgetWorldContext × ℕ) × ℕ) × ℕ =>
       -((p.1.2 : ℕ) : ℚ) :=
-    ratNeg_prim.comp (natCastRat_prim.comp hb)
+    ratNeg_prim.comp (ratNatCast_prim.comp hb)
   exact ((ratLE_prim.comp hworth hnegBudget).decide).of_eq fun p => by
     rfl
 
@@ -2557,10 +2545,6 @@ end
 The firm cutoff uses `EF.absBound`, whose operations differ slightly from ordinary
 rational denotation.  We reuse the verified rational machine's command format and
 continuation discipline, changing only constants, prices, `max`, and `safeRecip`. -/
-
-private lemma ratAbs_prim : Primrec fun q : ℚ => |q| := by
-  exact (ratMax_prim.comp Primrec.id (ratNeg_prim.comp Primrec.id)).of_eq
-    fun q => by simp [abs_eq_max_neg]
 
 private def efBoundRawStep
     (p : ℕ × (List ℚ × EFRatMachineState)) : EFRatMachineState :=
@@ -2762,204 +2746,42 @@ private lemma efBoundMachine_correct (e : EF) (rho : List ℚ)
     (commands : List EFRatCommand) (values : List ℚ) :
     efBoundMachineStep^[efRatMachineSteps e]
         (efRatEvalCommand e rho :: commands, values) =
-      (commands, e.absBoundWith (rho.getD · 0) :: values) := by
-  induction e generalizing rho commands values with
-  | price φ day =>
-      simp [efRatMachineSteps, efRatEvalCommand, efRatRawEvalCommand,
-        efBoundMachineStep, efBoundCommandStep, efBoundRawStep,
-        EF.toNat, EF.absBoundWith]
-  | const q =>
-      simp [efRatMachineSteps, efRatEvalCommand, efRatRawEvalCommand,
-        efBoundMachineStep, efBoundCommandStep, efBoundRawStep,
-        EF.toNat, EF.absBoundWith, Encodable.encodek]
-  | var i =>
-      simp [efRatMachineSteps, efRatEvalCommand, efRatRawEvalCommand,
-        efBoundMachineStep, efBoundCommandStep, efBoundRawStep,
-        efRatRawStep, EF.toNat, EF.absBoundWith]
-  | add a b iha ihb =>
-      let f := efBoundMachineStep
-      rw [show efRatMachineSteps (EF.add a b) =
-          1 + efRatMachineSteps a + efRatMachineSteps b + 1 by
-        simp only [efRatMachineSteps]
-        omega]
-      rw [show 1 + efRatMachineSteps a + efRatMachineSteps b + 1 =
-          1 + (efRatMachineSteps a + efRatMachineSteps b + 1) by omega]
-      rw [iterate_add_forward f 1]
-      simp only [Function.iterate_one]
-      change f^[efRatMachineSteps a + efRatMachineSteps b + 1]
-          (f (efRatEvalCommand (EF.add a b) rho :: commands, values)) = _
-      rw [show f (efRatEvalCommand (EF.add a b) rho :: commands, values) =
-          (efRatEvalCommand a rho :: efRatEvalCommand b rho ::
-            efRatOpCommand 1 :: commands, values) by
-        exact efBoundMachineStep_add a b rho commands values]
-      rw [show efRatMachineSteps a + efRatMachineSteps b + 1 =
-          efRatMachineSteps a + (efRatMachineSteps b + 1) by omega]
-      rw [iterate_add_forward f (efRatMachineSteps a)]
-      rw [show f^[efRatMachineSteps a]
-          (efRatEvalCommand a rho :: efRatEvalCommand b rho ::
-            efRatOpCommand 1 :: commands, values) =
-          (efRatEvalCommand b rho :: efRatOpCommand 1 :: commands,
-            a.absBoundWith (rho.getD · 0) :: values) by
-        simpa only [f, efRatEvalCommand, efRatRawEvalCommand] using
-          iha rho (efRatEvalCommand b rho :: efRatOpCommand 1 :: commands) values]
-      rw [iterate_add_forward f (efRatMachineSteps b) 1]
-      rw [show f^[efRatMachineSteps b]
-          (efRatEvalCommand b rho :: efRatOpCommand 1 :: commands,
-            a.absBoundWith (rho.getD · 0) :: values) =
-          (efRatOpCommand 1 :: commands,
-            b.absBoundWith (rho.getD · 0) ::
-              a.absBoundWith (rho.getD · 0) :: values) by
-        simpa only [f, efRatEvalCommand, efRatRawEvalCommand] using
-          ihb rho (efRatOpCommand 1 :: commands)
-            (a.absBoundWith (rho.getD · 0) :: values)]
-      simp [f, efBoundMachineStep, efBoundCommandStep, efRatCommandStep,
-        efRatOpCommand, efRatBinaryValueStep, EF.absBoundWith]
-  | mul a b iha ihb =>
-      let f := efBoundMachineStep
-      rw [show efRatMachineSteps (EF.mul a b) =
-          1 + efRatMachineSteps a + efRatMachineSteps b + 1 by
-        simp only [efRatMachineSteps]
-        omega]
-      rw [show 1 + efRatMachineSteps a + efRatMachineSteps b + 1 =
-          1 + (efRatMachineSteps a + efRatMachineSteps b + 1) by omega]
-      rw [iterate_add_forward f 1]
-      simp only [Function.iterate_one]
-      change f^[efRatMachineSteps a + efRatMachineSteps b + 1]
-          (f (efRatEvalCommand (EF.mul a b) rho :: commands, values)) = _
-      rw [show f (efRatEvalCommand (EF.mul a b) rho :: commands, values) =
-          (efRatEvalCommand a rho :: efRatEvalCommand b rho ::
-            efRatOpCommand 2 :: commands, values) by
-        exact efBoundMachineStep_mul a b rho commands values]
-      rw [show efRatMachineSteps a + efRatMachineSteps b + 1 =
-          efRatMachineSteps a + (efRatMachineSteps b + 1) by omega]
-      rw [iterate_add_forward f (efRatMachineSteps a)]
-      rw [show f^[efRatMachineSteps a]
-          (efRatEvalCommand a rho :: efRatEvalCommand b rho ::
-            efRatOpCommand 2 :: commands, values) =
-          (efRatEvalCommand b rho :: efRatOpCommand 2 :: commands,
-            a.absBoundWith (rho.getD · 0) :: values) by
-        simpa only [f, efRatEvalCommand, efRatRawEvalCommand] using
-          iha rho (efRatEvalCommand b rho :: efRatOpCommand 2 :: commands) values]
-      rw [iterate_add_forward f (efRatMachineSteps b) 1]
-      rw [show f^[efRatMachineSteps b]
-          (efRatEvalCommand b rho :: efRatOpCommand 2 :: commands,
-            a.absBoundWith (rho.getD · 0) :: values) =
-          (efRatOpCommand 2 :: commands,
-            b.absBoundWith (rho.getD · 0) ::
-              a.absBoundWith (rho.getD · 0) :: values) by
-        simpa only [f, efRatEvalCommand, efRatRawEvalCommand] using
-          ihb rho (efRatOpCommand 2 :: commands)
-            (a.absBoundWith (rho.getD · 0) :: values)]
-      simp [f, efBoundMachineStep, efBoundCommandStep, efRatCommandStep,
-        efRatOpCommand, efRatBinaryValueStep, EF.absBoundWith]
-  | max a b iha ihb =>
-      let f := efBoundMachineStep
-      rw [show efRatMachineSteps (EF.max a b) =
-          1 + efRatMachineSteps a + efRatMachineSteps b + 1 by
-        simp only [efRatMachineSteps]
-        omega]
-      rw [show 1 + efRatMachineSteps a + efRatMachineSteps b + 1 =
-          1 + (efRatMachineSteps a + efRatMachineSteps b + 1) by omega]
-      rw [iterate_add_forward f 1]
-      simp only [Function.iterate_one]
-      change f^[efRatMachineSteps a + efRatMachineSteps b + 1]
-          (f (efRatEvalCommand (EF.max a b) rho :: commands, values)) = _
-      rw [show f (efRatEvalCommand (EF.max a b) rho :: commands, values) =
-          (efRatEvalCommand a rho :: efRatEvalCommand b rho ::
-            efRatOpCommand 1 :: commands, values) by
-        exact efBoundMachineStep_max a b rho commands values]
-      rw [show efRatMachineSteps a + efRatMachineSteps b + 1 =
-          efRatMachineSteps a + (efRatMachineSteps b + 1) by omega]
-      rw [iterate_add_forward f (efRatMachineSteps a)]
-      rw [show f^[efRatMachineSteps a]
-          (efRatEvalCommand a rho :: efRatEvalCommand b rho ::
-            efRatOpCommand 1 :: commands, values) =
-          (efRatEvalCommand b rho :: efRatOpCommand 1 :: commands,
-            a.absBoundWith (rho.getD · 0) :: values) by
-        simpa only [f, efRatEvalCommand, efRatRawEvalCommand] using
-          iha rho (efRatEvalCommand b rho :: efRatOpCommand 1 :: commands) values]
-      rw [iterate_add_forward f (efRatMachineSteps b) 1]
-      rw [show f^[efRatMachineSteps b]
-          (efRatEvalCommand b rho :: efRatOpCommand 1 :: commands,
-            a.absBoundWith (rho.getD · 0) :: values) =
-          (efRatOpCommand 1 :: commands,
-            b.absBoundWith (rho.getD · 0) ::
-              a.absBoundWith (rho.getD · 0) :: values) by
-        simpa only [f, efRatEvalCommand, efRatRawEvalCommand] using
-          ihb rho (efRatOpCommand 1 :: commands)
-            (a.absBoundWith (rho.getD · 0) :: values)]
-      simp [f, efBoundMachineStep, efBoundCommandStep, efRatCommandStep,
-        efRatOpCommand, efRatBinaryValueStep, EF.absBoundWith]
-  | safeRecip a iha =>
-      let f := efBoundMachineStep
-      rw [show efRatMachineSteps (EF.safeRecip a) =
-          1 + efRatMachineSteps a + 1 by
-        simp only [efRatMachineSteps]
-        omega]
-      rw [show 1 + efRatMachineSteps a + 1 =
-          1 + (efRatMachineSteps a + 1) by omega]
-      rw [iterate_add_forward f 1]
-      simp only [Function.iterate_one]
-      change f^[efRatMachineSteps a + 1]
-          (f (efRatEvalCommand (EF.safeRecip a) rho :: commands, values)) = _
-      rw [show f (efRatEvalCommand (EF.safeRecip a) rho :: commands, values) =
-          (efRatEvalCommand a rho :: efRatOpCommand 4 :: commands, values) by
-        exact efBoundMachineStep_safeRecip a rho commands values]
-      rw [iterate_add_forward f (efRatMachineSteps a) 1]
-      rw [show f^[efRatMachineSteps a]
-          (efRatEvalCommand a rho :: efRatOpCommand 4 :: commands, values) =
-          (efRatOpCommand 4 :: commands,
-            a.absBoundWith (rho.getD · 0) :: values) by
-        simpa only [f, efRatEvalCommand, efRatRawEvalCommand] using
-          iha rho (efRatOpCommand 4 :: commands) values]
-      simp [f, efBoundMachineStep, efBoundCommandStep,
-        efRatOpCommand, efRatUnaryValueStep, EF.absBoundWith]
-  | letE x body ihx ihbody =>
-      let f := efBoundMachineStep
-      rw [show efRatMachineSteps (EF.letE x body) =
-          1 + efRatMachineSteps x + 1 + efRatMachineSteps body by
-        simp [efRatMachineSteps]
-        omega]
-      rw [show 1 + efRatMachineSteps x + 1 + efRatMachineSteps body =
-          1 + (efRatMachineSteps x + 1 + efRatMachineSteps body) by omega]
-      rw [iterate_add_forward f 1]
-      simp only [Function.iterate_one]
-      change f^[efRatMachineSteps x + 1 + efRatMachineSteps body]
-          (f (efRatEvalCommand (EF.letE x body) rho :: commands, values)) = _
-      rw [show f (efRatEvalCommand (EF.letE x body) rho :: commands, values) =
-          (efRatEvalCommand x rho :: efRatLetBodyCommand body.toNat rho :: commands,
-            values) by
-        exact efBoundMachineStep_letE x body rho commands values]
-      rw [show efRatMachineSteps x + 1 + efRatMachineSteps body =
-          efRatMachineSteps x + (1 + efRatMachineSteps body) by omega]
-      rw [iterate_add_forward f (efRatMachineSteps x)]
-      rw [show f^[efRatMachineSteps x]
-          (efRatEvalCommand x rho :: efRatLetBodyCommand body.toNat rho :: commands,
-            values) =
-          (efRatLetBodyCommand body.toNat rho :: commands,
-            x.absBoundWith (rho.getD · 0) :: values) by
-        simpa only [f, efRatEvalCommand, efRatRawEvalCommand] using
-          ihx rho (efRatLetBodyCommand body.toNat rho :: commands) values]
-      rw [iterate_add_forward f 1 (efRatMachineSteps body)]
-      simp only [Function.iterate_one]
-      rw [show f
-          (efRatLetBodyCommand body.toNat rho :: commands,
-            x.absBoundWith (rho.getD · 0) :: values) =
-          (efRatRawEvalCommand body.toNat
-            (x.absBoundWith (rho.getD · 0) :: rho) :: commands, values) by
-        exact efBoundMachineStep_letBody body.toNat rho
-          (x.absBoundWith (rho.getD · 0)) commands values]
-      rw [show efBoundMachineStep^[efRatMachineSteps body]
-          (efRatRawEvalCommand body.toNat
-              (x.absBoundWith (rho.getD · 0) :: rho) :: commands, values) =
-          (commands, body.absBoundWith
-            ((x.absBoundWith (rho.getD · 0) :: rho).getD · 0) :: values) by
-        simpa only [efRatEvalCommand] using
-          ihbody (x.absBoundWith (rho.getD · 0) :: rho) commands values]
-      congr 2
+      (commands, e.absBoundWith (rho.getD · 0) :: values) :=
+  efMachine_correct efBoundMachineStep (fun e rho => e.absBoundWith (rho.getD · 0))
+    1 2 1 4
+    (fun φ day rho cs vs => by
+      simp [efRatEvalCommand, efRatRawEvalCommand, efBoundMachineStep, efBoundCommandStep,
+        efBoundRawStep, EF.toNat, EF.absBoundWith])
+    (fun q rho cs vs => by
+      simp [efRatEvalCommand, efRatRawEvalCommand, efBoundMachineStep, efBoundCommandStep,
+        efBoundRawStep, EF.toNat, EF.absBoundWith, Encodable.encodek])
+    (fun i rho cs vs => by
+      simp [efRatEvalCommand, efRatRawEvalCommand, efBoundMachineStep, efBoundCommandStep,
+        efBoundRawStep, efRatRawStep, EF.toNat, EF.absBoundWith])
+    (fun a b rho cs vs => efBoundMachineStep_add a b rho cs vs)
+    (fun a b rho cs vs => by
+      simp [efBoundMachineStep, efBoundCommandStep, efRatCommandStep, efRatOpCommand,
+        efRatBinaryValueStep, EF.absBoundWith])
+    (fun a b rho cs vs => efBoundMachineStep_mul a b rho cs vs)
+    (fun a b rho cs vs => by
+      simp [efBoundMachineStep, efBoundCommandStep, efRatCommandStep, efRatOpCommand,
+        efRatBinaryValueStep, EF.absBoundWith])
+    (fun a b rho cs vs => efBoundMachineStep_max a b rho cs vs)
+    (fun a b rho cs vs => by
+      simp [efBoundMachineStep, efBoundCommandStep, efRatCommandStep, efRatOpCommand,
+        efRatBinaryValueStep, EF.absBoundWith])
+    (fun a rho cs vs => efBoundMachineStep_safeRecip a rho cs vs)
+    (fun a rho cs vs => by
+      simp [efBoundMachineStep, efBoundCommandStep, efRatOpCommand, efRatUnaryValueStep,
+        EF.absBoundWith])
+    (fun x body rho cs vs => efBoundMachineStep_letE x body rho cs vs)
+    (fun body rho q cs vs => efBoundMachineStep_letBody body.toNat rho q cs vs)
+    (fun x body rho => by
+      rw [EF.absBoundWith]
       apply congrArg body.absBoundWith
       funext i
-      cases i <;> rfl
+      cases i <;> rfl)
+    e rho commands values
 
 private lemma efBoundMachine_terminal (values : List ℚ) :
     efBoundMachineStep ([], values) = ([], values) := rfl
@@ -3349,7 +3171,7 @@ private lemma budgetWorldScaleData_prim : Primrec fun p :
         (p.1.1.1.1.2,
           budgetAtomList p.1.1.1.1.1 p.1.1.1.2 p.1.2, p.2)
         p.1.1.1.2 p.1.2)⁻¹ :=
-    ratInv_prim.comp (ratAdd_prim.comp (natCastRat_prim.comp hb) hworth)
+    ratInv_prim.comp (ratAdd_prim.comp (ratNatCast_prim.comp hb) hworth)
   have hvalue : Primrec fun p : P =>
       tradeListWorldValueFeatureData
         (budgetAtomList p.1.1.1.1.1 p.1.1.1.2 p.1.2) p.2
@@ -4131,82 +3953,26 @@ theorem exists_computable_beliefSequence_logical_inductor (DP : DeductiveProcess
 
 /-! ## Public computability interface for downstream market constructions
 
-A construction that prices the Trading Firm **together with a further trader** — a
-privileged enforcement trader, say — runs the same erased recurrence with one extra trade
-list in the day's aggregate, and needs the same first-order ingredients to show its own
-bounded evaluator computable.  This section is the supported list of those ingredients:
-the expressible-feature constructors and `EF.absBound`; the two erased steps of the day
-recurrence (the firm's trade list, and the MarketMaker search over a raw trade list); the
-day error schedule; the deductive-stage prefix decoder; and the belief state's exact
-rational quote.  The exact rational evaluator `efRatCompiledEval`, together with
-`efRatCompiledEval_eq` and `efRatCompiledEval_prim`, belongs to the same interface and
-stays where it is proved, in the exact stack-machine section above.
+A construction that builds a *region of credences* from the deductive stage has to decide,
+as a primitive recursive function of finite data, which Boolean assignments to the atoms
+occurring in a stage satisfy that stage.  This section is that decision, stated against the
+public `Sentence.atoms` / `sentenceBool` / `tableConsistent` vocabulary rather than against
+the erased atom-list forms the Budgeter's compiler works in, so that a caller need not
+rebuild the strong-recursion tower over the formula encoding.  Its consumer is
+`Construction/Paper/FiniteEntailment.lean`.
 
-`_prim` is this file's uniform suffix for a computability certificate; the `_primrec`
-names here are the interface spellings of the same facts.
+`_prim` is this file's uniform suffix for a computability certificate.
 
 What the interface deliberately withholds is the recurrence itself: a downstream
 construction states and proves its own, which is where its own soundness obligation
 belongs.
 -/
 
-/-- `EF.const` is primitive recursive. -/
-lemma efConst_primrec : Primrec EF.const := efConst_prim
+/-! ### The vocabulary
 
-/-- `EF.price` is primitive recursive in the sentence and the day. -/
-lemma efPrice_primrec : Primrec₂ EF.price := efPrice_prim
-
-/-- `EF.add` is primitive recursive in both arguments. -/
-lemma efAdd_primrec : Primrec₂ EF.add := efAdd_prim
-
-/-- `EF.mul` is primitive recursive in both arguments. -/
-lemma efMul_primrec : Primrec₂ EF.mul := efMul_prim
-
-/-- `EF.max` is primitive recursive in both arguments. -/
-lemma efMax_primrec : Primrec₂ EF.max := efMax_prim
-
-/-- `EF.absBound` is primitive recursive.  A downstream trader that sizes its position
-against the ordinary aggregate's syntactic bound needs this. -/
-lemma efAbsBound_primrec : Primrec EF.absBound := efAbsBound_prim
-
-/-- The day error schedule is primitive recursive. -/
-lemma marketMakerError_primrec : Primrec marketMakerError := marketMakerError_prim
-
-/-- A belief state's exact rational quote is primitive recursive. -/
-lemma rationalBeliefStateQuote_primrec : Primrec₂ RationalBeliefState.quote :=
-  rationalBeliefStateQuote_prim
-
-/-- The bounded deductive-stage prefix decoder is primitive recursive. -/
-lemma processStagePrefixAtFuel_primrec {DP : DeductiveProcess}
-    (process : DeductiveProcessComputation DP) :
-    Primrec₂ fun fuel n => processStagePrefixAtFuel process fuel n :=
-  processStagePrefixAtFuel_prim process
-
-/-- The Trading Firm's day-`n` trade list is primitive recursive in the decoded stage
-prefix, the prior belief states and the day. -/
-lemma tradingFirmTradesFromStageTradeLists_primrec :
-    Primrec fun p : (List (Finset Sentence) × List RationalBeliefState) × ℕ =>
-      tradingFirmTradesFromStageTradeLists
-        (decodedStageTable p.1.1) (rationalHistory p.1.2) p.2 :=
-  tradingFirmTradesFromStageTradeLists_prim
-
-/-- The bounded MarketMaker search over a raw trade list is primitive recursive in the
-trade list, the day, the prior states, the tolerance and the fuel. -/
-lemma marketMakerSearchUpToTradeList_primrec :
-    Primrec fun p : (((List (EF × Sentence) × ℕ) × List RationalBeliefState) × ℚ) × ℕ =>
-      marketMakerSearchUpToTradeList p.1.1.1.1 p.1.1.1.2 p.1.1.2 p.1.2 p.2 :=
-  marketMakerSearchUpToTradeList_prim
-
-/-! ### Finite propositional evaluation on an atom list
-
-A downstream development that builds a *region of credences* from the deductive stage has
-to decide, as a primitive recursive function of finite data, which Boolean assignments to
-the atoms occurring in a stage satisfy that stage.  The Budgeter's own compiler settles
-exactly that, in erased atom-list form; this block states the same facts against the
-public `Sentence.atoms` / `sentenceBool` / `tableConsistent` vocabulary (all three from
-`Budgeter`, with `supportSentenceList` from `MarketMaker`), so that a caller need not
-rebuild the strong-recursion tower over the formula encoding.  The two definitions below
-name the erased forms; the computability facts are the erased lemmas at those names. -/
+`sentenceBool` and `tableConsistent` come from `Budgeter`, `supportSentenceList` from
+`MarketMaker`.  The two definitions below name the erased forms; the computability facts
+are the erased lemmas at those names. -/
 
 /-- **The canonical sentence list of a finite sentence set is primitive recursive.** -/
 lemma supportSentenceList_primrec : Primrec supportSentenceList :=
@@ -4217,6 +3983,7 @@ a computability statement can mention it. -/
 def sentenceListAtoms (sentences : List Sentence) : List ℕ :=
   sentenceListAtomOccurrences sentences
 
+/-- Membership in the atom list is occurrence in one of the listed sentences. -/
 @[simp] lemma mem_sentenceListAtoms (sentences : List Sentence) (a : ℕ) :
     a ∈ sentenceListAtoms sentences ↔ ∃ φ ∈ sentences, a ∈ φ.atoms :=
   mem_sentenceListAtomOccurrences sentences a

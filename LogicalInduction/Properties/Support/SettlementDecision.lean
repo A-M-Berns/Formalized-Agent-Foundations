@@ -252,7 +252,7 @@ lemma AffineCombination.DeterminedViaTheory.settled_iff_agree
   · intro hs v w hv hw
     rw [hs v hv, hs w hw]
   · intro hagree v hv
-    obtain ⟨v₀, hv₀⟩ := exists_consistentWithTheory DP hworld
+    obtain ⟨v₀, hv₀⟩ := DP.exists_consistentWithTheory hworld
     rw [hagree v v₀ hv (hv₀ m), h i v₀ hv₀]
 
 /-- **Tolerance agreement bounds the distance to `truth`.**  If the worlds plausible at
@@ -270,7 +270,7 @@ lemma AffineCombination.ApproxDeterminedViaTheory.close_of_agree
     ∀ v : PCWorld, v.ConsistentWith (DP.D m) →
       |(As i).value P v.payout - truth i| ≤ tol + e i := by
   intro v hv
-  obtain ⟨v₀, hv₀⟩ := exists_consistentWithTheory DP hworld
+  obtain ⟨v₀, hv₀⟩ := DP.exists_consistentWithTheory hworld
   exact (abs_sub_le _ ((As i).value P v₀.payout) _).trans
     (add_le_add (hagree v v₀ hv (hv₀ m)) (h i v₀ hv₀))
 
@@ -493,28 +493,6 @@ than as naturals-with-`Nat.testBit` deliberately: the list route needs only `Lis
 length/index lemmas, where the numeric route would need bit arithmetic Mathlib does not
 carry. -/
 
-/-- Every Boolean list of a given length. -/
-def allBitLists : ℕ → List (List Bool)
-  | 0 => [[]]
-  | n + 1 => (allBitLists n).flatMap (fun l => [false :: l, true :: l])
-
-lemma mem_allBitLists : ∀ (n : ℕ) (l : List Bool), l ∈ allBitLists n ↔ l.length = n
-  | 0, l => by
-      simp only [allBitLists, List.mem_singleton]
-      exact ⟨fun h => by rw [h]; rfl, fun h => List.length_eq_zero_iff.mp h⟩
-  | n + 1, l => by
-      simp only [allBitLists, List.mem_flatMap, List.mem_cons,
-        List.not_mem_nil, or_false]
-      constructor
-      · rintro ⟨t, ht, rfl | rfl⟩ <;>
-          simp [(mem_allBitLists n t).1 ht]
-      · intro h
-        cases l with
-        | nil => simp at h
-        | cons b t =>
-            refine ⟨t, (mem_allBitLists n t).2 (by simpa using h), ?_⟩
-            cases b <;> simp
-
 /-- The finite world denoted by a bit list (missing entries read `false`). -/
 def bitsToFin (B : ℕ) (l : List Bool) : BoolPCWorld.FiniteWorld B := fun a => l.getD a false
 
@@ -678,7 +656,7 @@ lemma AffineCombination.DeterminedViaTheory.unique
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     x = y := by
   funext n
-  obtain ⟨v, hv⟩ := exists_consistentWithTheory DP hworld
+  obtain ⟨v, hv⟩ := DP.exists_consistentWithTheory hworld
   rw [← hx n v hv, hy n v hv]
 
 /-- Completed-theory determination is closed under pointwise affine negation. -/
@@ -690,8 +668,6 @@ lemma AffineCombination.DeterminedViaTheory.neg
       (fun n => -truth n) := by
   intro n v hv
   rw [AffineCombination.neg_value, h n v hv]
-namespace AffineCombination
-
 /-! ## Finite exact maturity-certificate semantics -/
 
 /-- The semantic core of a finite exact maturity checker for a unit-magnitude trader.
@@ -1037,6 +1013,4 @@ lemma unitMaturityCheckAtFuel_eventually_complete
     · next worth hsome =>
         cases Option.some.inj ((hnetWorth u).symm.trans hsome)
         exact c.payoff u (fun φ hφ => hu ⟨φ, hφ⟩)
-end AffineCombination
-
 end LogicalInduction

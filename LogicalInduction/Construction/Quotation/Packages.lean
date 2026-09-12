@@ -65,14 +65,6 @@ premise.
 
 Disclosed choices: `dd:quote-code` for code-indexing, `dd:mesh` for `thm:ccee`'s
 slack-carrying product, `dd:fuel` for the emission certificates.
-**The criterion binder below is `def:lic` at the paper's own quantifier.**  Every result here that consumes an
-exploiting trader takes `[IsLogicalInductor P DP]`, and the trader is certified at `EfficientlyComputable`:
-it is assembled from `AffineCombination.PolySequence`'s machine-metered emission fields
-through `PolySequence.buyBelowTrader_ec` (`Properties/AffineCoherence.lean`), which has no
-fuel-class form: the bridge `BigSpliceStream.toMachine` runs fuel to machine, and no map
-back is proved or claimed.  The
-calibration is stated at `def:ec` in `Framework/Affine.lean`, and the `_unconditional`
-endpoints discharge the criterion through `LIA_is_logical_inductor`.
 
 -/
 
@@ -96,27 +88,6 @@ def quotationClaimSentence (positive negative : ArithmeticSemisentence 1)
     (input : ℕ) : Sentence :=
   LO.Propositional.Formula.atom (quotationClaimCode positive negative input)
 
-lemma quotationClaimCode_injective :
-    Function.Injective (fun p : ArithmeticSemisentence 1 ×
-      ArithmeticSemisentence 1 × ℕ => quotationClaimCode p.1 p.2.1 p.2.2) := by
-  rintro ⟨p₁, n₁, z₁⟩ ⟨p₂, n₂, z₂⟩ h
-  simp only [quotationClaimCode, Nat.pair_eq_pair] at h
-  have hp : p₁ = p₂ := Encodable.encode_inj.mp h.2.1
-  have hn : n₁ = n₂ := Encodable.encode_inj.mp h.2.2.1
-  cases hp
-  cases hn
-  cases h.2.2.2
-  rfl
-
-/-- The public naming is injective in the schema pair and the input, so no two quoted
-decisions share an atom. -/
-lemma quotationClaimSentence_injective :
-    Function.Injective (fun p : ArithmeticSemisentence 1 ×
-      ArithmeticSemisentence 1 × ℕ => quotationClaimSentence p.1 p.2.1 p.2.2) := by
-  intro a b h
-  apply quotationClaimCode_injective
-  injection h
-
 lemma quotationClaimSentence_poly
     (positive negative : ArithmeticSemisentence 1)
     {input : ℕ → ℕ} (hinput : PolyNatCodes input) :
@@ -138,9 +109,9 @@ the schemas being fixed and complementary rather than arbitrary.
 `positive negative : ArithmeticSemisentence 1` can be instantiated at
 `positive = negative = ⊤`, which forces an atom and its negation into a common stage, so
 that no world is consistent with the theory.  The positive and negative fibers of one
-partial-recursive computation are instead mutually exclusive by determinism
-(`quotePos_quoteNeg_exclusive`, with the in-theory counterpart
-`universalQuote_exclusive_prov`), so a provability world can believe the positive literal
+partial-recursive computation are instead mutually exclusive by determinism, with the
+in-theory counterpart `universalQuote_exclusive_prov`, so a provability world can believe
+the positive literal
 without ever being forced into a contradiction.
 
 *Computable enumerability of the deductive process.*  There is no uniform enumeration of
@@ -155,12 +126,6 @@ noncomputable def decodedComputation (code : ℕ) : ℕ →. ℕ :=
 def quotePos (code input : ℕ) : Prop := 1 ∈ decodedComputation code input
 /-- The negative fiber: computation `code` outputs `0` on `input`. -/
 def quoteNeg (code input : ℕ) : Prop := 0 ∈ decodedComputation code input
-
-/-- Positive and negative fibers of one deterministic computation never coincide. -/
-lemma quotePos_quoteNeg_exclusive (code input : ℕ) :
-    ¬ (quotePos code input ∧ quoteNeg code input) := by
-  rintro ⟨h1, h0⟩
-  exact absurd (Part.mem_unique h1 h0) (by decide)
 
 lemma decodedComputation_partrec (code : ℕ) : Nat.Partrec (decodedComputation code) :=
   Nat.Partrec.Code.exists_code.mpr ⟨_, rfl⟩
@@ -185,10 +150,6 @@ lemma repred_mem {f : ℕ →. ℕ} (hf : Nat.Partrec f) (v : ℕ) :
 /-- The positive fiber is r.e.; this is what makes the quotation process enumerable. -/
 lemma quotePos_re (code : ℕ) : REPred (quotePos code) :=
   repred_mem (decodedComputation_partrec code) 1
-
-/-- The negative fiber is r.e., by the same argument at value `0`. -/
-lemma quoteNeg_re (code : ℕ) : REPred (quoteNeg code) :=
-  repred_mem (decodedComputation_partrec code) 0
 
 /-- The universal computation: run computation `z.unpair.1` on input `z.unpair.2`. -/
 noncomputable def universalComputation : ℕ →. ℕ :=
@@ -1275,18 +1236,6 @@ noncomputable def parameterizedDiagonalQuoteCodeOfMarket
   body := diagonalPriceBody market p
   represents_fixedpoint := diagonalPriceFixedpoint_spec market p
 
-/-- What the `thm:lp` endpoint's sentence actually is: the quotation atom of the diagonal
-selector's own code at index `n`.  A client reading
-`lic_paradox_resistance_ofDiagonal`'s conclusion needs this unfolding of the otherwise
-opaque `toBooleanQuoteCode.sentence` projection. -/
-lemma parameterizedDiagonalQuoteCodeOfMarket_sentence
-    {P : History} (market : MarketComputation P) (T : ArithmeticTheory)
-    [𝗥₀ ⪯ T] (p : ℚ) (n : ℕ) :
-    (parameterizedDiagonalQuoteCodeOfMarket market T p).toBooleanQuoteCode.sentence n =
-      quoteAtom
-        (Nat.pair (Encodable.encode (diagonalPriceDecisionCode market p)) n) :=
-  rfl
-
 /-- The diagonal predicate, restated at the inherited public atom and in the real-valued
 market price the endpoints use.  This is the primitive fact; the fixed-point form below is
 it composed with the representation. -/
@@ -1405,126 +1354,7 @@ noncomputable def paradoxResistanceQuoteOfDiagonal
 
 /-! ## Completed-theory semantics imply deferred fixed-portfolio coherence -/
 
-/-- Uniformly vanishing completed-theory value is enough to control the price of the
-same polynomial affine portfolio on every later deferral day.  This is the missing
-bridge between arithmetic quotation and `AffineQuoteEq`: affine coherence first pins
-the limiting value to zero, affine persistence pins both future extrema to zero, and
-the actual day-`f n` price lies between those extrema. -/
-lemma CompletedAffineQuoteApprox.future_price_tendsto_zero
-    {P : History} {DP : DeductiveProcess} {gap : ℕ → ℝ}
-    (q : CompletedAffineQuoteApprox P DP gap) [IsLogicalInductor P DP]
-    (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
-    (f : DeferralFunction) :
-    Tendsto (fun n ↦ (q.family n).price P (f n)) atTop (𝓝 0) := by
-  have hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1 :=
-    fun n s => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n s
-  let As : ℕ → AffineCombination := q.family
-  let lv : ℕ → ℝ := fun n ↦ (As n).value P (limitingBelief P)
-  have hmag : ∃ C : ℝ, ∀ n, (As n).magnitude P ≤ C :=
-    ⟨1, q.magnitude_le_one⟩
-  have hbdd := q.poly.completedAffineValues_bdd P DP q.bounded hmag hP
-  have htheoryLow : Tendsto (completedAffineLow As P DP) atTop (𝓝 0) := by
-    rw [Metric.tendsto_atTop]
-    intro ε hε
-    have hnear := q.theory_coherent (ε / 2) (by linarith)
-    obtain ⟨N, hN⟩ := eventually_atTop.1 hnear
-    refine ⟨N, fun n hn ↦ ?_⟩
-    have hall := hN n hn
-    have hnonempty := completedAffineValues_nonempty DP (As n) P hworld
-    have hlo : -(ε / 2) ≤ completedAffineLow As P DP n := by
-      apply le_csInf hnonempty
-      rintro x ⟨v, hv, rfl⟩
-      have hx := hall v hv
-      rw [abs_le] at hx
-      linarith
-    have hhi : completedAffineLow As P DP n ≤ ε / 2 := by
-      obtain ⟨x, hx⟩ := hnonempty
-      have hinf := csInf_le (hbdd n).1 hx
-      rcases hx with ⟨v, hv, rfl⟩
-      have hinf' : completedAffineLow As P DP n ≤
-          (As n).value P v.payout := by
-        exact hinf
-      have hvnear := hall v hv
-      rw [abs_le] at hvnear
-      linarith
-    rw [Real.dist_eq, _root_.sub_zero, abs_lt]
-    constructor <;> linarith
-  have htheoryHigh : Tendsto (completedAffineHigh As P DP) atTop (𝓝 0) := by
-    rw [Metric.tendsto_atTop]
-    intro ε hε
-    have hnear := q.theory_coherent (ε / 2) (by linarith)
-    obtain ⟨N, hN⟩ := eventually_atTop.1 hnear
-    refine ⟨N, fun n hn ↦ ?_⟩
-    have hall := hN n hn
-    have hnonempty := completedAffineValues_nonempty DP (As n) P hworld
-    have hlo : -(ε / 2) ≤ completedAffineHigh As P DP n := by
-      obtain ⟨x, hx⟩ := hnonempty
-      have hsup := le_csSup (hbdd n).2 hx
-      rcases hx with ⟨v, hv, rfl⟩
-      have hsup' : (As n).value P v.payout ≤
-          completedAffineHigh As P DP n := by
-        exact hsup
-      have hvnear := hall v hv
-      rw [abs_le] at hvnear
-      linarith
-    have hhi : completedAffineHigh As P DP n ≤ ε / 2 := by
-      apply csSup_le hnonempty
-      rintro x ⟨v, hv, rfl⟩
-      have hx := hall v hv
-      rw [abs_le] at hx
-      linarith
-    rw [Real.dist_eq, _root_.sub_zero, abs_lt]
-    constructor <;> linarith
-  have hlimBounds :=
-    AffineCombination.BoundedAffinePrices.limitingValue_filterBounds
-      q.bounded DP hworld
-  have hcoh := q.poly.affcoh P DP q.bounded hmag hworld
-  have hlv : Tendsto lv atTop (𝓝 0) := by
-    apply tendsto_of_le_liminf_of_limsup_le
-    · simpa only [lv, As, htheoryLow.liminf_eq] using hcoh.1.1
-    · simpa only [lv, As, htheoryHigh.limsup_eq] using hcoh.2.2
-    · simpa only [lv, As] using hlimBounds.2
-    · simpa only [lv, As] using hlimBounds.1
-  have hper := q.poly.peraffkno P DP q.bounded hmag hworld
-  obtain ⟨_htdocs, _, hhlo, hhhi, hllo, hlhi⟩ := q.bounded.filterBounds
-  have hbetween : ∀ n,
-      affineFutureLow As P n ≤ lv n ∧ lv n ≤ affineFutureHigh As P n := by
-    intro n
-    simpa only [As, lv] using
-      AffineCombination.futureLow_le_limitingValue_le_futureHigh
-        q.family P DP q.bounded hworld n
-  have hfutureHigh : Tendsto (affineFutureHigh As P) atTop (𝓝 0) := by
-    apply tendsto_of_le_liminf_of_limsup_le
-    · calc
-        0 = liminf lv atTop := hlv.liminf_eq.symm
-        _ ≤ liminf (affineFutureHigh As P) atTop :=
-          liminf_le_liminf (Eventually.of_forall fun n ↦ (hbetween n).2)
-            (by simpa only [As, lv] using hlimBounds.1) hhhi.isCobounded_flip
-    · simpa only [As, lv, hlv.limsup_eq] using hper.2.le
-    · simpa only [As] using hhhi
-    · simpa only [As] using hhlo
-  have hfutureLow : Tendsto (affineFutureLow As P) atTop (𝓝 0) := by
-    apply tendsto_of_le_liminf_of_limsup_le
-    · simpa only [As, lv, hlv.liminf_eq] using hper.1.ge
-    · calc
-        limsup (affineFutureLow As P) atTop ≤ limsup lv atTop :=
-          limsup_le_limsup (Eventually.of_forall fun n ↦ (hbetween n).1)
-            hllo.isCobounded_flip (by simpa only [As, lv] using hlimBounds.2)
-        _ = 0 := hlv.limsup_eq
-    · simpa only [As] using hlhi
-    · simpa only [As] using hllo
-  apply tendsto_of_tendsto_of_tendsto_of_le_of_le' hfutureLow hfutureHigh
-  · exact Eventually.of_forall fun n ↦ by
-      simpa only [As] using
-        AffineCombination.BoundedAffinePrices.futureLow_le_price
-          q.bounded (f.lt n).le
-  · exact Eventually.of_forall fun n ↦ by
-      simpa only [As] using
-        AffineCombination.BoundedAffinePrices.price_le_futureHigh
-          q.bounded (f.lt n).le
-
 /-! ## Concrete deferred expectation quotation -/
-
 /-- Construct the complete `thm:cee` quote package.  The additional `source_valued`
 premise is the explicit first-order representation fact needed to compare two threshold
 mesh precisions; compact syntax alone cannot imply it. -/

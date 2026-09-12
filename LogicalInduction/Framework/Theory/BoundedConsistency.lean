@@ -38,13 +38,12 @@ what is made computable here.
 * `conWithin` — the paper's `Con(T)(k)` — with `conWithin_of_consistent`: every finite
   consistency statement about a consistent theory is true, from consistency alone and
   independently of the counting convention. This is the truth premise of `thm:pac`.
-  `conWithin_anti` is antitonicity in the bound.
 * `conRunValue T f` — the universal decider `thm:pac` / `thm:pazfc` actually represent. It
   evaluates the horizon `f` at the day *inside*, so `f` may grow arbitrarily and is never
   written out, and one `γ` serves every day at that horizon; `⌜⊥⌝` enters only through the
   argument.
-* `ProvableCode`, with `provableCode_re`, `provableCode_quote_iff`, `not_provableCode_zero`
-  and the deduction-theorem reduction `not_consistent_adjoin_iff`. `thm:incons` is about
+* `ProvableCode`, with `provableCode_re`, `provableCode_quote_iff` and the
+  deduction-theorem reduction `not_consistent_adjoin_iff`. `thm:incons` is about
   *unbounded* provability, where nothing is metered.
 * Finite axiom windows: `listConj`, `exists_inconsistent_list` (no induction — a Foundation
   proof of `⊥` carries its own axiom list as a field), `consistent_empty` and
@@ -225,12 +224,6 @@ lemma conWithin_of_consistent (hcon : Entailment.Consistent T) (k : ℕ) : conWi
   rintro ⟨d, hd, -⟩
   exact Entailment.Consistent.not_bot hcon (provable_of_bProv_witness T ⊥ hd)
 
-/-- Finite consistency is antitone in the bound: trusting `T` for longer is a stronger
-claim. -/
-lemma conWithin_anti {k k' : ℕ} (h : k ≤ k') : conWithin T k' → conWithin T k := by
-  rintro hk ⟨d, hp, hs⟩
-  exact hk ⟨d, hp, le_trans hs h⟩
-
 /-! ## The universal bounded-provability decider at a horizon
 
 The function actually represented by the §4.10 endpoints.  It takes a packed
@@ -328,21 +321,6 @@ lemma not_consistent_adjoin_iff (σ : ArithmeticSentence) :
 /-- `⊤` is provable in every theory, so the provability predicate is not constantly false. -/
 lemma provableCode_quote_verum : ProvableCode T ⌜(⊤ : ArithmeticSentence)⌝ := by
   simp
-
-/-- **The code `0` is provable in no theory.**  Internal derivations carry the
-well-formedness of their own sequents (`Bootstrapping.Derivation.isFormulaSet`), and an
-internal formula is a *positive* number (`IsSemiformula.pos`), so the number `0` — the value
-every partial decoder in this development returns on input it cannot read — is never a
-provable code.
-
-Kind `C` (composition).  Provenance: (b) Foundation citations —
-`Bootstrapping.Derivation.isFormulaSet`, `Bootstrapping.IsFormulaSet.singleton`,
-`Bootstrapping.IsSemiformula.pos`. -/
-lemma not_provableCode_zero : ¬ ProvableCode T 0 := by
-  rintro ⟨d, hfst, hd⟩
-  have hset : Bootstrapping.IsFormulaSet ℒₒᵣ (fstIdx d) := hd.isFormulaSet
-  rw [hfst] at hset
-  exact absurd (Bootstrapping.IsFormulaSet.singleton.mp hset).pos (_root_.lt_irrefl 0)
 
 /-! ## Finite axiom windows, and the sentence that names one
 
@@ -451,7 +429,7 @@ non-refutability half, used to show the day-window predicate is not constantly t
 lemma provable_listConj {l : List ArithmeticSentence} (h : ∀ φ ∈ l, T ⊢ φ) :
     T ⊢ listConj l := by
   induction l with
-  | nil => simpa using (by cl_prover : T ⊢ (⊤ : ArithmeticSentence))
+  | nil => simp
   | cons σ t ih =>
       rw [listConj_cons]
       exact Entailment.K!_intro (h σ (by simp)) (ih fun φ hφ => h φ (by simp [hφ]))

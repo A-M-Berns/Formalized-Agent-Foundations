@@ -200,6 +200,16 @@ private lemma prod_cross_le {M : Type} [ORingStructure M]
     _ = ((R : M) * (b * d)) * ((Pd : M) * (Sd : M)) := by ac_rfl
   exact le_of_mul_le_mul_right hchain (mul_pos hPd' hSd')
 
+/-- Every model of `T` is a model of `𝗜𝗢𝗽𝗲𝗻`, along `𝗜𝗢𝗽𝗲𝗻 ⪯ 𝗜𝚺₁ ⪯ T`.  This is the
+opening move of every completeness argument in this module and in
+`Construction/Quotation/RepresentedWeight.lean`. -/
+lemma models_iOpen_of_models (T : ArithmeticTheory) [𝗜𝚺₁ ⪯ T]
+    (M : Type) [ORingStructure M] [M↓[ℒₒᵣ] ⊧* T] :
+    M↓[ℒₒᵣ] ⊧* 𝗜𝗢𝗽𝗲𝗻 :=
+  letI : 𝗜𝗢𝗽𝗲𝗻 ⪯ T :=
+    Entailment.WeakerThan.trans (𝓣 := 𝗜𝚺₁) inferInstance inferInstance
+  ModelsTheory.of_provably_subtheory M 𝗜𝗢𝗽𝗲𝗻 T inferInstance
+
 /-! ## The exact product paper LUV -/
 
 namespace PaperLUV
@@ -218,10 +228,7 @@ def paperProductPaperLUV [𝗜𝚺₁ ⪯ T] (X W : PaperLUV T) : PaperLUV T whe
   unique := by
     apply LO.FirstOrder.Arithmetic.complete T
     intro (M : Type) _ hM
-    letI : 𝗜𝗢𝗽𝗲𝗻 ⪯ T :=
-      Entailment.WeakerThan.trans (𝓣 := 𝗜𝚺₁) inferInstance inferInstance
-    haveI : M↓[ℒₒᵣ] ⊧* 𝗜𝗢𝗽𝗲𝗻 :=
-      ModelsTheory.of_provably_subtheory M 𝗜𝗢𝗽𝗲𝗻 T inferInstance
+    haveI := models_iOpen_of_models T M
     have hexX := models_of_provable hM X.unique
     have hunitX := models_of_provable hM X.unit
     have hexW := models_of_provable hM W.unique
@@ -244,10 +251,7 @@ def paperProductPaperLUV [𝗜𝚺₁ ⪯ T] (X W : PaperLUV T) : PaperLUV T whe
   unit := by
     apply LO.FirstOrder.Arithmetic.complete T
     intro (M : Type) _ hM
-    letI : 𝗜𝗢𝗽𝗲𝗻 ⪯ T :=
-      Entailment.WeakerThan.trans (𝓣 := 𝗜𝚺₁) inferInstance inferInstance
-    haveI : M↓[ℒₒᵣ] ⊧* 𝗜𝗢𝗽𝗲𝗻 :=
-      ModelsTheory.of_provably_subtheory M 𝗜𝗢𝗽𝗲𝗻 T inferInstance
+    haveI := models_iOpen_of_models T M
     have hunitX := models_of_provable hM X.unit
     have hunitW := models_of_provable hM W.unit
     simp [models_iff, paperRatUnitDef] at hunitX hunitW
@@ -276,10 +280,7 @@ lemma paperProduct_threshold_provable [𝗜𝚺₁ ⪯ T] (X W : PaperLUV T) {p 
       (paperProductPaperLUV X W).thresholdFormula r)) := by
   apply LO.FirstOrder.Arithmetic.complete T
   intro (M : Type) _ hM
-  letI : 𝗜𝗢𝗽𝗲𝗻 ⪯ T :=
-    Entailment.WeakerThan.trans (𝓣 := 𝗜𝚺₁) inferInstance inferInstance
-  haveI : M↓[ℒₒᵣ] ⊧* 𝗜𝗢𝗽𝗲𝗻 :=
-    ModelsTheory.of_provably_subtheory M 𝗜𝗢𝗽𝗲𝗻 T inferInstance
+  haveI := models_iOpen_of_models T M
   have hunitX := models_of_provable hM X.unit
   have hunitW := models_of_provable hM W.unit
   simp [models_iff, paperRatUnitDef] at hunitX hunitW
@@ -310,10 +311,7 @@ lemma paperProduct_threshold_refutable [𝗜𝚺₁ ⪯ T] (X W : PaperLUV T) {p
   have hr0 : ¬ r < 0 := not_lt.mpr (le_trans (mul_nonneg hp hs) hr)
   apply LO.FirstOrder.Arithmetic.complete T
   intro (M : Type) _ hM
-  letI : 𝗜𝗢𝗽𝗲𝗻 ⪯ T :=
-    Entailment.WeakerThan.trans (𝓣 := 𝗜𝚺₁) inferInstance inferInstance
-  haveI : M↓[ℒₒᵣ] ⊧* 𝗜𝗢𝗽𝗲𝗻 :=
-    ModelsTheory.of_provably_subtheory M 𝗜𝗢𝗽𝗲𝗻 T inferInstance
+  haveI := models_iOpen_of_models T M
   have hunitX := models_of_provable hM X.unit
   have hunitW := models_of_provable hM W.unit
   simp [models_iff, paperRatUnitDef] at hunitX hunitW
@@ -336,7 +334,7 @@ one-sided clauses: `ValuesAt` deliberately leaves the threshold *at* the value u
 (`PCWorld.RationalCutAt`), so there is no biconditional to prove at `r = x·c`. -/
 
 /-- Below a strict product bound there are rational factors witnessing it. -/
-private lemma exists_rat_factors_lt {x c : ℝ} {r : ℚ} (_hx : 0 ≤ x) (hc : 0 ≤ c)
+private lemma exists_rat_factors_lt {x c : ℝ} {r : ℚ} (hc : 0 ≤ c)
     (hr : 0 ≤ r) (hlt : (r : ℝ) < x * c) :
     ∃ p s : ℚ, 0 ≤ p ∧ 0 ≤ s ∧ (p : ℝ) < x ∧ (s : ℝ) < c ∧ r ≤ p * s := by
   have hr' : (0 : ℝ) ≤ (r : ℝ) := by exact_mod_cast hr
@@ -425,7 +423,7 @@ lemma paperProductPaperLUV_valuesAt [𝗜𝚺₁ ⪯ T] (X W : PaperLUV T)
         ((paperProductPaperLUV X W).threshold_provable_of_neg r (by exact_mod_cast hr0))
     · have hr0' : (0 : ℚ) ≤ r := by exact_mod_cast not_lt.mp hr0
       obtain ⟨p, s, hp, hs, hpx, hsc, hps⟩ :=
-        exists_rat_factors_lt hx.1 hc.1 hr0' hlt
+        exists_rat_factors_lt hc.1 hr0' hlt
       exact holds_imp₂ T v hv _ _ _
         (paperProduct_threshold_provable X W hp hs hps)
         ((hx.2.2 p).1 hpx) ((hc.2.2 s).1 hsc)
@@ -513,11 +511,5 @@ def paperExactProductLUVSeq [𝗜𝚺₁ ⪯ T] (X W : PaperLUVSeq T) : PaperLUV
           (MachineArithmeticSourceSeq.and
             (MachineArithmeticSourceSeq.castLE (by omega) W.structural)
             (MachineTokenStream.const _))))
-
-/-- The `n`-th member of the exact product family is the pointwise product LUV — the
-field projection, in `simp` normal form. -/
-@[simp] lemma paperExactProductLUVSeq_luv [𝗜𝚺₁ ⪯ T] (X W : PaperLUVSeq T) (n : ℕ) :
-    (paperExactProductLUVSeq X W).luv n =
-      PaperLUV.paperProductPaperLUV (X.luv n) (W.luv n) := rfl
 
 end LogicalInduction

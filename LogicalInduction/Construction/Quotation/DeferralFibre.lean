@@ -51,14 +51,6 @@ beside `DeferralFunction` itself; `PGenerableWeighting` (`Properties/Calibration
 for the quotation portfolio interfaces and for `ratNatCast_codes_of_polyFueled`.  The
 dependency between the two lanes therefore runs one way only:
 `Construction/Statistics/FeedbackTruth.lean` consumes `deferralPreimage` from here.
-**The criterion binder below is `def:lic` at the paper's own quantifier.**  Every result here that consumes an
-exploiting trader takes `[IsLogicalInductor P DP]`, and the trader is certified at `EfficientlyComputable`:
-it is assembled from `AffineCombination.PolySequence`'s machine-metered emission fields
-through `PolySequence.buyBelowTrader_ec` (`Properties/AffineCoherence.lean`), which has no
-fuel-class form: the bridge `BigSpliceStream.toMachine` runs fuel to machine, and no map
-back is proved or claimed.  The
-calibration is stated at `def:ec` in `Framework/Affine.lean`, and the `_unconditional`
-endpoints discharge the criterion through `LIA_is_logical_inductor`.
 
 -/
 
@@ -79,12 +71,6 @@ def expectAffineSeq (X : ℕ → LUV) (n : ℕ) : AffineCombination :=
 lemma expectAffineSeq_price (X : ℕ → LUV) (P : History) (n : ℕ) :
     (expectAffineSeq X n).price P n = (X n).expect P n :=
   (X n).expectAffine_price P n
-
-/-- In a valuation the mesh takes the grid-`n+1` approximation of the LUV's value. -/
-lemma expectAffineSeq_value (X : ℕ → LUV) (P : History)
-    (w : Valuation) (n : ℕ) :
-    (expectAffineSeq X n).value P w = (X n).expectApprox w (n + 1) :=
-  (X n).expectAffine_value P w (n + 1)
 
 /-- The mesh is a unit-magnitude portfolio, uniformly in the day. -/
 lemma expectAffineSeq_magnitude_le_one (X : ℕ → LUV)
@@ -658,13 +644,6 @@ lemma blockSum_magnitude (Bs : ℕ → AffineCombination) (coeff : ℕ → EF)
   | nil => simp
   | cons p ps ih => simp only [List.map_cons, List.sum_cons, ih]; ring
 
-/-- The width a polynomial affine family promises through `termCount` is the width it
-delivers: this is the fact a caller discharging `blockSum`'s `hwide`/`hwidthPos` premises
-wants. -/
-lemma PolySequence.terms_length {As : ℕ → AffineCombination} (h : PolySequence As)
-    (n : ℕ) : (As n).terms.length = h.termCount n := by
-  rw [h.terms_eq]; simp
-
 /-- Serialization of a `Σ uₖ · vₖ` fold: one `coefficient/value/multiply` block per
 summand, closed by a run of `add` tags. -/
 private lemma foldr_addMul_serialize (L : List ℕ) (u v : ℕ → EF) :
@@ -877,20 +856,15 @@ lemma firstSuccess_weight_nonneg {g : ℕ → ℝ} (hg : ∀ k, 0 ≤ g k ∧ g 
     0 ≤ g k * ∏ j ∈ Finset.range k, (1 - g j) :=
   mul_nonneg (hg k).1 (Finset.prod_nonneg fun j _ => by have := (hg j).2; linarith)
 
-/-- **The budget, upper half.**  Together with `firstSuccess_sum_nonneg` this says the
-selector's total weight lies in `[0,1]`, which is the whole point of the construction: the
-day's unit magnitude budget is respected without any normalization. -/
+/-- **The budget.**  Together with `firstSuccess_weight_nonneg` this says the selector's total
+weight lies in `[0,1]`, which is the whole point of the construction: the day's unit magnitude
+budget is respected without any normalization. -/
 lemma firstSuccess_sum_le_one {g : ℕ → ℝ} (hg : ∀ k, 0 ≤ g k ∧ g k ≤ 1) (c : ℕ) :
     ∑ k ∈ Finset.range c, g k * ∏ j ∈ Finset.range k, (1 - g j) ≤ 1 := by
   rw [firstSuccess_sum]
   have : (0:ℝ) ≤ ∏ j ∈ Finset.range c, (1 - g j) :=
     Finset.prod_nonneg (fun j _ => by have := (hg j).2; linarith)
   linarith
-
-/-- **The budget, lower half.** -/
-lemma firstSuccess_sum_nonneg {g : ℕ → ℝ} (hg : ∀ k, 0 ≤ g k ∧ g k ≤ 1) (c : ℕ) :
-    0 ≤ ∑ k ∈ Finset.range c, g k * ∏ j ∈ Finset.range k, (1 - g j) :=
-  Finset.sum_nonneg fun k _ => firstSuccess_weight_nonneg hg k
 
 /-- **Forcing.**  Once *some* gate in the window saturates, the selector's total weight is
 exactly `1`; since every summand carrying positive weight is at least `δ`, the gated sum
@@ -1445,11 +1419,6 @@ noncomputable def featureConstantAffine_polySequence
     (H : ℕ → EF) (P : History) (v : Valuation) (n : ℕ) :
     (featureConstantAffine H n).value P v = (H n).denote P := by
   simp [featureConstantAffine, AffineCombination.value]
-
-@[simp] lemma featureConstantAffine_price
-    (H : ℕ → EF) (P : History) (n m : ℕ) :
-    (featureConstantAffine H n).price P m = (H n).denote P := by
-  simp [AffineCombination.price]
 
 @[simp] lemma AffineCombination.sentenceAffine_value
     (φ : ℕ → Sentence) (P : History) (v : Valuation) (n : ℕ) :
@@ -2663,7 +2632,7 @@ lemma selfTrust_deferred_tendsto_zero
     have hs0 := (hP day (φ k)).1
     have hs1 := (hP day (φ k)).2
     rw [abs_le]
-    constructor <;> [skip; skip] <;> push_cast <;>
+    constructor <;> push_cast <;>
       nlinarith [hpm.1, hpm.2, hgm.1, hgm.2]
   · -- hsmall
     intro ε hε

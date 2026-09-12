@@ -56,18 +56,6 @@ input left over.
 
 This module renders the prefix machine `thm:ob` is instantiated at; the provenance lines sit
 on the declarations below, not on this header.
-**The criterion binder below is `def:lic` at the paper's own quantifier.**  Every result here that consumes an
-exploiting trader takes `[IsLogicalInductor P DP]`, and the Occam trader is certified at
-`EfficientlyComputable` (`obTrader_ec`, `Properties/OccamBounds.lean`), and no map
-back from `MachineSpliceStream` to `BigSpliceStream` is proved or claimed, so it has no
-fuel-class form.  The data premises are at the machine classes too: this file
-discharges
-`PrefixMachinePresentation.sentence_codes` (now `MachineSentenceCodes`) and
-`OccamThresholdEmission`'s two fields (now `MachineRatCodes`) from the very same
-constructed fuel certificates, crossing at the boundary by
-`MachineSentenceCodes.ofPolySentenceCodes` and `DigitRatCodes.ofPolyRatCodes` +
-`.toMachine`, so nothing about the constructions changed.  The `_unconditional` endpoints
-discharge the criterion through `LIA_is_logical_inductor`.
 
 -/
 
@@ -709,64 +697,6 @@ lemma natVal_prim : Primrec natVal := by
   | cons a l ih =>
       by_cases h : natCode a = u <;> simp [h, ih]
 
-/-- All bit strings of a given length. -/
-def wordsLen : ℕ → List (List Bool)
-  | 0 => [[]]
-  | k + 1 => (wordsLen k).flatMap (fun w => [false :: w, true :: w])
-
-lemma mem_wordsLen : ∀ (k : ℕ) (v : List Bool), v ∈ wordsLen k ↔ v.length = k
-  | 0, v => by cases v <;> simp [wordsLen]
-  | k + 1, v => by
-      rw [wordsLen]
-      constructor
-      · intro h
-        simp only [List.mem_flatMap, List.mem_cons, List.not_mem_nil, or_false] at h
-        obtain ⟨w, hw, hv⟩ := h
-        have := (mem_wordsLen k w).mp hw
-        rcases hv with rfl | rfl <;> simp [this]
-      · intro h
-        match v with
-        | [] => simp at h
-        | b :: w =>
-            have hw : w ∈ wordsLen k := (mem_wordsLen k w).mpr (by simpa using h)
-            refine List.mem_flatMap.mpr ⟨w, hw, ?_⟩
-            cases b <;> simp
-
-lemma wordsLen_prim : Primrec wordsLen := by
-  have hcons : Primrec₂ (fun (_ : ℕ × List (List Bool)) (w : List Bool) =>
-      [false :: w, true :: w]) :=
-    Primrec₂.mk (Primrec.list_cons.comp (Primrec.list_cons.comp (Primrec.const false) Primrec.snd)
-      (Primrec.list_cons.comp (Primrec.list_cons.comp (Primrec.const true) Primrec.snd)
-        (Primrec.const ([] : List (List Bool)))))
-  have hstep : Primrec₂ (fun (_ : ℕ) (l : List (List Bool)) =>
-      l.flatMap (fun w => [false :: w, true :: w])) :=
-    Primrec₂.mk (Primrec.list_flatMap Primrec.snd hcons)
-  refine (Primrec.nat_rec₁ ([[]] : List (List Bool)) hstep).of_eq (fun k => ?_)
-  induction k with
-  | zero => rfl
-  | succ k ih => rw [wordsLen, ← ih]
-
-lemma prefix_iff_mem_wordsLen (u v : List Bool) :
-    u <+: v ↔ ∃ w ∈ wordsLen (v.length - u.length), u ++ w = v := by
-  constructor
-  · rintro ⟨w, rfl⟩
-    exact ⟨w, (mem_wordsLen _ w).mpr (by simp), rfl⟩
-  · rintro ⟨w, -, rfl⟩
-    exact List.prefix_append _ _
-
-lemma isPrefix_prim : PrimrecRel (fun u v : List Bool => u <+: v) := by
-  have hR : PrimrecRel (fun (w : List Bool) (p : List Bool × List Bool) => p.1 ++ w = p.2) :=
-    Primrec.eq.comp (Primrec.list_append.comp (Primrec.fst.comp Primrec.snd) Primrec.fst)
-      (Primrec.snd.comp Primrec.snd)
-  have hL : Primrec (fun p : List Bool × List Bool =>
-      wordsLen (p.2.length - p.1.length)) :=
-    wordsLen_prim.comp (Primrec.nat_sub.comp (Primrec.list_length.comp Primrec.snd)
-      (Primrec.list_length.comp Primrec.fst))
-  have h := (PrimrecRel.exists_mem_list hR).comp₂
-    (Primrec₂.mk (f := fun u v : List Bool => wordsLen (v.length - u.length)) hL)
-    (Primrec₂.mk (f := fun u v : List Bool => (u, v)) (Primrec.fst.pair Primrec.snd))
-  exact h.of_eq (fun u v => (prefix_iff_mem_wordsLen u v).symm)
-
 lemma candCode_prim : Primrec candCode := Primrec.fst.comp Primrec.unpair
 
 lemma candFuel_prim : Primrec candFuel :=
@@ -997,21 +927,21 @@ lemma uVal_prim : Primrec₂ uVal :=
 /-! ### The bounded search -/
 
 /-- All bit strings of length at most `L`. -/
-def wordsUpto (L : ℕ) : List (List Bool) := (List.range (L + 1)).flatMap wordsLen
+def wordsUpto (L : ℕ) : List (List Bool) := (List.range (L + 1)).flatMap allBitLists
 
 lemma mem_wordsUpto (L : ℕ) (v : List Bool) : v ∈ wordsUpto L ↔ v.length ≤ L := by
   rw [wordsUpto, List.mem_flatMap]
   constructor
   · rintro ⟨k, hk, hv⟩
-    rw [mem_wordsLen] at hv
+    rw [mem_allBitLists] at hv
     rw [hv]
     simpa using Nat.lt_succ_iff.mp (List.mem_range.mp hk)
   · intro h
-    exact ⟨v.length, List.mem_range.mpr (by omega), (mem_wordsLen _ _).mpr rfl⟩
+    exact ⟨v.length, List.mem_range.mpr (by omega), (mem_allBitLists _ _).mpr rfl⟩
 
 lemma wordsUpto_prim : Primrec wordsUpto :=
   Primrec.list_flatten.comp
-    (Primrec.list_map (Primrec.list_range.comp Primrec.succ) (wordsLen_prim.comp Primrec.snd).to₂)
+    (Primrec.list_map (Primrec.list_range.comp Primrec.succ) (allBitLists_prim.comp Primrec.snd).to₂)
 
 /-- The stage-`n` codeword lengths for `y` discovered by the bounded search. -/
 def uLenList (n y : ℕ) : List ℕ :=
@@ -1084,7 +1014,7 @@ lemma uMinLen_prim : Primrec₂ uMinLen := by
       (Primrec.snd.comp Primrec.snd))
   exact Primrec₂.mk ((Primrec.list_foldr hlist hL hmin).of_eq (fun p => rfl))
 
-/-! ### The emission program Paper node: `thm:ob` -/
+/-! ### The emission program -/
 
 lemma encodeEnum_prim : Primrec (fun i => Encodable.encode (prefixSentenceEnum i)) := by
   have hinv : Primrec invalidBit := invalidBit_polyFueled.choose_spec.primrec
@@ -1140,100 +1070,17 @@ noncomputable def uCode : Nat.Partrec.Code := exists_uCode.choose
 
 lemma uCode_eval (z : ℕ) : uCode.eval z = Part.some (uEmit z) := exists_uCode.choose_spec z
 
-lemma uCode_evaln_eq {k x out : ℕ} (h : uCode.evaln k x = some out) : out = uEmit x := by
-  have hmem : out ∈ uCode.eval x := Nat.Partrec.Code.evaln_sound h
-  rw [uCode_eval] at hmem
-  simpa using hmem
-
-lemma uCode_evaln_exists (x : ℕ) :
-    ∃ F₀, ∀ F, F₀ ≤ F → uCode.evaln F x = some (uEmit x) := by
-  have hmem : uEmit x ∈ uCode.eval x := by rw [uCode_eval]; exact Part.mem_some _
-  obtain ⟨F₀, hF₀⟩ := Nat.Partrec.Code.evaln_complete.mp hmem
-  exact ⟨F₀, fun F hF => Nat.Partrec.Code.evaln_mono hF hF₀⟩
-
-/-- One clocked reading of the exact table: stage `j`, sentence index `i`, clock `F`.
-`0` means "the clock ran out". -/
-noncomputable def uRead (F j i : ℕ) : ℕ :=
-  codeEvalnNat uCode (Nat.pair F (Nat.pair j i))
-
-lemma uRead_eq_of_ne_zero {F j i : ℕ} (h : uRead F j i ≠ 0) :
-    uRead F j i = Encodable.encode (uTab j i) + 1 := by
-  rw [uRead, codeEvalnNat] at h ⊢
-  simp only [Nat.unpair_pair] at h ⊢
-  cases hev : uCode.evaln F (Nat.pair j i) with
-  | none => rw [hev] at h; simp at h
-  | some out => rw [uCode_evaln_eq hev, uEmit, Nat.unpair_pair]
-
-lemma uRead_le (F j i : ℕ) : uRead F j i ≤ codeEvalBound uCode F + 1 := by
-  simpa [uRead] using codeEvalnNat_le uCode (Nat.pair F (Nat.pair j i))
-
-lemma uRead_ne_zero (j i : ℕ) : ∃ F₀, ∀ F, F₀ ≤ F → uRead F j i ≠ 0 := by
-  obtain ⟨F₀, hF₀⟩ := uCode_evaln_exists (Nat.pair j i)
-  refine ⟨F₀, fun F hF => ?_⟩
-  rw [uRead, codeEvalnNat]
-  simp [Nat.unpair_pair, hF₀ F hF]
-
-/-- The polynomial clock offered at query `z`. -/
-def uFuel (z : ℕ) : ℕ := Nat.pair z z
-
-lemma le_uFuel (z : ℕ) : z ≤ uFuel z := Nat.left_le_pair z z
-
-/-- The stage that the last successful reading below `j` came from. -/
-noncomputable def uStage (z : ℕ) : ℕ → ℕ
-  | 0 => 0
-  | j + 1 => if uRead (uFuel z) j z.unpair.2 = 0 then uStage z j else j
-
-/-- The carried encoded state of the scan. -/
-noncomputable def uState (z : ℕ) : ℕ → ℕ
-  | 0 => Encodable.encode (0 : ℚ) + 1
-  | j + 1 =>
-      ifzSelFn (Nat.pair (uState z j) (uRead (uFuel z) j z.unpair.2))
-        (uRead (uFuel z) j z.unpair.2)
-
-lemma uState_zero (z : ℕ) : uState z 0 = Encodable.encode (0 : ℚ) + 1 := rfl
-
-lemma uState_eq (z : ℕ) : ∀ j,
-    uState z j = Encodable.encode (uTab (uStage z j) z.unpair.2) + 1
-  | 0 => by rw [uState, uStage, uTab_zero]
-  | j + 1 => by
-      rw [uState, uStage, ifzSelFn]
-      by_cases h : uRead (uFuel z) j z.unpair.2 = 0
-      · rw [if_pos h, if_pos h, Nat.unpair_pair]
-        exact uState_eq z j
-      · rw [if_neg h, if_neg h, Nat.unpair_pair]
-        exact uRead_eq_of_ne_zero h
-
-lemma uState_le (z : ℕ) : ∀ j,
-    uState z j ≤ codeEvalBound uCode (uFuel z) + Encodable.encode (0 : ℚ) + 2
-  | 0 => by rw [uState]; omega
-  | j + 1 => by
-      rw [uState, ifzSelFn]
-      by_cases h : uRead (uFuel z) j z.unpair.2 = 0
-      · rw [if_pos h, Nat.unpair_pair]; exact uState_le z j
-      · rw [if_neg h, Nat.unpair_pair]
-        have := uRead_le (uFuel z) j z.unpair.2
-        omega
-
-/-- A stage whose reading succeeds is never lost. -/
-lemma le_uStage {z j N : ℕ} (hj : j < N) (h : uRead (uFuel z) j z.unpair.2 ≠ 0) :
-    j ≤ uStage z N := by
-  induction N with
-  | zero => omega
-  | succ N ih =>
-      rw [uStage]
-      by_cases hN : uRead (uFuel z) N z.unpair.2 = 0
-      · rw [if_pos hN]
-        rcases Nat.lt_or_ge j N with hlt | hge
-        · exact ih hlt
-        · have hjN : j = N := by omega
-          subst hjN
-          exact absurd hN h
-      · rw [if_neg hN]; omega
+/-- The exact table's value at stage `0` is the code of the rational `0`: the base case
+`Dovetail.SelfClamped.state_eq` asks for. -/
+lemma uEmit_zero (i : ℕ) : uEmit (Nat.pair 0 i) = 1 := by
+  rw [uEmit, Nat.unpair_pair, uTab_zero]
+  rfl
 
 /-- **The poly-fuel stage table.**  At query `z = ⟪n, i⟫` it is the exact table at whatever
 stage `< n` the clock `⟪z,z⟫` last completed on sentence index `i`.
 Paper node: `thm:ob` -/
-noncomputable def uSel (z : ℕ) : ℚ := uTab (uStage z z.unpair.1) z.unpair.2
+noncomputable def uSel (z : ℕ) : ℚ :=
+  uTab (Dovetail.SelfClamped.stage uCode z z.unpair.1) z.unpair.2
 
 lemma uSel_nonneg (z : ℕ) : 0 ≤ uSel z := uTab_nonneg _ _
 
@@ -1241,27 +1088,21 @@ lemma uSel_le (z : ℕ) :
     ((uSel z : ℚ) : ℝ) ≤ prefixWeight kappaU (prefixSentenceEnum z.unpair.2) :=
   uTab_le _ _
 
-lemma encode_uSel (z : ℕ) : Encodable.encode (uSel z) = uState z z.unpair.1 - 1 := by
-  rw [uSel, uState_eq]
+lemma encode_uSel (z : ℕ) :
+    Encodable.encode (uSel z) = Dovetail.SelfClamped.selCode uCode z := by
+  rw [Dovetail.SelfClamped.selCode,
+    Dovetail.SelfClamped.state_eq uCode_eval uEmit_zero z z.unpair.1]
+  rw [uSel, uEmit]
+  simp only [Nat.unpair_pair]
   omega
 
 /-- Every fixed stage is eventually reached. -/
 lemma uSel_eventually_ge (m i : ℕ) :
     ∀ᶠ n in atTop, uTab m i ≤ uSel (Nat.pair n i) := by
-  obtain ⟨F₀, hF₀⟩ := uRead_ne_zero m i
-  refine Filter.eventually_atTop.2 ⟨max (m + 1) F₀, fun n hn => ?_⟩
-  have hni : n ≤ Nat.pair n i := Nat.left_le_pair n i
-  have hfuel : F₀ ≤ uFuel (Nat.pair n i) :=
-    le_trans (le_trans (le_max_right _ _) hn) (le_trans hni (le_uFuel _))
-  have hsnd : (Nat.pair n i).unpair.2 = i := by simp
-  have hne : uRead (uFuel (Nat.pair n i)) m (Nat.pair n i).unpair.2 ≠ 0 := by
-    rw [hsnd]; exact hF₀ _ hfuel
-  have hlt : m < (Nat.pair n i).unpair.1 := by
-    have : m + 1 ≤ n := le_trans (le_max_left _ _) hn
-    simpa using this
-  have := le_uStage hlt hne
-  rw [uSel, hsnd]
-  exact uTab_mono this i
+  filter_upwards [Dovetail.SelfClamped.eventually_le_stage uCode_eval m i] with n hn
+  rw [uSel]
+  simp only [Nat.unpair_pair]
+  exact uTab_mono hn i
 
 lemma uSel_tendsto (i : ℕ) :
     Tendsto (fun n => ((uSel (Nat.pair n i) : ℚ) : ℝ)) atTop
@@ -1276,61 +1117,17 @@ lemma uSel_tendsto (i : ℕ) :
 
 /-! ### The emission certificate
 
-`PolyFueled.prec` over the packed input `w = ⟪z, ⟪j, prev⟫⟫`; the only nontrivial input is
-the clocked reading, poly-fueled because the simulated code is *fixed*. -/
+The scan and its `PolyFueled.prec` assembly are `Dovetail.SelfClamped`
+(`Construction/NonDogmatism/UniversalDovetailer.lean`), instantiated here at `uCode`. -/
 
-/-- The scan's step function on the packed `prec` input `w = ⟪z, ⟪j, prev⟫⟫`. -/
-noncomputable def uStep (w : ℕ) : ℕ :=
-  ifzSelFn
-    (Nat.pair w.unpair.2.unpair.2
-      (codeEvalnNat uCode
-        (Nat.pair (Nat.pair w.unpair.1 w.unpair.1)
-          (Nat.pair w.unpair.2.unpair.1 w.unpair.1.unpair.2))))
-    (codeEvalnNat uCode
-      (Nat.pair (Nat.pair w.unpair.1 w.unpair.1)
-        (Nat.pair w.unpair.2.unpair.1 w.unpair.1.unpair.2)))
-
-lemma uState_succ (z j : ℕ) :
-    uState z (j + 1) = uStep (Nat.pair z (Nat.pair j (uState z j))) := by
-  rw [uStep]
-  simp only [Nat.unpair_pair]
-  rfl
-
-attribute [local irreducible] Nat.sqrt uApprox uTab kappaStage in
-lemma uStep_polyFueled : ∃ c, PolyFueled c uStep := by
-  obtain ⟨cR, hR⟩ := codeEvalnNat_polyFueled uCode
-  have hz : PolyFueled _ (fun w : ℕ => w.unpair.1) := PolyFueled.left
-  have hr : PolyFueled _ (fun w : ℕ => w.unpair.2) := PolyFueled.right
-  have hj := PolyFueled.left.comp hr
-  have hprev := PolyFueled.right.comp hr
-  have hi := PolyFueled.right.comp hz
-  have hv := hR.comp ((hz.pair hz).pair (hj.pair hi))
-  exact ⟨_, (ifzSel_polyFueled.comp ((hprev.pair hv).pair hv)).of_eq
-    (fun w => by simp only [Nat.unpair_pair, uStep])⟩
-
-attribute [local irreducible] Nat.sqrt uApprox uTab kappaStage uStep uState in
 /-- The poly-fuel emission certificate of the universal machine's stage table: the `evaln`
 self-clamp lets the emitter *select* exact stage values under a polynomial clock, and that
-clock is constructed here — only the exact table's code is an input.
+clock is the shared `Dovetail.SelfClamped` scan at `uCode` — only the exact table's own
+code is an input.
 Paper node: `thm:ob` -/
 theorem uSel_polyRatCodes : PolyRatCodes uSel := by
-  obtain ⟨cs, hs⟩ := uStep_polyFueled
-  have hst : IsPolyBounded (fun m => uState m.unpair.1 m.unpair.2) := by
-    refine IsPolyBounded.of_le
-      (b' := fun m => codeEvalBound uCode (Nat.pair m.unpair.1 m.unpair.1)
-        + Encodable.encode (0 : ℚ) + 2)
-      ((IsPolyBounded.linear (Encodable.encode (0 : ℚ) + 2)).comp
-        ((codeEvalBound_poly uCode).comp
-          (isPolyBounded_fst.pair isPolyBounded_fst))) (fun m => ?_)
-    have := uState_le m.unpair.1 m.unpair.2
-    simpa [uFuel] using this
-  have hprec := PolyFueled.prec (PolyFueled.const (Encodable.encode (0 : ℚ) + 1)) hs
-    (st := uState) uState_zero uState_succ hst
-  have hstate : ∃ c, PolyFueled c (fun z => uState z z.unpair.1) :=
-    ⟨_, (hprec.comp (PolyFueled.id.pair PolyFueled.left)).of_eq
-      (fun z => by simp only [Nat.unpair_pair])⟩
-  obtain ⟨c, hc⟩ := hstate
-  exact ⟨_, (predc_polyFueled.comp hc).of_eq (fun z => (encode_uSel z).symm)⟩
+  obtain ⟨c, hc⟩ := Dovetail.SelfClamped.selCode_polyFueled uCode
+  exact ⟨_, hc.of_eq (fun z => (encode_uSel z).symm)⟩
 
 /-- **The universal prefix machine as an Occam presentation.**  Every *mathematical* field
 is discharged here — the Kraft budget from the built-in prefix-freeness of `dom U`,
@@ -1372,11 +1169,11 @@ noncomputable def uDenom (z : ℕ) : ℕ :=
   (Encodable.encode (uSel (uQuery z))).unpair.2
 
 lemma uNum_eq (z : ℕ) : uNum z = (uSel (uQuery z)).num.toNat := by
-  rw [uNum, Dovetail.encode_rat_of_nonneg (uSel_nonneg _), Nat.unpair_pair]
+  rw [uNum, encode_rat_of_nonneg (uSel_nonneg _), Nat.unpair_pair]
   omega
 
 lemma uDenom_eq (z : ℕ) : uDenom z = (uSel (uQuery z)).den := by
-  rw [uDenom, Dovetail.encode_rat_of_nonneg (uSel_nonneg _), Nat.unpair_pair]
+  rw [uDenom, encode_rat_of_nonneg (uSel_nonneg _), Nat.unpair_pair]
 
 lemma uDenom_pos (z : ℕ) : 0 < uDenom z := by
   rw [uDenom_eq]; exact (uSel (uQuery z)).den_pos
@@ -1391,7 +1188,7 @@ lemma uSel_query_eq (z : ℕ) :
 
 section Emission
 
-attribute [local irreducible] Nat.sqrt uSel uStage uState uApprox uTab kappaStage
+attribute [local irreducible] Nat.sqrt uSel uApprox uTab kappaStage
 
 lemma uNum_polyFueled : ∃ c, PolyFueled c uNum := by
   obtain ⟨c, hc⟩ := uSel_polyRatCodes

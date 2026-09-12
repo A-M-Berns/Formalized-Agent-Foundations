@@ -125,12 +125,39 @@ done | grep -oE '(structure|def|theorem|lemma|abbrev|class)\s+[A-Za-z_][A-Za-z0-
 # and inventoried because a canonical endpoint binds it, but rendering no paper node, since
 # it asks for a recognizer and no runtime bound at all. A `def:ec` line on it would claim an
 # efficiency obligation the structure does not impose.
+# `MachineRatCodes` is in that third group too: it is the machine-metered *data premise*
+# five endpoint structures name (`Framework/Machine/WriteOutMachine.lean`), frozen so a
+# rational emission hypothesis cannot be smuggled in or out of a boundary. It renders no
+# paper node — `def:ec` is carried by `EfficientlyComputable` itself — so a `def:ec` line on
+# it would file a hypothesis-shaped interface as a rendering of the criterion.
+# The LUV lane's six emission inhabitants
+# (`machineTokenStream_binNumeralEnc_id`, `binNumeralEnc_nonconstant`,
+# `machineArithmeticSourceSeq_iffChainSource`, `iffChainSource_nonconstant`,
+# `machineDigits_sourceNat_iffChainSource`, `sourceNat_iffChainSource_nonconstant`) are in
+# the second group: each inhabits a machine emission class at a day-varying family, or
+# records that the inhabitant is not a constant sequence.  `luvThresholdDP_computable` is
+# there too — it inhabits the `ComputableDeductiveProcess` field of the instance hypothesis
+# four `_arith` endpoints bind, rendering no paper node of its own.  The nine applied
+# clients named beside them (`lic_expectation_indicator_dyadicPaperLUVSeq` and its siblings)
+# are in that group too: each applies a canonical endpoint at a constructed family with every
+# hypothesis discharged, so it witnesses satisfiability rather than rendering the node.
 # The fourth group (the three `lic_deducible_*`) is the fixed-sentence fragment of
 # Provability Induction: `∀ n, φ ∈ DP.D n` for a *fixed* `φ` is strictly stronger than
 # `thm:provind`'s "is a theorem", and the paper's statement is about a sequence, so an
 # annotation would credit them with a node they do not render. The carrier is `lic_provind`
 # (`Properties/AffineCoherence.lean`). They stay inventoried because they are public and must
 # stay axiom-clean.
+# The fifth group is the semantic-extension lane's obstruction/non-vacuity block
+# (`semanticProductDP_no_increasing_factor_assignment`,
+# `semanticFreshIncreasing_not_jointly_reflected`, `semanticFreshIncreasing_no_cutCertificate`,
+# `theorem_quote_product_not_jointly_satisfiable`, with `semanticProductDP_hworld` as their
+# `N+` witness, and `semanticFreshIncreasingLUVSeq_fresh` /
+# `_machineThresholdCodeSeq` as the malformed witness family's own certificates) together
+# with the two quotation-path witnesses
+# (`quotationRepresentation_positive_path`, `quotationRepresentation_negative_path`).  The
+# first four REFUTE candidate universal designs — a `thm:ccee` line on them would file a
+# refutation as a rendering of the node they protect — and the last three inhabit an
+# interface rather than rendering anything.
 cat > /tmp/_pn_exempt <<'EOF'
 lic_deducible_price_near_one
 lic_deducible_eventually_ge
@@ -172,7 +199,33 @@ doublingDeferral
 not_polyFueled_doublingDeferral
 presentedLUVSeq
 toDigitMachineCodes
+machineTokenStream_binNumeralEnc_id
+binNumeralEnc_nonconstant
+machineArithmeticSourceSeq_iffChainSource
+iffChainSource_nonconstant
+machineDigits_sourceNat_iffChainSource
+sourceNat_iffChainSource_nonconstant
+luvThresholdDP_computable
+lic_expectation_indicator_dyadicPaperLUVSeq
+expect_converges_dyadicPaperLUV
+lic_expectation_indicator_iffPaperLUVSeq
+expect_converges_iffPaperLUV
+lic_does_not_anticipate_halting_neverHalt
+lic_belief_finitistic_consistency_ackermann
+lic_belief_stronger_theory_consistency_ackermann
+conClaimSentence_ackermann_day_ne
+lic_learns_halting_patterns_nest
 SettlementChecker
+MachineRatCodes
+semanticProductDP_hworld
+semanticProductDP_no_increasing_factor_assignment
+semanticFreshIncreasingLUVSeq_fresh
+semanticFreshIncreasingLUVSeq_machineThresholdCodeSeq
+semanticFreshIncreasing_not_jointly_reflected
+semanticFreshIncreasing_no_cutCertificate
+theorem_quote_product_not_jointly_satisfiable
+quotationRepresentation_positive_path
+quotationRepresentation_negative_path
 EOF
 
 while read -r nm; do

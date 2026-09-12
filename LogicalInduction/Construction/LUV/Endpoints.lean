@@ -36,14 +36,6 @@ rationals `numᵢ/denᵢ`, so the `_arith` endpoints carry no world-value premis
 Consumed by `AxiomAudit.lean` (all `_arith`, `_arith_unconditional` and
 `lic_expect_combination_provind_*`); `docs/trust-surface.html` lists
 `lic_expect_combination_provind_ge` as the printed display of `thm:expprovind`.
-**The criterion binder below is `def:lic` at the paper's own quantifier.**  Every result here that consumes an
-exploiting trader takes `[IsLogicalInductor P DP]`, and the trader is certified at `EfficientlyComputable`:
-it is assembled from `AffineCombination.PolySequence`'s machine-metered emission fields
-through `PolySequence.buyBelowTrader_ec` (`Properties/AffineCoherence.lean`), which has no
-fuel-class form: the bridge `BigSpliceStream.toMachine` runs fuel to machine, and no map
-back is proved or claimed.  The
-calibration is stated at `def:ec` in `Framework/Affine.lean`, and the `_unconditional`
-endpoints discharge the criterion through `LIA_is_logical_inductor`.
 
 -/
 
@@ -295,11 +287,10 @@ means by ℙ-generable, and what `LUVCombination.expect` already reads a coeffic
 Boundedness and efficient generation are exactly what `h : BoundedSequence` carries: its
 `AffineCombination.PolySequence.coefficient_poly` field emits the *serialized feature*, so
 the cost charged is the feature's syntactic size, and its `bounded` field is `def:blcp`'s
-uniform `L¹` bound.  Taking `a b : ℕ → ℚ` and building `.const (a n)` instead — which this
-statement did until the C4-S06 finding — charges the emitter with writing the coefficient's
-digits, and so silently excludes ℙ-generable sequences with short features and long values
-(`2^(−2ⁿ)` by repeated squaring).  A client holding literal rationals recovers the old
-statement by passing `fun n => .const (a n)`, whose denotation is `(a n : ℝ)`.
+uniform `L¹` bound.  Taking `a b : ℕ → ℚ` and building `.const (a n)` instead would charge
+the emitter with writing the coefficient's digits, and so silently exclude ℙ-generable
+sequences with short features and long values (`2^(−2ⁿ)` by repeated squaring).  A client
+holding literal rationals passes `fun n => .const (a n)`, whose denotation is `(a n : ℝ)`.
 The printed node fixes *rational* coefficient sequences, and a feature denotes a real, so
 this statement also ranges over the ℝ-sequence case of `def:ece` — which the paper defines
 in the same breath (tex:1220: "ℙ-generable ℝ-sequences … are defined analogously").  That
@@ -710,14 +701,14 @@ private lemma gridStage_eq_list_toFinset (n : ℕ) :
 /-- **The scheduled grid process is computable.** -/
 lemma gridDP_computable : ComputableDeductiveProcess (L.gridDP) := by
   have hsorted : Computable (fun n =>
-      Encodable.encode ((sentenceDedup
+      Encodable.encode ((List.dedup
         ((List.range (Nat.pair n (Nat.pair (n + 1) (n + 1)) + 1)).map
           (L.gridEmit n))).insertionSort sentenceCodeLE)) :=
     Computable.encode.comp (sentenceInsertionSort_prim.to_comp.comp
-      (sentenceDedup_prim.to_comp.comp (L.gridList_computable)))
+      (dedup_prim.to_comp.comp (L.gridList_computable)))
   have henc : Computable (fun n => Encodable.encode ((L.gridDP).D n)) := by
     refine hsorted.of_eq (fun n => ?_)
-    show Encodable.encode ((sentenceDedup _).insertionSort sentenceCodeLE)
+    show Encodable.encode ((List.dedup _).insertionSort sentenceCodeLE)
       = Encodable.encode (L.gridStage n)
     rw [L.gridStage_eq_list_toFinset n, encode_toFinset_eq]
   obtain ⟨code, hcode⟩ := Nat.Partrec.Code.exists_code.mp (Partrec.nat_iff.mp henc.partrec)

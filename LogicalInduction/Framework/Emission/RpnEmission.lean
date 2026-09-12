@@ -135,29 +135,6 @@ lemma PolySegStream.escModeScan {s : ℕ → List ℕ} (h : PolySegStream s) :
 
 /-! ## The token-metered realization bridges -/
 
-/-- A length/token emission under one polynomial clock *is* the clocked token stream.
-This is the step shared by every raw-emission certificate below. -/
-lemma clockedTokens_eq_of_emission (raw : ℕ → List ℕ)
-    (lengthCode tokenCode : Nat.Partrec.Code) (a k : ℕ)
-    (hlength : ∀ n, evaln (a * (n + 1) ^ k + a) lengthCode n =
-      some (raw n).length)
-    (hsize : ∀ n, (raw n).length ≤ a * (n + 1) ^ k + a)
-    (htoken : ∀ n i, i < (raw n).length →
-      evaln (a * (n + 1) ^ k + a) tokenCode (Nat.pair n i) =
-        some ((raw n).getD i 0)) :
-    ∀ n, clockedTokens lengthCode tokenCode (a * (n + 1) ^ k + a) n = raw n := by
-  intro n
-  unfold clockedTokens
-  rw [hlength n]
-  simp only []
-  rw [min_eq_left (hsize n)]
-  apply List.ext_getElem
-  · simp
-  · intro i hleft hright
-    simp only [List.getElem_ofFn]
-    rw [htoken n i hright, Option.getD_some]
-    exact List.getD_eq_get (raw n) 0 ⟨i, hright⟩
-
 /-- A trader whose day-`n` decode is a clocked token stream is efficiently computable. -/
 lemma ec_of_rawClocked (Tr : Trader) (raw : ℕ → List ℕ)
     (lengthCode tokenCode : Nat.Partrec.Code) (a k : ℕ)
@@ -181,29 +158,10 @@ lemma PolySegStream.clockedTokens_certificate {raw : ℕ → List ℕ} (h : Poly
   obtain ⟨ct, cl, tokenFn, lenFn, htokf, hlenf, hlens, hspec⟩ := h
   have hlenRaw : PolyFueled cl (fun n => (raw n).length) :=
     hlenf.of_eq (fun n => (hlens n).symm)
-  obtain ⟨bc, hfc, _, a₀, k₀, hk₀⟩ := htokf
-  obtain ⟨bl, hfl, hlenBounded, hblBounded⟩ := hlenRaw
-  set len := fun n => (raw n).length with hlendef
-  have hbcbound : IsPolyBounded (fun n => a₀ * (Nat.pair n (len n) + 1) ^ k₀ + a₀) :=
-    (show IsPolyBounded (fun x => a₀ * (x + 1) ^ k₀ + a₀) from
-      ⟨a₀, k₀, fun _ => le_rfl⟩).comp
-      ((IsPolyBounded.linear 0).pair hlenBounded)
-  obtain ⟨A, K, hAK⟩ := (hblBounded.max hbcbound).max hlenBounded
-  refine ⟨cl, ct, A, K, clockedTokens_eq_of_emission raw cl ct A K
-    (fun n => ?_) (fun n => ?_) (fun n i hi => ?_)⟩
-  · exact evaln_mono
-      ((le_max_left _ _).trans ((le_max_left _ _).trans (hAK n))) (hfl n)
-  · exact (le_max_right _ _).trans (hAK n)
-  · have hple : Nat.pair n i ≤ Nat.pair n (len n) :=
-      pair_le_pair_right' n (le_of_lt hi)
-    have hbc : bc (Nat.pair n i) ≤ A * (n + 1) ^ K + A := by
-      calc bc (Nat.pair n i) ≤ a₀ * (Nat.pair n i + 1) ^ k₀ + a₀ := hk₀ _
-        _ ≤ a₀ * (Nat.pair n (len n) + 1) ^ k₀ + a₀ := by gcongr
-        _ ≤ A * (n + 1) ^ K + A :=
-          (le_max_right _ _).trans ((le_max_left _ _).trans (hAK n))
-    have key := hfc (Nat.pair n i)
-    rw [hspec n i (by rw [← hlens n]; exact hi)] at key
-    exact evaln_mono hbc key
+  obtain ⟨A, K, hclock, hsize, htokclock⟩ := exists_commonClock hlenRaw htokf
+  exact ⟨cl, ct, A, K, clockedTokens_eq_of_emission raw cl ct A K hclock hsize
+    (fun n i hi => (htokclock n i hi).trans
+      (congrArg some (hspec n i (by rw [← hlens n]; exact hi))))⟩
 
 /-- Any `PolySegStream` whose contracted undigitized decode is the target trader
 realizes an `PolyFueledTrader` certificate. -/
@@ -229,9 +187,9 @@ theorem PolyFueledTrader.ofDigitEmitter {Tr : Trader}
     (h : EfficientlyComputableDigit Tr) : PolyFueledTrader Tr := by
   obtain ⟨lc, tc, a, k, hTr⟩ := h
   let ds : ℕ → List ℕ := fun n =>
-    clockedTokens lc tc (PrefixPatchCompile.ecClock a k n) n
+    clockedTokens lc tc (ClockedEmission.ecClock a k n) n
   have hds : PolySegStream ds :=
-    PrefixPatchCompile.clockedTokens_polySegStream lc tc a k
+    ClockedEmission.clockedTokens_polySegStream lc tc a k
   obtain ⟨⟨cc, hcnt⟩, hbig⟩ := hds.undigitizeTokens
   have hbigCopy := hbig
   obtain ⟨clen, cdig, hlen, hdig⟩ := hbig
@@ -276,16 +234,16 @@ theorem PolyFueledTrader.ofDigitEmitter {Tr : Trader}
           rw [hz]
           exact len4_zero
         rw [if_pos hlen_zero]
-        simp [digitize, hz]
+        simp [digitize]
       · rw [if_neg hz]
         have hlen_ne : len4 ((undigitize (ds n)).getD j 0) ≠ 0 := by
           have hpos : 0 < len4 ((undigitize (ds n)).getD j 0) :=
             (lt_len4_iff _ 0).mpr (Nat.one_le_iff_ne_zero.mpr hz)
           omega
         rw [if_neg hlen_ne]
-        simp [digitize, hz]
+        simp [digitize]
     · rw [if_neg (by
-        push_neg at hm
+        push Not at hm
         simp only [Nat.mul_eq_zero]
         omega), if_neg hm]
       simp [digitize]
@@ -394,7 +352,7 @@ efficiently computable.  `PolyFueledTrader.ofTradeBlocksBig`
 (`Framework/Emission/WriteOut.lean`) is the same constructor over the write-out sentence class. -/
 lemma PolyFueledTrader.ofTradeBlocks (Tr : Trader)
     (count : ℕ → ℕ) (f : ℕ → EF) (φ : ℕ → Sentence)
-    (hcount : ∃ c, PolyFueled c count)
+    {ccount : Nat.Partrec.Code} (hcount : PolyFueled ccount count)
     (hf : PolySegStream fun z => (f z).serialize)
     (hfree : ∀ z, (f z).priceFree)
     (hφ : RpnSentenceCodes φ)
@@ -402,7 +360,7 @@ lemma PolyFueledTrader.ofTradeBlocks (Tr : Trader)
       (List.range (count n)).map fun j => (f (Nat.pair n j), φ (Nat.pair n j))) :
     PolyFueledTrader Tr := by
   obtain ⟨sφ, hsφ, hparse⟩ := hφ
-  obtain ⟨ccount, hcountF⟩ := hcount
+  have hcountF := hcount
   have htag : PolySegStream (fun _ : ℕ => [6]) :=
     PolySegStream.ofTokenStream (PolyTokenStream.const 6)
   have hseg : PolySegStream (fun z => (f z).serialize ++ 6 :: sφ z) :=

@@ -50,14 +50,6 @@ data, at an explicit `(clock : PatientSettlementClock …)` binder.  The LUV lan
 normalized threshold mesh, which is only approximately determined, so its clock tests
 agreement within the vanishing rational `meshTol` rather than exact agreement.  Asymptotic
 conclusions use the shared `≈ₙ`/`≳ₙ`/`≲ₙ` vocabulary (`dd:asymp`).
-**The criterion binder below is `def:lic` at the paper's own quantifier.**  Every result here that consumes an
-exploiting trader takes `[IsLogicalInductor P DP]`, and the trader is certified at `EfficientlyComputable`:
-it is assembled from `AffineCombination.PolySequence`'s machine-metered emission fields
-through `PolySequence.buyBelowTrader_ec` (`Properties/AffineCoherence.lean`), which has no
-fuel-class form: the bridge `BigSpliceStream.toMachine` runs fuel to machine, and no map
-back is proved or claimed.  The
-calibration is stated at `def:ec` in `Framework/Affine.lean`, and the `_unconditional`
-endpoints discharge the criterion through `LIA_is_logical_inductor`.
 
 -/
 
@@ -115,41 +107,6 @@ namespace HistoricalMaturityCompile
 
 /-! ## Primitive-recursive finite-prefix data -/
 
-private def ratNeg (q : ℚ) : ℚ := (-1) * q
-
-private lemma ratNeg_prim : Primrec ratNeg := by
-  exact (ratMul_prim.comp (Primrec.const (-1)) Primrec.id).of_eq fun q => by
-    simp [ratNeg]
-
-private def ratSub (q r : ℚ) : ℚ := q + ratNeg r
-
-private lemma ratSub_prim : Primrec₂ ratSub := by
-  exact (ratAdd_prim.comp₂ Primrec₂.left
-    (ratNeg_prim.comp₂ Primrec₂.right)).of_eq fun _ _ => rfl
-
-private def ratAbs (q : ℚ) : ℚ := if 0 ≤ q then q else ratNeg q
-
-private lemma ratAbs_eq (q : ℚ) : ratAbs q = |q| := by
-  by_cases h : 0 ≤ q
-  · simp [ratAbs, h, abs_of_nonneg h]
-  · have hq : q ≤ 0 := le_of_lt (lt_of_not_ge h)
-    simp [ratAbs, h, abs_of_nonpos hq, ratNeg]
-
-private lemma ratAbs_prim : Primrec ratAbs := by
-  exact (Primrec.ite
-    (ratLE_prim.comp (Primrec.const 0) Primrec.id)
-    Primrec.id ratNeg_prim).of_eq fun q => by rfl
-
-private lemma natListSum_prim : Primrec (fun l : List ℕ => l.sum) := by
-  have h := Primrec.list_foldr (f := fun l : List ℕ => l)
-    (g := fun _ : List ℕ => 0) Primrec.id (Primrec.const 0)
-    (Primrec.nat_add.comp (Primrec.fst.comp Primrec.snd)
-      (Primrec.snd.comp Primrec.snd)).to₂
-  exact h.of_eq fun l => by
-    induction l with
-    | nil => rfl
-    | cons a t ih => simp [List.sum_cons, ← ih]
-
 private def tradeAtomBoundSum (trades : List (EF × Sentence)) : ℕ :=
   (trades.map fun p => BoolPCWorld.atomBound p.2).sum
 
@@ -191,8 +148,8 @@ private def familyMaturityAtomLimit {Ts : ℕ → Trader}
 private lemma familyMaturityAtomLimit_eq {Ts : ℕ → Trader}
     (i : ℕ) (stage : Finset Sentence) (m : ℕ) :
     familyMaturityAtomLimit (Ts := Ts) i stage m =
-      AffineCombination.maturityAtomLimitFromStage (Ts i) stage m := by
-  rw [familyMaturityAtomLimit, AffineCombination.maturityAtomLimitFromStage,
+      maturityAtomLimitFromStage (Ts i) stage m := by
+  rw [familyMaturityAtomLimit, maturityAtomLimitFromStage,
     finset_sum_eq_stageSort_sum]
   rfl
 
@@ -250,7 +207,7 @@ private def datedMagnitudeComp {P : History} (market : MarketComputation P) (fue
     (trades : List (ℕ × (EF × Sentence))) : Option ℚ :=
   trades.foldr (fun p acc =>
     (market.denoteRatComp fuel p.2.1).bind fun coefficient =>
-      acc.map fun tail => ratAbs coefficient + tail) (some 0)
+      acc.map fun tail => |coefficient| + tail) (some 0)
 
 /-- Fuel-bounded net worth of a dated trade list at a finite Boolean world. -/
 private def datedValueComp {P : History} (market : MarketComputation P) (fuel : ℕ)
@@ -259,7 +216,7 @@ private def datedValueComp {P : History} (market : MarketComputation P) (fuel : 
     (market.denoteRatComp fuel p.2.1).bind fun coefficient =>
       (market.quoteAtFuel fuel p.1 p.2.2).bind fun price =>
         acc.map fun tail => coefficient *
-          ratSub (BoolPCWorld.bitsPayoutRat bits p.2.2) price + tail) (some 0)
+          (BoolPCWorld.bitsPayoutRat bits p.2.2 - price) + tail) (some 0)
 
 section
 attribute [local irreducible] Nat.sqrt
@@ -276,14 +233,14 @@ private lemma datedMagnitudeComp_prim {P : History} (market : MarketComputation 
       (Primrec.fst.comp (Primrec.snd.comp (Primrec.fst.comp Primrec.snd)))
   have hmap : Primrec₂ fun (z : Q ×
       ((ℕ × (EF × Sentence)) × Option ℚ)) (coefficient : ℚ) =>
-      z.2.2.map fun tail => ratAbs coefficient + tail :=
+      z.2.2.map fun tail => |coefficient| + tail :=
     (Primrec.option_map (Primrec.snd.comp (Primrec.snd.comp Primrec.fst))
       (ratAdd_prim.comp (ratAbs_prim.comp (Primrec.snd.comp Primrec.fst))
         Primrec.snd).to₂).to₂
   have hstep : Primrec₂ fun (q : Q)
       (x : (ℕ × (EF × Sentence)) × Option ℚ) =>
       (market.denoteRatComp q.1 x.1.2.1).bind fun coefficient =>
-        x.2.map fun tail => ratAbs coefficient + tail :=
+        x.2.map fun tail => |coefficient| + tail :=
     (Primrec.option_bind hcoefficient hmap).to₂
   exact (Primrec.list_foldr Primrec.snd (Primrec.const (some 0)) hstep).of_eq
     fun q => by simp only [datedMagnitudeComp]
@@ -314,13 +271,13 @@ private lemma datedValueComp_prim {P : History} (market : MarketComputation P) :
   have hfull : Primrec₂ fun (z : Q × X) (coefficient : ℚ) =>
       (market.quoteAtFuel z.1.1.1 z.2.1.1 z.2.1.2.2).bind fun price =>
         z.2.2.map fun tail => coefficient *
-          ratSub (BoolPCWorld.bitsPayoutRat z.1.1.2 z.2.1.2.2) price + tail := by
+          (BoolPCWorld.bitsPayoutRat z.1.1.2 z.2.1.2.2 - price) + tail := by
     have hmap : Primrec₂ fun (w : (Q × X) × ℚ) (price : ℚ) =>
         w.1.2.2.map fun tail => w.2 *
-          ratSub (BoolPCWorld.bitsPayoutRat w.1.1.1.2 w.1.2.1.2.2) price + tail := by
+          (BoolPCWorld.bitsPayoutRat w.1.1.1.2 w.1.2.1.2.2 - price) + tail := by
       have hterm : Primrec fun v : ((Q × X) × ℚ) × ℚ =>
-          v.1.2 * ratSub
-            (BoolPCWorld.bitsPayoutRat v.1.1.1.1.2 v.1.1.2.1.2.2) v.2 :=
+          v.1.2 *
+            (BoolPCWorld.bitsPayoutRat v.1.1.1.1.2 v.1.1.2.1.2.2 - v.2) :=
         ratMul_prim.comp
           (Primrec.snd.comp Primrec.fst)
           (ratSub_prim.comp
@@ -334,22 +291,19 @@ private lemma datedValueComp_prim {P : History} (market : MarketComputation P) :
       (market.denoteRatComp q.1.1 x.1.2.1).bind fun coefficient =>
         (market.quoteAtFuel q.1.1 x.1.1 x.1.2.2).bind fun price =>
           x.2.map fun tail => coefficient *
-            ratSub (BoolPCWorld.bitsPayoutRat q.1.2 x.1.2.2) price + tail :=
+            (BoolPCWorld.bitsPayoutRat q.1.2 x.1.2.2 - price) + tail :=
     (Primrec.option_bind hcoefficient hfull).to₂
   exact (Primrec.list_foldr Primrec.snd (Primrec.const (some 0)) hstep).of_eq
     fun q => by simp only [datedValueComp]
 
 end
 
-private lemma ratSub_eq_sub (q r : ℚ) : ratSub q r = q - r := by
-  simp [ratSub, ratNeg, sub_eq_add_neg]
-
 private lemma datedMagnitude_day_fold {P : History} (market : MarketComputation P)
     (fuel d : ℕ) (trades : List (EF × Sentence))
     (acc : Option ℚ) :
     (((trades.map fun p => (d, p)).foldr (fun p tail =>
       (market.denoteRatComp fuel p.2.1).bind fun coefficient =>
-        tail.map fun q => ratAbs coefficient + q) acc)) =
+        tail.map fun q => |coefficient| + q) acc)) =
       (Strategy.magnitudeRatListAtFuel market fuel trades).bind fun today =>
         acc.map fun tail => today + tail := by
   induction trades with
@@ -366,7 +320,7 @@ private lemma datedMagnitude_day_fold {P : History} (market : MarketComputation 
           cases ht : Strategy.magnitudeRatListAtFuel market fuel rest with
           | none => simp
           | some tail =>
-              cases acc <;> simp [ratAbs_eq, add_assoc]
+              cases acc <;> simp [add_assoc]
 
 private lemma datedValue_day_fold {P : History} (market : MarketComputation P)
     (fuel d : ℕ) (bits : List Bool) (trades : List (EF × Sentence))
@@ -375,7 +329,7 @@ private lemma datedValue_day_fold {P : History} (market : MarketComputation P)
       (market.denoteRatComp fuel p.2.1).bind fun coefficient =>
         (market.quoteAtFuel fuel p.1 p.2.2).bind fun price =>
           tail.map fun q => coefficient *
-            ratSub (BoolPCWorld.bitsPayoutRat bits p.2.2) price + q) acc)) =
+            (BoolPCWorld.bitsPayoutRat bits p.2.2 - price) + q) acc)) =
       (Strategy.valueRatListAtFuel market fuel d
         (BoolPCWorld.bitsPayoutRat bits) trades).bind fun today =>
           acc.map fun tail => today + tail := by
@@ -398,7 +352,7 @@ private lemma datedValue_day_fold {P : History} (market : MarketComputation P)
                   (BoolPCWorld.bitsPayoutRat bits) rest with
               | none => simp
               | some tail =>
-                  cases acc <;> simp [ratSub_eq_sub, add_assoc]
+                  cases acc <;> simp [add_assoc]
 
 private lemma datedMagnitudeComp_familyDatedTrades_eq {Ts : ℕ → Trader}
     {P : History} (market : MarketComputation P) (i fuel m : ℕ) :
@@ -549,21 +503,21 @@ private lemma familyMaturityWorldCheck_iff {Ts : ℕ → Trader}
     (hlen : bits.length = familyMaturityAtomLimit (Ts := Ts) i stage m) :
     familyMaturityWorldCheck (Ts := Ts) market epsilon tolerance
         i m fuel stage bits = true ↔
-      AffineCombination.unitMaturityWorldProperty (Ts i) P market
+      unitMaturityWorldProperty (Ts i) P market
         epsilon (halfRat tolerance) m fuel stage
-        (bitsToFin (AffineCombination.maturityAtomLimitFromStage (Ts i) stage m)
+        (bitsToFin (maturityAtomLimitFromStage (Ts i) stage m)
           bits) := by
   rw [familyMaturityWorldCheck]
   have hlimit := familyMaturityAtomLimit_eq (Ts := Ts) i stage m
   have hlen' : bits.length =
-      AffineCombination.maturityAtomLimitFromStage (Ts i) stage m :=
+      maturityAtomLimitFromStage (Ts i) stage m :=
     hlen.trans hlimit
   rw [Bool.or_eq_true]
   rw [show Bool.not (stageSatBits stage bits) = true ↔
       stageSatBits stage bits ≠ true by
         cases stageSatBits stage bits <;> simp]
   rw [familyPartialValueComp_eq]
-  unfold AffineCombination.unitMaturityWorldProperty
+  unfold unitMaturityWorldProperty
   rw [toBoolPCWorld_bitsToFin hlen', payoutRat_bitsToFin hlen']
   constructor
   · intro h hsat
@@ -574,7 +528,7 @@ private lemma familyMaturityWorldCheck_iff {Ts : ℕ → Trader}
           (BoolPCWorld.bitsPayoutRat bits) m with
       | none => simp [hv] at hworth
       | some worth =>
-          simpa [hv, decide_eq_true_iff, ratSub_eq_sub] using hworth
+          simpa [hv, decide_eq_true_iff] using hworth
   · intro h
     by_cases hsat : ∀ φ ∈ stage,
         BoolPCWorld.eval (BoolPCWorld.bitsWorld bits) φ = true
@@ -584,7 +538,7 @@ private lemma familyMaturityWorldCheck_iff {Ts : ℕ → Trader}
       | none => simpa [hv] using h (fun φ => hsat φ.1 φ.2)
       | some worth =>
           have hw := h (fun φ => hsat φ.1 φ.2)
-          simpa [hv, decide_eq_true_iff, ratSub_eq_sub] using hw
+          simpa [hv, decide_eq_true_iff] using hw
     · exact Or.inl (fun hs =>
         hsat ((stageSatBits_eq_true_iff stage bits).1 hs))
 
@@ -595,8 +549,8 @@ private lemma familyMaturityWorlds_all_iff {Ts : ℕ → Trader}
         (familyMaturityWorldCheck (Ts := Ts) market epsilon tolerance
           i m fuel stage) = true ↔
       ∀ u : BoolPCWorld.FiniteWorld
-          (AffineCombination.maturityAtomLimitFromStage (Ts i) stage m),
-        AffineCombination.unitMaturityWorldProperty (Ts i) P market
+          (maturityAtomLimitFromStage (Ts i) stage m),
+        unitMaturityWorldProperty (Ts i) P market
           epsilon (halfRat tolerance) m fuel stage u := by
   rw [List.all_eq_true]
   constructor
@@ -616,10 +570,10 @@ private lemma familyMaturityWorlds_all_iff {Ts : ℕ → Trader}
     apply (familyMaturityWorldCheck_iff market epsilon tolerance
       i m fuel stage bits hlen).2
     exact h (bitsToFin
-      (AffineCombination.maturityAtomLimitFromStage (Ts i) stage m) bits)
+      (maturityAtomLimitFromStage (Ts i) stage m) bits)
 
 /-- The compiled family checker accepts exactly when
-`AffineCombination.unitMaturityCheckAtFuel` does for the corresponding member.  The compiled
+`unitMaturityCheckAtFuel` does for the corresponding member.  The compiled
 form differs only in being non-dependent — it never mentions `Ts i` in its type — which is what
 makes it primitive recursive in the member index. -/
 lemma familyMaturityCheckAtFuel_iff {Ts : ℕ → Trader} {P : History}
@@ -628,9 +582,9 @@ lemma familyMaturityCheckAtFuel_iff {Ts : ℕ → Trader} {P : History}
     (tolerance : ℕ → ℚ) (i m fuel : ℕ) :
     familyMaturityCheckAtFuel (Ts := Ts) market process epsilon tolerance
         i m fuel = true ↔
-      AffineCombination.unitMaturityCheckAtFuel (Ts i) P DP market process
+      unitMaturityCheckAtFuel (Ts i) P DP market process
         epsilon (halfRat (tolerance i)) m fuel = true := by
-  unfold familyMaturityCheckAtFuel AffineCombination.unitMaturityCheckAtFuel
+  unfold familyMaturityCheckAtFuel unitMaturityCheckAtFuel
   cases hstage : process.stageAtFuel fuel m with
   | none => simp
   | some stage =>
@@ -639,14 +593,14 @@ lemma familyMaturityCheckAtFuel_iff {Ts : ℕ → Trader} {P : History}
       | none => simp
       | some risk =>
           letI : DecidablePred (fun u : BoolPCWorld.FiniteWorld
-              (AffineCombination.maturityAtomLimitFromStage (Ts i) stage m) =>
-              AffineCombination.unitMaturityWorldProperty (Ts i) P market epsilon
+              (maturityAtomLimitFromStage (Ts i) stage m) =>
+              unitMaturityWorldProperty (Ts i) P market epsilon
                 (halfRat (tolerance i)) m fuel stage u) :=
-            AffineCombination.unitMaturityWorldPropertyDecidable (Ts i) P market
+            unitMaturityWorldPropertyDecidable (Ts i) P market
               epsilon (halfRat (tolerance i)) m fuel stage
           letI : Decidable (∀ u : BoolPCWorld.FiniteWorld
-              (AffineCombination.maturityAtomLimitFromStage (Ts i) stage m),
-              AffineCombination.unitMaturityWorldProperty (Ts i) P market epsilon
+              (maturityAtomLimitFromStage (Ts i) stage m),
+              unitMaturityWorldProperty (Ts i) P market epsilon
                 (halfRat (tolerance i)) m fuel stage u) :=
             Fintype.decidableForallFintype
           rw [Bool.and_eq_true, decide_eq_true_iff, decide_eq_true_iff]
@@ -682,8 +636,7 @@ lemma familyMaturityCheckAtFuel_prim {Ts : ℕ → Trader} {P : History}
   have hhalfQ : Primrec fun q : Q => halfRat (tolerance q.1.1) :=
     halfRat_prim.comp htoleranceQ
   have hthresholdQ : Primrec fun q : Q => epsilon - halfRat (tolerance q.1.1) :=
-    (ratSub_prim.comp (Primrec.const epsilon) hhalfQ).of_eq fun q =>
-      ratSub_eq_sub epsilon (halfRat (tolerance q.1.1))
+    ratSub_prim.comp (Primrec.const epsilon) hhalfQ
   have hlimit : Primrec fun s : S =>
       familyMaturityAtomLimit (Ts := Ts) s.1.1.1 s.2 s.1.1.2 :=
     (familyMaturityAtomLimit_prim hTs).comp
@@ -746,9 +699,7 @@ lemma familyMaturityCheckAtFuel_prim {Ts : ℕ → Trader} {P : History}
         s.1.1.1 s.1.2 s.1.1.2 := hriskQ.comp Primrec.fst
   have hriskThresholdS : Primrec fun s : S =>
       1 - halfRat (tolerance s.1.1.1) :=
-    ((ratSub_prim.comp (Primrec.const 1)
-      (hhalfQ.comp Primrec.fst)).of_eq fun s =>
-        ratSub_eq_sub 1 (halfRat (tolerance s.1.1.1)))
+    ratSub_prim.comp (Primrec.const 1) (hhalfQ.comp Primrec.fst)
   have hriskTrue : Primrec₂ fun (s : S) (risk : ℚ) =>
       decide (1 - halfRat (tolerance s.1.1.1) ≤ risk) &&
         (allBitLists (familyMaturityAtomLimit (Ts := Ts)
@@ -953,7 +904,7 @@ noncomputable def historicalScheduleOfComputations
       obtain ⟨fuel, hfamily⟩ := hrecognized
       have hunit := (familyMaturityCheckAtFuel_iff market process
         epsilon tolerance i m fuel).1 hfamily
-      have hmature := AffineCombination.unitMaturityCheckAtFuel_sound
+      have hmature := unitMaturityCheckAtFuel_sound
         market process hunit (hmag i hi)
       refine ⟨m, hmn, ?_⟩
       simpa [gateTraderFamily, hi, halfRat_eq] using hmature
@@ -970,7 +921,7 @@ noncomputable def historicalScheduleOfComputations
           (halfRat (tolerance i) : ℝ) m := by
         simpa [halfRat_eq] using hmature
       obtain ⟨fuel, hunit⟩ :=
-        AffineCombination.unitMaturityCheckAtFuel_eventually_complete
+        unitMaturityCheckAtFuel_eventually_complete
           market process hmature' (hmag i hi)
       have hfamily := (familyMaturityCheckAtFuel_iff market process
         epsilon tolerance i m fuel).2 hunit
@@ -1551,18 +1502,13 @@ threshold sentences, so their mesh values spread by up to `meshErrorBound`.  A s
 checker therefore cannot test exact agreement; it tests agreement within the vanishing
 rational stream below, which is strictly above twice that spread. -/
 
-private lemma natCastRat_prim : Primrec fun n : ℕ => (n : ℚ) := by
-  apply Primrec.encode_iff.mp
-  exact (Primrec₂.natPair.comp (Primrec.nat_mul.comp (Primrec.const 2) Primrec.id)
-    (Primrec.const 1)).of_eq fun n => (encode_rat_natCast n).symm
-
 /-- Rational settlement tolerance for the normalized mesh of a `shareNorm ≤ b` sequence. -/
 private def meshTol (b : ℚ) (i : ℕ) : ℚ :=
   (8 * meshNormScale b * |b| + 2) / (i + 1)
 
 private lemma meshTol_prim (b : ℚ) : Primrec (meshTol b) :=
   (ratDiv_prim.comp (Primrec.const (8 * meshNormScale b * |b| + 2))
-    (ratAdd_prim.comp natCastRat_prim (Primrec.const 1))).of_eq fun _ => rfl
+    (ratAdd_prim.comp ratNatCast_prim (Primrec.const 1))).of_eq fun _ => rfl
 
 private lemma meshTol_gt {As : ℕ → LUVCombination} {P : History} {b : ℚ}
     (hshare : ∀ n, (As n).shareNorm P ≤ (b : ℝ)) (i : ℕ) :
@@ -1673,6 +1619,16 @@ theorem BoundedSequence.recurringunbiasednessexp
   funext i
   ring
 
+/-- A bounded LUV combination sequence has a *rational* uniform bound on its share norms —
+the scale both `thm:prandexp` branches normalize the traded mesh by. -/
+private lemma BoundedSequence.exists_shareNorm_bound {As : ℕ → LUVCombination} {P : History}
+    (h : BoundedSequence As P) : ∃ b : ℚ, ∀ n, (As n).shareNorm P ≤ (b : ℝ) := by
+  obtain ⟨B, hB⟩ := h.bounded
+  obtain ⟨b, hbB⟩ := exists_rat_gt (max B 0)
+  refine ⟨b, fun n => ?_⟩
+  have h1 : (As n).shareNorm P ≤ (As n).l1Norm P := le_add_of_nonneg_left (abs_nonneg _)
+  exact h1.trans ((hB n).trans ((le_max_left B 0).trans hbB.le))
+
 /-- **`thm:prandexp`, nonnegative branch.**  For a bounded LUV combination sequence determined
 via `Θ`, if some deferral function `f` makes every `f`-patient generable divergent weighting
 average its `Θ`-values to `≳ₙ 0`, then the diagonal expectations `(As n).expect P n` are
@@ -1684,7 +1640,7 @@ mesh is therefore only approximately determined, so its settlement clock is buil
 checker that decides agreement within the vanishing rational tolerance `meshTol`, and the
 bias-run economics absorbs the (negligible-against-magnitude) mesh error.
 Paper node: `thm:prandexp` -/
-theorem BoundedSequence.prandexp
+theorem BoundedSequence.prandexp_above
     {As : ℕ → LUVCombination} {P : History} {DP : DeductiveProcess}
     [IsLogicalInductor P DP]
     (h : BoundedSequence As P)
@@ -1696,12 +1652,7 @@ theorem BoundedSequence.prandexp
     (fun n => (As n).expect P n) ≳ₙ (fun _ => 0) := by
   have hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1 :=
     fun n φ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n φ
-  obtain ⟨B, hB⟩ := h.bounded
-  obtain ⟨b, hbB⟩ := exists_rat_gt (max B 0)
-  have hshare : ∀ n, (As n).shareNorm P ≤ (b : ℝ) := fun n => by
-    have h1 : (As n).shareNorm P ≤ (As n).l1Norm P :=
-      le_add_of_nonneg_left (abs_nonneg _)
-    exact h1.trans ((hB n).trans ((le_max_left B 0).trans hbB.le))
+  obtain ⟨b, hshare⟩ := h.exists_shareNorm_bound
   let q : ℝ := ((meshNormScale b : ℚ) : ℝ)
   have hq : 0 < q := meshNormScale_pos b
   have hpseudoMesh := hvalued.normalizedMeshTruth_pseudorandomAbove
@@ -1722,7 +1673,7 @@ theorem BoundedSequence.prandexp
 
 /-- **`thm:prandexp`, nonpositive branch.**  The `≲ₙ` direction of the same statement:
 `(As n).expect P n ≲ₙ 0`, with the maturity schedule constructed.
-Determination is combination-level (`def:affthmval`); see `prandexp` for the mesh
+Determination is combination-level (`def:affthmval`); see `prandexp_above` for the mesh
 tolerance discipline this forces on the settlement clock.
 Paper node: `thm:prandexp` -/
 theorem BoundedSequence.prandexp_below
@@ -1737,12 +1688,7 @@ theorem BoundedSequence.prandexp_below
     (fun n => (As n).expect P n) ≲ₙ (fun _ => 0) := by
   have hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1 :=
     fun n φ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n φ
-  obtain ⟨B, hB⟩ := h.bounded
-  obtain ⟨b, hbB⟩ := exists_rat_gt (max B 0)
-  have hshare : ∀ n, (As n).shareNorm P ≤ (b : ℝ) := fun n => by
-    have h1 : (As n).shareNorm P ≤ (As n).l1Norm P :=
-      le_add_of_nonneg_left (abs_nonneg _)
-    exact h1.trans ((hB n).trans ((le_max_left B 0).trans hbB.le))
+  obtain ⟨b, hshare⟩ := h.exists_shareNorm_bound
   let q : ℝ := ((meshNormScale b : ℚ) : ℝ)
   have hq : 0 < q := meshNormScale_pos b
   have hpseudoMesh := hvalued.normalizedMeshTruth_pseudorandomBelow
@@ -1763,10 +1709,10 @@ theorem BoundedSequence.prandexp_below
 
 /-- **`thm:prandexp`, two-sided.**  Both comparison directions together:
 `(As n).expect P n ≈ₙ 0`, without verifier premises.
-Determination is combination-level (`def:affthmval`); see `prandexp` for the mesh
+Determination is combination-level (`def:affthmval`); see `prandexp_above` for the mesh
 tolerance discipline this forces on the settlement clock.
 Paper node: `thm:prandexp` -/
-theorem BoundedSequence.prandexp_eq
+theorem BoundedSequence.prandexp
     {As : ℕ → LUVCombination} {P : History} {DP : DeductiveProcess}
     [IsLogicalInductor P DP]
     (h : BoundedSequence As P)
@@ -1778,7 +1724,7 @@ theorem BoundedSequence.prandexp_eq
     (fun n => (As n).expect P n) ≈ₙ (fun _ => 0) := by
   rw [asympEq_iff_asympLE_asympGE]
   exact ⟨h.prandexp_below hvalued hdet hworld f hpseudo.2,
-    h.prandexp hvalued hdet hworld f hpseudo.1⟩
+    h.prandexp_above hvalued hdet hworld f hpseudo.1⟩
 
 end LUVCombination
 

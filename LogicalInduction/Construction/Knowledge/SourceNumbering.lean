@@ -130,9 +130,8 @@ lemma tokensOfNat_primrec : Primrec tokensOfNat := by
 `v` is read as a token run, the run is parsed by the structured arithmetic grammar — which
 performs all normal-form expansion of `¬`, `⟹` and `⟺` off the written stream — and the
 resulting formula code is negated by `negFormulaCode`.  A name that is not a complete
-well-formed run gets the code `0`, which is provable in no theory — internal derivations
-carry the well-formedness of their sequents and internal formulas are positive numbers, so
-`not_provableCode_zero` (`Framework/Theory/BoundedConsistency.lean`) rules it out.
+well-formed run gets the code `0`, which is provable in no theory: internal derivations
+carry the well-formedness of their sequents and internal formulas are positive numbers.
 
 That fallback is a totality convention, not a soundness guarantee, and **nothing in
 `thm:incons` relies on it**: the day-window gate (`AdmissibleName`,
@@ -140,7 +139,7 @@ That fallback is a totality convention, not a soundness guarantee, and **nothing
 `SourceRecognizer.sourceRun` certifies to be the emitted run of a genuine sentence-valued
 `ArithSource`, so the spliced run reaching this decoder always parses completely. -/
 def negSourceFormulaCode (v : ℕ) : ℕ :=
-  match parseStructuredArithmeticFormula (tokensOfNat v).length 0 (tokensOfNat v) with
+  match parseStructuredArithmeticFormula (tokensOfNat v).length (tokensOfNat v) with
   | some (c, []) => negFormulaCode c
   | _ => 0
 
@@ -148,7 +147,7 @@ def negSourceFormulaCode (v : ℕ) : ℕ :=
 lemma negSourceFormulaCode_computable : Computable negSourceFormulaCode := by
   have hts : Primrec tokensOfNat := tokensOfNat_primrec
   have hparse : Primrec fun v : ℕ =>
-      parseStructuredArithmeticFormula (tokensOfNat v).length 0 (tokensOfNat v) :=
+      parseStructuredArithmeticFormula (tokensOfNat v).length (tokensOfNat v) :=
     parseStructuredArithmeticFormula_prim.comp (Primrec.list_length.comp hts) hts
   have hinner : Primrec₂ fun (_ : ℕ) (p : ℕ × List ℕ) =>
       if p.2 = ([] : List ℕ) then negFormulaCode p.1 else 0 :=
@@ -162,7 +161,7 @@ lemma negSourceFormulaCode_computable : Computable negSourceFormulaCode := by
     fun v => ?_).to_comp
   rw [negSourceFormulaCode]
   cases hpv :
-      parseStructuredArithmeticFormula (tokensOfNat v).length 0 (tokensOfNat v) with
+      parseStructuredArithmeticFormula (tokensOfNat v).length (tokensOfNat v) with
   | none => rfl
   | some p =>
       obtain ⟨c, rest⟩ := p
@@ -175,11 +174,11 @@ lemma negSourceFormulaCode_sourceNat {k : ℕ} (s : ArithSource k) :
       Encodable.encode (∼ArithSource.compile s) := by
   rw [ArithSource.sourceNat, negSourceFormulaCode,
     tokensOfNat_tokenListNat (ArithSource.sourceTokens_lt_63 s)]
-  have hp : parseStructuredArithmeticFormula (ArithSource.sourceTokens s).length 0
+  have hp : parseStructuredArithmeticFormula (ArithSource.sourceTokens s).length
       (ArithSource.sourceTokens s) =
       some (Encodable.encode (ArithSource.compile s), []) := by
     have := ArithSource.parseStructuredArithmeticFormula_sourceTokens s []
-      (fuel := (ArithSource.sourceTokens s).length) (depth := 0) (le_refl _)
+      (fuel := (ArithSource.sourceTokens s).length) (le_refl _)
     simpa using this
   rw [hp]
   exact negFormulaCode_spec _

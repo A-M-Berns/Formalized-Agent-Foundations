@@ -25,7 +25,6 @@ import LogicalInduction.Framework.Emission.WriteOut
 import LogicalInduction.Framework.Emission.FreezeTransducer
 import LogicalInduction.Framework.Machine.EvalnCompiler
 import LogicalInduction.Framework.Machine.EvalnRegBound
-import LogicalInduction.Framework.Machine.CodeSteps
 import LogicalInduction.Framework.Machine.FPFold
 import LogicalInduction.Framework.Machine.TokenFold
 import LogicalInduction.Framework.Machine.DigitBits
@@ -70,14 +69,16 @@ on, and supplies the polynomial-time word arithmetic the syntactic transports ne
 * `Compactness` — propositional compactness over Cantor space: per-stage satisfiability of
   a deductive process yields one world consistent with every stage.
 * `Affine` — trade magnitude and net-worth bounds (`def:tradermag`, `def:bap`), the
-  `Strategy` scale-and-join algebra, and affine combinations of sentences
-  (`def:affcomsen`) with their pointwise operations.
+  `Strategy` scale-and-join algebra, affine combinations of sentences (`def:affcomsen`)
+  with their pointwise operations, the return-on-investment predicate `HasROI`
+  (`def:roi`), and the degenerate branch `isLogicalInductor_of_stage_unsatisfiable`
+  (`thm:scon`).
 * `BooleanWorlds` — the Boolean reading `ℕ → Bool` of a world, its finite-support
   restrictions `FiniteWorld B` and the executable rational payouts over them, and the
   product-space compactness the §4 affine arguments consume
   (`eventually_affineValue_gt_of_theory`).
-* `ROI` — the repeatable return-on-investment lemma (`lem:type3`, `def:roi`) and the
-  budgeted-trader machinery its proof needs (`def:emulatabletraders`).
+* `ROI` — the repeatable return-on-investment lemma (`lem:type3`) and the budgeted-trader
+  machinery its proof needs (`def:emulatabletraders`).
 * `Expectations` — logically uncertain variables (`def:luv`), the ℙ̄-generable class
   (`def:ece`), the threshold-code interfaces, the finite price sum `def:e`, and the
   rational-cut semantics by which a completed world values a LUV (`lem:conluvapprox`).
@@ -155,8 +156,6 @@ and the polynomial-time word arithmetic the syntactic transports need.
   proved against Mathlib's clocked `evaln` rather than the unclocked `eval`.
 * `Machine.EvalnRegBound` — how large the compiled machines' registers grow and how long
   they run.
-* `Machine.CodeSteps` — `codeEvalSteps`, the interpreter-invocation count of a fixed code,
-  polynomial in the fuel; the *time* counterpart of `Emission.Emission`'s value bound.
 * `Machine.FPFold` — the reusable streaming-fold core for exhibiting a syntactic rewrite of
   a serialized stream as a `Complexity.FP` function.
 * `Machine.TokenFold` — token-level transducers on bit words, the layer the conditioning and
@@ -164,8 +163,8 @@ and the polynomial-time word arithmetic the syntactic transports need.
 * `Machine.DigitBits` — the bit rendering of a digit stream (`digitBits`, `digitsToBits`)
   and the round trip through which `EfficientlyComputable` decodes an output word.
 * `Machine.DigitArithFP` — base-four arithmetic on digit words inside `Complexity.FP`
-  (`addW`, `subW`, `leW`, `predW`, `sqrtRemW`, `unpairFstW` / `unpairSndW`), each with its
-  value specification; it serves `app:ifp`.
+  (`addW`, `subW`, `mulW`, `leW`, `predW`, `sqrtRemW`, `unpairFstW` / `unpairSndW`), each with
+  its value specification; it serves `app:ifp`.
 * `Machine.Ruler` — `UnaryRuler`, the machine reading of a fuel-metered *count* (a value
   that reindexes a stream rather than being emitted into one), with its closure calculus:
   constants, identity, composition, `+`, `*`, successor, a fixed threshold, `Nat.pair` and

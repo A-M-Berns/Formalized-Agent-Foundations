@@ -13,13 +13,13 @@ Endpoints}.lean` — is built on.
 
 `semanticQuoteLeaf code input` — the tag-`2` semantic-prime handle for quotation selector
 `code`; `semanticQuoteDefSentence` — the two implication directions, packed at job code
-`⟨kind, ⟨code, input⟩⟩`; `semanticQuoteStageList`; and `semanticQuoteDP`.
+`⟨kind, ⟨code, input⟩⟩`; and `semanticQuoteDP`.
 
 This is a *definitional closure*, not a general first-order bridge: both names denote the same
 universal quotation instance, so the process enters only the two implications.  Nothing in the
 theory changes and no market or source LUV is consulted (`dd:quote-code`).  Disjointness keeps
 the namespace unambiguous: quote leaves live on schema tag `2`, generic emitted-source programs
-on tag `0` (`semanticEmitterSchema`), products on tag `1`, so no handle gets two meanings.
+on tag `0` (`semanticSourceSchema`), products on tag `1`, so no handle gets two meanings.
 
 ## Main results
 
@@ -33,10 +33,9 @@ The outward-facing exports are the shared base `theoremQuoteBaseDP T = (theoremD
 semanticQuoteDP` and its `theoremQuoteBaseDPComputation`, fixed from the arithmetic theory
 alone so every downstream source and product registry shares one quotation namespace.
 
-The stage-list enumeration idiom used here — the list, its membership lemma, the
-`DeductiveProcess` wrapper, and a `Computable.nat_rec` + `sentenceDedup` + `insertionSort`
-computability proof — is spelled out again in `Construction/Quotation/ProductDefinition.lean` and
-`Construction/SemanticExtension/Product.lean`.
+The stage enumeration itself is the shared `prefixProcess`
+(`Construction/DeductiveDovetail.lean`), which every decidable-clause lane in `Construction/`
+instantiates.
 -/
 
 namespace LogicalInduction
@@ -70,37 +69,16 @@ noncomputable def semanticQuoteDefSentence (e : ℕ) : Sentence :=
     semanticQuoteLeaf e.unpair.2.unpair.1 e.unpair.2.unpair.2 🡒
       quoteAtom (Nat.pair e.unpair.2.unpair.1 e.unpair.2.unpair.2)
 
-/-- All closure clauses through stage `n`.  The clause family is decidable, so no dovetailing
-clock is needed — the process is a plain enumeration. -/
-noncomputable def semanticQuoteStageList : ℕ → List Sentence
-  | 0 => [semanticQuoteDefSentence 0]
-  | n + 1 => semanticQuoteDefSentence (n + 1) :: semanticQuoteStageList n
-
-lemma mem_semanticQuoteStageList {e n : ℕ} (h : e ≤ n) :
-    semanticQuoteDefSentence e ∈ semanticQuoteStageList n := by
-  induction n with
-  | zero => simp [semanticQuoteStageList, Nat.le_zero.mp h]
-  | succ n ih =>
-      rcases Nat.lt_or_ge e (n + 1) with hlt | hge
-      · exact List.mem_cons_of_mem _ (ih (Nat.lt_succ_iff.mp hlt))
-      · have he : e = n + 1 := le_antisymm h hge
-        simp [semanticQuoteStageList, he]
-
-/-- Fixed before any particular quote selector is chosen. -/
-noncomputable def semanticQuoteDP : DeductiveProcess where
-  D n := (semanticQuoteStageList n).toFinset
-  mono n := by
-    intro φ h
-    simp only [List.mem_toFinset] at h ⊢
-    exact List.mem_cons_of_mem _ h
+/-- Fixed before any particular quote selector is chosen.  The clause family is decidable, so
+no dovetailing clock is needed: the process publishes clause `e` at stage `e`
+(`prefixProcess`, `Construction/DeductiveDovetail.lean`). -/
+noncomputable def semanticQuoteDP : DeductiveProcess :=
+  prefixProcess semanticQuoteDefSentence
 
 /-! ## Computability of the closure -/
 
-set_option maxHeartbeats 2000000 in
 private lemma semanticQuoteLeafJob_encode_computable : Computable fun e : ℕ =>
     Encodable.encode (semanticQuoteLeaf e.unpair.2.unpair.1 e.unpair.2.unpair.2) := by
-  have hcode : Computable fun e : ℕ => e.unpair.2.unpair.1 :=
-    (Primrec.fst.comp (Primrec.unpair.comp (Primrec.snd.comp Primrec.unpair))).to_comp
   have hinput : Computable fun e : ℕ => e.unpair.2.unpair.2 :=
     (Primrec.snd.comp (Primrec.unpair.comp (Primrec.snd.comp Primrec.unpair))).to_comp
   have hschema : Computable fun e : ℕ => semanticQuoteSchema e.unpair.2.unpair.1 :=
@@ -128,7 +106,6 @@ private lemma semanticQuoteImpJob_encode_computable : Computable fun p : ℕ × 
   Computable.succ.comp (Computable₂.comp Primrec₂.natPair.to_comp (Computable.const 2)
     (Computable₂.comp Primrec₂.natPair.to_comp Computable.fst Computable.snd))
 
-set_option maxHeartbeats 1000000 in
 /-- The narrow quotation closure is computably enumerable.  In particular, it does not
 need an oracle for a market or for the source LUV eventually represented by a leaf. -/
 lemma semanticQuoteDefSentence_computable : Computable semanticQuoteDefSentence := by
@@ -152,28 +129,8 @@ lemma semanticQuoteDefSentence_computable : Computable semanticQuoteDefSentence 
       rw [semanticQuoteDefSentence]
       split_ifs <;> simp_all)
 
-lemma semanticQuoteDP_computable : ComputableDeductiveProcess semanticQuoteDP := by
-  have hlist : Computable semanticQuoteStageList := by
-    have hstep : Computable fun p : ℕ × List Sentence =>
-        semanticQuoteDefSentence (p.1 + 1) :: p.2 :=
-      Computable.list_cons.comp
-        (semanticQuoteDefSentence_computable.comp (Primrec.succ.to_comp.comp Computable.fst))
-        Computable.snd
-    refine (Computable.nat_rec Computable.id
-      (Computable.const [semanticQuoteDefSentence 0])
-      (hstep.comp₂ Computable.snd.to₂)).of_eq (fun k => ?_)
-    induction k with
-    | zero => rfl
-    | succ k ih => simpa [semanticQuoteStageList] using ih
-  have hkey : Computable fun k => Encodable.encode
-      ((sentenceDedup (semanticQuoteStageList k)).insertionSort sentenceCodeLE) :=
-    Computable.encode.comp
-      ((sentenceInsertionSort_prim.comp sentenceDedup_prim).to_comp.comp hlist)
-  obtain ⟨code, hcode⟩ := Nat.Partrec.Code.exists_code.mp
-    (Partrec.nat_iff.mp hkey)
-  refine ⟨code, fun k => ?_⟩
-  rw [hcode]
-  exact Part.mem_some_iff.mpr (encode_toFinset_eq (semanticQuoteStageList k))
+lemma semanticQuoteDP_computable : ComputableDeductiveProcess semanticQuoteDP :=
+  prefixProcess_computable semanticQuoteDefSentence_computable
 
 /-! ## The shared quotation base -/
 
@@ -196,7 +153,7 @@ noncomputable def theoremQuoteBaseDPComputation
 lemma holds_semanticQuoteDefSentence {v : PCWorld}
     (hv : v.ConsistentWithTheory semanticQuoteDP) (e : ℕ) :
     v.Holds (semanticQuoteDefSentence e) :=
-  hv e _ (List.mem_toFinset.mpr (mem_semanticQuoteStageList (le_refl e)))
+  hv e _ (self_mem_prefixProcess _ (le_refl e))
 
 section
 attribute [local irreducible] Nat.sqrt

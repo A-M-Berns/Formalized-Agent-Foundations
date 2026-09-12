@@ -49,14 +49,6 @@ the pointwise negation of the family (`affineFutureHigh_neg`).
 
 `gradualEntry` and `gateFeature` are consumed downstream by `AffineCoherence.lean`'s
 `buyBelowTrader`.
-**The criterion binder below is `def:lic` at the paper's own quantifier.**  Every result here that consumes an
-exploiting trader takes `[IsLogicalInductor P DP]`, and the trader is certified at `EfficientlyComputable`:
-it is assembled from `AffineCombination.PolySequence`'s machine-metered emission fields
-through `PolySequence.buyBelowTrader_ec` (`Properties/AffineCoherence.lean`), which has no
-fuel-class form: the bridge `BigSpliceStream.toMachine` runs fuel to machine, and no map
-back is proved or claimed.  The
-calibration is stated at `def:ec` in `Framework/Affine.lean`, and the `_unconditional`
-endpoints discharge the criterion through `LIA_is_logical_inductor`.
 
 -/
 
@@ -159,6 +151,29 @@ lemma AffineCombination.BoundedCombinationSequence.boundedPrices
   intro n m
   exact ((As n).abs_price_le_l1Norm V m (hP m)).trans (hB n)
 
+/-- A uniformly bounded affine family admits a single positive rational scale that brings
+every member's magnitude inside the unit ball: take any rational above the bound and invert
+it.  Both the `BCS` normalization below and the two bounded-magnitude transports
+(`PolySequence.noPreemptiveUnderpricing_of_boundedMagnitude` here and
+`PolySequence.noPersistenceUnderpricing_of_boundedMagnitude` in
+`Properties/AffinePersistence.lean`) obtain their scale from it. -/
+lemma AffineCombination.exists_rat_unitScale {As : ℕ → AffineCombination} {V : History}
+    (hmag : ∃ B : ℝ, ∀ n, (As n).magnitude V ≤ B) :
+    ∃ q : ℚ, 0 < (q : ℝ) ∧ ∀ n, ((As n).scale (.const q)).magnitude V ≤ 1 := by
+  obtain ⟨B, hB⟩ := hmag
+  obtain ⟨C, hC⟩ := exists_rat_gt (max B 0)
+  have hC0 : 0 < (C : ℝ) := lt_of_le_of_lt (le_max_right B 0) hC
+  have hq0 : 0 < ((1 / C : ℚ) : ℝ) := by
+    rw [Rat.cast_div, Rat.cast_one]
+    exact one_div_pos.mpr hC0
+  refine ⟨1 / C, hq0, fun n => ?_⟩
+  rw [AffineCombination.scale_magnitude, EF.denote_const, abs_of_pos hq0]
+  have hn : (As n).magnitude V < (C : ℝ) :=
+    (hB n).trans_lt ((le_max_left B 0).trans_lt hC)
+  have hdiv : (As n).magnitude V / (C : ℝ) ≤ 1 :=
+    (div_le_one hC0).mpr hn.le
+  simpa [div_eq_mul_inv, mul_comm] using hdiv
+
 /-- A canonical positive rational rescaling of an arbitrary paper `BCS` into the
 unit-magnitude regime used by the trader constructions.  The scale is part of the data, so
 a consumer can state its operational witnesses for exactly the normalized sequence. -/
@@ -173,27 +188,9 @@ structure AffineCombination.BoundedCombinationSequence.UnitNormalization
 /-- Every paper `BCS` admits a single positive rational unit normalization. -/
 noncomputable def AffineCombination.BoundedCombinationSequence.unitNormalization
     {As : ℕ → AffineCombination} {V : History}
-    (h : BoundedCombinationSequence As V) : h.UnitNormalization := by
-  let B : ℝ := Classical.choose h.magnitudeBounded
-  have hB : ∀ n, (As n).magnitude V ≤ B :=
-    Classical.choose_spec h.magnitudeBounded
-  let C : ℚ := Classical.choose (exists_rat_gt (max B 0))
-  have hC : max B 0 < (C : ℝ) :=
-    Classical.choose_spec (exists_rat_gt (max B 0))
-  have hC0 : 0 < (C : ℝ) := lt_of_le_of_lt (le_max_right B 0) hC
-  let q : ℚ := 1 / C
-  have hq0 : 0 < (q : ℝ) := by
-    dsimp only [q]
-    rw [Rat.cast_div, Rat.cast_one]
-    exact one_div_pos.mpr hC0
-  refine ⟨q, hq0, ?_⟩
-  intro n
-  rw [AffineCombination.scale_magnitude, EF.denote_const, abs_of_pos hq0]
-  have hn : (As n).magnitude V < (C : ℝ) :=
-    (hB n).trans_lt ((le_max_left B 0).trans_lt hC)
-  have hdiv : (As n).magnitude V / (C : ℝ) ≤ 1 :=
-    (div_le_one hC0).mpr (le_of_lt hn)
-  simpa [q, div_eq_mul_inv, mul_comm] using hdiv
+    (h : BoundedCombinationSequence As V) : h.UnitNormalization :=
+  let hq := AffineCombination.exists_rat_unitScale h.magnitudeBounded
+  ⟨Classical.choose hq, (Classical.choose_spec hq).1, (Classical.choose_spec hq).2⟩
 
 /-- A fixed rational rescaling preserves uniform cross-time boundedness. -/
 lemma BoundedAffinePrices.scaleRat
@@ -324,29 +321,7 @@ lemma sellIndF_closed {e : EF} {ρ : List ℝ} {V : History} (high δ : ℚ)
     EF.denote_add, EF.denote_const, Pi.mul_apply, Pi.add_apply]
   rw [he]
 
-/-- Spliced mirror of the sell ramp closure. -/
-lemma BigSpliceStream.serialize_sellIndF {e : ℕ → EF}
-    (he : BigSpliceStream (fun n => (e n).serialize)) (high δ : ℚ) :
-    BigSpliceStream (fun n => (sellIndF (e n) high δ).serialize) :=
-  BigSpliceStream.serialize_clip01
-    (BigSpliceStream.serialize_mul
-      (BigSpliceStream.serialize_add he (BigSpliceStream.serialize_const (δ - high)))
-      (BigSpliceStream.serialize_const (1 / δ)))
-
-/-- Spliced mirror of the buy ramp closure. -/
-lemma BigSpliceStream.serialize_buyIndF {e : ℕ → EF}
-    (he : BigSpliceStream (fun n => (e n).serialize)) (low δ : ℚ) :
-    BigSpliceStream (fun n => (buyIndF (e n) low δ).serialize) :=
-  BigSpliceStream.serialize_clip01
-    (BigSpliceStream.serialize_mul
-      (BigSpliceStream.serialize_add
-        (BigSpliceStream.serialize_const (low + δ))
-        (BigSpliceStream.serialize_mul
-          (BigSpliceStream.serialize_const (-1)) he))
-      (BigSpliceStream.serialize_const (1 / δ)))
-
-/-- Machine-metered mirror of the sell ramp closure, the twin of
-`BigSpliceStream.serialize_sellIndF`. -/
+/-- The sell ramp closure at the machine-metered stream class. -/
 lemma MachineSpliceStream.serialize_sellIndF {e : ℕ → EF}
     (he : MachineSpliceStream (fun n => (e n).serialize)) (high δ : ℚ) :
     MachineSpliceStream (fun n => (sellIndF (e n) high δ).serialize) :=
@@ -356,8 +331,7 @@ lemma MachineSpliceStream.serialize_sellIndF {e : ℕ → EF}
         (MachineSpliceStream.serialize_const (δ - high)))
       (MachineSpliceStream.serialize_const (1 / δ)))
 
-/-- Machine-metered mirror of the buy ramp closure, the twin of
-`BigSpliceStream.serialize_buyIndF`. -/
+/-- The buy ramp closure at the machine-metered stream class. -/
 lemma MachineSpliceStream.serialize_buyIndF {e : ℕ → EF}
     (he : MachineSpliceStream (fun n => (e n).serialize)) (low δ : ℚ) :
     MachineSpliceStream (fun n => (buyIndF (e n) low δ).serialize) :=
@@ -522,48 +496,7 @@ counterpart for the occupancy argument of `app:roi`. -/
 def gateOccupancy (start : ℕ) (f : ℕ → ℕ → EF) (i n : ℕ) : EF :=
   if start ≤ i then f i n else EF.const 0
 
-lemma BigSpliceStream.gateFeature {f : ℕ → EF}
-    (hf : BigSpliceStream (fun i => (f i).serialize)) (start : ℕ) :
-    BigSpliceStream (fun i => (gateFeature start f i).serialize) := by
-  have hzero : BigSpliceStream (fun _ => (EF.const 0).serialize) :=
-    BigSpliceStream.serialize_const 0
-  have htestRaw := subc_polyFueled.comp
-    (PolyFueled.id.succ_comp.pair (PolyFueled.const start))
-  have htest : PolyFueled
-      (subc.comp ((Nat.Partrec.Code.succ.comp
-        (Nat.Partrec.Code.left.pair Nat.Partrec.Code.right)).pair
-          (Nat.Partrec.Code.const start)))
-      (fun i => i + 1 - start) := by
-    apply PolyFueled.of_eq htestRaw
-    intro i
-    simp only [Nat.unpair_pair]
-  refine BigSpliceStream.of_eq (BigSpliceStream.ifZero hzero hf htest) ?_
-  intro i
-  by_cases hs : start ≤ i
-  · rw [if_neg (by omega), AffineCombination.gateFeature, if_pos hs]
-  · rw [if_pos (by omega), AffineCombination.gateFeature, if_neg hs]
-
-lemma BigSpliceStream.gateOccupancy {f : ℕ → ℕ → EF}
-    (hf : BigSpliceStream (fun z => (f z.unpair.2 z.unpair.1).serialize)) (start : ℕ) :
-    BigSpliceStream (fun z => (gateOccupancy start f z.unpair.2 z.unpair.1).serialize) := by
-  have hzero : BigSpliceStream (fun _ => (EF.const 0).serialize) :=
-    BigSpliceStream.serialize_const 0
-  have htestRaw := subc_polyFueled.comp
-    (PolyFueled.right.succ_comp.pair (PolyFueled.const start))
-  have htest : PolyFueled
-      (subc.comp ((Nat.Partrec.Code.succ.comp Nat.Partrec.Code.right).pair
-        (Nat.Partrec.Code.const start)))
-      (fun z => z.unpair.2 + 1 - start) := by
-    apply PolyFueled.of_eq htestRaw
-    intro z
-    simp only [Nat.unpair_pair]
-  refine BigSpliceStream.of_eq (BigSpliceStream.ifZero hzero hf htest) ?_
-  intro z
-  by_cases hs : start ≤ z.unpair.2
-  · rw [if_neg (by omega), AffineCombination.gateOccupancy, if_pos hs]
-  · rw [if_pos (by omega), AffineCombination.gateOccupancy, if_neg hs]
-
-/-- Machine-metered mirror of `BigSpliceStream.gateFeature`. -/
+/-- The launch gate at the machine-metered stream class. -/
 lemma MachineSpliceStream.gateFeature {f : ℕ → EF}
     (hf : MachineSpliceStream (fun i => (f i).serialize)) (start : ℕ) :
     MachineSpliceStream (fun i => (gateFeature start f i).serialize) := by
@@ -586,7 +519,7 @@ lemma MachineSpliceStream.gateFeature {f : ℕ → EF}
   · rw [if_neg (by omega), AffineCombination.gateFeature, if_pos hs]
   · rw [if_pos (by omega), AffineCombination.gateFeature, if_neg hs]
 
-/-- Machine-metered mirror of `BigSpliceStream.gateOccupancy`. -/
+/-- The two-index launch gate at the machine-metered stream class. -/
 lemma MachineSpliceStream.gateOccupancy {f : ℕ → ℕ → EF}
     (hf : MachineSpliceStream (fun z => (f z.unpair.2 z.unpair.1).serialize)) (start : ℕ) :
     MachineSpliceStream (fun z =>
@@ -822,19 +755,6 @@ lemma gradualOccupancy_decreasing (As : ℕ → AffineCombination) (V : History)
     · have hni : n + 1 ≤ i := by omega
       simp [gradualOccupancy, Nat.sub_eq_zero_of_le hni,
         Nat.sub_eq_zero_of_le (Nat.le_of_lt (by omega : n < i))]
-
-/-- Every component that eventually receives a full sell signal has vanishing occupancy
-from some day on. -/
-lemma gradualOccupancy_eventually_zero (As : ℕ → AffineCombination) (V : History)
-    (high δ : ℚ)
-    (hfull : ∀ i, ∃ t,
-      (sellIndF ((As i).priceFeature (i + t + 1)) high δ).denote V = 1) :
-    ∀ i, ∃ N, ∀ n, N ≤ n → (gradualOccupancy As high δ i n).denote V = 0 := by
-  intro i
-  obtain ⟨t, ht⟩ := hfull i
-  refine ⟨i + t + 1, fun n hn => ?_⟩
-  exact (As i).gradualRemaining_zero_mono V i high δ
-    ((As i).gradualRemaining_eq_zero_of_full_signal V i high δ t ht) (n - i) (by omega)
 
 /-! ### The component trader and its family -/
 
@@ -1456,23 +1376,7 @@ lemma PolySequence.noPreemptiveUnderpricing_of_boundedMagnitude
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     NoPreemptiveUnderpricing
       (fun n => (As n).price V n) (affineFutureHigh As V) := by
-  obtain ⟨B, hB⟩ := hmag
-  obtain ⟨C, hC⟩ := exists_rat_gt (max B 0)
-  have hC0 : 0 < (C : ℝ) := lt_of_le_of_lt (le_max_right B 0) hC
-  let q : ℚ := 1 / C
-  have hq0 : 0 < (q : ℝ) := by
-    dsimp only [q]
-    rw [Rat.cast_div, Rat.cast_one]
-    exact one_div_pos.mpr hC0
-  have hscaledMag : ∀ i,
-      ((As i).scale (.const q)).magnitude V ≤ 1 := by
-    intro i
-    rw [scale_magnitude, EF.denote_const, abs_of_pos hq0]
-    have hi : (As i).magnitude V < (C : ℝ) :=
-      (hB i).trans_lt ((le_max_left B 0).trans_lt hC)
-    have hdiv : (As i).magnitude V / (C : ℝ) ≤ 1 :=
-      (div_le_one hC0).mpr (le_of_lt hi)
-    simpa [q, div_eq_mul_inv, mul_comm] using hdiv
+  obtain ⟨q, hq0, hscaledMag⟩ := AffineCombination.exists_rat_unitScale hmag
   have hscaled := (h.scaleRat q).noPreemptiveUnderpricing V DP
     hscaledMag hworld
   intro a b hab hfuture hcurrent
@@ -1590,243 +1494,6 @@ theorem BoundedCombinationSequence.affpolymax
   have hP : ∀ n φ, 0 ≤ V n φ ∧ V n φ ≤ 1 :=
     fun n φ => IsLogicalInductor.price_mem_Icc (P := V) (DP := DP) n φ
   exact h.poly.affpolymax V DP (h.boundedPrices hP) h.magnitudeBounded hworld
-
-/-! ## The component's economics and its ROI -/
-
-/-- Once fully liquidated, the component's net worth is world-independent and bounded by
-the entry weight times the guaranteed price spread. -/
-lemma gradualTrader_netWorth_lower_of_full_signal (A : AffineCombination) (entry : EF)
-    (V : History) (v : PCWorld) (buyDay : ℕ) (high δ : ℚ)
-    (hentry : entry.rank ≤ buyDay) (hconst : A.const.rank ≤ buyDay)
-    (hterms : ∀ p ∈ A.terms, p.1.rank ≤ buyDay)
-    (hentry0 : 0 ≤ entry.denote V) (hδ : 0 < (δ : ℝ)) (t : ℕ)
-    (hfull : (sellIndF (A.priceFeature (buyDay + t + 1)) high δ).denote V = 1) :
-    entry.denote V * ((high : ℝ) - δ - A.price V buyDay) ≤
-      (A.gradualTrader entry buyDay high δ hentry hconst hterms).netWorth V v
-        (buyDay + t + 1) := by
-  rw [show buyDay + t + 1 = buyDay + (t + 1) by omega]
-  rw [A.gradualTrader_netWorth entry V v buyDay high δ hentry hconst hterms (t + 1)]
-  rw [A.gradualRemaining_eq_zero_of_full_signal V buyDay high δ t hfull]
-  have hp := A.gradualSaleProceeds_lower_of_full_signal V buyDay high δ hδ t hfull
-  nlinarith
-
-lemma gradualSellFraction_eq_zero_of_remaining_zero (A : AffineCombination) (V : History)
-    (buyDay : ℕ) (high δ : ℚ) {t : ℕ}
-    (hz : (A.gradualRemaining buyDay high δ t).denote V = 0) :
-    (A.gradualSellFraction buyDay high δ t).denote V = 0 := by
-  rw [gradualSellFraction_denote, hz, zero_mul]
-
-lemma gradualTrader_magnitude_buyDay (A : AffineCombination) (entry : EF)
-    (V : History) (buyDay : ℕ) (high δ : ℚ)
-    (hentry : entry.rank ≤ buyDay) (hconst : A.const.rank ≤ buyDay)
-    (hterms : ∀ p ∈ A.terms, p.1.rank ≤ buyDay) (hentry0 : 0 ≤ entry.denote V) :
-    ((A.gradualTrader entry buyDay high δ hentry hconst hterms).strat buyDay).magnitude V =
-      entry.denote V * A.magnitude V := by
-  rw [gradualTrader_strat_buyDay, AffineCombination.buy_magnitude, scale_magnitude,
-    abs_of_nonneg hentry0]
-
-lemma gradualTrader_magnitude_future (A : AffineCombination) (entry : EF)
-    (V : History) (buyDay t : ℕ) (high δ : ℚ)
-    (hentry : entry.rank ≤ buyDay) (hconst : A.const.rank ≤ buyDay)
-    (hterms : ∀ p ∈ A.terms, p.1.rank ≤ buyDay) (hentry0 : 0 ≤ entry.denote V) :
-    ((A.gradualTrader entry buyDay high δ hentry hconst hterms).strat
-      (buyDay + t + 1)).magnitude V =
-      entry.denote V * (A.gradualSellFraction buyDay high δ t).denote V *
-        A.magnitude V := by
-  have hne : buyDay + t + 1 ≠ buyDay := by omega
-  have hlt : buyDay < buyDay + t + 1 := by omega
-  simp only [gradualTrader, hne, hlt, ↓reduceDIte]
-  have ht : buyDay + t + 1 - buyDay - 1 = t := by omega
-  simp only [ht]
-  rw [AffineCombination.buy_magnitude, scale_magnitude]
-  simp only [EF.denote_mul, EF.denote_const, Pi.mul_apply]
-  push_cast
-  have hf0 : 0 ≤ (A.gradualSellFraction buyDay high δ t).denote V :=
-    A.gradualSellFraction_nonneg V buyDay high δ t
-  rw [abs_of_nonpos]
-  · ring
-  · nlinarith [mul_nonneg hentry0 hf0]
-
-lemma gradualTrader_partial_magnitude (A : AffineCombination) (entry : EF)
-    (V : History) (buyDay : ℕ) (high δ : ℚ)
-    (hentry : entry.rank ≤ buyDay) (hconst : A.const.rank ≤ buyDay)
-    (hterms : ∀ p ∈ A.terms, p.1.rank ≤ buyDay) (hentry0 : 0 ≤ entry.denote V) : ∀ t,
-    ∑ i ∈ Finset.range (buyDay + t + 1),
-        ((A.gradualTrader entry buyDay high δ hentry hconst hterms).strat i).magnitude V =
-      entry.denote V * A.magnitude V *
-        (1 + ∑ j ∈ Finset.range t,
-          (A.gradualSellFraction buyDay high δ j).denote V) := by
-  intro t
-  induction t with
-  | zero =>
-      rw [add_zero]
-      rw [Finset.sum_eq_single buyDay]
-      · rw [A.gradualTrader_magnitude_buyDay entry V buyDay high δ hentry hconst hterms
-          hentry0]
-        simp
-      · intro i hi hne
-        have hil : i < buyDay := by
-          simp only [Finset.mem_range] at hi
-          omega
-        rw [A.gradualTrader_strat_before entry buyDay i high δ hentry hconst hterms hil]
-        simp [emptyStrategy, Strategy.magnitude]
-      · intro hnot
-        simp at hnot
-  | succ t ih =>
-      rw [show buyDay + (t + 1) + 1 = (buyDay + t + 1) + 1 by omega]
-      rw [Finset.sum_range_succ, ih]
-      rw [A.gradualTrader_magnitude_future entry V buyDay t high δ hentry hconst hterms
-        hentry0]
-      rw [Finset.sum_range_succ]
-      ring
-
-lemma gradualTrader_summable_of_full_signal (A : AffineCombination) (entry : EF)
-    (V : History) (buyDay : ℕ) (high δ : ℚ)
-    (hentry : entry.rank ≤ buyDay) (hconst : A.const.rank ≤ buyDay)
-    (hterms : ∀ p ∈ A.terms, p.1.rank ≤ buyDay) (hentry0 : 0 ≤ entry.denote V)
-    (t : ℕ) (hfull :
-      (sellIndF (A.priceFeature (buyDay + t + 1)) high δ).denote V = 1) :
-    Summable (fun n =>
-      ((A.gradualTrader entry buyDay high δ hentry hconst hterms).strat n).magnitude V) := by
-  apply summable_of_finite_support
-  refine (Set.finite_Iic (buyDay + t + 1)).subset ?_
-  intro n hn
-  simp only [Function.mem_support, ne_eq] at hn
-  simp only [Set.mem_Iic]
-  by_contra hnot
-  have hnclose : buyDay + t + 1 < n := by omega
-  let s := n - buyDay - 1
-  have hday : n = buyDay + s + 1 := by dsimp only [s]; omega
-  have hts : t + 1 ≤ s := by dsimp only [s]; omega
-  have hzero := A.gradualRemaining_eq_zero_of_full_signal V buyDay high δ t hfull
-  have hzero' := A.gradualRemaining_zero_mono V buyDay high δ hzero s hts
-  have hfzero := A.gradualSellFraction_eq_zero_of_remaining_zero V buyDay high δ hzero'
-  rw [hday, A.gradualTrader_magnitude_future entry V buyDay s high δ hentry hconst
-    hterms hentry0, hfzero, mul_zero, zero_mul] at hn
-  exact hn rfl
-
-/-- A fully liquidated gradual component has the same exact `2 · entry · |A|` magnitude as
-the finite round-trip kernel. -/
-lemma gradualTrader_magnitude_of_full_signal (A : AffineCombination) (entry : EF)
-    (V : History) (buyDay : ℕ) (high δ : ℚ)
-    (hentry : entry.rank ≤ buyDay) (hconst : A.const.rank ≤ buyDay)
-    (hterms : ∀ p ∈ A.terms, p.1.rank ≤ buyDay) (hentry0 : 0 ≤ entry.denote V)
-    (t : ℕ) (hfull :
-      (sellIndF (A.priceFeature (buyDay + t + 1)) high δ).denote V = 1) :
-    (A.gradualTrader entry buyDay high δ hentry hconst hterms).magnitude V =
-      2 * entry.denote V * A.magnitude V := by
-  rw [Trader.magnitude]
-  rw [tsum_eq_sum (s := Finset.range (buyDay + t + 2))]
-  · rw [show buyDay + t + 2 = buyDay + (t + 1) + 1 by omega]
-    rw [A.gradualTrader_partial_magnitude entry V buyDay high δ hentry hconst hterms
-      hentry0 (t + 1)]
-    have hzero := A.gradualRemaining_eq_zero_of_full_signal V buyDay high δ t hfull
-    have hsum := A.sum_gradualSellFraction V buyDay high δ (t + 1)
-    rw [hzero, sub_zero] at hsum
-    rw [hsum]
-    ring
-  · intro n hn
-    rw [Finset.mem_range, not_lt] at hn
-    let s := n - buyDay - 1
-    have hday : n = buyDay + s + 1 := by dsimp only [s]; omega
-    have hts : t + 1 ≤ s := by dsimp only [s]; omega
-    have hzero := A.gradualRemaining_eq_zero_of_full_signal V buyDay high δ t hfull
-    have hzero' := A.gradualRemaining_zero_mono V buyDay high δ hzero s hts
-    have hfzero := A.gradualSellFraction_eq_zero_of_remaining_zero V buyDay high δ hzero'
-    rw [hday, A.gradualTrader_magnitude_future entry V buyDay s high δ hentry hconst
-      hterms hentry0, hfzero, mul_zero, zero_mul]
-
-lemma gradualTrader_netWorth_stable_of_full_signal (A : AffineCombination) (entry : EF)
-    (V : History) (v : PCWorld) (buyDay : ℕ) (high δ : ℚ)
-    (hentry : entry.rank ≤ buyDay) (hconst : A.const.rank ≤ buyDay)
-    (hterms : ∀ p ∈ A.terms, p.1.rank ≤ buyDay) (t : ℕ)
-    (hfull : (sellIndF (A.priceFeature (buyDay + t + 1)) high δ).denote V = 1) :
-    ∀ n, buyDay + t + 1 ≤ n →
-      (A.gradualTrader entry buyDay high δ hentry hconst hterms).netWorth V v n =
-        (A.gradualTrader entry buyDay high δ hentry hconst hterms).netWorth V v
-          (buyDay + t + 1) := by
-  intro n hn
-  induction n, hn using Nat.le_induction with
-  | base => rfl
-  | succ n _ ih =>
-      rw [Trader.netWorth_succ, ih]
-      let s := n - buyDay
-      have hday : n + 1 = buyDay + s + 1 := by dsimp only [s]; omega
-      have hts : t + 1 ≤ s := by dsimp only [s]; omega
-      have hzero := A.gradualRemaining_eq_zero_of_full_signal V buyDay high δ t hfull
-      have hzero' := A.gradualRemaining_zero_mono V buyDay high δ hzero s hts
-      have hfzero := A.gradualSellFraction_eq_zero_of_remaining_zero V buyDay high δ hzero'
-      rw [hday, A.gradualTrader_value_future entry V v.payout buyDay s high δ hentry
-        hconst hterms, hfzero]
-      ring
-
-/-- Semantic ROI theorem for the continuous gradual-sale component. -/
-lemma gradualTrader_hasROI_of_full_signal (A : AffineCombination) (entry : EF)
-    (V : History) (DP : DeductiveProcess) (buyDay : ℕ) (high δ : ℚ)
-    (hentry : entry.rank ≤ buyDay) (hconst : A.const.rank ≤ buyDay)
-    (hterms : ∀ p ∈ A.terms, p.1.rank ≤ buyDay) (hentry0 : 0 ≤ entry.denote V)
-    (hδ : 0 < (δ : ℝ)) (rate : ℝ) (t : ℕ)
-    (hfull : (sellIndF (A.priceFeature (buyDay + t + 1)) high δ).denote V = 1)
-    (hspread : rate * (2 * entry.denote V * A.magnitude V) ≤
-      entry.denote V * ((high : ℝ) - δ - A.price V buyDay)) :
-    HasROI (A.gradualTrader entry buyDay high δ hentry hconst hterms) V DP rate := by
-  constructor
-  · exact A.gradualTrader_summable_of_full_signal entry V buyDay high δ hentry hconst
-      hterms hentry0 t hfull
-  · intro η hη
-    refine ⟨buyDay + t + 1, fun n hn v _ => ?_⟩
-    rw [A.gradualTrader_magnitude_of_full_signal entry V buyDay high δ hentry hconst
-      hterms hentry0 t hfull]
-    rw [A.gradualTrader_netWorth_stable_of_full_signal entry V v buyDay high δ hentry
-      hconst hterms t hfull n hn]
-    have hnet := A.gradualTrader_netWorth_lower_of_full_signal entry V v buyDay high δ
-      hentry hconst hterms hentry0 hδ t hfull
-    have hmag := A.magnitude_nonneg V
-    have htotal : 0 ≤ 2 * entry.denote V * A.magnitude V := by positivity
-    calc
-      (rate - η) * (2 * entry.denote V * A.magnitude V) ≤
-          rate * (2 * entry.denote V * A.magnitude V) := by
-        nlinarith [mul_nonneg (le_of_lt hη) htotal]
-      _ ≤ entry.denote V * ((high : ℝ) - δ - A.price V buyDay) := hspread
-      _ ≤ (A.gradualTrader entry buyDay high δ hentry hconst hterms).netWorth V v
-          (buyDay + t + 1) := hnet
-
-/-- A concrete low-to-high price gap gives positive ROI to the gradual affine component.
-The entry feature is the continuous buy indicator at the opening price, while a later
-price strictly above `high` supplies the full liquidation signal. -/
-lemma gradualTrader_hasROI_of_price_gap (A : AffineCombination) (entry : EF)
-    (V : History) (DP : DeductiveProcess) (buyDay : ℕ) (low high δ : ℚ)
-    (hentry : entry.rank ≤ buyDay) (hconst : A.const.rank ≤ buyDay)
-    (hterms : ∀ p ∈ A.terms, p.1.rank ≤ buyDay)
-    (hentrySignal : entry = buyIndF (A.priceFeature buyDay) low δ)
-    (hmag : A.magnitude V ≤ 1) (hδ : 0 < (δ : ℝ))
-    (hgap : 0 < (high : ℝ) - low - 2 * δ) (t : ℕ)
-    (hfuture : (high : ℝ) < A.price V (buyDay + t + 1)) :
-    HasROI (A.gradualTrader entry buyDay high δ hentry hconst hterms) V DP
-      (((high : ℝ) - low - 2 * δ) / 2) := by
-  subst entry
-  have hentry0 : 0 ≤ (buyIndF (A.priceFeature buyDay) low δ).denote V :=
-    (buyIndF_mem (A.priceFeature buyDay) low δ V).1
-  apply A.gradualTrader_hasROI_of_full_signal
-    (buyIndF (A.priceFeature buyDay) low δ) V DP buyDay high δ hentry hconst hterms
-    hentry0 hδ (((high : ℝ) - low - 2 * δ) / 2) t
-  · apply sellIndF_eq_one hδ
-    rwa [A.priceFeature_denote]
-  · by_cases hz : (buyIndF (A.priceFeature buyDay) low δ).denote V = 0
-    · simp [hz]
-    · have hentryPos : 0 < (buyIndF (A.priceFeature buyDay) low δ).denote V :=
-        lt_of_le_of_ne hentry0 (Ne.symm hz)
-      have hopen := buyIndF_pos_imp hδ hentryPos
-      rw [A.priceFeature_denote] at hopen
-      have hmag0 := A.magnitude_nonneg V
-      have hscaled :
-          ((high : ℝ) - low - 2 * δ) *
-              (buyIndF (A.priceFeature buyDay) low δ).denote V * A.magnitude V ≤
-            ((high : ℝ) - low - 2 * δ) *
-              (buyIndF (A.priceFeature buyDay) low δ).denote V := by
-        exact mul_le_of_le_one_right
-          (mul_nonneg (le_of_lt hgap) (le_of_lt hentryPos)) hmag
-      nlinarith
 
 end AffineCombination
 

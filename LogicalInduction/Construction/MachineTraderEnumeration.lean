@@ -1,6 +1,5 @@
 import LogicalInduction.Construction.ClockedSim
 import LogicalInduction.Construction.Primcodable
-import LogicalInduction.Framework.Emission.Computable
 import LogicalInduction.Framework.Machine.WriteOutMachine
 
 /-!
@@ -227,10 +226,9 @@ lemma UnaryRuler.primrec {f : ℕ → ℕ} (h : UnaryRuler f) : Primrec f := by
 
 /-- **A machine-metered write-out stream is primitive recursive.**  The machine twin of
 `BigTokenStream.primrec`, proved through this file's coverage bridge rather than through a
-general `Complexity.FP ⊆ Primrec`, which is not available.  Every consumer that used to
-read primitive recursiveness off a fuel certificate — `AffineCombination.PolySequence.primrec`,
-`PolyTradeEmulatable.trades_primrec`, `MachineSpliceStream.feature_primrec` — reaches it
-through this lemma once its certificate is machine-metered. -/
+general `Complexity.FP ⊆ Primrec`, which is not available.  `AffineCombination.PolySequence.primrec`,
+`PolyTradeEmulatable.trades_primrec` and `MachineSpliceStream.feature_primrec` all reach
+primitive recursiveness through it. -/
 lemma MachineTokenStream.primrec {t : ℕ → List ℕ} (h : MachineTokenStream t) :
     Primrec t := by
   obtain ⟨F, hF, -, hdec⟩ := h
@@ -265,8 +263,8 @@ lemma MachineDigits.primrec {x : ℕ → ℕ} (h : MachineDigits x) : Primrec x 
   (Primrec.list_headI.comp (MachineTokenStream.primrec h)).of_eq fun _ => rfl
 
 /-- **A machine-metered written-out sentence sequence is primitive recursive.**  The machine
-twin of `BigSentenceCodes.primrec` (`Construction/Primcodable.lean`): the same parse read-off
-(`parseRpnC_prim`, `parseRpnC_eq`) over `MachineTokenStream.primrec` in place of
+twin of `BigSentenceCodes.primrec` (`Construction/Primcodable.lean`): the shared parse
+read-off `sentenceCodes_primrec`, over `MachineTokenStream.primrec` in place of
 `BigTokenStream.primrec`.  Primitive recursion carries no time budget, so reassembling an
 exponentially-named code here is legitimate, exactly as on the fuel side — this is the route
 by which a market quote table keyed by sentence code accepts machine-metered data.
@@ -275,26 +273,16 @@ It lives in this module rather than beside its twin because the machine token st
 `Primrec` certificate is the coverage argument above, and `Construction/Primcodable.lean`
 sits upstream of `Machine/`. -/
 lemma MachineSentenceCodes.primrec {φ : ℕ → Sentence} (h : MachineSentenceCodes φ) :
-    Primrec fun n => Encodable.encode (φ n) := by
-  obtain ⟨s, hs, hp⟩ := h
-  have hsp : Primrec s := MachineTokenStream.primrec hs
-  have hparse : Primrec fun n => parseRpnC (s n).length (s n) :=
-    parseRpnC_prim.comp (Primrec.list_length.comp hsp) hsp
-  have hmap : Primrec fun n =>
-      (parseRpnC (s n).length (s n)).map Prod.fst :=
-    Primrec.option_map hparse (Primrec.fst.comp Primrec.snd).to₂
-  refine ((Primrec.option_getD.comp hmap (Primrec.const 0)).of_eq fun n => ?_)
-  rw [parseRpnC_eq, hp n]
-  rfl
+    Primrec fun n => Encodable.encode (φ n) :=
+  let ⟨_, hs, hp⟩ := h
+  sentenceCodes_primrec (MachineTokenStream.primrec hs) hp
 
 /-- The whole-value naming program extracted from a machine-metered sentence sequence.  The
 machine twin of `BigSentenceCodes.exists_code`; used where a *value* code is genuinely
 required (market quote tables keyed by sentence code, the conditioning compiler's naming
 program), as opposed to metered emission. -/
 lemma MachineSentenceCodes.exists_code {φ : ℕ → Sentence} (h : MachineSentenceCodes φ) :
-    ∃ c : Nat.Partrec.Code, ∀ n, Encodable.encode (φ n) ∈ c.eval n := by
-  obtain ⟨c, hc⟩ := Nat.Partrec.Code.exists_code.mp
-    (Nat.Partrec.of_primrec (Primrec.nat_iff.mp (MachineSentenceCodes.primrec h)))
-  exact ⟨c, fun n => by rw [hc]; exact Part.mem_some _⟩
+    ∃ c : Nat.Partrec.Code, ∀ n, Encodable.encode (φ n) ∈ c.eval n :=
+  exists_sentenceCode (MachineSentenceCodes.primrec h)
 
 end LogicalInduction

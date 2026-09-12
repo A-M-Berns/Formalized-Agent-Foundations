@@ -224,9 +224,6 @@ lemma rcCntW_mem_FP {M C T : List Bool → List Bool}
   have hsucc : (fun z => C z ++ [true]) ∈ FP :=
     appendFn_mem_FP hC (constFn_mem_FP [true])
   have hpred : (fun z => (C z).tail) ∈ FP := tail_mem_FP hC
-  have hdec : ∀ X : List Bool → List Bool, X ∈ FP →
-      (fun z => if (C z).length ≤ 1 then uw 0 else (C z).tail) ∈ FP :=
-    fun _ _ => ifLeLen_mem_FP hC 1 (hu 0) hpred
   refine ifEqLen_mem_FP hM 0
     (ifEqLen_mem_FP hT 0 (hu 1) (ifEqLen_mem_FP hT 6 (hu 1) (hu 0))) ?_
   refine ifEqLen_mem_FP hM 1
@@ -822,12 +819,9 @@ This is also what closes the clamp gap left by the price pass: `condEmitR` draws
 condition block at `min D n`, and on a stream the guard accepts, `min D n = D`. -/
 
 /-- The number of price-day positions whose day token exceeds `n`.  Zero is exactly the
-guard `rpnGuardedConditionTokens` tests.
-
-This is the list-level form of `RpnConditioning.rpnBigDayFlagAt`, which the fuel model
-scans positionally; the two characterizations (`guardMarks_eq_zero_iff` here,
-`rpnBigDayFlagAt_eq_zero_iff` there) land on the same predicate.  A count rather than a
-flag, because the fold's emitter accumulates a word and its length is what the count is. -/
+guard `rpnGuardedConditionTokens` tests, as `guardMarks_eq_zero_iff` records.  A count
+rather than a flag, because the fold's emitter accumulates a word and its length is what
+the count is. -/
 def guardMarks (n : ℕ) : ℕ → List ℕ → ℕ
   | _, [] => 0
   | st, t :: ts =>
@@ -1171,12 +1165,12 @@ lemma countOut_length : ∀ (rs : List (List ℕ)) (cli out : List Bool),
       · rw [if_neg hz, if_neg (by tauto)]; simp
 
 /-- **The count pass is polynomial time.** -/
-lemma countPass_mem_FP {Wf Sf : List Bool → List Bool} (hWf : Wf ∈ FP) (hSf : Sf ∈ FP) :
+lemma countPass_mem_FP {Sf : List Bool → List Bool} (hSf : Sf ∈ FP) :
     (fun z => (runFold condStepR countEmitR condInit []
         (blockSplit (bitsToDigits (Sf z))).1).2) ∈ FP :=
   runFold_mem_FP (STEPr := fun _ => condStepR) (EMITr := fun _ => countEmitR)
     (c := 51) (k := 0) (qQ := Polynomial.C 1)
-    condStepW_mem_FP countEmitW_mem_FP hWf hSf
+    condStepW_mem_FP countEmitW_mem_FP (constFn_mem_FP ([] : List Bool)) hSf
     condStepW_length_le countEmitW_length_le
     (fun W cli cur h => condStepW_eq W cli cur h)
     (fun W cli cur h => countEmitW_eq W cli cur h) condInit []
@@ -1545,13 +1539,13 @@ lemma length_acceptsW (Sf : List Bool → List Bool) (z : List Bool) :
   rw [acceptsW, length_acceptsOf, h1, h2, asPack_acceptInit, asDepthVal_acceptInit,
     rpnAcceptsRuns, ← undigitize_eq_blockSplit]
 
-lemma acceptsW_mem_FP {Wf Sf : List Bool → List Bool} (hWf : Wf ∈ FP) (hSf : Sf ∈ FP) :
+lemma acceptsW_mem_FP {Sf : List Bool → List Bool} (hSf : Sf ∈ FP) :
     acceptsW Sf ∈ FP := by
   have hfold : (fun z => (runFold acceptStepR (fun _ _ => []) acceptInit []
       (blockSplit (bitsToDigits (Sf z))).1).1) ∈ FP :=
     runFold_cli_mem_FP (STEPr := fun _ => acceptStepR) (EMITr := fun _ _ _ => [])
       (c := 55) (k := 0) (qQ := Polynomial.C 0)
-      acceptStepW_mem_FP (constFn_mem_FP []) hWf hSf
+      acceptStepW_mem_FP (constFn_mem_FP []) (constFn_mem_FP ([] : List Bool)) hSf
       acceptStepW_length_le (fun W cli tok => by simp)
       (fun W cli cur h => acceptStepW_eq W cli cur h) (fun W cli cur _ => rfl)
       acceptInit []

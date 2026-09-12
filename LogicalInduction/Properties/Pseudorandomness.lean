@@ -70,14 +70,6 @@ The `lic_prandaff_*_of_historicalVerifiers` and `BoundedCombinationSequence.pran
 forms feed `Properties/ExpectationProperties.lean` and the clock-free
 `lic_learning_varied_pseudorandom*` and `lic_learning_pseudorandom_frequency*` endpoints in
 `Construction/Statistics/HistoricalMaturity.lean`.
-**The criterion binder below is `def:lic` at the paper's own quantifier.**  Every result here that consumes an
-exploiting trader takes `[IsLogicalInductor P DP]`, and the trader is certified at `EfficientlyComputable`:
-it is assembled from `AffineCombination.PolySequence`'s machine-metered emission fields
-through `PolySequence.buyBelowTrader_ec` (`Properties/AffineCoherence.lean`), which has no
-fuel-class form: the bridge `BigSpliceStream.toMachine` runs fuel to machine, and no map
-back is proved or claimed.  The
-calibration is stated at `def:ec` in `Framework/Affine.lean`, and the `_unconditional`
-endpoints discharge the criterion through `LIA_is_logical_inductor`.
 
 -/
 
@@ -198,29 +190,6 @@ lemma StrictlyIncreasingDeferral.injective {f : DeferralFunction}
     (h : StrictlyIncreasingDeferral f) : Function.Injective f :=
   StrictMono.injective h
 
-lemma weightedAverage_neg (w x : ℕ → ℝ) {n : ℕ}
-    (hden : prefixSum w n ≠ 0) :
-    weightedAverage w (fun i ↦ -x i) n = -weightedAverage w x n := by
-  have hnum : prefixSum (fun i ↦ w i * -x i) n =
-      -prefixSum (fun i ↦ w i * x i) n := by
-    change (∑ i ∈ Finset.range (n + 1), w i * -x i) =
-      -(∑ i ∈ Finset.range (n + 1), w i * x i)
-    rw [← Finset.sum_neg_distrib]
-    apply Finset.sum_congr rfl
-    intro i _
-    ring
-  rw [weightedAverage_eq_div hden, weightedAverage_eq_div hden, hnum]
-  ring
-
-lemma weightedAverage_const (w : ℕ → ℝ) (c : ℝ) {n : ℕ}
-    (hden : prefixSum w n ≠ 0) :
-    weightedAverage w (fun _ ↦ c) n = c := by
-  rw [weightedAverage_eq_div hden]
-  have hnum : prefixSum (fun i ↦ w i * c) n = prefixSum w n * c := by
-    simp only [prefixSum, Finset.sum_mul]
-  rw [hnum]
-  field_simp
-
 /-- Pseudorandom nonnegativity of a determined stream against every legal patient
 market-generated divergent weighting.  This is the hypothesis of the `≳ₙ 0` branch of
 `thm:prandaff`, factored from the affine syntax whose completed-theory value it describes. -/
@@ -330,7 +299,7 @@ lemma PseudorandomBelow.neg {truth : ℕ → ℝ} {f : DeferralFunction}
   have hbelow := h W hWgen hWdiv hpatient
   intro ε hε
   filter_upwards [hbelow ε hε, hWdiv.eventually_prefixSum_pos] with n hn hden
-  rw [weightedAverage_neg _ _ (ne_of_gt hden)]
+  rw [weightedAverage_neg]
   linarith
 
 /-- Negating the stream turns pseudorandom nonnegativity into nonpositivity. -/
@@ -341,7 +310,7 @@ lemma PseudorandomAbove.neg {truth : ℕ → ℝ} {f : DeferralFunction}
   have habove := h W hWgen hWdiv hpatient
   intro ε hε
   filter_upwards [habove ε hε, hWdiv.eventually_prefixSum_pos] with n hn hden
-  rw [weightedAverage_neg _ _ (ne_of_gt hden)]
+  rw [weightedAverage_neg]
   linarith
 
 /-- Negating the stream exchanges the two branches of two-sided pseudorandomness. -/
@@ -1456,11 +1425,7 @@ lemma feedbackPrefixSum_tendsto_atTop
     (hsupport : WeightingSupportedOnDeferralImage W P f) :
     Tendsto (feedbackPrefixSum (fun k ↦ (W (f k)).denote P)) atTop atTop := by
   let w : ℕ → ℝ := fun n ↦ (W n).denote P
-  have hf : Tendsto f atTop atTop := by
-    apply tendsto_atTop.2
-    intro N
-    filter_upwards [eventually_ge_atTop N] with k hk
-    exact hk.trans (f.lt k).le
+  have hf : Tendsto f atTop atTop := f.tendsto_atTop
   have hall : Tendsto (fun k ↦ prefixSum w (f k)) atTop atTop := by
     exact hWdiv.2.comp hf
   apply tendsto_atTop.2

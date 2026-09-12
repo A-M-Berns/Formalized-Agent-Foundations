@@ -36,14 +36,6 @@ The from-below approximation of the semimeasure and its threshold-emission certi
 (`A`/`emit`) remain explicit caller inputs; the dovetail endpoints below discharge them.  As
 the README records, the input-free semimeasure endpoints hold over the constantly-empty
 process, and the substantive layer is the `_paperDP` family.
-**The criterion binder below is `def:lic` at the paper's own quantifier.**  Every result here that consumes an
-exploiting trader takes `[IsLogicalInductor P DP]`, and the trader is certified at `EfficientlyComputable`:
-it is assembled from `AffineCombination.PolySequence`'s machine-metered emission fields
-through `PolySequence.buyBelowTrader_ec` (`Properties/AffineCoherence.lean`), which has no
-fuel-class form: the bridge `BigSpliceStream.toMachine` runs fuel to machine, and no map
-back is proved or claimed.  The
-calibration is stated at `def:ec` in `Framework/Affine.lean`, and the `_unconditional`
-endpoints discharge the criterion through `LIA_is_logical_inductor`.
 
 -/
 
@@ -108,6 +100,20 @@ theorem lic_domination_dovetailSemimeasure_unconditional :
     (Dovetail.dusApproximationPresentation ordinaryBitPrefixSentences (fun _ ↦ rfl))
     (Dovetail.dusThresholdEmission _ _)
 
+/-- Universality of the dovetail carries a domination bound against `Dovetail.universalMass`
+to one against *any* lower-semicomputable continuous semimeasure, at the constant scaled by
+that semimeasure's own dovetail weight.  Both `thm:dus` endpoints below transfer through
+this one step. -/
+private lemma dominates_transfer {g : List Bool → ℝ} {K : ℝ} (hK : 0 < K)
+    (hbelief : ∀ σ, K * Dovetail.universalMass σ ≤ g σ)
+    (ν : LowerSemicomputableContinuousSemimeasure) :
+    ∃ K' : ℝ, 0 < K' ∧ ∀ σ, K' * ν.mass σ ≤ g σ := by
+  obtain ⟨c, hc, hdom⟩ := Dovetail.universalMass_dominates ν
+  refine ⟨K * c, mul_pos hK hc, fun σ ↦ ?_⟩
+  calc K * c * ν.mass σ = K * (c * ν.mass σ) := by ring
+    _ ≤ K * Dovetail.universalMass σ := mul_le_mul_of_nonneg_left (hdom σ) hK.le
+    _ ≤ _ := hbelief σ
+
 /-- **The paper's actual `thm:dus` conclusion, unconditional on the semimeasure side.**
 Because the dovetail is *universal*, the constructed market's limiting beliefs dominate
 **every** lower-semicomputable continuous semimeasure, with a constant assembled from the
@@ -120,12 +126,7 @@ theorem lic_domination_everyLowerSemicomputable_unconditional
       K * ν.mass σ ≤ limitingBelief (liaHistory emptyBitDeductiveProcess)
         (bitPrefixSentence ordinaryIndependentBitAtoms.atom σ) := by
   obtain ⟨K, hK, hbelief⟩ := lic_domination_dovetailSemimeasure_unconditional
-  obtain ⟨c, hc, hdom⟩ := Dovetail.universalMass_dominates ν
-  refine ⟨K * c, mul_pos hK hc, fun σ ↦ ?_⟩
-  calc K * c * ν.mass σ = K * (c * ν.mass σ) := by ring
-    _ ≤ K * Dovetail.universalMass σ := by
-        exact mul_le_mul_of_nonneg_left (hdom σ) hK.le
-    _ ≤ _ := hbelief σ
+  exact dominates_transfer hK hbelief ν
 
 /-! ## Bit atoms over the paper's own deductive process
 
@@ -181,8 +182,7 @@ lemma paperDP_atomCodes_ne_bitAtomTag [T.Δ₁] {k : ℕ} {φ : Sentence}
   classical
   rw [paperDP, DeductiveProcess.union_stage, Finset.mem_union] at hφ
   rcases hφ with h | h
-  · simp only [theoremDP, theoremStage, Finset.mem_image, Finset.mem_filter,
-      Finset.mem_range] at h
+  · simp only [theoremDP, dovetailProcess_D, mem_dovetailStage] at h
     obtain ⟨e, -, rfl⟩ := h
     exact eventAtom_atomCodes_ne_bitAtomTag e
   · intro a ha hc
@@ -263,8 +263,7 @@ Paper node: `thm:dus` -/
 theorem lic_domination_universalSemimeasure_paperDP
     [T.Δ₁] [𝗣𝗔⁻ ⪯ T] [Entailment.Consistent T]
     {M : LowerSemicomputableContinuousSemimeasure}
-    (A : DUSApproximationPresentation M
-      (bitPrefixSentencesOfIndependentAtoms (paperIndependentBitAtoms T) paperBitPrefixCodes))
+    (A : DUSApproximationPresentation M (paperBitPrefixSentences T))
     (emit : DUSThresholdEmission A) :
     ∃ K : ℝ, 0 < K ∧ ∀ σ,
       K * M.mass σ ≤ limitingBelief (liaHistory (paperDP T)) (bitPrefixSentence paperBitAtom σ) :=
@@ -300,12 +299,7 @@ theorem lic_domination_everyLowerSemicomputable_paperDP
       K * ν.mass σ ≤ limitingBelief (liaHistory (paperDP T))
         (bitPrefixSentence paperBitAtom σ) := by
   obtain ⟨K, hK, hbelief⟩ := lic_domination_dovetailSemimeasure_paperDP T
-  obtain ⟨c, hc, hdom⟩ := Dovetail.universalMass_dominates ν
-  refine ⟨K * c, mul_pos hK hc, fun σ ↦ ?_⟩
-  calc K * c * ν.mass σ = K * (c * ν.mass σ) := by ring
-    _ ≤ K * Dovetail.universalMass σ := by
-        exact mul_le_mul_of_nonneg_left (hdom σ) hK.le
-    _ ≤ _ := hbelief σ
+  exact dominates_transfer hK hbelief ν
 
 end PaperDomination
 

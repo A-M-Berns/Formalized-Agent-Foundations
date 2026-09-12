@@ -36,7 +36,7 @@ maps (`LogicalInduction.lean`, `Framework.lean`, `Construction.lean` and the nin
 `AxiomAudit.lean` publishes, and every constructed inhabitant they are stated over,
 resolves from this import; *Where the endpoints live* below is the address list.  A client
 who wants a narrower import has two graded entry points below this one —
-`LogicalInduction.Framework` (40 modules, the §2–3 vocabulary and the substrate the later
+`LogicalInduction.Framework` (39 modules, the §2–3 vocabulary and the substrate the later
 directories consume) and `LogicalInduction.Properties` (58, §4 over an arbitrary inductor,
 importing no `Construction.*`).  `LogicalInduction` itself (159) is that same mathematics
 reached through the roll-up maps rather than through this file: it adds the maps and drops
@@ -172,6 +172,12 @@ the certificate kit is part of the interface.
   the polynomial verifier is asked for.  `HasROI` (`def:roi`), `PolyTradeEmulatable` and
   `EfficientlyEmulatable` (`def:emulatabletraders`) are the trader-family interfaces those
   statements quantify over.
+* **The budget clause only scales down.**  `eq:budgeter`'s scale factor lies in `(0, 1]`, so
+  a client sizing a budgeted position may rely on it: `lossCap_le_one`,
+  `EF.listMin_denote_le_one` and `budgetScaleFeature_denote_le_one` with
+  `budgetScaleFeature_denote_pos` (`Construction/Budgeter.lean`) are the supported form, and
+  `APITests/LogicalInduction.lean` exercises them at
+  `(budgetScaleFeature DP Tr b Q n).denote P ∈ Set.Ioc (0 : ℝ) 1`.
 
 ## The criterion
 
@@ -332,7 +338,7 @@ certificate and whose `ComputableLUV.valuesAt_ofArithmetic` discharges the world
 obligation; `PresentedLUVSeq` is the threshold-only source interface, built by
 `semanticHandleLUVSeq` with `semanticHandleLUVSeq_machineThresholdCodeSeq` its emission
 certificate and `PresentedLUVSeq.gt_eq` its unfolding equation — and what a *presented* source
-cannot do is `no_nonvacuous_worldValued_presented_of_rpn`, which is why `dd:mesh` exists.
+cannot do is `no_nonvacuous_worldValued_presented_of_machine`, which is why `dd:mesh` exists.
 `PaperLUV` is the paper's literal one-variable arithmetic LUV and `PaperLUVSeq` the sequence
 interface the exact `thm:ccee` route quantifies over, inhabited by `unitFracPaperLUVSeq` at
 `1/(n+1)` and `dyadicPaperLUVSeq` at `2⁻ⁿ`, with `PaperLUVCombination.boundedSequence` and
@@ -481,9 +487,11 @@ bounds and generability.
 Lean makes transitively imported declarations visible; visibility is not a stability
 promise.  The closure is wide because the endpoints are, not because everything in it is
 supported.  Raw `Nat.Partrec.Code` manipulation, the register-machine simulator and its
-compilers (`Framework/Machine/` *except* `WriteOutMachine.lean` — that is,
-`CodeSteps.lean`, `DigitArithFP.lean`, `DigitBits.lean`, `EvalnCompiler.lean`,
-`EvalnRegBound.lean`, `FPFold.lean`, `TokenFold.lean` and `TraderMachine.lean`), token and
+compilers — eight of the thirteen modules of `Framework/Machine/`: `DigitArithFP.lean`,
+`DigitBits.lean`, `EvalnCompiler.lean`, `EvalnRegBound.lean`, `FPFold.lean`,
+`TokenFold.lean`, `TraderMachine.lean` and `Witnesses.lean`, the last of which sits in the
+API cone as the non-vacuity evidence for the machine emission classes rather than as a
+client tool — token and
 bit folds, RPN parsing internals, the freeze and
 conditioning stream compilers, the written-source recognizer and its budgeted day-window
 splice (`Construction/Knowledge/SourceRecognizer.lean`,
@@ -493,14 +501,22 @@ the trader implementations inside the property proofs are implementation, and ma
 or restructured.  This list is authoritative; `LogicalInduction/README.md` points at it
 rather than restating it.
 
-Three modules inside those directories are carved out and **are** interface.
+The other five modules of `Framework/Machine/`, and two modules inside the directories named
+above, are carved out and **are** interface.
 
 `Framework/Machine/WriteOutMachine.lean` is the bridge out of the emission calculus into
-`Complexity.FP`, and the six declarations listed above under *Building an exploiting trader*
-— `PolySegStream.exists_FP_word`, `MachineTokenStream`, `MachineSentenceCodes`,
+`Complexity.FP`: the six declarations listed above under *Building an exploiting trader* —
+`PolySegStream.exists_FP_word`, `MachineTokenStream`, `MachineSentenceCodes`,
 `BigTokenStream.toMachine`, `BigSentenceCodes.toMachine` and `RpnSentenceCodes.toMachine` —
-are declared there.  The simulator and the `evaln` compilers beside it are what the paragraph
-above means.
+are declared there, as are the other machine emission classes `MachineSpliceStream`,
+`MachineDigits`, `MachineMachineCodes` and `MachineRatCodes`.  Its four companions are
+supported on the same terms: `SentenceMachine.lean` is `MachineSentenceCodes`' combinator
+suite; `SpliceMachine.lean` is `MachineSpliceStream`'s, together with the two trader
+capstones `EfficientlyComputable.ofSingleTradeBlocksBig` and `.ofTradeBlocksBig`;
+`Ruler.lean` is `UnaryRuler`, the machine reading of a count, with its closure calculus; and
+`ThresholdMachine.lean` is `LUV.MachineThresholdCodes` / `.MachineThresholdCodeSeq`, the
+threshold hypothesis the §4.8 endpoints take.  The simulator and the `evaln` compilers beside
+them are what the paragraph above means.
 
 `Construction/Primcodable.lean` is supported on the same terms: the concrete `Primcodable`
 instances, the rational-arithmetic certificates and the parser certificates listed above are
@@ -511,7 +527,7 @@ is proved from.
 `Construction/SemanticExtension/Prime.lean` is the exception in that lane: the §4.8
 presented-LUV vocabulary above — `PresentedLUVSeq`,
 `PresentedLUVSeq.gt_eq`, `semanticHandleLUVSeq`, `semanticHandleLUVSeq_machineThresholdCodeSeq`
-and `no_nonvacuous_worldValued_presented_of_rpn` — is declared there.  The other five modules
+and `no_nonvacuous_worldValued_presented_of_machine` — is declared there.  The other five modules
 of that directory (`Quote`, `Product`, `Source`, `LanguageCopy`, `Registry`) are the
 implementation this paragraph means; `Endpoints.lean` is where the endpoint itself lives.
 

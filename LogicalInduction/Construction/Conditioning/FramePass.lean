@@ -71,7 +71,8 @@ the conditioning translation would be a fact about the certification engine rath
 paper claim.  What this module supplies is the shared machinery — the automaton, the
 scalars, the frame legs and the transports over them — which
 `Construction/Conditioning/Transduction.lean` imports and reuses in the machine rendering
-that *is* paper-facing.  Nothing here is inventoried as an endpoint;
+that *is* paper-facing.  The fifteen `thm:scon`-annotated lemmas below are infrastructure
+of that rendering, inventoried in `AxiomAudit.lean` as such rather than as endpoints;
 `LogicalInduction/API.lean` lists this compiler as implementation, not interface.
 
 This module renders the conditioning transducer in the RPN symbol model; the provenance
@@ -82,14 +83,7 @@ namespace LogicalInduction
 
 namespace RpnConditioning
 
-open Nat.Partrec (Code)
-open Nat.Partrec.Code
 open ConditioningCompile
-
--- `Primrec`/`PolyFueled` elaboration over deep product types unfolds `Nat.sqrt`'s
--- well-founded definition during `whnf` (through `Nat.pair`/`unpair`) and loops; making
--- it locally irreducible stops that.
-attribute [local irreducible] Nat.sqrt
 
 /-! ## Budget exactness: symbol-level trade counting
 
@@ -212,6 +206,7 @@ lemma tradeRuns_unRpn_agree : ∀ (N : ℕ) (ts : List ℕ), ts.length ≤ N →
       | [] => exact Or.inl rfl
       | t :: rest =>
           simp only [List.length_cons] at hts
+          -- Chunk: a price tag `0` with its sentence block and day token.
           by_cases ht0 : t = 0
           · subst ht0
             cases hp : parseRpn rest.length rest with
@@ -266,7 +261,8 @@ lemma tradeRuns_unRpn_agree : ∀ (N : ℕ) (ts : List ℕ), ts.length ≤ N →
                       rw [show (0 :: Encodable.encode φ :: d :: unRpn r2) =
                         [0, Encodable.encode φ, d] ++ unRpn r2 from rfl]
                       exact hU.cons_chunk hchunk
-          · by_cases ht6 : t = 6
+          · -- Chunk: a trade tag `6` with its sentence block.
+            by_cases ht6 : t = 6
             · subst ht6
               cases hp : parseRpn rest.length rest with
               | none =>
@@ -339,7 +335,7 @@ lemma tradeRuns_unRpn_agree : ∀ (N : ℕ) (ts : List ℕ), ts.length ≤ N →
                     · refine Or.inr ?_
                       rw [show (t :: c :: unRpn r) = [t, c] ++ unRpn r from rfl]
                       exact hU.cons_chunk hchunk
-              · push_neg at ht1
+              · push Not at ht1
                 have hrest : rest.length ≤ N := by omega
                 have hcount : rpnTradeRuns (rcPack 0 0 0) (t :: rest) =
                     rpnTradeRuns (rcPack 0 0 0) rest := by
@@ -544,6 +540,7 @@ lemma depthMode_unRpn_agree : ∀ (N : ℕ) (ts : List ℕ), ts.length ≤ N →
       | [] => exact Or.inl ⟨fun d => rfl, by rw [List.foldl_nil, rcMode_pack, unRpn_nil]; rfl⟩
       | t :: rest =>
           simp only [List.length_cons] at hts
+          -- Chunk: a price tag `0` with its sentence block and day token.
           by_cases ht0 : t = 0
           · subst ht0
             cases hp : parseRpn rest.length rest with
@@ -618,7 +615,8 @@ lemma depthMode_unRpn_agree : ∀ (N : ℕ) (ts : List ℕ), ts.length ≤ N →
                         show (0 :: Encodable.encode φ :: d0 :: unRpn r2) =
                           [0, Encodable.encode φ, d0] ++ unRpn r2 from rfl]
                       exact hU.cons_chunk hchunk
-          · by_cases ht6 : t = 6
+          · -- Chunk: a trade tag `6` with its sentence block.
+            by_cases ht6 : t = 6
             · subst ht6
               cases hp : parseRpn rest.length rest with
               | none =>
@@ -730,7 +728,7 @@ lemma depthMode_unRpn_agree : ∀ (N : ℕ) (ts : List ℕ), ts.length ≤ N →
                       rw [hun,
                         show (t :: c :: unRpn r) = [t, c] ++ unRpn r from rfl]
                       exact hU.cons_chunk hchunk
-              · push_neg at ht1
+              · push Not at ht1
                 have hrest : rest.length ≤ N := by omega
                 have hstep := rpnCondStep_base_other t ht0 ht1.1 ht6 ht1.2
                 have hstate : List.foldl rpnCondStep (rcPack 0 0 0) (t :: rest) =
@@ -1246,6 +1244,7 @@ lemma unRpn_split : ∀ (N : ℕ) (A : List ℕ), A.length ≤ N →
       | [] => exact Or.inl (fun rest => rfl)
       | t :: rest =>
           simp only [List.length_cons] at hA
+          -- Chunk: a price tag `0` with its sentence block and day token.
           by_cases ht0 : t = 0
           · subst ht0
             cases hp : parseRpn rest.length rest with
@@ -1326,7 +1325,7 @@ lemma unRpn_split : ∀ (N : ℕ) (A : List ℕ), A.length ≤ N →
                         hunL Y, hun0]
                     · rw [hun0]; exact unreadable_price_poison
                 · exfalso
-                  push_neg at hex
+                  push Not at hex
                   have hmods : ∀ i, i ≤ rest.length →
                       rcMode (List.foldl rpnCondStep (rcPack 1 1 0)
                         (rest.take i)) ≠ 2 := fun i hi => hex i hi
@@ -1335,7 +1334,8 @@ lemma unRpn_split : ∀ (N : ℕ) (A : List ℕ), A.length ≤ N →
                   rw [List.foldl_cons, rpnCondStep_base_price] at hbase
                   rw [hbase, rcMode_pack] at hend
                   omega
-          · by_cases ht6 : t = 6
+          · -- Chunk: a trade tag `6` with its sentence block.
+            by_cases ht6 : t = 6
             · subst ht6
               cases hp : parseRpn rest.length rest with
               | some pr =>
@@ -1405,7 +1405,7 @@ lemma unRpn_split : ∀ (N : ℕ) (A : List ℕ), A.length ≤ N →
                           hunL Y, hun0]
                       · rw [hun0]; exact unreadable_trade_poison
                   · exfalso
-                    push_neg at hex
+                    push Not at hex
                     have hmods : ∀ i, i ≤ rest.length →
                         rcMode (List.foldl rpnCondStep (rcPack 4 1 0)
                           (rest.take i)) ≠ 0 := fun i hi => hex i hi
@@ -1453,7 +1453,7 @@ lemma unRpn_split : ∀ (N : ℕ) (A : List ℕ), A.length ≤ N →
                           show (t :: c :: unRpn r) = [t, c] ++ unRpn r from rfl]
                         exact hU.cons_chunk (by
                           rcases ht1 with rfl | rfl <;> simp [freezeMode4Step])
-              · push_neg at ht1
+              · push Not at ht1
                 have hrest : rest.length ≤ N := by omega
                 have hstep := rpnCondStep_base_other t ht0 ht1.1 ht6 ht1.2
                 have hbaseR : List.foldl rpnCondStep (rcPack 0 0 0) rest =
@@ -1665,7 +1665,422 @@ lemma rcMode_step_of_price_run {st t : ℕ}
   rw [rcMode_step_eq]
   exact rcModeF_price_ne h
 
-/-! ### The frame-pass master commutation -/
+/-! ### The frame-pass master commutation
+
+The commutation is proved by one induction that peels a *chunk* — a price tag with its
+sentence block and day, a trade tag with its block, a payload tag with its code, or a lone
+copied token — off the source and appeals to the induction hypothesis on the remainder
+through `UnRpnContractsTo.frameAgree_chunk` and `FrameContract.cons_chunk`.  The cases that
+do *not* reach the induction hypothesis are the leaves below: the empty stream, a price
+block that runs out before its day, and an unparsable price or trade run, where both sides
+poison.  They are stated separately so the induction itself reads as the chunk peeling it
+is. -/
+
+/-- The joint claim the frame-pass chunk induction carries on each stream: unconditional
+agreement with the token model, and — under the base-mode invariant the acceptance gate
+tests — the stronger prefix form. -/
+private abbrev FrameJoint (second : Bool) (blkψ : List ℕ) (ψn : Sentence) (ε : ℚ)
+    (day bc ibc : ℕ) (ts : List ℕ) : Prop :=
+  FrameAgree (unRpn (rpnFrameOutput second blkψ ε day bc ibc ts))
+      (conditioningFrameTokenOutput second (Encodable.encode ψn) day ε bc ibc
+        (unRpn ts)) ∧
+    (List.foldl rpnCondStep (rcPack 0 0 0) ts = rcPack 0 0 0 →
+      FrameContract (rpnFrameOutput second blkψ ε day bc ibc ts)
+        (conditioningFrameTokenOutput second (Encodable.encode ψn) day ε bc ibc
+          (unRpn ts)))
+
+/-- Leaf: the empty stream.  Both sides emit nothing. -/
+private lemma frameJoint_nil (second : Bool) (blkψ : List ℕ) (ψn : Sentence) (ε : ℚ)
+    (day bc ibc : ℕ) : FrameJoint second blkψ ψn ε day bc ibc [] := by
+  have hA : rpnFrameOutput second blkψ ε day bc ibc [] = [] := by
+    simp [rpnFrameOutput, rpnFrameRun]
+  have hB : conditioningFrameTokenOutput second (Encodable.encode ψn) day ε bc
+      ibc (unRpn []) = [] := by
+    simp [conditioningFrameTokenOutput, conditioningFrameTokenRun, unRpn_nil]
+  exact ⟨Or.inl (by rw [hA, hB, unRpn_nil]),
+    fun _ => Or.inl (by rw [hA, hB]; exact UnRpnContractsTo.nil)⟩
+
+/-- Leaf: a price tag and a complete sentence block, with no day token after it.  The
+rewrite copies the stream, and the base-mode hypothesis is unsatisfiable because the run
+stops in the price-day slot. -/
+private lemma frameJoint_price_complete (second : Bool) (blkψ : List ℕ) (ψn : Sentence)
+    (ε : ℚ) (day bc ibc : ℕ) {rest : List ℕ} {φ : Sentence}
+    (hblk : parseRpn rest.length rest = some (φ, [])) :
+    FrameJoint second blkψ ψn ε day bc ibc (0 :: rest) := by
+  obtain ⟨hwalk, hinv⟩ := foldl_rpnCondStep_price_block hblk
+  have hcopyBlk := rpnFrameRun_copy_of_modes second blkψ ε day bc ibc
+    (rcPack 1 1 0) [] rest (fun k hk => by
+      have := hinv k hk; omega)
+  have hrun : rpnFrameRun second blkψ ε day bc ibc
+      (rcPack 0 0 0, []) (0 :: rest) =
+    ((rcPack 2 0 rest.length,
+      rpnCondBufFold (rcPack 1 1 0) [] rest), 0 :: rest) := by
+    rw [rpnFrameRun_cons, rpnCondStep_base_price, rpnCondBuf_base,
+      hcopyBlk, hwalk]
+    simp [rpnFrameEmitAt]
+  have hout : rpnFrameOutput second blkψ ε day bc ibc
+      (0 :: rest) = 0 :: rest := by
+    rw [rpnFrameOutput, hrun]
+    simp
+  have hun : unRpn (0 :: rest) = [0, Encodable.encode φ] := by
+    rw [unRpn, List.length_cons, unRpnTokens_cons, if_pos rfl,
+      hblk]
+  refine ⟨?_, fun hbase => ?_⟩
+  · rw [hout, hun, conditioningFrameTokenOutput_price_pair]
+    exact Or.inl rfl
+  · exfalso
+    rw [List.foldl_cons, rpnCondStep_base_price, hwalk] at hbase
+    have := congrArg rcMode hbase
+    simp at this
+
+/-- Leaf: a price tag whose run never parses.  Either the run reaches the price-day slot,
+in which case it poisons every extension, or it never leaves the run, in which case the
+rewrite copies the stream; both sides are unreadable either way. -/
+private lemma frameJoint_price_unparsable (second : Bool) (blkψ : List ℕ) (ψn : Sentence)
+    (ε : ℚ) (day bc ibc : ℕ) {rest : List ℕ}
+    (hp : parseRpn rest.length rest = none) :
+    FrameJoint second blkψ ψn ε day bc ibc (0 :: rest) := by
+  have hun0 : unRpn (0 :: rest) = [0, 0] := by
+    rw [unRpn, List.length_cons, unRpnTokens_cons, if_pos rfl, hp]
+  have htokPoison : Unreadable (conditioningFrameTokenOutput second
+      (Encodable.encode ψn) day ε bc ibc (unRpn (0 :: rest))) := by
+    rw [hun0, conditioningFrameTokenOutput_price_pair]
+    exact unreadable_price_poison
+  by_cases hex : ∃ k, k < rest.length ∧
+      rcMode (List.foldl rpnCondStep (rcPack 1 1 0)
+        (rest.take k)) = 2
+  · classical
+    obtain ⟨hk₀lt, hk₀mode⟩ := Nat.find_spec hex
+    set k₀ := Nat.find hex with hk₀def
+    have hfirst : ∀ i < k₀,
+        rcMode (List.foldl rpnCondStep (rcPack 1 1 0)
+          (rest.take i)) ≠ 2 := fun i hi hmode =>
+      Nat.find_min hex hi ⟨by omega, hmode⟩
+    obtain ⟨hk₀pos, hW, hinside⟩ := priceWalk_first_exit rest k₀
+      (le_of_lt hk₀lt) hfirst hk₀mode
+    have htakelen : (rest.take k₀).length = k₀ := by
+      rw [List.length_take]; omega
+    have hconv := parse_of_priceRunWalk k₀ (rest.take k₀)
+      (le_of_eq htakelen) 0 0
+      (by rw [if_pos rfl, htakelen]; simpa using hW)
+      (by
+        intro k hk
+        rw [htakelen] at hk
+        rw [List.take_take, min_eq_left (le_of_lt hk)]
+        exact ⟨(hinside k hk).1, (hinside k hk).2.1⟩)
+    rcases hconv with ⟨φu, hφu⟩ | hpoison
+    · exfalso
+      rw [← List.take_append_drop k₀ rest] at hp
+      rw [parseRpn_block_head hφu (rest.drop k₀) (by
+        simp only [List.length_append]; omega)] at hp
+      simp at hp
+    · have hucopy := rpnFrameRun_copy_of_modes second blkψ ε day bc ibc
+        (rcPack 1 1 0) [] (rest.take k₀) (by
+          intro k hk
+          rw [htakelen] at hk
+          rw [List.take_take, min_eq_left (le_of_lt hk)]
+          have := (hinside k hk).1
+          omega)
+      have hrun2 : (rpnFrameRun second blkψ ε day bc ibc
+          (rcPack 0 0 0, []) (0 :: rest)).2 =
+        0 :: (rest.take k₀ ++
+          (rpnFrameRun second blkψ ε day bc ibc
+            (List.foldl rpnCondStep (rcPack 1 1 0) (rest.take k₀),
+             rpnCondBufFold (rcPack 1 1 0) [] (rest.take k₀))
+            (rest.drop k₀)).2) := by
+        conv_lhs =>
+          rw [show rest = rest.take k₀ ++ rest.drop k₀ from
+            (List.take_append_drop k₀ rest).symm]
+        rw [rpnFrameRun_cons, rpnCondStep_base_price, rpnCondBuf_base,
+          rpnFrameRun_append]
+        simp [hucopy, rpnFrameEmitAt]
+      have hunL : ∀ Y, unRpn (0 :: (rest.take k₀ ++ Y)) =
+          [0, 0] := fun Y => by
+        rw [unRpn, List.length_cons, unRpnTokens_cons, if_pos rfl,
+          hpoison _ _]
+      have hall : ∀ r, unRpn (rpnFrameOutput second blkψ ε day bc ibc
+          (0 :: rest) ++ r) = [0, 0] := by
+        intro r
+        rw [rpnFrameOutput, hrun2]
+        simpa using hunL _
+      have hcontract := FrameContract.of_poison hall htokPoison
+      exact ⟨hcontract.frameAgree, fun _ => hcontract⟩
+  · have hmodes : ∀ k < rest.length,
+        rcMode (List.foldl rpnCondStep (rcPack 1 1 0)
+          (rest.take k)) ≠ 0 ∧
+        rcMode (List.foldl rpnCondStep (rcPack 1 1 0)
+          (rest.take k)) ≠ 4 ∧
+        rcMode (List.foldl rpnCondStep (rcPack 1 1 0)
+          (rest.take k)) ≠ 7 ∧
+        rcMode (List.foldl rpnCondStep (rcPack 1 1 0)
+          (rest.take k)) ≠ 9 := by
+      intro k hk
+      have hmods : ∀ i, i ≤ k →
+          rcMode (List.foldl rpnCondStep (rcPack 1 1 0)
+            (rest.take i)) ≠ 2 := fun i hi hmode =>
+        hex ⟨i, by omega, hmode⟩
+      have := priceWalk_inside rest k (by omega) hmods
+      omega
+    have hcopy := rpnFrameRun_copy_of_modes second blkψ ε day bc ibc
+      (rcPack 1 1 0) [] rest hmodes
+    have hmodeEnd :
+        rcMode (List.foldl rpnCondStep (rcPack 1 1 0) rest) ≠ 0 ∧
+        rcMode (List.foldl rpnCondStep (rcPack 1 1 0) rest) ≠ 4 ∧
+        rcMode (List.foldl rpnCondStep (rcPack 1 1 0) rest) ≠ 7 ∧
+        rcMode (List.foldl rpnCondStep (rcPack 1 1 0) rest) ≠ 9 := by
+      rcases List.eq_nil_or_concat' rest with hnil | ⟨v, x, hvx⟩
+      · rw [hnil]; simp
+      · have hlen : rest.length = v.length + 1 := by
+          rw [hvx]; simp
+        have hmods : ∀ i, i ≤ v.length →
+            rcMode (List.foldl rpnCondStep (rcPack 1 1 0)
+              (rest.take i)) ≠ 2 := fun i hi hmode =>
+          hex ⟨i, by omega, hmode⟩
+        have hv : rest.take v.length = v := by
+          rw [hvx, List.take_append_of_le_length le_rfl,
+            List.take_length]
+        have hmid := (priceWalk_inside rest v.length
+          (by omega) hmods).1
+        rw [hv] at hmid
+        have hstepv : List.foldl rpnCondStep (rcPack 1 1 0) rest =
+            rpnCondStep (List.foldl rpnCondStep (rcPack 1 1 0) v)
+              x := by
+          rw [hvx, List.foldl_append]; rfl
+        rw [hstepv]
+        have hnext := rcMode_step_of_price_run (t := x) hmid
+        omega
+    have hout : rpnFrameOutput second blkψ ε day bc ibc (0 :: rest) =
+        0 :: rest := by
+      rw [rpnFrameOutput, rpnFrameRun_cons, rpnCondStep_base_price,
+        rpnCondBuf_base, hcopy]
+      simp [rpnFrameEmitAt, hmodeEnd.2.1, hmodeEnd.2.2.1,
+        hmodeEnd.2.2.2]
+    refine ⟨?_, fun hbase => ?_⟩
+    · rw [hout, hun0, conditioningFrameTokenOutput_price_pair]
+      exact Or.inl rfl
+    · exfalso
+      rw [List.foldl_cons, rpnCondStep_base_price] at hbase
+      have := congrArg rcMode hbase
+      simp only [rcMode_pack] at this
+      omega
+
+/-- Leaf: a trade tag whose run never parses.  The same two shapes as the price leaf, with
+the trade run's own exit condition. -/
+private lemma frameJoint_trade_unparsable (second : Bool) (blkψ : List ℕ) (ψn : Sentence)
+    (ε : ℚ) (day bc ibc : ℕ) {rest : List ℕ}
+    (hp : parseRpn rest.length rest = none) :
+    FrameJoint second blkψ ψn ε day bc ibc (6 :: rest) := by
+  have hun0 : unRpn (6 :: rest) = [6, 0] := by
+    rw [unRpn, List.length_cons, unRpnTokens_cons,
+      if_neg (by norm_num), if_pos rfl, hp]
+  have htokenPoison := unreadable_conditioningFrameTokenOutput_poison
+    second ψn day ε bc ibc
+  by_cases hex : ∃ k, k ≤ rest.length ∧
+      rcMode (List.foldl rpnCondStep (rcPack 4 1 0)
+        (rest.take k)) = 0
+  · classical
+    obtain ⟨hk₀le, hk₀mode⟩ := Nat.find_spec hex
+    set k₀ := Nat.find hex with hk₀def
+    have hfirst : ∀ i < k₀,
+        rcMode (List.foldl rpnCondStep (rcPack 4 1 0)
+          (rest.take i)) ≠ 0 := fun i hi hmode =>
+      Nat.find_min hex hi ⟨by omega, hmode⟩
+    obtain ⟨hk₀pos, hW, hinside⟩ := tradeWalk_first_exit rest k₀
+      hk₀le hfirst hk₀mode
+    have htakelen : (rest.take k₀).length = k₀ := by
+      rw [List.length_take]; omega
+    have hconv := parse_of_tradeRunWalk k₀ (rest.take k₀)
+      (le_of_eq htakelen) 0 0
+      (by rw [if_pos rfl]; exact hW)
+      (by
+        intro k hk
+        rw [htakelen] at hk
+        rw [List.take_take, min_eq_left (le_of_lt hk)]
+        exact ⟨(hinside k hk).1, (hinside k hk).2.1⟩)
+    rcases hconv with ⟨φu, hφu⟩ | hpoison
+    · exfalso
+      rw [← List.take_append_drop k₀ rest] at hp
+      rw [parseRpn_block_head hφu (rest.drop k₀) (by
+        simp only [List.length_append]; omega)] at hp
+      simp at hp
+    · rcases List.eq_nil_or_concat' (rest.take k₀) with
+        hnil | ⟨u', last, hcat⟩
+      · exfalso
+        rw [hnil] at htakelen
+        simp at htakelen
+        omega
+      have hsilent := rpnFrameRun_silent second blkψ ε day bc ibc
+        (rcPack 4 1 0) [] u' (by
+          intro k hk
+          have hk' : k < k₀ := by
+            have : u'.length + 1 = k₀ := by
+              rw [← htakelen, hcat]; simp
+            omega
+          have hk1' : k + 1 < k₀ := by
+            have : u'.length + 1 = k₀ := by
+              rw [← htakelen, hcat]; simp
+            omega
+          have e1 : rest.take k = (rest.take k₀).take k := by
+            rw [List.take_take, min_eq_left (le_of_lt hk')]
+          have e2 : rest.take (k + 1) = (rest.take k₀).take (k + 1) := by
+            rw [List.take_take, min_eq_left (by omega)]
+          have hu'k : u'.take k = rest.take k := by
+            rw [e1, hcat, List.take_append_of_le_length (le_of_lt hk)]
+          have hu'k1 : u'.take (k + 1) = rest.take (k + 1) := by
+            rw [e2, hcat, List.take_append_of_le_length (by omega)]
+          rw [hu'k, hu'k1]
+          exact ⟨(hinside k hk').1, hfirst (k + 1) hk1'⟩)
+      have hu'eq : u' = rest.take (k₀ - 1) := by
+        have hlen : u'.length + 1 = k₀ := by
+          rw [← htakelen, hcat]; simp
+        rw [show k₀ - 1 = u'.length by omega,
+          show rest.take u'.length =
+              (rest.take k₀).take u'.length by
+            rw [List.take_take, min_eq_left (by omega)],
+          hcat, List.take_append_of_le_length le_rfl,
+          List.take_length]
+      have hstateU' : List.foldl rpnCondStep (rcPack 4 1 0) u' =
+          List.foldl rpnCondStep (rcPack 4 1 0)
+            (rest.take (k₀ - 1)) := by rw [hu'eq]
+      have hmodeU' :
+          rcMode (List.foldl rpnCondStep (rcPack 4 1 0) u') = 4 ∨
+          rcMode (List.foldl rpnCondStep (rcPack 4 1 0) u') = 7 ∨
+          rcMode (List.foldl rpnCondStep (rcPack 4 1 0) u') = 9 := by
+        rw [hstateU']
+        exact (hinside (k₀ - 1) (by omega)).1
+      have hstepLast :
+          rpnCondStep (List.foldl rpnCondStep (rcPack 4 1 0) u')
+            last = List.foldl rpnCondStep (rcPack 4 1 0)
+              (rest.take k₀) := by
+        conv_rhs => rw [hcat]
+        rw [List.foldl_append]
+        rfl
+      have hemitLast : rpnFrameEmitAt second blkψ ε day bc ibc
+          (List.foldl rpnCondStep (rcPack 4 1 0) u') ([] ++ u')
+          last =
+        rpnFrameEmit second blkψ ε day bc ibc (rest.take k₀) := by
+        rw [rpnFrameEmitAt,
+          if_neg (by rcases hmodeU' with h | h | h <;> simp [h]),
+          if_pos hmodeU', hstepLast, if_pos hk₀mode, hcat]
+        simp
+      have hrun2 : (rpnFrameRun second blkψ ε day bc ibc
+          (rcPack 0 0 0, []) (6 :: rest)).2 =
+        rpnFrameEmit second blkψ ε day bc ibc (rest.take k₀) ++
+          (rpnFrameRun second blkψ ε day bc ibc
+            (List.foldl rpnCondStep (rcPack 4 1 0) (rest.take k₀),
+             rpnCondBuf (List.foldl rpnCondStep (rcPack 4 1 0) u')
+               ([] ++ u') last)
+            (rest.drop k₀)).2 := by
+        conv_lhs =>
+          rw [show rest = rest.take k₀ ++ rest.drop k₀ from
+            (List.take_append_drop k₀ rest).symm]
+        rw [rpnFrameRun_cons, rpnFrameEmitAt_base_trade,
+          rpnCondStep_base_trade, rpnCondBuf_base,
+          rpnFrameRun_append]
+        simp only [List.nil_append]
+        rw [hcat, rpnFrameRun_append, hsilent]
+        simp only
+        rw [rpnFrameRun_cons, hemitLast]
+        simp only [rpnFrameRun_nil, List.nil_append,
+          List.append_assoc, hstepLast, hcat]
+      have hall : ∀ r, unRpn (rpnFrameOutput second blkψ ε day bc
+          ibc (6 :: rest) ++ r) = [0, 0] := by
+        intro r
+        rw [rpnFrameOutput, hrun2]
+        simpa using
+          unRpn_rpnFrameEmit_poison second blkψ ε day bc ibc
+            hpoison _
+      have htokPoison : Unreadable (conditioningFrameTokenOutput
+          second (Encodable.encode ψn) day ε bc ibc
+          (unRpn (6 :: rest))) := by
+        rw [hun0]; exact htokenPoison
+      have hcontract := FrameContract.of_poison hall htokPoison
+      exact ⟨hcontract.frameAgree, fun _ => hcontract⟩
+  · push Not at hex
+    have hmodes : ∀ k < rest.length,
+        (rcMode (List.foldl rpnCondStep (rcPack 4 1 0)
+          (rest.take k)) = 4 ∨
+        rcMode (List.foldl rpnCondStep (rcPack 4 1 0)
+          (rest.take k)) = 7 ∨
+        rcMode (List.foldl rpnCondStep (rcPack 4 1 0)
+          (rest.take k)) = 9) ∧
+        rcMode (List.foldl rpnCondStep (rcPack 4 1 0)
+          (rest.take (k + 1))) ≠ 0 := by
+      intro k hk
+      have hmods : ∀ i, i ≤ k →
+          rcMode (List.foldl rpnCondStep (rcPack 4 1 0)
+            (rest.take i)) ≠ 0 := fun i hi =>
+        hex i (by omega)
+      exact ⟨(tradeWalk_inside rest k (by omega) hmods).1,
+        hex (k + 1) (by omega)⟩
+    have hsilent := rpnFrameRun_silent second blkψ ε day bc ibc
+      (rcPack 4 1 0) [] rest hmodes
+    have hmodeEnd :
+        rcMode (List.foldl rpnCondStep (rcPack 4 1 0) rest) = 4 ∨
+        rcMode (List.foldl rpnCondStep (rcPack 4 1 0) rest) = 7 ∨
+        rcMode (List.foldl rpnCondStep (rcPack 4 1 0) rest) = 9 := by
+      have hmods : ∀ i, i ≤ rest.length →
+          rcMode (List.foldl rpnCondStep (rcPack 4 1 0)
+            (rest.take i)) ≠ 0 := fun i hi => hex i hi
+      have := (tradeWalk_inside rest rest.length le_rfl hmods).1
+      rwa [List.take_length] at this
+    have hout : rpnFrameOutput second blkψ ε day bc ibc
+        (6 :: rest) = [6] := by
+      rw [rpnFrameOutput, rpnFrameRun_cons,
+        rpnFrameEmitAt_base_trade, rpnCondStep_base_trade,
+        rpnCondBuf_base, hsilent]
+      rcases hmodeEnd with h | h <;> simp [h]
+    refine ⟨?_, fun hbase => ?_⟩
+    · refine Or.inr ⟨?_, ?_⟩
+      · rw [hout]
+        show Unreadable (unRpn [6])
+        rw [show unRpn [6] = [6, 0] from rfl]
+        exact unreadable_trade_poison
+      · rw [hun0]; exact htokenPoison
+    · exfalso
+      rw [List.foldl_cons, rpnCondStep_base_trade] at hbase
+      have := congrArg rcMode hbase
+      simp only [rcMode_pack] at this
+      omega
+
+/-- Leaf: a bare escape tag with no payload after it. -/
+private lemma frameJoint_escape_bare (second : Bool) (blkψ : List ℕ) (ψn : Sentence)
+    (ε : ℚ) (day bc ibc : ℕ) :
+    FrameJoint second blkψ ψn ε day bc ibc [1] := by
+  have hout : rpnFrameOutput second blkψ ε day bc ibc [1] =
+      [1] := by
+    rw [rpnFrameOutput, rpnFrameRun_cons, rpnCondStep_base_one]
+    simp [rpnFrameEmitAt]
+  refine ⟨?_, fun hbase => ?_⟩
+  · rw [hout, show unRpn [1] = [1] from rfl,
+      conditioningFrameTokenOutput_one _ _ _ _ _ _ 1
+        (by norm_num)]
+    exact Or.inl rfl
+  · exfalso
+    rw [List.foldl_cons, rpnCondStep_base_one,
+      List.foldl_nil] at hbase
+    have := congrArg rcMode hbase
+    simp at this
+
+/-- Leaf: a bare structured-payload tag with no payload after it. -/
+private lemma frameJoint_structured_bare (second : Bool) (blkψ : List ℕ) (ψn : Sentence)
+    (ε : ℚ) (day bc ibc : ℕ) :
+    FrameJoint second blkψ ψn ε day bc ibc [7] := by
+  have hout : rpnFrameOutput second blkψ ε day bc ibc [7] =
+      [7] := by
+    rw [rpnFrameOutput, rpnFrameRun_cons,
+      rpnCondStep_base_seven]
+    simp [rpnFrameEmitAt]
+  refine ⟨?_, fun hbase => ?_⟩
+  · rw [hout, show unRpn [7] = [7] from rfl,
+      conditioningFrameTokenOutput_one _ _ _ _ _ _ 7
+        (by norm_num)]
+    exact Or.inl rfl
+  · exfalso
+    rw [List.foldl_cons, rpnCondStep_base_seven,
+      List.foldl_nil] at hbase
+    have := congrArg rcMode hbase
+    simp at this
 
 /-- **Whole-stream agreement for the frame pass**, in joint form: the unconditional
 `FrameAgree` statement and — under the source's base-mode invariant, which is what the
@@ -1689,26 +2104,14 @@ lemma frameJoint_unRpn_rpnFrameOutput (second : Bool) (blkψ : List ℕ)
   | zero =>
       intro ts hts
       obtain rfl : ts = [] := List.eq_nil_of_length_eq_zero (by omega)
-      have hA : rpnFrameOutput second blkψ ε day bc ibc [] = [] := by
-        simp [rpnFrameOutput, rpnFrameRun]
-      have hB : conditioningFrameTokenOutput second (Encodable.encode ψn) day ε bc
-          ibc (unRpn []) = [] := by
-        simp [conditioningFrameTokenOutput, conditioningFrameTokenRun, unRpn_nil]
-      exact ⟨Or.inl (by rw [hA, hB, unRpn_nil]),
-        fun _ => Or.inl (by rw [hA, hB]; exact UnRpnContractsTo.nil)⟩
+      exact frameJoint_nil second blkψ ψn ε day bc ibc
   | succ N ih =>
       intro ts hts
       match ts with
-      | [] =>
-          have hA : rpnFrameOutput second blkψ ε day bc ibc [] = [] := by
-            simp [rpnFrameOutput, rpnFrameRun]
-          have hB : conditioningFrameTokenOutput second (Encodable.encode ψn) day ε
-              bc ibc (unRpn []) = [] := by
-            simp [conditioningFrameTokenOutput, conditioningFrameTokenRun, unRpn_nil]
-          exact ⟨Or.inl (by rw [hA, hB, unRpn_nil]),
-            fun _ => Or.inl (by rw [hA, hB]; exact UnRpnContractsTo.nil)⟩
+      | [] => exact frameJoint_nil second blkψ ψn ε day bc ibc
       | t :: rest =>
           simp only [List.length_cons] at hts
+          -- Chunk: a price tag `0` with its sentence block and day token.
           by_cases ht0 : t = 0
           · subst ht0
             cases hp : parseRpn rest.length rest with
@@ -1723,27 +2126,7 @@ lemma frameJoint_unRpn_rpnFrameOutput (second : Bool) (blkψ : List ℕ)
                 | [] =>
                     rw [List.append_nil] at heq
                     subst heq
-                    have hrun : rpnFrameRun second blkψ ε day bc ibc
-                        (rcPack 0 0 0, []) (0 :: rest) =
-                      ((rcPack 2 0 rest.length,
-                        rpnCondBufFold (rcPack 1 1 0) [] rest), 0 :: rest) := by
-                      rw [rpnFrameRun_cons, rpnCondStep_base_price, rpnCondBuf_base,
-                        hcopyBlk, hwalk]
-                      simp [rpnFrameEmitAt]
-                    have hout : rpnFrameOutput second blkψ ε day bc ibc
-                        (0 :: rest) = 0 :: rest := by
-                      rw [rpnFrameOutput, hrun]
-                      simp
-                    have hun : unRpn (0 :: rest) = [0, Encodable.encode φ] := by
-                      rw [unRpn, List.length_cons, unRpnTokens_cons, if_pos rfl,
-                        hblk]
-                    refine ⟨?_, fun hbase => ?_⟩
-                    · rw [hout, hun, conditioningFrameTokenOutput_price_pair]
-                      exact Or.inl rfl
-                    · exfalso
-                      rw [List.foldl_cons, rpnCondStep_base_price, hwalk] at hbase
-                      have := congrArg rcMode hbase
-                      simp at this
+                    exact frameJoint_price_complete second blkψ ψn ε day bc ibc hblk
                 | d :: r2 =>
                     subst heq
                     have hstD : rpnCondStep (rcPack 2 0 blk.length) d =
@@ -1801,130 +2184,9 @@ lemma frameJoint_unRpn_rpnFrameOutput (second : Bool) (blkψ : List ℕ)
                       rw [hout, htok]
                       exact FrameContract.cons_chunk hC hF ((ih r2 hr2).2 hbaseR)
             | none =>
-                have hun0 : unRpn (0 :: rest) = [0, 0] := by
-                  rw [unRpn, List.length_cons, unRpnTokens_cons, if_pos rfl, hp]
-                have htokPoison : Unreadable (conditioningFrameTokenOutput second
-                    (Encodable.encode ψn) day ε bc ibc (unRpn (0 :: rest))) := by
-                  rw [hun0, conditioningFrameTokenOutput_price_pair]
-                  exact unreadable_price_poison
-                by_cases hex : ∃ k, k < rest.length ∧
-                    rcMode (List.foldl rpnCondStep (rcPack 1 1 0)
-                      (rest.take k)) = 2
-                · classical
-                  obtain ⟨hk₀lt, hk₀mode⟩ := Nat.find_spec hex
-                  set k₀ := Nat.find hex with hk₀def
-                  have hfirst : ∀ i < k₀,
-                      rcMode (List.foldl rpnCondStep (rcPack 1 1 0)
-                        (rest.take i)) ≠ 2 := fun i hi hmode =>
-                    Nat.find_min hex hi ⟨by omega, hmode⟩
-                  obtain ⟨hk₀pos, hW, hinside⟩ := priceWalk_first_exit rest k₀
-                    (le_of_lt hk₀lt) hfirst hk₀mode
-                  have htakelen : (rest.take k₀).length = k₀ := by
-                    rw [List.length_take]; omega
-                  have hconv := parse_of_priceRunWalk k₀ (rest.take k₀)
-                    (le_of_eq htakelen) 0 0
-                    (by rw [if_pos rfl, htakelen]; simpa using hW)
-                    (by
-                      intro k hk
-                      rw [htakelen] at hk
-                      rw [List.take_take, min_eq_left (le_of_lt hk)]
-                      exact ⟨(hinside k hk).1, (hinside k hk).2.1⟩)
-                  rcases hconv with ⟨φu, hφu⟩ | hpoison
-                  · exfalso
-                    rw [← List.take_append_drop k₀ rest] at hp
-                    rw [parseRpn_block_head hφu (rest.drop k₀) (by
-                      simp only [List.length_append]; omega)] at hp
-                    simp at hp
-                  · have hucopy := rpnFrameRun_copy_of_modes second blkψ ε day bc ibc
-                      (rcPack 1 1 0) [] (rest.take k₀) (by
-                        intro k hk
-                        rw [htakelen] at hk
-                        rw [List.take_take, min_eq_left (le_of_lt hk)]
-                        have := (hinside k hk).1
-                        omega)
-                    have hrun2 : (rpnFrameRun second blkψ ε day bc ibc
-                        (rcPack 0 0 0, []) (0 :: rest)).2 =
-                      0 :: (rest.take k₀ ++
-                        (rpnFrameRun second blkψ ε day bc ibc
-                          (List.foldl rpnCondStep (rcPack 1 1 0) (rest.take k₀),
-                           rpnCondBufFold (rcPack 1 1 0) [] (rest.take k₀))
-                          (rest.drop k₀)).2) := by
-                      conv_lhs =>
-                        rw [show rest = rest.take k₀ ++ rest.drop k₀ from
-                          (List.take_append_drop k₀ rest).symm]
-                      rw [rpnFrameRun_cons, rpnCondStep_base_price, rpnCondBuf_base,
-                        rpnFrameRun_append]
-                      simp [hucopy, rpnFrameEmitAt]
-                    have hunL : ∀ Y, unRpn (0 :: (rest.take k₀ ++ Y)) =
-                        [0, 0] := fun Y => by
-                      rw [unRpn, List.length_cons, unRpnTokens_cons, if_pos rfl,
-                        hpoison _ _]
-                    have hall : ∀ r, unRpn (rpnFrameOutput second blkψ ε day bc ibc
-                        (0 :: rest) ++ r) = [0, 0] := by
-                      intro r
-                      rw [rpnFrameOutput, hrun2]
-                      simpa using hunL _
-                    have hcontract := FrameContract.of_poison hall htokPoison
-                    exact ⟨hcontract.frameAgree, fun _ => hcontract⟩
-                · have hmodes : ∀ k < rest.length,
-                      rcMode (List.foldl rpnCondStep (rcPack 1 1 0)
-                        (rest.take k)) ≠ 0 ∧
-                      rcMode (List.foldl rpnCondStep (rcPack 1 1 0)
-                        (rest.take k)) ≠ 4 ∧
-                      rcMode (List.foldl rpnCondStep (rcPack 1 1 0)
-                        (rest.take k)) ≠ 7 ∧
-                      rcMode (List.foldl rpnCondStep (rcPack 1 1 0)
-                        (rest.take k)) ≠ 9 := by
-                    intro k hk
-                    have hmods : ∀ i, i ≤ k →
-                        rcMode (List.foldl rpnCondStep (rcPack 1 1 0)
-                          (rest.take i)) ≠ 2 := fun i hi hmode =>
-                      hex ⟨i, by omega, hmode⟩
-                    have := priceWalk_inside rest k (by omega) hmods
-                    omega
-                  have hcopy := rpnFrameRun_copy_of_modes second blkψ ε day bc ibc
-                    (rcPack 1 1 0) [] rest hmodes
-                  have hmodeEnd :
-                      rcMode (List.foldl rpnCondStep (rcPack 1 1 0) rest) ≠ 0 ∧
-                      rcMode (List.foldl rpnCondStep (rcPack 1 1 0) rest) ≠ 4 ∧
-                      rcMode (List.foldl rpnCondStep (rcPack 1 1 0) rest) ≠ 7 ∧
-                      rcMode (List.foldl rpnCondStep (rcPack 1 1 0) rest) ≠ 9 := by
-                    rcases List.eq_nil_or_concat' rest with hnil | ⟨v, x, hvx⟩
-                    · rw [hnil]; simp
-                    · have hlen : rest.length = v.length + 1 := by
-                        rw [hvx]; simp
-                      have hmods : ∀ i, i ≤ v.length →
-                          rcMode (List.foldl rpnCondStep (rcPack 1 1 0)
-                            (rest.take i)) ≠ 2 := fun i hi hmode =>
-                        hex ⟨i, by omega, hmode⟩
-                      have hv : rest.take v.length = v := by
-                        rw [hvx, List.take_append_of_le_length le_rfl,
-                          List.take_length]
-                      have hmid := (priceWalk_inside rest v.length
-                        (by omega) hmods).1
-                      rw [hv] at hmid
-                      have hstepv : List.foldl rpnCondStep (rcPack 1 1 0) rest =
-                          rpnCondStep (List.foldl rpnCondStep (rcPack 1 1 0) v)
-                            x := by
-                        rw [hvx, List.foldl_append]; rfl
-                      rw [hstepv]
-                      have hnext := rcMode_step_of_price_run (t := x) hmid
-                      omega
-                  have hout : rpnFrameOutput second blkψ ε day bc ibc (0 :: rest) =
-                      0 :: rest := by
-                    rw [rpnFrameOutput, rpnFrameRun_cons, rpnCondStep_base_price,
-                      rpnCondBuf_base, hcopy]
-                    simp [rpnFrameEmitAt, hmodeEnd.2.1, hmodeEnd.2.2.1,
-                      hmodeEnd.2.2.2]
-                  refine ⟨?_, fun hbase => ?_⟩
-                  · rw [hout, hun0, conditioningFrameTokenOutput_price_pair]
-                    exact Or.inl rfl
-                  · exfalso
-                    rw [List.foldl_cons, rpnCondStep_base_price] at hbase
-                    have := congrArg rcMode hbase
-                    simp only [rcMode_pack] at this
-                    omega
-          · by_cases ht6 : t = 6
+                exact frameJoint_price_unparsable second blkψ ψn ε day bc ibc hp
+          · -- Chunk: a trade tag `6` with its sentence block.
+            by_cases ht6 : t = 6
             · subst ht6
               cases hp : parseRpn rest.length rest with
               | some pr =>
@@ -2010,196 +2272,12 @@ lemma frameJoint_unRpn_rpnFrameOutput (second : Bool) (blkψ : List ℕ)
                     rw [hout, htok]
                     exact FrameContract.cons_chunk hC hF ((ih r1 hr1).2 hbaseR)
               | none =>
-                  have hun0 : unRpn (6 :: rest) = [6, 0] := by
-                    rw [unRpn, List.length_cons, unRpnTokens_cons,
-                      if_neg (by norm_num), if_pos rfl, hp]
-                  have htokenPoison := unreadable_conditioningFrameTokenOutput_poison
-                    second ψn day ε bc ibc
-                  by_cases hex : ∃ k, k ≤ rest.length ∧
-                      rcMode (List.foldl rpnCondStep (rcPack 4 1 0)
-                        (rest.take k)) = 0
-                  · classical
-                    obtain ⟨hk₀le, hk₀mode⟩ := Nat.find_spec hex
-                    set k₀ := Nat.find hex with hk₀def
-                    have hfirst : ∀ i < k₀,
-                        rcMode (List.foldl rpnCondStep (rcPack 4 1 0)
-                          (rest.take i)) ≠ 0 := fun i hi hmode =>
-                      Nat.find_min hex hi ⟨by omega, hmode⟩
-                    obtain ⟨hk₀pos, hW, hinside⟩ := tradeWalk_first_exit rest k₀
-                      hk₀le hfirst hk₀mode
-                    have htakelen : (rest.take k₀).length = k₀ := by
-                      rw [List.length_take]; omega
-                    have hconv := parse_of_tradeRunWalk k₀ (rest.take k₀)
-                      (le_of_eq htakelen) 0 0
-                      (by rw [if_pos rfl]; exact hW)
-                      (by
-                        intro k hk
-                        rw [htakelen] at hk
-                        rw [List.take_take, min_eq_left (le_of_lt hk)]
-                        exact ⟨(hinside k hk).1, (hinside k hk).2.1⟩)
-                    rcases hconv with ⟨φu, hφu⟩ | hpoison
-                    · exfalso
-                      rw [← List.take_append_drop k₀ rest] at hp
-                      rw [parseRpn_block_head hφu (rest.drop k₀) (by
-                        simp only [List.length_append]; omega)] at hp
-                      simp at hp
-                    · rcases List.eq_nil_or_concat' (rest.take k₀) with
-                        hnil | ⟨u', last, hcat⟩
-                      · exfalso
-                        rw [hnil] at htakelen
-                        simp at htakelen
-                        omega
-                      have hsilent := rpnFrameRun_silent second blkψ ε day bc ibc
-                        (rcPack 4 1 0) [] u' (by
-                          intro k hk
-                          have hk' : k < k₀ := by
-                            have : u'.length + 1 = k₀ := by
-                              rw [← htakelen, hcat]; simp
-                            omega
-                          have hk1' : k + 1 < k₀ := by
-                            have : u'.length + 1 = k₀ := by
-                              rw [← htakelen, hcat]; simp
-                            omega
-                          have e1 : rest.take k = (rest.take k₀).take k := by
-                            rw [List.take_take, min_eq_left (le_of_lt hk')]
-                          have e2 : rest.take (k + 1) = (rest.take k₀).take (k + 1) := by
-                            rw [List.take_take, min_eq_left (by omega)]
-                          have hu'k : u'.take k = rest.take k := by
-                            rw [e1, hcat, List.take_append_of_le_length (le_of_lt hk)]
-                          have hu'k1 : u'.take (k + 1) = rest.take (k + 1) := by
-                            rw [e2, hcat, List.take_append_of_le_length (by omega)]
-                          rw [hu'k, hu'k1]
-                          exact ⟨(hinside k hk').1, hfirst (k + 1) hk1'⟩)
-                      have hu'eq : u' = rest.take (k₀ - 1) := by
-                        have hlen : u'.length + 1 = k₀ := by
-                          rw [← htakelen, hcat]; simp
-                        rw [show k₀ - 1 = u'.length by omega,
-                          show rest.take u'.length =
-                              (rest.take k₀).take u'.length by
-                            rw [List.take_take, min_eq_left (by omega)],
-                          hcat, List.take_append_of_le_length le_rfl,
-                          List.take_length]
-                      have hstateU' : List.foldl rpnCondStep (rcPack 4 1 0) u' =
-                          List.foldl rpnCondStep (rcPack 4 1 0)
-                            (rest.take (k₀ - 1)) := by rw [hu'eq]
-                      have hmodeU' :
-                          rcMode (List.foldl rpnCondStep (rcPack 4 1 0) u') = 4 ∨
-                          rcMode (List.foldl rpnCondStep (rcPack 4 1 0) u') = 7 ∨
-                          rcMode (List.foldl rpnCondStep (rcPack 4 1 0) u') = 9 := by
-                        rw [hstateU']
-                        exact (hinside (k₀ - 1) (by omega)).1
-                      have hstepLast :
-                          rpnCondStep (List.foldl rpnCondStep (rcPack 4 1 0) u')
-                            last = List.foldl rpnCondStep (rcPack 4 1 0)
-                              (rest.take k₀) := by
-                        conv_rhs => rw [hcat]
-                        rw [List.foldl_append]
-                        rfl
-                      have hemitLast : rpnFrameEmitAt second blkψ ε day bc ibc
-                          (List.foldl rpnCondStep (rcPack 4 1 0) u') ([] ++ u')
-                          last =
-                        rpnFrameEmit second blkψ ε day bc ibc (rest.take k₀) := by
-                        rw [rpnFrameEmitAt,
-                          if_neg (by rcases hmodeU' with h | h | h <;> simp [h]),
-                          if_pos hmodeU', hstepLast, if_pos hk₀mode, hcat]
-                        simp
-                      have hrun2 : (rpnFrameRun second blkψ ε day bc ibc
-                          (rcPack 0 0 0, []) (6 :: rest)).2 =
-                        rpnFrameEmit second blkψ ε day bc ibc (rest.take k₀) ++
-                          (rpnFrameRun second blkψ ε day bc ibc
-                            (List.foldl rpnCondStep (rcPack 4 1 0) (rest.take k₀),
-                             rpnCondBuf (List.foldl rpnCondStep (rcPack 4 1 0) u')
-                               ([] ++ u') last)
-                            (rest.drop k₀)).2 := by
-                        conv_lhs =>
-                          rw [show rest = rest.take k₀ ++ rest.drop k₀ from
-                            (List.take_append_drop k₀ rest).symm]
-                        rw [rpnFrameRun_cons, rpnFrameEmitAt_base_trade,
-                          rpnCondStep_base_trade, rpnCondBuf_base,
-                          rpnFrameRun_append]
-                        simp only [List.nil_append]
-                        rw [hcat, rpnFrameRun_append, hsilent]
-                        simp only
-                        rw [rpnFrameRun_cons, hemitLast]
-                        simp only [rpnFrameRun_nil, List.nil_append,
-                          List.append_assoc, hstepLast, hcat]
-                      have hall : ∀ r, unRpn (rpnFrameOutput second blkψ ε day bc
-                          ibc (6 :: rest) ++ r) = [0, 0] := by
-                        intro r
-                        rw [rpnFrameOutput, hrun2]
-                        simpa using
-                          unRpn_rpnFrameEmit_poison second blkψ ε day bc ibc
-                            hpoison _
-                      have htokPoison : Unreadable (conditioningFrameTokenOutput
-                          second (Encodable.encode ψn) day ε bc ibc
-                          (unRpn (6 :: rest))) := by
-                        rw [hun0]; exact htokenPoison
-                      have hcontract := FrameContract.of_poison hall htokPoison
-                      exact ⟨hcontract.frameAgree, fun _ => hcontract⟩
-                  · push_neg at hex
-                    have hmodes : ∀ k < rest.length,
-                        (rcMode (List.foldl rpnCondStep (rcPack 4 1 0)
-                          (rest.take k)) = 4 ∨
-                        rcMode (List.foldl rpnCondStep (rcPack 4 1 0)
-                          (rest.take k)) = 7 ∨
-                        rcMode (List.foldl rpnCondStep (rcPack 4 1 0)
-                          (rest.take k)) = 9) ∧
-                        rcMode (List.foldl rpnCondStep (rcPack 4 1 0)
-                          (rest.take (k + 1))) ≠ 0 := by
-                      intro k hk
-                      have hmods : ∀ i, i ≤ k →
-                          rcMode (List.foldl rpnCondStep (rcPack 4 1 0)
-                            (rest.take i)) ≠ 0 := fun i hi =>
-                        hex i (by omega)
-                      exact ⟨(tradeWalk_inside rest k (by omega) hmods).1,
-                        hex (k + 1) (by omega)⟩
-                    have hsilent := rpnFrameRun_silent second blkψ ε day bc ibc
-                      (rcPack 4 1 0) [] rest hmodes
-                    have hmodeEnd :
-                        rcMode (List.foldl rpnCondStep (rcPack 4 1 0) rest) = 4 ∨
-                        rcMode (List.foldl rpnCondStep (rcPack 4 1 0) rest) = 7 ∨
-                        rcMode (List.foldl rpnCondStep (rcPack 4 1 0) rest) = 9 := by
-                      have hmods : ∀ i, i ≤ rest.length →
-                          rcMode (List.foldl rpnCondStep (rcPack 4 1 0)
-                            (rest.take i)) ≠ 0 := fun i hi => hex i hi
-                      have := (tradeWalk_inside rest rest.length le_rfl hmods).1
-                      rwa [List.take_length] at this
-                    have hout : rpnFrameOutput second blkψ ε day bc ibc
-                        (6 :: rest) = [6] := by
-                      rw [rpnFrameOutput, rpnFrameRun_cons,
-                        rpnFrameEmitAt_base_trade, rpnCondStep_base_trade,
-                        rpnCondBuf_base, hsilent]
-                      rcases hmodeEnd with h | h <;> simp [h]
-                    refine ⟨?_, fun hbase => ?_⟩
-                    · refine Or.inr ⟨?_, ?_⟩
-                      · rw [hout]
-                        show Unreadable (unRpn [6])
-                        rw [show unRpn [6] = [6, 0] from rfl]
-                        exact unreadable_trade_poison
-                      · rw [hun0]; exact htokenPoison
-                    · exfalso
-                      rw [List.foldl_cons, rpnCondStep_base_trade] at hbase
-                      have := congrArg rcMode hbase
-                      simp only [rcMode_pack] at this
-                      omega
-            · by_cases ht1 : t = 1
+                  exact frameJoint_trade_unparsable second blkψ ψn ε day bc ibc hp
+            · -- Chunk: an escape tag `1` with its opaque payload code.
+              by_cases ht1 : t = 1
               · subst ht1
                 match rest with
-                | [] =>
-                    have hout : rpnFrameOutput second blkψ ε day bc ibc [1] =
-                        [1] := by
-                      rw [rpnFrameOutput, rpnFrameRun_cons, rpnCondStep_base_one]
-                      simp [rpnFrameEmitAt]
-                    refine ⟨?_, fun hbase => ?_⟩
-                    · rw [hout, show unRpn [1] = [1] from rfl,
-                        conditioningFrameTokenOutput_one _ _ _ _ _ _ 1
-                          (by norm_num)]
-                      exact Or.inl rfl
-                    · exfalso
-                      rw [List.foldl_cons, rpnCondStep_base_one,
-                        List.foldl_nil] at hbase
-                      have := congrArg rcMode hbase
-                      simp at this
+                | [] => exact frameJoint_escape_bare second blkψ ψn ε day bc ibc
                 | c :: rest' =>
                     have hst2 : rpnCondStep (rcPack 3 0 0) c = rcPack 0 0 0 :=
                       rpnCondStep_opaque (Or.inl rfl) 0 0 c
@@ -2245,25 +2323,11 @@ lemma frameJoint_unRpn_rpnFrameOutput (second : Bool) (blkψ : List ℕ)
                         exact hbase
                       rw [hout, htok]
                       exact FrameContract.cons_chunk hC hF ((ih rest' hr).2 hbaseR)
-              · by_cases ht7 : t = 7
+              · -- Chunk: a structured-payload tag `7` with its code.
+                by_cases ht7 : t = 7
                 · subst ht7
                   match rest with
-                  | [] =>
-                      have hout : rpnFrameOutput second blkψ ε day bc ibc [7] =
-                          [7] := by
-                        rw [rpnFrameOutput, rpnFrameRun_cons,
-                          rpnCondStep_base_seven]
-                        simp [rpnFrameEmitAt]
-                      refine ⟨?_, fun hbase => ?_⟩
-                      · rw [hout, show unRpn [7] = [7] from rfl,
-                          conditioningFrameTokenOutput_one _ _ _ _ _ _ 7
-                            (by norm_num)]
-                        exact Or.inl rfl
-                      · exfalso
-                        rw [List.foldl_cons, rpnCondStep_base_seven,
-                          List.foldl_nil] at hbase
-                        have := congrArg rcMode hbase
-                        simp at this
+                  | [] => exact frameJoint_structured_bare second blkψ ψn ε day bc ibc
                   | c :: rest' =>
                       have hst2 : rpnCondStep (rcPack 5 0 0) c = rcPack 0 0 0 :=
                         rpnCondStep_opaque (Or.inr rfl) 0 0 c
@@ -2392,154 +2456,6 @@ lemma strategyOfTokens_unRpn_rpnFrameOutput_trades (second : Bool) (blkψ : List
         (Encodable.encode ψn) day ε bc ibc (unRpn ts))).trades :=
   (frameAgree_unRpn_rpnFrameOutput second blkψ hblkψ ε day bc ibc
     ts).strategyOfTokens_trades_eq n
-
-/-! ### Per-position view of the frame pass
-
-The frame pass drives the price pass's automaton and buffer, so its per-position
-views are literally `rpnCondControlAt` / `rpnCondWindow`; only the emission differs. -/
-
-/-- One source-token segment of the frame rewrite. -/
-def rpnFrameSegment (tf : ℕ → ℕ) (second : Bool) (blkψ : List ℕ) (ε : ℚ)
-    (day bc ibc : ℕ) (z : ℕ) : List ℕ :=
-  rpnFrameEmitAt second blkψ ε day bc ibc
-    (rpnCondControlAt tf z.unpair.1 z.unpair.2)
-    (rpnCondWindow tf z.unpair.1 z.unpair.2) (tf z)
-
-/-- **Range form of the frame rewrite**: over the per-position view of any stream, the
-transducer's final state is the position control, its buffer the position window, and
-its output the concatenation of the per-position segments. -/
-lemma rpnFrameRun_range (tf : ℕ → ℕ) (second : Bool) (blkψ : List ℕ) (ε : ℚ)
-    (day bc ibc : ℕ) (n count : ℕ) :
-    rpnFrameRun second blkψ ε day bc ibc (rcPack 0 0 0, [])
-        ((List.range count).map fun j => tf (Nat.pair n j)) =
-      ((rpnCondControlAt tf n count, rpnCondWindow tf n count),
-        (List.range count).flatMap fun j =>
-          rpnFrameSegment tf second blkψ ε day bc ibc (Nat.pair n j)) := by
-  induction count with
-  | zero => simp [rpnCondControlAt]
-  | succ count ih =>
-      rw [List.range_succ, List.map_append, rpnFrameRun_append, ih]
-      simp only [List.map_cons, List.map_nil,
-        List.flatMap_append, List.flatMap_cons, List.flatMap_nil,
-        List.append_nil]
-      rw [show rpnFrameRun second blkψ ε day bc ibc
-          (rpnCondControlAt tf n count, rpnCondWindow tf n count)
-          [tf (Nat.pair n count)] =
-        ((rpnCondStep (rpnCondControlAt tf n count) (tf (Nat.pair n count)),
-          rpnCondBuf (rpnCondControlAt tf n count) (rpnCondWindow tf n count)
-            (tf (Nat.pair n count))),
-          rpnFrameEmitAt second blkψ ε day bc ibc (rpnCondControlAt tf n count)
-            (rpnCondWindow tf n count) (tf (Nat.pair n count)) ++ []) from rfl]
-      rw [rpnCondBuf_window,
-        show rpnCondStep (rpnCondControlAt tf n count) (tf (Nat.pair n count)) =
-          rpnCondControlAt tf n (count + 1) from rfl]
-      simp only [List.append_nil]
-      refine congrArg₂ Prod.mk rfl (congrArg₂ (· ++ ·) rfl ?_)
-      rw [rpnFrameSegment]
-      simp only [Nat.unpair_pair]
-
-/-- The frame segment through the position control, in dispatch form (the shape the
-poly-fueled assembly consumes: a three-way branch on the control mode, with the
-emission fired at a trade-run exit). -/
-lemma rpnFrameSegment_eq (tf : ℕ → ℕ) (second : Bool) (blkψ : List ℕ) (ε : ℚ)
-    (day bc ibc : ℕ) (n j : ℕ) :
-    rpnFrameSegment tf second blkψ ε day bc ibc (Nat.pair n j) =
-      if rcMode (rpnCondControlAt tf n j) = 0 ∧ tf (Nat.pair n j) = 6 then []
-      else if rcMode (rpnCondControlAt tf n j) = 4 ∨
-          rcMode (rpnCondControlAt tf n j) = 7 ∨
-          rcMode (rpnCondControlAt tf n j) = 9 then
-        (if rcMode (rpnCondControlAt tf n (j + 1)) = 0 then
-          rpnFrameEmit second blkψ ε day bc ibc
-            (rpnCondWindow tf n j ++ [tf (Nat.pair n j)])
-        else [])
-      else [tf (Nat.pair n j)] := by
-  rw [rpnFrameSegment]
-  simp only [Nat.unpair_pair, rpnFrameEmitAt]
-  rfl
-
-/-! ### The frame-pass emission certificate
-
-Same assembly shape as the price pass's own emission: a mode dispatch off
-`rpnCondScan`, the window copy by `concatVar` over `rcLen + 1` (the emission splices
-`buf ++ [t]`, i.e. positions `j - rcLen .. j`), condition blocks and budget codes
-constant per day, and the end-of-stream flush of a withheld trade tag. -/
-
-/-- The (sentence-free) gated core of the frame-leg emission. -/
-def rpnFrameCore (second : Bool) (bc ibc : ℕ) : List ℕ :=
-  if second then
-    rawMulTokens (rawConstTokens (Encodable.encode (-1 : ℚ)))
-      (rawMulTokens (rawMinTokens [7, 1] (rawMulTokens [7, 1] (rpnFrameGate bc ibc)))
-        [7, 0])
-  else rawMinTokens [7, 1] (rawMulTokens [7, 1] (rpnFrameGate bc ibc))
-
-/-- The all-poly stretch of the frame-leg emission after its last sentence block. -/
-def rpnFrameTailMid (second : Bool) (day bc ibc : ℕ) : List ℕ :=
-  [day, 3, 5, 3, 3] ++ rpnFrameCore second bc ibc ++ [8, 8, 6]
-
-lemma rpnFrameEmit_split (second : Bool) (blk : List ℕ) (ε : ℚ) (day bc ibc : ℕ)
-    (buf : List ℕ) :
-    rpnFrameEmit second blk ε day bc ibc buf =
-      [0, 3] ++ buf ++ blk ++
-        [day, 1, Encodable.encode (1 / ε : ℚ), 1, Encodable.encode (1 / ε : ℚ), 0] ++
-        blk ++ rpnFrameTailMid second day bc ibc ++
-        (if second then blk else [3] ++ buf ++ blk) := by
-  cases second <;>
-    simp [rpnFrameEmit, rpnFrameRatioSym, rpnFramePriceSym, rpnFrameTailMid,
-      rpnFrameCore, rawMulTokens, rawLowerSafeRecipTokens, rawConstTokens,
-      rawSafeRecipTokens]
-
-lemma digitize_rpnFrameEmit (second : Bool) (blk : List ℕ) (ε : ℚ)
-    (day bc ibc : ℕ) (buf : List ℕ) :
-    digitize (rpnFrameEmit second blk ε day bc ibc buf) =
-      digitize [0, 3] ++ digitize buf ++ digitize blk ++
-        digitize [day, 1, Encodable.encode (1 / ε : ℚ), 1,
-          Encodable.encode (1 / ε : ℚ), 0] ++
-        digitize blk ++ digitize (rpnFrameTailMid second day bc ibc) ++
-        (if second then digitize blk
-          else digitize [3] ++ digitize buf ++ digitize blk) := by
-  rw [rpnFrameEmit_split]
-  cases second <;>
-    simp only [Bool.false_eq_true, if_false, if_true, digitize_append,
-      List.append_assoc]
-
-/-- The digitized position window extended by the exit token is a run of copied digit
-blocks (positions `j - rcLen .. j`). -/
-lemma digitize_rpnCondWindow_snoc (tf : ℕ → ℕ) (n j : ℕ) :
-    digitize (rpnCondWindow tf n j ++ [tf (Nat.pair n j)]) =
-      (List.range (rcLen (rpnCondControlAt tf n j) + 1)).flatMap fun i =>
-        tokenBlock (tf (Nat.pair n (j - rcLen (rpnCondControlAt tf n j) + i))) := by
-  have hle : rcLen (rpnCondControlAt tf n j) ≤ j := rcLen_controlAt_le tf n j
-  rw [digitize_append, List.range_succ, List.flatMap_append]
-  refine congrArg₂ (· ++ ·) ?_ ?_
-  · rw [rpnCondWindow, digitize, List.flatMap_map]
-  · simp only [List.flatMap_cons, List.flatMap_nil, List.append_nil,
-      digitize_singleton]
-    rw [Nat.sub_add_cancel hle]
-
-/-- The all-poly stretch of the frame-leg emission is a poly token stream. -/
-lemma rpnFrameTailMid_polyTokenStream (second : Bool) {cD cb ci : Code}
-    {dayF bcF ibcF : ℕ → ℕ} (hdayF : PolyFueled cD dayF) (hbcF : PolyFueled cb bcF)
-    (hibcF : PolyFueled ci ibcF) :
-    PolyTokenStream (fun z => rpnFrameTailMid second (dayF z) (bcF z) (ibcF z)) := by
-  have hgate : PolyTokenStream (fun z => rpnFrameGate (bcF z) (ibcF z)) :=
-    PolyTokenStream.rawGate hbcF hibcF
-  have hmin : PolyTokenStream (fun z =>
-      rawMinTokens [7, 1] (rawMulTokens [7, 1] (rpnFrameGate (bcF z) (ibcF z)))) :=
-    PolyTokenStream.rawMin (PolyTokenStream.varTok 1)
-      (PolyTokenStream.rawMul (PolyTokenStream.varTok 1) hgate)
-  have hcore : PolyTokenStream (fun z => rpnFrameCore second (bcF z) (ibcF z)) := by
-    cases second
-    · exact hmin.of_eq fun z => by simp [rpnFrameCore]
-    · exact (PolyTokenStream.rawMul (PolyTokenStream.rawConstQ (-1))
-        (PolyTokenStream.rawMul hmin (PolyTokenStream.varTok 0))).of_eq fun z => by
-          simp [rpnFrameCore]
-  refine (((((PolyTokenStream.polyTok hdayF).append
-    (PolyTokenStream.const 3)).append
-    (((PolyTokenStream.const 5).append (PolyTokenStream.const 3)).append
-      (PolyTokenStream.const 3))).append hcore).append
-    (((PolyTokenStream.const 8).append (PolyTokenStream.const 8)).append
-      (PolyTokenStream.const 6))).of_eq fun z => ?_
-  simp [rpnFrameTailMid]
 
 /-! ### The gated two-leg join
 
@@ -2793,7 +2709,7 @@ lemma strategyOfTokens_rpnGuardedZeroAwareConditionTokens_trades
       le_rfl]
     exact strategyOfTokens_zeroAwareConditionPriceTokenRun_trades zeroDays ψ ε n
       (unRpn ts)
-  · push_neg at hguard
+  · push Not at hguard
     obtain ⟨j, hj, hm, hday⟩ := hguard
     rw [unRpn_nil, strategyOfTokens_nil_trades,
       strategyOfTokens_unRpn_trades_eq_nil_of_rpnBigDay n ts j hj hm hday]
@@ -2904,19 +2820,30 @@ private lemma frameLegs_of_priced_trades (tfP tokP lenP lenT : ℕ → ℕ) (n :
   simp only [List.map_map]
   rfl
 
-/-- **The conditioning transduction is correct on any stream**: whenever a day-`n`
-source token stream decodes to the trader's day-`n` strategy, the transduced stream
-decodes to the conditioned trader's day-`n` strategy.  No efficiency class appears, so
-this is the shared core of every class-preservation endpoint for `thm:scon`.
-Paper node: `thm:scon` -/
-lemma strategyOfTokens_rpnConditionOutput
-    (blocks : ℕ → List ℕ) (ψ : ℕ → Sentence)
-    (hblocks : ∀ d, parseRpn (blocks d).length (blocks d) = some (ψ d, []))
-    (ε : ℚ) (T : Trader) (n : ℕ) (src : List ℕ)
-    (hsrc : strategyOfTokens n (unRpn src) = T.strat n) :
-    strategyOfTokens n (unRpn (rpnConditionOutput blocks ε n src)) =
-      (T.conditionedTranslation ψ ε).strat n := by
-  set ts : List ℕ := rpnGuardedConditionTokens (rpnPriceEmit blocks ε) n src with hts
+/-- The assembly shared by both conditioning transductions: over any price emitter whose
+guarded pass rewrites the source trades by a coefficient map `g`, the gated two-leg join
+decodes to the two `frameLeg` maps of those trades, at the budget the trade count sets.
+The two capstones below differ only in `g` and in the contract they then recognize. -/
+private lemma strategyOfTokens_gatedFrameOutput_trades
+    (emit : List ℕ → ℕ → List ℕ) (g : EF → EF) (blkψ : List ℕ) {ψn : Sentence}
+    (hblkψ : parseRpn blkψ.length blkψ = some (ψn, []))
+    (ε : ℚ) (L : List (EF × Sentence)) (n : ℕ) (src : List ℕ)
+    (hprice : (strategyOfTokens n
+        (unRpn (rpnGuardedConditionTokens emit n src))).trades =
+      L.map fun trade => (g trade.1, trade.2)) :
+    (strategyOfTokens n (unRpn (rpnSafeSeparatedFrameRuns blkψ ε n
+        (frameBudgetCode n (rpnTradeRuns (rcPack 0 0 0)
+          (rpnGuardedConditionTokens emit n src)))
+        (frameInverseBudgetCode n (rpnTradeRuns (rcPack 0 0 0)
+          (rpnGuardedConditionTokens emit n src)))
+        (rpnGuardedConditionTokens emit n src)))).trades =
+      L.map (fun p => frameLeg false ψn ε
+          (Strategy.localConditioningBudget (conditioningBudget n) L.length) n
+          (g p.1, p.2)) ++
+        L.map (fun p => frameLeg true ψn ε
+          (Strategy.localConditioningBudget (conditioningBudget n) L.length) n
+          (g p.1, p.2)) := by
+  set ts : List ℕ := rpnGuardedConditionTokens emit n src with hts
   set tfP : ℕ → ℕ := fun w => ts.getD w.unpair.2 0 with htfP
   set lenP : ℕ → ℕ := fun _ => ts.length with hlenP
   set tokP : ℕ → ℕ := fun w => (unRpn ts).getD w.unpair.2 0 with htokP
@@ -2930,35 +2857,49 @@ lemma strategyOfTokens_rpnConditionOutput
     simp only [Nat.unpair_pair]
     exact (list_eq_rangeMap_getD _).symm
   set q : ℚ := frameBudget n (rpnTradeCountAt tfP n (lenP n)) with hq
-  have hout : rpnConditionOutput blocks ε n src =
-      rpnSafeSeparatedFrameOutput tfP lenP (blocks n) ε n
+  have hout : rpnSafeSeparatedFrameRuns blkψ ε n
+        (frameBudgetCode n (rpnTradeRuns (rcPack 0 0 0) ts))
+        (frameInverseBudgetCode n (rpnTradeRuns (rcPack 0 0 0) ts)) ts =
+      rpnSafeSeparatedFrameOutput tfP lenP blkψ ε n
         (Encodable.encode q) (Encodable.encode q⁻¹) ts := by
-    rw [rpnSafeSeparatedFrameOutput_eq_runs tfP lenP (blocks n) ε n _ _ ts hvts,
-      rpnConditionOutput, ← hts, hq, ← frameBudgetCode_exact,
-      ← frameInverseBudgetCode_exact, rpnTradeCountAt_eq_runs, hvts]
+    rw [rpnSafeSeparatedFrameOutput_eq_runs tfP lenP blkψ ε n _ _ ts hvts, hq,
+      ← frameBudgetCode_exact, ← frameInverseBudgetCode_exact,
+      rpnTradeCountAt_eq_runs, hvts]
   rw [hout]
   have hjoin := strategyOfTokens_unRpn_rpnSafeSeparatedFrameOutput_trades
-    tfP tokP lenP lenT (blocks n) (hblocks n) ε q n ts hvts hvL
-  refine Strategy.ext ?_
+    tfP tokP lenP lenT blkψ hblkψ ε q n ts hvts hvL
   rw [hjoin]
-  have hprice : (strategyOfTokens n (unRpn ts)).trades =
-      (T.strat n).trades.map fun trade =>
-        (trade.1.retainedConditionPrices ψ ε, trade.2) := by
-    rw [hts, strategyOfTokens_rpnGuardedConditionTokens_trades blocks ψ
-      hblocks ε n src, hsrc]
   have hframes := strategyOfTokens_safeSeparatedFrameTokenOutput_trades
-    tokP lenT (ψ n) ε q n (unRpn ts) hvL.symm
+    tokP lenT ψn ε q n (unRpn ts) hvL.symm
   rw [hframes]
-  by_cases hempty : (T.strat n).trades = []
+  by_cases hempty : L = []
   · rw [hprice, hempty]
-    simp [Trader.conditionedTranslation,
-      Strategy.separatedLocallyGatedConditionalContract]
-    exact hempty
-  · rw [hq, frameLegs_of_priced_trades tfP tokP lenP lenT n ts hvts hvL rfl (ψ n) ε
-      (fun e : EF => e.retainedConditionPrices ψ ε) (T.strat n).trades hempty hprice]
-    simp only [frameLeg_retained_eq_locallyGatedFirstLeg,
-      frameLeg_retained_eq_locallyGatedSecondLeg]
-    rfl
+    simp
+  · rw [hq, frameLegs_of_priced_trades tfP tokP lenP lenT n ts hvts hvL rfl ψn ε
+      g L hempty hprice]
+
+/-- **The conditioning transduction is correct on any stream**: whenever a day-`n`
+source token stream decodes to the trader's day-`n` strategy, the transduced stream
+decodes to the conditioned trader's day-`n` strategy.  No efficiency class appears, so
+this is the shared core of every class-preservation endpoint for `thm:scon`.
+Paper node: `thm:scon` -/
+lemma strategyOfTokens_rpnConditionOutput
+    (blocks : ℕ → List ℕ) (ψ : ℕ → Sentence)
+    (hblocks : ∀ d, parseRpn (blocks d).length (blocks d) = some (ψ d, []))
+    (ε : ℚ) (T : Trader) (n : ℕ) (src : List ℕ)
+    (hsrc : strategyOfTokens n (unRpn src) = T.strat n) :
+    strategyOfTokens n (unRpn (rpnConditionOutput blocks ε n src)) =
+      (T.conditionedTranslation ψ ε).strat n := by
+  refine Strategy.ext ?_
+  rw [rpnConditionOutput,
+    strategyOfTokens_gatedFrameOutput_trades (rpnPriceEmit blocks ε)
+      (fun e : EF => e.retainedConditionPrices ψ ε) (blocks n) (hblocks n) ε
+      (T.strat n).trades n src
+      (by rw [strategyOfTokens_rpnGuardedConditionTokens_trades blocks ψ hblocks ε n src,
+        hsrc])]
+  simp only [frameLeg_retained_eq_locallyGatedFirstLeg,
+    frameLeg_retained_eq_locallyGatedSecondLeg]
+  rfl
 
 /-- **The finite-zero conditioning transduction**: the guarded zero-aware price pass
 followed by the gated two-leg frame pass, whose budget is set by the priced stream's own
@@ -2986,58 +2927,16 @@ lemma strategyOfTokens_rpnZeroAwareOutput
     strategyOfTokens n (unRpn (rpnZeroAwareOutput zeroDays blocks ε n src)) =
       (T.strat n).separatedExceptZeroConditionalContract zeroDays ψ ε
         (conditioningBudget n) := by
-  set ts : List ℕ := rpnGuardedConditionTokens (rpnZeroAwareEmit zeroDays blocks ε) n src with hts
-  set tfP : ℕ → ℕ := fun w => ts.getD w.unpair.2 0 with htfP
-  set lenP : ℕ → ℕ := fun _ => ts.length with hlenP
-  set tokP : ℕ → ℕ := fun w => (unRpn ts).getD w.unpair.2 0 with htokP
-  set lenT : ℕ → ℕ := fun _ => (unRpn ts).length with hlenT
-  have hvts : vpre tfP n (lenP n) = ts := by
-    rw [vpre, htfP, hlenP]
-    simp only [Nat.unpair_pair]
-    exact (list_eq_rangeMap_getD _).symm
-  have hvL : vpre tokP n (lenT n) = unRpn ts := by
-    rw [vpre, htokP, hlenT]
-    simp only [Nat.unpair_pair]
-    exact (list_eq_rangeMap_getD _).symm
-  set q : ℚ := frameBudget n (rpnTradeCountAt tfP n (lenP n)) with hq
-  have hout : rpnZeroAwareOutput zeroDays blocks ε n src =
-      rpnSafeSeparatedFrameOutput tfP lenP (blocks n) ε n
-        (Encodable.encode q) (Encodable.encode q⁻¹) ts := by
-    rw [rpnSafeSeparatedFrameOutput_eq_runs tfP lenP (blocks n) ε n _ _ ts hvts,
-      rpnZeroAwareOutput, ← hts, hq, ← frameBudgetCode_exact,
-      ← frameInverseBudgetCode_exact, rpnTradeCountAt_eq_runs, hvts]
-  rw [hout]
-  have hjoin := strategyOfTokens_unRpn_rpnSafeSeparatedFrameOutput_trades
-    tfP tokP lenP lenT (blocks n) (hblocks n) ε q n ts hvts hvL
   refine Strategy.ext ?_
-  rw [hjoin]
-  have hprice : (strategyOfTokens n (unRpn ts)).trades =
-      (T.strat n).trades.map fun trade =>
-        (trade.1.retainedConditionPricesExceptZero zeroDays ψ ε, trade.2) := by
-    rw [hts, strategyOfTokens_rpnGuardedZeroAwareConditionTokens_trades zeroDays blocks ψ
-      hblocks ε n src, hsrc]
-  have hframes := strategyOfTokens_safeSeparatedFrameTokenOutput_trades
-    tokP lenT (ψ n) ε q n (unRpn ts) hvL.symm
-  rw [hframes]
-  by_cases hempty : (T.strat n).trades = []
-  · rw [hprice, hempty]
-    simp [Strategy.separatedExceptZeroConditionalContract]
-    exact hempty
-  · rw [hq, frameLegs_of_priced_trades tfP tokP lenP lenT n ts hvts hvL rfl (ψ n) ε
+  rw [rpnZeroAwareOutput,
+    strategyOfTokens_gatedFrameOutput_trades (rpnZeroAwareEmit zeroDays blocks ε)
       (fun e : EF => e.retainedConditionPricesExceptZero zeroDays ψ ε)
-      (T.strat n).trades hempty hprice]
-    simp only [frameLeg_exceptZero_eq_locallyGatedFirstLeg,
-      frameLeg_exceptZero_eq_locallyGatedSecondLeg]
-    rfl
-
-/-! ## The class-preservation endpoints
-
-The assembly is stated at the level of agreement with the token model, which is what the
-class-agnostic transduction consumes: the guarded price pass rewrites price days
-(`strategyOfTokens_rpnGuardedConditionTokens_trades`); the gated frame join splices the two
-conditional legs (`strategyOfTokens_unRpn_rpnSafeSeparatedFrameOutput_trades`); and the
-budget codes are set by the symbol-level trade-run count, exact against the token model
-(`rpnTradeCountAt_eq_frameTradeCount`). -/
+      (blocks n) (hblocks n) ε (T.strat n).trades n src
+      (by rw [strategyOfTokens_rpnGuardedZeroAwareConditionTokens_trades zeroDays blocks ψ
+        hblocks ε n src, hsrc])]
+  simp only [frameLeg_exceptZero_eq_locallyGatedFirstLeg,
+    frameLeg_exceptZero_eq_locallyGatedSecondLeg]
+  rfl
 
 end RpnConditioning
 end LogicalInduction

@@ -87,6 +87,31 @@ lemma bitsToDigits_digitsToBits : ∀ ds : List ℕ, (∀ d ∈ ds, d < 8) →
       congr 1
       exact bitsToDigits_digitsToBits ds (fun x hx => h x (List.mem_cons_of_mem _ hx))
 
+@[simp] lemma digitsToBits_nil : digitsToBits [] = [] := rfl
+
+@[simp] lemma digitsToBits_cons (d : ℕ) (ds : List ℕ) :
+    digitsToBits (d :: ds) = digitBits d ++ digitsToBits ds := rfl
+
+lemma digitsToBits_append (a b : List ℕ) :
+    digitsToBits (a ++ b) = digitsToBits a ++ digitsToBits b := by
+  simp [digitsToBits, List.flatMap_append]
+
+/-- Writing a concatenated family out three bits per digit distributes over the family. -/
+lemma digitsToBits_flatMap (f : ℕ → List ℕ) : ∀ ts : List ℕ,
+    (ts.flatMap fun t => digitsToBits (f t)) = digitsToBits (ts.flatMap f)
+  | [] => rfl
+  | t :: ts => by
+      rw [List.flatMap_cons, List.flatMap_cons, digitsToBits_append,
+        digitsToBits_flatMap f ts]
+
+@[simp] lemma length_digitsToBits (ds : List ℕ) :
+    (digitsToBits ds).length = 3 * ds.length := by
+  induction ds with
+  | nil => simp [digitsToBits]
+  | cons d ds ih =>
+      rw [digitsToBits_cons, List.length_append, length_digitBits, ih, List.length_cons]
+      omega
+
 /-! ## Clamping at the block terminator -/
 
 /-- `undigitize` reads a digit only through the test `d < 4`, so clamping every digit at

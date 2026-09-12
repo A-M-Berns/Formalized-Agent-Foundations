@@ -120,6 +120,28 @@ jobs:
       - name: Check the LogicalInduction roll-call and hypothesis tallies
         run: python3 scripts/check_li_rollcall.py
 
+      # Blocking: every census the LogicalInduction documents print is recomputed from the
+      # Lean source — the per-class binder tally over the canonical endpoints, the FIELD
+      # METERING TABLE (both directions: no row whose structure, field or class has moved,
+      # and no boundary-structure field at a metered class without a row), the summary
+      # lines above that table, and the module total with the four entry-point import
+      # closures. These numbers are hand-entered into `AxiomAudit.lean`, the coverage
+      # ledger, the README, `API.lean` and `KNOWLEDGE.md`, and hand-entered numbers drift:
+      # one closing audit found five independent count errors in a single pass, in
+      # documents whose whole purpose is to be checkable, because nothing recomputed them.
+      - name: Check the LogicalInduction censuses and module counts
+        run: python3 scripts/check_li_census.py
+
+      # Blocking: the prose class claims. A strength row or a trust-surface reading note
+      # that says an endpoint "carries `BigSentenceCodes`" is a statement about the Lean
+      # source, written by hand in a different file, and it stays green forever after the
+      # binder moves — the largest single defect class the closing audit found. This reads
+      # each label-keyed prose site against the endpoint's elaborated signature and the
+      # fields of every boundary structure it binds, and fails when a metering class is
+      # attributed as a current hypothesis that no such endpoint takes.
+      - name: Check the LogicalInduction prose class claims
+        run: python3 scripts/check_li_class_claims.py
+
       - name: Free runner disk space
         run: |
           sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL

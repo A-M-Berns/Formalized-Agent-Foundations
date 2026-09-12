@@ -244,7 +244,7 @@ def completedAffineValues (DP : DeductiveProcess) (A : AffineCombination)
 lemma completedAffineValues_nonempty (DP : DeductiveProcess) (A : AffineCombination)
     (P : History) (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     (completedAffineValues DP A P).Nonempty := by
-  obtain ⟨v, hv⟩ := exists_consistentWithTheory DP hworld
+  obtain ⟨v, hv⟩ := DP.exists_consistentWithTheory hworld
   exact ⟨A.value P v.payout, v, hv, rfl⟩
 
 namespace AffineCombination
@@ -273,11 +273,8 @@ half of affine coherence. -/
 noncomputable def PolySequence.eventualMember {As : ℕ → AffineCombination}
     (h : PolySequence As) (i : ℕ) : PolySequence (eventualMember As i) := by
   let idx : ℕ → ℕ := fun z => Nat.pair i z.unpair.2
-  have hidx : ∃ c, PolyFueled c idx :=
-    ⟨_, (PolyFueled.const i).pair PolyFueled.right⟩
-  let cidx := Classical.choose hidx
-  have hcidx := Classical.choose_spec hidx
-  let hidxR := UnaryRuler.of_polyFueled hcidx
+  have hidxR : UnaryRuler idx :=
+    UnaryRuler.of_polyFueled ((PolyFueled.const i).pair PolyFueled.right)
   let hconst := h.const_poly.comp (f := fun _ : ℕ => i)
     (UnaryRuler.const i)
   let hconstGated := MachineSpliceStream.gateFeature hconst i

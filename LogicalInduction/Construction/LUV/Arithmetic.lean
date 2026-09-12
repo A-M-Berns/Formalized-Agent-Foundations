@@ -201,7 +201,7 @@ lemma thresholdPred_code_iff (i : ℕ) (r : ℚ) :
       have : (r.num.natAbs : ℚ) * (L.den i : ℚ) < (L.num i : ℚ) * (r.den : ℚ) := by
         rw [hrnum]; nlinarith [h, hden, hden']
       exact_mod_cast this
-  · push_neg at hr
+  · push Not at hr
     simp only [if_neg (not_le.mpr hr)]
     constructor
     · intro _
@@ -272,6 +272,7 @@ lemma thresholdSchema_subst (T : ArithmeticTheory) [RepresentsComputations T] (m
 section Provability
 variable {T : ArithmeticTheory} [𝗥₀ ⪯ T] [RepresentsComputations T]
 
+omit [𝗥₀ ⪯ T] in
 /-- **Provable decidedness (positive).**  A true threshold is provable — directly from the
 paper's representability premise at the decider's value `0`. -/
 lemma threshold_provable (i : ℕ) (r : ℚ) (h : r < L.value i) :

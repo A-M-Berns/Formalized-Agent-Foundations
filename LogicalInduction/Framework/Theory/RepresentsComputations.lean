@@ -239,6 +239,8 @@ lemma reprAllSchema_subst (γ : ArithmeticSemisentence 2) (y z : ℕ) :
     fin_cases i <;> simp
   · simp
 
+/-! ## Occurrence of the argument slot -/
+
 /-- **The representation spec forces the representing formula to mention its argument slot,
 as soon as the represented function is non-constant.**
 
@@ -253,8 +255,6 @@ formula obtained from `RepresentsComputations`, at any two arguments where the r
 function differs; the hypothesis is exactly that non-constancy, and it cannot be dropped —
 for a constant `g` (a horizon that is constantly `0` makes `conRunValue` constant, for
 instance) a `γ` ignoring `#0` really does represent `g` correctly.
-
-/-! ## Occurrence of the argument slot -/
 
 Kind `P` (proved).  Provenance: (a) derived in-project; (b) Foundation citation —
 `Semiformula.rew_eq_of_not_mentions` (`Framework/Theory/SubstOccurrence.lean`). -/
@@ -303,11 +303,6 @@ def reprBodyTerm (γ : ArithmeticSemisentence 2) (y : ℕ) (t : Semiterm.Const �
 def reprAllTerm (γ : ArithmeticSemisentence 2) (y : ℕ) (t : Semiterm.Const ℒₒᵣ) :
     ArithmeticSentence :=
   ∀⁰ (reprBodyTerm γ y t)
-
-/-- The numeral spelling of the claim sentence is the `t = n̄` instance of the closed-term
-spelling. -/
-lemma reprAll_eq_reprAllTerm (γ : ArithmeticSemisentence 2) (y z : ℕ) :
-    reprAll γ y z = reprAllTerm γ y (Semiterm.Operator.numeral ℒₒᵣ z) := rfl
 
 /-- **The family is a fixed schema's closed-term instances.**  The term-argument
 generalization of `reprAllSchema_subst`: whatever closed term names the argument, the claim
@@ -369,12 +364,12 @@ lemma provable_subst_iff_of_val (T : ArithmeticTheory) [𝗣𝗔⁻ ⪯ T]
     haveI : M↓[ℒₒᵣ] ⊧* 𝗣𝗔⁻ := ModelsTheory.of_provably_subtheory M 𝗣𝗔⁻ T inferInstance
     exact (key M).mpr (consequence_iff.mp (Theory.Proof.sound h) M inferInstance)
 
+/-! ## Consistency -/
+
 /-- **The paper's own observation (tex:604): representing computations forces consistency.**
 
 If `T` were inconsistent it would prove every sentence, so the representation `Iff` for the
 constant-`0` function would yield `1 = 0`.
-
-/-! ## Consistency -/
 
 Kind `P` (proved).  Provenance: (a) derived in-project from `RepresentsComputations`. -/
 lemma RepresentsComputations.consistent (T : ArithmeticTheory) [h : RepresentsComputations T] :

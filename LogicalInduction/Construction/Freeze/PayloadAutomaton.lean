@@ -45,9 +45,12 @@ open LogicalInduction
 -- See `notes/lean-gotchas.md`.
 attribute [local irreducible] Nat.sqrt
 
+/-- The numeral parser at its canonical fuel, the list's own length. -/
 def pnat (ts : List ℕ) : Option (ℕ × List ℕ) := parseStructuredNat ts.length ts
-def ptrm (ts : List ℕ) : Option (ℕ × List ℕ) := parseStructuredArithmeticTerm ts.length 0 ts
-def pfml (ts : List ℕ) : Option (ℕ × List ℕ) := parseStructuredArithmeticFormula ts.length 0 ts
+/-- The arithmetic-term parser at its canonical fuel. -/
+def ptrm (ts : List ℕ) : Option (ℕ × List ℕ) := parseStructuredArithmeticTerm ts.length ts
+/-- The arithmetic-formula parser at its canonical fuel. -/
+def pfml (ts : List ℕ) : Option (ℕ × List ℕ) := parseStructuredArithmeticFormula ts.length ts
 
 lemma pnat_fuel {fuel fuel' : ℕ} {ts : List ℕ} (h : ts.length ≤ fuel) (h' : ts.length ≤ fuel') :
     parseStructuredNat fuel ts = parseStructuredNat fuel' ts := by
@@ -64,10 +67,10 @@ lemma pnat_fuel {fuel fuel' : ℕ} {ts : List ℕ} (h : ts.length ≤ fuel) (h' 
           have hle' : ts.length ≤ f' := by simp only [List.length_cons] at h'; omega
           rw [parseStructuredNat, parseStructuredNat, ih hle hle']
 
-lemma ptrm_fuel {fuel fuel' d d' : ℕ} {ts : List ℕ} (h : ts.length ≤ fuel)
+lemma ptrm_fuel {fuel fuel' : ℕ} {ts : List ℕ} (h : ts.length ≤ fuel)
     (h' : ts.length ≤ fuel') :
-    parseStructuredArithmeticTerm fuel d ts = parseStructuredArithmeticTerm fuel' d' ts := by
-  induction fuel generalizing fuel' d d' ts with
+    parseStructuredArithmeticTerm fuel ts = parseStructuredArithmeticTerm fuel' ts := by
+  induction fuel generalizing fuel' ts with
   | zero =>
       obtain rfl : ts = [] := List.eq_nil_of_length_eq_zero (Nat.le_zero.mp h)
       cases fuel' <;> simp [parseStructuredArithmeticTerm]
@@ -95,20 +98,20 @@ lemma ptrm_fuel {fuel fuel' d d' : ℕ} {ts : List ℕ} (h : ts.length ≤ fuel)
           simp only [if_neg h6]
           by_cases h78 : t = 7 ∨ t = 8
           · simp only [if_pos h78]
-            rw [ih (d := 0) (d' := 0) hle hle']
-            rcases hp : parseStructuredArithmeticTerm f' 0 ts with _ | p
+            rw [ih hle hle']
+            rcases hp : parseStructuredArithmeticTerm f' ts with _ | p
             · rfl
             · simp only [Option.bind_some]
               have hsub : p.2.length ≤ ts.length :=
                 (parseStructuredArithmeticTerm_suffix hp).length_le
-              rw [ih (d := 0) (d' := 0) (le_trans hsub hle) (le_trans hsub hle')]
+              rw [ih (le_trans hsub hle) (le_trans hsub hle')]
           simp only [if_neg h78]
 
-lemma pfml_fuel {fuel fuel' d d' : ℕ} {ts : List ℕ} (h : ts.length ≤ fuel)
+lemma pfml_fuel {fuel fuel' : ℕ} {ts : List ℕ} (h : ts.length ≤ fuel)
     (h' : ts.length ≤ fuel') :
-    parseStructuredArithmeticFormula fuel d ts
-      = parseStructuredArithmeticFormula fuel' d' ts := by
-  induction fuel generalizing fuel' d d' ts with
+    parseStructuredArithmeticFormula fuel ts
+      = parseStructuredArithmeticFormula fuel' ts := by
+  induction fuel generalizing fuel' ts with
   | zero =>
       obtain rfl : ts = [] := List.eq_nil_of_length_eq_zero (Nat.le_zero.mp h)
       cases fuel' <;> simp [parseStructuredArithmeticFormula]
@@ -128,64 +131,52 @@ lemma pfml_fuel {fuel fuel' d d' : ℕ} {ts : List ℕ} (h : ts.length ≤ fuel)
           simp only [if_neg h10]
           by_cases hrel : t = 11 ∨ t = 12 ∨ t = 13 ∨ t = 14
           · simp only [if_pos hrel]
-            rw [ptrm_fuel (d := 0) (d' := 0) hle hle']
-            rcases hp : parseStructuredArithmeticTerm f' 0 ts with _ | p
+            rw [ptrm_fuel hle hle']
+            rcases hp : parseStructuredArithmeticTerm f' ts with _ | p
             · rfl
             · simp only [Option.bind_some]
               have hsub : p.2.length ≤ ts.length :=
                 (parseStructuredArithmeticTerm_suffix hp).length_le
-              rw [ptrm_fuel (d := 0) (d' := 0) (le_trans hsub hle) (le_trans hsub hle')]
+              rw [ptrm_fuel (le_trans hsub hle) (le_trans hsub hle')]
           simp only [if_neg hrel]
           by_cases hbin : t = 15 ∨ t = 16
           · simp only [if_pos hbin]
-            rw [ih (d := 0) (d' := 0) hle hle']
-            rcases hp : parseStructuredArithmeticFormula f' 0 ts with _ | p
+            rw [ih hle hle']
+            rcases hp : parseStructuredArithmeticFormula f' ts with _ | p
             · rfl
             · simp only [Option.bind_some]
               have hsub : p.2.length ≤ ts.length :=
                 (parseStructuredArithmeticFormula_suffix hp).length_le
-              rw [ih (d := 0) (d' := 0) (le_trans hsub hle) (le_trans hsub hle')]
+              rw [ih (le_trans hsub hle) (le_trans hsub hle')]
           simp only [if_neg hbin]
           by_cases hq : t = 17 ∨ t = 18
           · simp only [if_pos hq]
-            rw [ih (d := 0) (d' := 0) hle hle']
+            rw [ih hle hle']
           simp only [if_neg hq]
           by_cases h20 : t = 20
           · simp only [if_pos h20]
-            rw [ih (d := 0) (d' := 0) hle hle']
+            rw [ih hle hle']
           simp only [if_neg h20]
           by_cases h21 : t = 21
           · simp only [if_pos h21]
-            rw [ih (d := 0) (d' := 0) hle hle']
-            rcases hp : parseStructuredArithmeticFormula f' 0 ts with _ | p
+            rw [ih hle hle']
+            rcases hp : parseStructuredArithmeticFormula f' ts with _ | p
             · rfl
             · simp only [Option.bind_some]
               have hsub : p.2.length ≤ ts.length :=
                 (parseStructuredArithmeticFormula_suffix hp).length_le
-              rw [ih (d := 0) (d' := 0) (le_trans hsub hle) (le_trans hsub hle')]
+              rw [ih (le_trans hsub hle) (le_trans hsub hle')]
           simp only [if_neg h21]
           by_cases h22 : t = 22
           · simp only [if_pos h22]
-            rw [ih (d := 0) (d' := 0) hle hle']
-            rcases hp : parseStructuredArithmeticFormula f' 0 ts with _ | p
+            rw [ih hle hle']
+            rcases hp : parseStructuredArithmeticFormula f' ts with _ | p
             · rfl
             · simp only [Option.bind_some]
               have hsub : p.2.length ≤ ts.length :=
                 (parseStructuredArithmeticFormula_suffix hp).length_le
-              rw [ih (d := 0) (d' := 0) (le_trans hsub hle) (le_trans hsub hle')]
+              rw [ih (le_trans hsub hle) (le_trans hsub hle')]
           simp only [if_neg h22]
-
-lemma pnat_eq {fuel : ℕ} {ts : List ℕ} (h : ts.length ≤ fuel) :
-    parseStructuredNat fuel ts = pnat ts :=
-  pnat_fuel h le_rfl
-
-lemma ptrm_eq {fuel d : ℕ} {ts : List ℕ} (h : ts.length ≤ fuel) :
-    parseStructuredArithmeticTerm fuel d ts = ptrm ts :=
-  ptrm_fuel h le_rfl
-
-lemma pfml_eq {fuel d : ℕ} {ts : List ℕ} (h : ts.length ≤ fuel) :
-    parseStructuredArithmeticFormula fuel d ts = pfml ts :=
-  pfml_fuel h le_rfl
 
 lemma pnat_nil : pnat [] = none := by simp [pnat, parseStructuredNat]
 lemma ptrm_nil : ptrm [] = none := by simp [ptrm, parseStructuredArithmeticTerm]
@@ -226,12 +217,12 @@ lemma ptrm_cons (t : ℕ) (rest : List ℕ) :
   simp only [if_neg h6]
   by_cases h78 : t = 7 ∨ t = 8
   · simp only [if_pos h78]
-    rcases hp : parseStructuredArithmeticTerm rest.length 0 rest with _ | p
+    rcases hp : parseStructuredArithmeticTerm rest.length rest with _ | p
     · rfl
     · simp only [Option.bind_some]
       have hsub : p.2.length ≤ rest.length :=
         (parseStructuredArithmeticTerm_suffix hp).length_le
-      rw [ptrm_fuel (d := 0) (d' := 0) hsub le_rfl]
+      rw [ptrm_fuel hsub le_rfl]
   simp only [if_neg h78]
 
 lemma pfml_cons (t : ℕ) (rest : List ℕ) :
@@ -265,21 +256,21 @@ lemma pfml_cons (t : ℕ) (rest : List ℕ) :
   simp only [if_neg h10]
   by_cases hrel : t = 11 ∨ t = 12 ∨ t = 13 ∨ t = 14
   · simp only [if_pos hrel]
-    rcases hp : parseStructuredArithmeticTerm rest.length 0 rest with _ | p
+    rcases hp : parseStructuredArithmeticTerm rest.length rest with _ | p
     · rfl
     · simp only [Option.bind_some]
       have hsub : p.2.length ≤ rest.length :=
         (parseStructuredArithmeticTerm_suffix hp).length_le
-      rw [ptrm_fuel (d := 0) (d' := 0) hsub le_rfl]
+      rw [ptrm_fuel hsub le_rfl]
   simp only [if_neg hrel]
   by_cases hbin : t = 15 ∨ t = 16
   · simp only [if_pos hbin]
-    rcases hp : parseStructuredArithmeticFormula rest.length 0 rest with _ | p
+    rcases hp : parseStructuredArithmeticFormula rest.length rest with _ | p
     · rfl
     · simp only [Option.bind_some]
       have hsub : p.2.length ≤ rest.length :=
         (parseStructuredArithmeticFormula_suffix hp).length_le
-      rw [pfml_fuel (d := 0) (d' := 0) hsub le_rfl]
+      rw [pfml_fuel hsub le_rfl]
   simp only [if_neg hbin]
   by_cases hq : t = 17 ∨ t = 18
   · simp only [if_pos hq]
@@ -289,34 +280,22 @@ lemma pfml_cons (t : ℕ) (rest : List ℕ) :
   simp only [if_neg h20]
   by_cases h21 : t = 21
   · simp only [if_pos h21]
-    rcases hp : parseStructuredArithmeticFormula rest.length 0 rest with _ | p
+    rcases hp : parseStructuredArithmeticFormula rest.length rest with _ | p
     · rfl
     · simp only [Option.bind_some]
       have hsub : p.2.length ≤ rest.length :=
         (parseStructuredArithmeticFormula_suffix hp).length_le
-      rw [pfml_fuel (d := 0) (d' := 0) hsub le_rfl]
+      rw [pfml_fuel hsub le_rfl]
   simp only [if_neg h21]
   by_cases h22 : t = 22
   · simp only [if_pos h22]
-    rcases hp : parseStructuredArithmeticFormula rest.length 0 rest with _ | p
+    rcases hp : parseStructuredArithmeticFormula rest.length rest with _ | p
     · rfl
     · simp only [Option.bind_some]
       have hsub : p.2.length ≤ rest.length :=
         (parseStructuredArithmeticFormula_suffix hp).length_le
-      rw [pfml_fuel (d := 0) (d' := 0) hsub le_rfl]
+      rw [pfml_fuel hsub le_rfl]
   simp only [if_neg h22]
-
-lemma pnat_suffix {ts : List ℕ} {n : ℕ} {rest : List ℕ} (h : pnat ts = some (n, rest)) :
-    rest <:+ ts :=
-  parseStructuredNat_suffix h
-
-lemma ptrm_suffix {ts : List ℕ} {c : ℕ} {rest : List ℕ} (h : ptrm ts = some (c, rest)) :
-    rest <:+ ts :=
-  parseStructuredArithmeticTerm_suffix h
-
-lemma pfml_suffix {ts : List ℕ} {c : ℕ} {rest : List ℕ} (h : pfml ts = some (c, rest)) :
-    rest <:+ ts :=
-  parseStructuredArithmeticFormula_suffix h
 
 /-! ## Part 1 — computation lemmas for `negFormulaCode` at each constructor tag -/
 
@@ -398,15 +377,15 @@ lemma WFCode.invol {c : ℕ} (h : WFCode c) : negFormulaCode (negFormulaCode c) 
 
 /-! ## Part 3 — the parser's outputs are well-formed -/
 
-lemma wfCode_of_parseFormula : ∀ {fuel depth : ℕ} {ts : List ℕ} {c : ℕ} {rest : List ℕ},
-    parseStructuredArithmeticFormula fuel depth ts = some (c, rest) → WFCode c := by
+lemma wfCode_of_parseFormula : ∀ {fuel : ℕ} {ts : List ℕ} {c : ℕ} {rest : List ℕ},
+    parseStructuredArithmeticFormula fuel ts = some (c, rest) → WFCode c := by
   intro fuel
   induction fuel with
   | zero =>
-      intro depth ts c rest h
+      intro ts c rest h
       simp [parseStructuredArithmeticFormula] at h
   | succ fuel ih =>
-      intro depth ts c rest h
+      intro ts c rest h
       rcases ts with _ | ⟨t, ts⟩
       · simp [parseStructuredArithmeticFormula] at h
       rw [parseStructuredArithmeticFormula] at h
@@ -422,15 +401,15 @@ lemma wfCode_of_parseFormula : ∀ {fuel depth : ℕ} {ts : List ℕ} {c : ℕ} 
       rw [if_neg h10] at h
       by_cases hrel : t = 11 ∨ t = 12 ∨ t = 13 ∨ t = 14
       · rw [if_pos hrel] at h
-        rcases hp : parseStructuredArithmeticTerm fuel 0 ts with _ | p <;> simp [hp] at h
-        rcases hq : parseStructuredArithmeticTerm fuel 0 p.2 with _ | q <;> simp [hq] at h
+        rcases hp : parseStructuredArithmeticTerm fuel ts with _ | p <;> simp [hp] at h
+        rcases hq : parseStructuredArithmeticTerm fuel p.2 with _ | q <;> simp [hq] at h
         obtain ⟨a, rfl, rfl⟩ := h
         exact wf_arithmeticRelCode _ _ _ _
       rw [if_neg hrel] at h
       by_cases hbin : t = 15 ∨ t = 16
       · rw [if_pos hbin] at h
-        rcases hp : parseStructuredArithmeticFormula fuel 0 ts with _ | p <;> simp [hp] at h
-        rcases hq : parseStructuredArithmeticFormula fuel 0 p.2 with _ | q <;> simp [hq] at h
+        rcases hp : parseStructuredArithmeticFormula fuel ts with _ | p <;> simp [hp] at h
+        rcases hq : parseStructuredArithmeticFormula fuel p.2 with _ | q <;> simp [hq] at h
         obtain ⟨a, rfl, rfl⟩ := h
         split
         · exact WFCode.tag4 (ih hp) (ih hq)
@@ -438,7 +417,7 @@ lemma wfCode_of_parseFormula : ∀ {fuel depth : ℕ} {ts : List ℕ} {c : ℕ} 
       rw [if_neg hbin] at h
       by_cases hquant : t = 17 ∨ t = 18
       · rw [if_pos hquant] at h
-        rcases hp : parseStructuredArithmeticFormula fuel 0 ts with _ | p <;> simp [hp] at h
+        rcases hp : parseStructuredArithmeticFormula fuel ts with _ | p <;> simp [hp] at h
         obtain ⟨rfl, -⟩ := h
         split
         · exact WFCode.tag6 (ih hp)
@@ -446,64 +425,61 @@ lemma wfCode_of_parseFormula : ∀ {fuel depth : ℕ} {ts : List ℕ} {c : ℕ} 
       rw [if_neg hquant] at h
       by_cases h20 : t = 20
       · rw [if_pos h20] at h
-        rcases hp : parseStructuredArithmeticFormula fuel 0 ts with _ | p <;> simp [hp] at h
+        rcases hp : parseStructuredArithmeticFormula fuel ts with _ | p <;> simp [hp] at h
         obtain ⟨rfl, -⟩ := h
         exact (ih hp).neg
       rw [if_neg h20] at h
       by_cases h21 : t = 21
       · rw [if_pos h21] at h
-        rcases hp : parseStructuredArithmeticFormula fuel 0 ts with _ | p <;> simp [hp] at h
-        rcases hq : parseStructuredArithmeticFormula fuel 0 p.2 with _ | q <;> simp [hq] at h
+        rcases hp : parseStructuredArithmeticFormula fuel ts with _ | p <;> simp [hp] at h
+        rcases hq : parseStructuredArithmeticFormula fuel p.2 with _ | q <;> simp [hq] at h
         obtain ⟨a, rfl, rfl⟩ := h
         exact WFCode.tag5 (ih hp).neg (ih hq)
       rw [if_neg h21] at h
       by_cases h22 : t = 22
       · rw [if_pos h22] at h
-        rcases hp : parseStructuredArithmeticFormula fuel 0 ts with _ | p <;> simp [hp] at h
-        rcases hq : parseStructuredArithmeticFormula fuel 0 p.2 with _ | q <;> simp [hq] at h
+        rcases hp : parseStructuredArithmeticFormula fuel ts with _ | p <;> simp [hp] at h
+        rcases hq : parseStructuredArithmeticFormula fuel p.2 with _ | q <;> simp [hq] at h
         obtain ⟨a, rfl, rfl⟩ := h
         exact WFCode.tag4 (WFCode.tag5 (ih hp).neg (ih hq))
           (WFCode.tag5 (ih hq).neg (ih hp))
       rw [if_neg h22] at h
       simp at h
 
-lemma invol_of_parse {fuel depth : ℕ} {ts : List ℕ} {c : ℕ} {rest : List ℕ}
-    (h : parseStructuredArithmeticFormula fuel depth ts = some (c, rest)) :
-    negFormulaCode (negFormulaCode c) = c :=
-  (wfCode_of_parseFormula h).invol
-
-lemma neg_ne_zero_of_parse {fuel depth : ℕ} {ts : List ℕ} {c : ℕ} {rest : List ℕ}
-    (h : parseStructuredArithmeticFormula fuel depth ts = some (c, rest)) : c ≠ 0 :=
-  (wfCode_of_parseFormula h).ne_zero
-
 /-- Involutivity of `negFormulaCode` on the formula parser's range, in the canonical-fuel
 spelling used throughout this file. -/
 lemma invol_of_pfml {ts : List ℕ} {c : ℕ} {rest : List ℕ} (h : pfml ts = some (c, rest)) :
-    negFormulaCode (negFormulaCode c) = c := invol_of_parse h
+    negFormulaCode (negFormulaCode c) = c := (wfCode_of_parseFormula h).invol
 
 lemma ne_zero_of_pfml {ts : List ℕ} {c : ℕ} {rest : List ℕ} (h : pfml ts = some (c, rest)) :
-    c ≠ 0 := neg_ne_zero_of_parse h
+    c ≠ 0 := (wfCode_of_parseFormula h).ne_zero
 
 lemma neg_ne_zero_of_pfml {ts : List ℕ} {c : ℕ} {rest : List ℕ} (h : pfml ts = some (c, rest)) :
     negFormulaCode c ≠ 0 := (wfCode_of_parseFormula h).neg.ne_zero
 
 /-! ## Obligations -/
 
+/-- One pending parse obligation: a numeral, a term, or a formula whose polarity bit says
+whether the code the payload produces is to be negated. -/
 inductive Obl
   | num (n : ℕ)
   | trm (c : ℕ)
   | fml (c : ℕ) (β : Bool)
   deriving DecidableEq
 
+/-- The code an obligation is waiting for, ignoring its polarity. -/
 def Obl.code : Obl → ℕ
   | .num n => n
   | .trm c => c
   | .fml c _ => c
 
+/-- Apply the polarity bit: `true` negates the formula code, `false` leaves it alone. -/
 def nfB : Bool → ℕ → ℕ
   | false, c => c
   | true, c => negFormulaCode c
 
+/-- One token against one obligation: either the token is the obligation's next symbol, and
+the obligation is replaced by the sub-obligations it spawns, or the payload is rejected. -/
 def oblStep : Obl → ℕ → Option (List Obl)
   | .num n, t =>
       if t = 0 then (if n = 0 then some [] else none)
@@ -593,19 +569,24 @@ def oblStep : Obl → ℕ → Option (List Obl)
            else none))
       else none
 
+/-- One token against the obligation stack: it meets the top obligation. -/
 def stackStep : List Obl → ℕ → Option (List Obl)
   | [], _ => none
   | o :: S, t => (oblStep o t).map (fun L => L ++ S)
 
+/-- Run a whole token list against an obligation stack. -/
 def stackRun : List Obl → List ℕ → Option (List Obl)
   | S, [] => some S
   | S, t :: ts => (stackStep S t).bind (fun S' => stackRun S' ts)
 
+/-- The obligation's *meaning*: which prefixes of a token list discharge it, and what is
+left over. -/
 def SatObl : Obl → List ℕ → List ℕ → Prop
   | .num n, ts, rest => pnat ts = some (n, rest)
   | .trm c, ts, rest => ptrm ts = some (c, rest)
   | .fml c β, ts, rest => ∃ d, pfml ts = some (d, rest) ∧ nfB β d = c
 
+/-- A stack is satisfied when its obligations are discharged left to right. -/
 def SatStack : List Obl → List ℕ → List ℕ → Prop
   | [], ts, rest => rest = ts
   | o :: S, ts, rest => ∃ mid, SatObl o ts mid ∧ SatStack S mid rest
@@ -1499,6 +1480,8 @@ lemma stackRun_iff : ∀ (ts : List ℕ) (S : List Obl),
             rw [ih, satStack_append]
             exact ⟨m, h1, hS⟩
 
+/-- The payload test: run the token list against the single obligation "parse a formula
+whose code is `fc`", and accept when the stack is exhausted. -/
 def payAccepts (fc : ℕ) (p : List ℕ) : Bool :=
   decide (stackRun [Obl.fml fc false] p = some [])
 
@@ -1508,7 +1491,7 @@ Proof kind: `C` composition.  Provenance: (a) `stackRun_iff`.
 Paper node: `app:ifp` -/
 lemma payAccepts_iff (fc : ℕ) (p : List ℕ) :
     payAccepts fc p = true ↔
-      parseStructuredArithmeticFormula p.length 0 p = some (fc, []) := by
+      parseStructuredArithmeticFormula p.length p = some (fc, []) := by
   rw [payAccepts, decide_eq_true_iff, stackRun_iff]
   simp only [SatStack, SatObl, nfB_false]
   constructor
@@ -1524,7 +1507,7 @@ Proof kind: `C` composition.  Provenance: (b)
 `parseStructuredArithmeticFormula_consumed_lt`.
 Paper node: `app:ifp` -/
 lemma nineteen_not_mem_of_parse {p : List ℕ} {c : ℕ}
-    (h : parseStructuredArithmeticFormula p.length 0 p = some (c, [])) : 19 ∉ p := by
+    (h : parseStructuredArithmeticFormula p.length p = some (c, [])) : 19 ∉ p := by
   obtain ⟨w, hw, hne⟩ := parseStructuredArithmeticFormula_consumed_lt h
   rw [List.append_nil] at hw
   subst hw
@@ -1532,6 +1515,8 @@ lemma nineteen_not_mem_of_parse {p : List ℕ} {c : ℕ}
 
 /-! ## Finite state packaging -/
 
+/-- The potential of a stack: the sum of its obligations' codes, each charged one extra.
+It bounds the reachable stacks, which is what makes the state set finite. -/
 def phi : List Obl → ℕ
   | [] => 0
   | o :: S => o.code + 1 + phi S
@@ -1655,13 +1640,17 @@ lemma stackRun_phi : ∀ (ts : List ℕ) {S S' : List Obl},
 
 /-! ### The finite state set -/
 
+/-- Every obligation whose code is at most `fc` — the only ones reachable from
+`Obl.fml fc false`, since each step's children are `unpair` components of their parent. -/
 def oblAlphabet (fc : ℕ) : List Obl :=
   (List.range (fc + 1)).flatMap fun c => [Obl.num c, Obl.trm c, Obl.fml c false, Obl.fml c true]
 
+/-- Every stack of length at most `k` over a finite obligation alphabet. -/
 def stacksUpTo (alph : List Obl) : ℕ → List (List Obl)
   | 0 => [[]]
   | k + 1 => stacksUpTo alph k ++ alph.flatMap fun o => (stacksUpTo alph k).map (fun S => o :: S)
 
+/-- The finite state set: the reachable stacks, enumerated. -/
 def payStacks (fc : ℕ) : List (List Obl) := stacksUpTo (oblAlphabet fc) (fc + 1)
 
 lemma mem_oblAlphabet {fc : ℕ} {o : Obl} (h : o.code ≤ fc) : o ∈ oblAlphabet fc := by
@@ -1711,12 +1700,16 @@ lemma mem_payStacks {fc : ℕ} {S : List Obl} (h : phi S ≤ fc + 1) : S ∈ pay
 
 /-! ### The automaton -/
 
+/-- The state bound: the number of reachable stacks, which doubles as the failure state. -/
 def payQ (fc : ℕ) : ℕ := (payStacks fc).length
 
+/-- A stack's index in the enumeration; off the enumeration it is the failure state. -/
 def payIdx (fc : ℕ) (S : List Obl) : ℕ := (payStacks fc).idxOf S
 
+/-- The initial state: the single obligation "parse a formula with code `fc`". -/
 def payInit (fc : ℕ) : ℕ := payIdx fc [Obl.fml fc false]
 
+/-- The transition, as an index map: decode the state, step the stack, re-index. -/
 def payStep (fc : ℕ) (i t : ℕ) : ℕ :=
   match (payStacks fc)[i]? with
   | none => payQ fc
@@ -1725,6 +1718,7 @@ def payStep (fc : ℕ) (i t : ℕ) : ℕ :=
       | none => payQ fc
       | some S' => payIdx fc S'
 
+/-- The accepting states: the exhausted stack, and nothing else. -/
 def payAcceptState (fc : ℕ) (i : ℕ) : Bool :=
   match (payStacks fc)[i]? with
   | none => false
@@ -1793,7 +1787,7 @@ Proof kind: `C` composition.  Provenance: (a) `payAccepts_iff`, `payFold_spec`.
 Paper node: `app:ifp` -/
 lemma payAuto_iff (fc : ℕ) (p : List ℕ) :
     payAcceptState fc (p.foldl (payStep fc) (payInit fc)) = true ↔
-      parseStructuredArithmeticFormula p.length 0 p = some (fc, []) := by
+      parseStructuredArithmeticFormula p.length p = some (fc, []) := by
   have hinit : phi [Obl.fml fc false] ≤ fc + 1 := by simp [phi, Obl.code]
   rw [payInit, payFold_spec fc p _ hinit, ← payAccepts_iff, payAccepts, decide_eq_true_iff]
   cases hr : stackRun [Obl.fml fc false] p with

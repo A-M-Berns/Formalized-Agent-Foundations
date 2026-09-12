@@ -27,7 +27,7 @@ The compiler chain, and where each link lives:
   registers hold `Nat.Partrec.Code.evaln`'s tag and value, for all eight constructors.
 * `Machine/EvalnRegBound.lean` — `codeRegBound` bounds every register the compiled
   machine holds, `codeMachineTime` bounds its steps, `compiledTM_hoareTime` proves the
-  machine meets that bound, and `codeMachineTime_arith_poly` makes the bound polynomial in
+  machine meets that bound, and `codeMachineTime_poly` makes the bound polynomial in
   the size parameter, for each fixed code.
 * `Machine/TraderMachine.lean` — `traderMachine` measures the day, evaluates the clock
   polynomial, runs the length program, and emits one clamped digit per token the token
@@ -37,11 +37,7 @@ The compiler chain, and where each link lives:
 
 **Naming.** After this module there is one efficient-trader class and one criterion, and
 neither carries a `Machine` marker. Where the prefix survives it names the *metering model
-of a certificate* — the machine-metered write-out data classes `MachineSentenceCodes`,
-`MachineSpliceStream`, `MachineTokenStream`, `MachineDigits`, `MachineRatCodes`,
-`MachineMachineCodes`, `MachineArithmeticSourceSeq` and `LUV.MachineThresholdCodes(Seq)`,
-against the certification calculus's own `Big*` / `Digit*` / `Poly*` / `Rpn*` renderings of
-the same data. `LogicalInduction.lean`'s naming conventions state the rule once.
+of a certificate*; `LogicalInduction.lean`'s naming conventions state the rule once.
 
 **Design: the inclusion is one-directional.**  The converse — an `EfficientlyComputable`
 trader need not carry a fuel certificate — is neither proved nor claimed, and nothing

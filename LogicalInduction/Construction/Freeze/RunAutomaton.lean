@@ -6,9 +6,9 @@ import Complexitylib.Classes.P
 /-!
 # Deciding a regular property of a token run, in polynomial time
 
-`TokenFold.ifMatch_mem_FP` branches on "this word's token stream is exactly `ts`", for one
-fixed token list `ts`.  That is enough while the property being decided is membership in a
-finite list of constant runs, and not enough as soon as it is not — and it is not, for the
+Branching on "this word's token stream is exactly `ts`", for one fixed token list `ts`, is
+enough while the property being decided is membership in a finite list of constant runs, and
+not enough as soon as it is not — and it is not, for the
 freeze: a sentence's complete spellings are not a finite set of constant token lists, because
 Foundation's decoder is not injective and the structured arithmetic payload admits unbounded
 zero padding.  Both of those are *regular* phenomena, so what replaces the constant list is
@@ -22,14 +22,14 @@ is the mathematical step.  Carrying the state as a length is what makes the fold
 polynomial bound available: `TokenFold.runFold_cli_mem_FP` bounds a step's output by
 `cli.length + tok.length + c`, and `stepW_len` pays for that with the constant `Q`.
 
-`ifAuto_mem_FP` is the consumer-facing form, the exact analogue of `ifMatch_mem_FP`.  The
-proof is `matchPass_mem_FP`'s, with the fixed matcher `matchStepR ts` replaced by the
-automaton's own step and the single acceptance test `= ts.length` replaced by a nest over
-the finitely many accepting states.
+`ifAuto_mem_FP` is the consumer-facing form: one pass of the automaton's own step over the
+decoded stream, with acceptance decided by a nest over the finitely many accepting states
+rather than by a single equality test.
 
 `BlockMachine`, in the second half of the file, is the same construction with the bounded
 state set dropped: an arbitrary *word* state growing by at most a constant per token, with
-acceptance read off its leading bit.  That relaxation is not decoration — the structured
+acceptance decided by a client-supplied `FP` test (`accept` / `acceptW` / `acceptW_spec`)
+rather than by a fixed convention.  That relaxation is not decoration — the structured
 arithmetic leaf's unary length field is an `aⁿbⁿ` constraint and no finite-state device
 decides it; the section comment there says exactly why.  Use `BlockAutomaton` where a
 finite state set really does suffice, since it is much cheaper to instantiate.
@@ -211,7 +211,7 @@ lemma mem_acceptList {i : ℕ} (hi : i ≤ A.Q) : i ∈ A.acceptList ↔ A.accep
 
 /-- **Branching on "this automaton accepts this word's token stream" is polynomial time.**
 
-The exact analogue of `TokenFold.ifMatch_mem_FP`, with a regular language in place of a
+The branch is on a *regular* property of the decoded token stream, not on equality with a
 single constant run.
 
 Proof kind: `C` composition.  Provenance: (a) `pass_mem_FP`, `length_pass`, `run_le`;
@@ -252,19 +252,6 @@ by value, but one whose digit word a leaf test reads directly. -/
 
 section Table
 
-private def cliOf (v : List Bool) : List Bool := fstBlock (sndBlock v)
-private def tokOf (v : List Bool) : List Bool := sndBlock (sndBlock v)
-
-private lemma cliOf_pair (W cli tok : List Bool) : cliOf (pair W (pair cli tok)) = cli := by
-  rw [cliOf, sndBlock_pair, fstBlock_pair]
-
-private lemma tokOf_pair (W cli tok : List Bool) : tokOf (pair W (pair cli tok)) = tok := by
-  rw [tokOf, sndBlock_pair, sndBlock_pair]
-
-private lemma cliOf_mem_FP : cliOf ∈ FP := mem_FP_comp sndBlock_mem_FP fstBlock_mem_FP
-
-private lemma tokOf_mem_FP : tokOf ∈ FP := mem_FP_comp sndBlock_mem_FP sndBlock_mem_FP
-
 /-- The transition a table denotes: tokens at or above `A + 1` are one class, and the
 result is clamped to the state bound so that `step_le` needs no hypothesis on `f`. -/
 def tblStep (Q A : ℕ) (f : ℕ → ℕ → ℕ) (i t : ℕ) : ℕ := min (f i (min t (A + 1))) Q
@@ -277,7 +264,7 @@ the merged class. -/
 def tokNest (Q A : ℕ) (f : ℕ → ℕ → ℕ) (i : ℕ) : List ℕ → List Bool → List Bool
   | [], _ => List.replicate (min (f i (A + 1)) Q) true
   | t :: ts, v =>
-      if NumEqBits t (tokOf v) then List.replicate (min (f i t) Q) true
+      if NumEqBits t (lastBlock v) then List.replicate (min (f i t) Q) true
       else tokNest Q A f i ts v
 
 lemma length_tokNest_le (Q A : ℕ) (f : ℕ → ℕ → ℕ) (i : ℕ) :
@@ -296,7 +283,7 @@ lemma length_tokNest (Q A : ℕ) (f : ℕ → ℕ → ℕ) (i : ℕ) (W cli : Li
   | [], _ => by rw [tokNest]; simp
   | (t :: l), hl => by
       have hle : ∀ t' ∈ l, t' ≤ A := fun t' ht' => hl t' (List.mem_cons_of_mem _ ht')
-      rw [tokNest, tokOf_pair]
+      rw [tokNest, lastBlock_pair]
       by_cases h : NumEqBits t (digitsToBits cur)
       · have hv : digitVal cur = t := (numEqBits_spec t cur hcur).mp h
         rw [if_pos h, if_pos (by rw [hv]; exact List.mem_cons_self ..), hv,
@@ -320,9 +307,9 @@ lemma tokNest_mem_FP (Q A : ℕ) (f : ℕ → ℕ → ℕ) (i : ℕ) :
       rw [heq]; exact constFn_mem_FP _
   | (t :: l) => by
       have hrec := tokNest_mem_FP Q A f i l
-      have h := ifNumEq_mem_FP tokOf_mem_FP t
+      have h := ifNumEq_mem_FP lastBlock_mem_FP t
         (constFn_mem_FP (List.replicate (min (f i t) Q) true)) hrec
-      have heq : (fun v => if NumEqBits t (tokOf v) then
+      have heq : (fun v => if NumEqBits t (lastBlock v) then
             List.replicate (min (f i t) Q) true else tokNest Q A f i l v)
           = fun v => tokNest Q A f i (t :: l) v := by funext v; rw [tokNest]
       rwa [heq] at h
@@ -331,7 +318,7 @@ lemma tokNest_mem_FP (Q A : ℕ) (f : ℕ → ℕ → ℕ) (i : ℕ) :
 def stNest (Q A : ℕ) (f : ℕ → ℕ → ℕ) : List ℕ → List Bool → List Bool
   | [], _ => []
   | i :: is, v =>
-      if (cliOf v).length = i then tokNest Q A f i (List.range (A + 1)) v
+      if (midBlock v).length = i then tokNest Q A f i (List.range (A + 1)) v
       else stNest Q A f is v
 
 lemma length_stNest_le (Q A : ℕ) (f : ℕ → ℕ → ℕ) :
@@ -344,12 +331,12 @@ lemma length_stNest_le (Q A : ℕ) (f : ℕ → ℕ → ℕ) :
       · exact length_stNest_le Q A f l v
 
 lemma stNest_eq (Q A : ℕ) (f : ℕ → ℕ → ℕ) : ∀ (l : List ℕ) (v : List Bool),
-    (cliOf v).length ∈ l →
-    stNest Q A f l v = tokNest Q A f (cliOf v).length (List.range (A + 1)) v
+    (midBlock v).length ∈ l →
+    stNest Q A f l v = tokNest Q A f (midBlock v).length (List.range (A + 1)) v
   | [], v, hm => absurd hm (by simp)
   | (i :: l), v, hm => by
       rw [stNest]
-      by_cases h : (cliOf v).length = i
+      by_cases h : (midBlock v).length = i
       · rw [if_pos h, h]
       · rw [if_neg h]
         exact stNest_eq Q A f l v (by
@@ -365,9 +352,9 @@ lemma stNest_mem_FP (Q A : ℕ) (f : ℕ → ℕ → ℕ) :
       rw [heq]; exact constFn_mem_FP _
   | (i :: l) => by
       have hrec := stNest_mem_FP Q A f l
-      have h := ifEqLen_mem_FP cliOf_mem_FP i
+      have h := ifEqLen_mem_FP midBlock_mem_FP i
         (tokNest_mem_FP Q A f i (List.range (A + 1))) hrec
-      have heq : (fun v => if (cliOf v).length = i then
+      have heq : (fun v => if (midBlock v).length = i then
             tokNest Q A f i (List.range (A + 1)) v else stNest Q A f l v)
           = fun v => stNest Q A f (i :: l) v := by funext v; rw [stNest]
       rwa [heq] at h
@@ -390,10 +377,10 @@ def tableAutomaton (Q A : ℕ) (f : ℕ → ℕ → ℕ) (acc : ℕ → Bool) : 
   stepW_len := fun v => length_stNest_le Q A f _ v
   stepW_spec := by
     intro W cli cur hcli hcur
-    have hmem : (cliOf (pair W (pair cli (digitsToBits cur)))).length
+    have hmem : (midBlock (pair W (pair cli (digitsToBits cur)))).length
         ∈ List.range (Q + 1) := by
-      rw [cliOf_pair]; simp only [List.mem_range]; omega
-    rw [stNest_eq Q A f _ _ hmem, cliOf_pair,
+      rw [midBlock_pair]; simp only [List.mem_range]; omega
+    rw [stNest_eq Q A f _ _ hmem, midBlock_pair,
       length_tokNest Q A f cli.length W cli cur hcur (List.range (A + 1))
         (by intro t ht; simp only [List.mem_range] at ht; omega),
       tblStep]
@@ -480,7 +467,7 @@ def rowStep : List (TokGuard × ℕ) → ℕ → ℕ → ℕ
 def rowNest (Q : ℕ) : List (TokGuard × ℕ) → ℕ → List Bool → List Bool
   | [], d, _ => List.replicate (min d Q) true
   | (g, q) :: gs, d, v =>
-      if (g.gW (tokOf v)).length = 1 then List.replicate (min q Q) true
+      if (g.gW (lastBlock v)).length = 1 then List.replicate (min q Q) true
       else rowNest Q gs d v
 
 lemma length_rowNest_le (Q : ℕ) : ∀ (gs : List (TokGuard × ℕ)) (d : ℕ) (v : List Bool),
@@ -498,7 +485,7 @@ lemma length_rowNest (Q : ℕ) (W cli : List Bool) (cur : List ℕ) (hcur : ∀ 
         = min (rowStep gs d (digitVal cur)) Q
   | [], d => by rw [rowNest, rowStep]; simp
   | ((g, q) :: gs), d => by
-      rw [rowNest, rowStep, tokOf_pair]
+      rw [rowNest, rowStep, lastBlock_pair]
       by_cases h : g.P (digitVal cur) = true
       · rw [if_pos ((g.gW_spec cur hcur).mpr h), if_pos h, List.length_replicate]
       · rw [if_neg (fun hc => h ((g.gW_spec cur hcur).mp hc)), if_neg h,
@@ -512,12 +499,12 @@ lemma rowNest_mem_FP (Q : ℕ) : ∀ (gs : List (TokGuard × ℕ)) (d : ℕ),
         funext v; rw [rowNest]
       rw [heq]; exact constFn_mem_FP _
   | ((g, q) :: gs), d => by
-      have hg : (fun v => g.gW (tokOf v)) ∈ FP := by
-        simpa [Function.comp_def] using mem_FP_comp tokOf_mem_FP g.gW_FP
+      have hg : (fun v => g.gW (lastBlock v)) ∈ FP := by
+        simpa [Function.comp_def] using mem_FP_comp lastBlock_mem_FP g.gW_FP
       have hrec := rowNest_mem_FP Q gs d
       have h := ifEqLen_mem_FP hg 1
         (constFn_mem_FP (List.replicate (min q Q) true)) hrec
-      have heq : (fun v => if (g.gW (tokOf v)).length = 1 then
+      have heq : (fun v => if (g.gW (lastBlock v)).length = 1 then
             List.replicate (min q Q) true else rowNest Q gs d v)
           = fun v => rowNest Q ((g, q) :: gs) d v := by funext v; rw [rowNest]
       rwa [heq] at h
@@ -526,7 +513,7 @@ lemma rowNest_mem_FP (Q : ℕ) : ∀ (gs : List (TokGuard × ℕ)) (d : ℕ),
 def gstNest (Q : ℕ) (rows : ℕ → GuardRow) : List ℕ → List Bool → List Bool
   | [], _ => []
   | i :: is, v =>
-      if (cliOf v).length = i then rowNest Q (rows i).guards (rows i).dflt v
+      if (midBlock v).length = i then rowNest Q (rows i).guards (rows i).dflt v
       else gstNest Q rows is v
 
 lemma length_gstNest_le (Q : ℕ) (rows : ℕ → GuardRow) :
@@ -539,13 +526,13 @@ lemma length_gstNest_le (Q : ℕ) (rows : ℕ → GuardRow) :
       · exact length_gstNest_le Q rows l v
 
 lemma gstNest_eq (Q : ℕ) (rows : ℕ → GuardRow) : ∀ (l : List ℕ) (v : List Bool),
-    (cliOf v).length ∈ l →
+    (midBlock v).length ∈ l →
     gstNest Q rows l v
-      = rowNest Q (rows (cliOf v).length).guards (rows (cliOf v).length).dflt v
+      = rowNest Q (rows (midBlock v).length).guards (rows (midBlock v).length).dflt v
   | [], v, hm => absurd hm (by simp)
   | (i :: l), v, hm => by
       rw [gstNest]
-      by_cases h : (cliOf v).length = i
+      by_cases h : (midBlock v).length = i
       · rw [if_pos h, h]
       · rw [if_neg h]
         exact gstNest_eq Q rows l v (by
@@ -561,9 +548,9 @@ lemma gstNest_mem_FP (Q : ℕ) (rows : ℕ → GuardRow) :
       rw [heq]; exact constFn_mem_FP _
   | (i :: l) => by
       have hrec := gstNest_mem_FP Q rows l
-      have h := ifEqLen_mem_FP cliOf_mem_FP i
+      have h := ifEqLen_mem_FP midBlock_mem_FP i
         (rowNest_mem_FP Q (rows i).guards (rows i).dflt) hrec
-      have heq : (fun v => if (cliOf v).length = i then
+      have heq : (fun v => if (midBlock v).length = i then
             rowNest Q (rows i).guards (rows i).dflt v else gstNest Q rows l v)
           = fun v => gstNest Q rows (i :: l) v := by funext v; rw [gstNest]
       rwa [heq] at h
@@ -587,10 +574,10 @@ def guardedAutomaton (Q : ℕ) (rows : ℕ → GuardRow) (acc : ℕ → Bool) : 
   stepW_len := fun v => length_gstNest_le Q rows _ v
   stepW_spec := by
     intro W cli cur hcli hcur
-    have hmem : (cliOf (pair W (pair cli (digitsToBits cur)))).length
+    have hmem : (midBlock (pair W (pair cli (digitsToBits cur)))).length
         ∈ List.range (Q + 1) := by
-      rw [cliOf_pair]; simp only [List.mem_range]; omega
-    rw [gstNest_eq Q rows _ _ hmem, cliOf_pair,
+      rw [midBlock_pair]; simp only [List.mem_range]; omega
+    rw [gstNest_eq Q rows _ _ hmem, midBlock_pair,
       length_rowNest Q W cli cur hcur (rows cli.length).guards (rows cli.length).dflt]
   accept := acc
 
@@ -639,9 +626,10 @@ The state is an arbitrary *word* rather than a bounded number, growing by at mos
 token — enough for a unary counter, which is exactly what the structured arithmetic leaf's
 length field needs and what `BlockAutomaton` cannot supply.
 
-Acceptance is the state's leading bit, so the state is required to be nonempty (`init_ne`,
-`step_ne`): `Complexity.Cobham.selectHead` reads `head?`, and on the empty word it selects
-neither branch. -/
+Acceptance is a *field*, not a fixed convention: the client supplies `accept` together with
+its polynomial-time word form `acceptW` and the bridge `acceptW_spec`.  The section comment
+below says why reading it off the state's leading bit would make the interface unusable by
+the very client it exists for. -/
 structure BlockMachine where
   /-- The per-token growth allowance. -/
   c : ℕ

@@ -57,14 +57,6 @@ Main results: `mesh_independence` (`lem:mesh`), `exppolymax`, `perexpkno`, `expc
 
 The limit vocabulary `≈ₙ` / `≳ₙ` / `≲ₙ` is `Framework/Asymptotics`'s (`dd:asymp`), and
 coefficients are reified features rather than Lean functions (`dd:dsl`).
-**The criterion binder below is `def:lic` at the paper's own quantifier.**  Every result here that consumes an
-exploiting trader takes `[IsLogicalInductor P DP]`, and the trader is certified at `EfficientlyComputable`:
-it is assembled from `AffineCombination.PolySequence`'s machine-metered emission fields
-through `PolySequence.buyBelowTrader_ec` (`Properties/AffineCoherence.lean`), which has no
-fuel-class form: the bridge `BigSpliceStream.toMachine` runs fuel to machine, and no map
-back is proved or claimed.  The
-calibration is stated at `def:ec` in `Framework/Affine.lean`, and the `_unconditional`
-endpoints discharge the criterion through `LIA_is_logical_inductor`.
 
 -/
 
@@ -165,12 +157,12 @@ lemma ExactTheoryPresentation.toWorldValued
 /-- A canonical completed world, used only to name the common mesh truth stream. -/
 noncomputable def theoryWorld (DP : DeductiveProcess)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) : PCWorld :=
-  Classical.choose (exists_consistentWithTheory DP hworld)
+  Classical.choose (DP.exists_consistentWithTheory hworld)
 
 lemma theoryWorld_consistent (DP : DeductiveProcess)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     (theoryWorld DP hworld).ConsistentWithTheory DP :=
-  Classical.choose_spec (exists_consistentWithTheory DP hworld)
+  Classical.choose_spec (DP.exists_consistentWithTheory hworld)
 
 /-- Share-coefficient norm, omitting the trailing constant exactly as affine trader
 magnitude does. -/
@@ -835,7 +827,7 @@ lemma mesh_upper_eventually
   have hgap : (ε : ℝ) <
       (As n).expectAt P (n + 1) m - (As n).expectAt P (m + 1) m -
         2 * (b : ℝ) / ((n : ℝ) + 1) := by
-    push_neg at hnot
+    push Not at hnot
     linarith
   have hdetect := meshSoftmax_detects_upper_gap hε hn hnm hgap
   change (meshSoftmax As b ε m).price P m ≤ 0 + (ε : ℝ) / 8 at hm
@@ -861,7 +853,7 @@ lemma mesh_lower_eventually
   have hgap : (ε : ℝ) <
       (As n).expectAt P (m + 1) m - (As n).expectAt P (n + 1) m -
         2 * (b : ℝ) / ((n : ℝ) + 1) := by
-    push_neg at hnot
+    push Not at hnot
     linarith
   have hdetect := meshSoftmaxLower_detects_gap hε hn hnm hgap
   change (meshSoftmaxLower As b ε m).price P m ≤ 0 + (ε : ℝ) / 8 at hm
@@ -905,7 +897,8 @@ structure BoundedSequence (As : ℕ → LUVCombination) (P : History) where
 into the closed feature `meshErrorFeature` and into the scaling `meshNormScale` — and
 `l1Norm = |const| + shareNorm` turns the one into the other.  Every endpoint below that
 asks a client for `b`, `hb` and `hshare` can therefore obtain all three from the
-`BoundedSequence` it already has; the `_ofBounded` forms do exactly that. -/
+`BoundedSequence` it already has, which is what the `_ofSyntax` carriers of
+`Construction/LUV/Syntax.lean` do. -/
 lemma BoundedSequence.exists_rat_shareBound {As : ℕ → LUVCombination} {P : History}
     (h : BoundedSequence As P) :
     ∃ b : ℚ, 0 ≤ (b : ℝ) ∧ ∀ n, (As n).shareNorm P ≤ (b : ℝ) := by
@@ -920,7 +913,8 @@ lemma BoundedSequence.exists_rat_shareBound {As : ℕ → LUVCombination} {P : H
 
 /-- Propositional representation boundary needed to invoke `thm:ec` on every LUV
 appearing in a combination sequence.  It records only write-out threshold codeability
-(`LUV.MachineThresholdCodes`, the machine reading of `def:ec`'s own metering) and completed-theory world valuation; it
+(`LUV.MachineThresholdCodes`, the machine reading of `def:ec`'s own metering) and
+completed-theory world valuation; it
 does not assume convergence or any expectation theorem.
 
 `world_value` sits at the paper's `def:luv` quantifier — `v ∈ cworlds(Θ)`, i.e.
@@ -1123,10 +1117,8 @@ lemma meshTailError_le
 /-! ## Weighted averages and limit transfer
 
 Analysis with no LUV content, used to move a conclusion between two asymptotically
-indistinguishable sequences.  What is general is stated outside `LUVCombination`, so a
-client reaches it under its own name; `weightedAverage_tendsto_zero_of_tendsto_zero` and
-`hasLimitPoint_add_tendsto_zero` stay inside it, beside the weighted-bias endpoints that
-consume them. -/
+indistinguishable sequences.  All of it is stated outside `LUVCombination`, so a client
+reaches it under its own name. -/
 
 end LUVCombination
 
@@ -1290,8 +1282,6 @@ private lemma liminf_limsup_eq_of_abs_sub_tendsto_zero
     rw [hdsup, add_zero] at hhi
     exact le_antisymm hhi hlo
 
-namespace LUVCombination
-
 /-- A Toeplitz-style transfer for the repository's inclusive weighted averages:
 nonnegative weights with divergent total mass send every null sequence to zero. -/
 lemma weightedAverage_tendsto_zero_of_tendsto_zero
@@ -1376,6 +1366,8 @@ lemma hasLimitPoint_add_tendsto_zero
     · rfl
     · simp
   exact MapClusterPt.of_comp hψmono.tendsto_atTop hsum.mapClusterPt
+
+namespace LUVCombination
 
 /-! ## Mesh independence (`lem:mesh`) -/
 
@@ -1523,43 +1515,7 @@ theorem BoundedSequence.mesh_independence
   rw [Real.dist_eq, sub_zero, abs_of_nonneg hnonneg]
   exact hsup.trans_lt (by linarith)
 
-/-- `mesh_independence` with the rational share bound obtained from the
-`BoundedSequence` itself (`exists_rat_shareBound`) rather than asked of the client. -/
-lemma BoundedSequence.mesh_independence_ofBounded
-    {As : ℕ → LUVCombination} {P : History} {DP : DeductiveProcess}
-    [IsLogicalInductor P DP]
-    (h : BoundedSequence As P)
-    (ops : MeshSoftmaxOperationalWitness As P)
-    (hvalued : WorldValued As DP)
-    (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
-    Tendsto (meshTailError As P) atTop (𝓝 0) := by
-  obtain ⟨b, hb, hshare⟩ := h.exists_rat_shareBound
-  exact h.mesh_independence ops hvalued b hb hshare hworld
-
 /-! ## Polynomial and bounded LUV-combination consequences -/
-
-/-- Rank preservation for the mesh lift: an emitter of `meshAffine A k` inherits the
-source combination's rank bound, which is what `Strategy.rank_le` obliges a compiled
-trader to establish.  It is the API fact a client compiling a LUV combination needs, and
-is stated once here rather than at each emitter. -/
-lemma meshAffine_rank
-    (A : LUVCombination) {day k : ℕ}
-    (hconst : A.const.rank ≤ day)
-    (hterms : ∀ p ∈ A.terms, p.1.rank ≤ day) :
-    (A.meshAffine k).const.rank ≤ day ∧
-      ∀ p ∈ (A.meshAffine k).terms, p.1.rank ≤ day := by
-  refine ⟨hconst, ?_⟩
-  intro p hp
-  simp only [meshAffine, List.mem_flatMap] at hp
-  obtain ⟨q, hq, hp⟩ := hp
-  simp only [AffineCombination.scale, List.mem_map] at hp
-  obtain ⟨r, hr, rfl⟩ := hp
-  simp only [EF.rank_mul]
-  apply Nat.max_le.mpr
-  refine ⟨hterms q hq, ?_⟩
-  simp only [LUV.expectAffine, List.mem_map] at hr
-  obtain ⟨i, hi, rfl⟩ := hr
-  simp [EF.rank]
 
 /-- A BLCS compiles to the paper's affine BCS at the diagonal mesh precision. -/
 def BoundedSequence.affineBCS {As : ℕ → LUVCombination} {P : History}
@@ -1711,22 +1667,6 @@ lemma BoundedSequence.limexpapprox
     (fun n =>
       h.mesh_limitingValue_near_expectInf (hvalued.convergencePresentation hcode) hworld n)
     (h.mesh_independence ops hvalued b hb hshare hworld)
-
-/-- `limexpapprox` with the rational share bound obtained from the `BoundedSequence`
-itself (`exists_rat_shareBound`) rather than asked of the client. -/
-lemma BoundedSequence.limexpapprox_ofBounded
-    {As : ℕ → LUVCombination} {P : History} {DP : DeductiveProcess}
-    [IsLogicalInductor P DP]
-    (h : BoundedSequence As P)
-    (ops : MeshSoftmaxOperationalWitness As P)
-    (hvalued : WorldValued As DP)
-    (hcode : ∀ n p, p ∈ (As n).terms → p.2.MachineThresholdCodes)
-    (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
-    Tendsto (fun n =>
-      |((As n).meshAffine (n + 1)).value P (limitingBelief P) - (As n).expectInf P|)
-      atTop (𝓝 0) := by
-  obtain ⟨b, hb, hshare⟩ := h.exists_rat_shareBound
-  exact h.limexpapprox ops hvalued hcode b hb hshare hworld
 
 /-! ## Approximate determination and the mesh error budget -/
 
@@ -2137,22 +2077,6 @@ theorem BoundedSequence.exppolymax
   have haff := h.mesh_affpolymax DP hworld
   exact ⟨haff.1.trans hhighLimits.1, haff.2.trans hlowLimits.2⟩
 
-/-- `exppolymax` with the rational share bound obtained from the `BoundedSequence` itself
-(`exists_rat_shareBound`) rather than asked of the client. -/
-lemma BoundedSequence.exppolymax_ofBounded
-    {As : ℕ → LUVCombination} {P : History} {DP : DeductiveProcess}
-    [IsLogicalInductor P DP]
-    (h : BoundedSequence As P)
-    (ops : MeshSoftmaxOperationalWitness As P)
-    (hvalued : WorldValued As DP)
-    (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
-    liminf (fun n => (As n).expect P n) atTop =
-        liminf (futureHigh As P) atTop ∧
-      limsup (fun n => (As n).expect P n) atTop =
-        limsup (futureLow As P) atTop := by
-  obtain ⟨b, hb, hshare⟩ := h.exists_rat_shareBound
-  exact h.exppolymax ops hvalued b hb hshare hworld
-
 /-- `thm:perexpkno`: persistence of expectation knowledge for represented bounded
 LUV-combination sequences.
 Paper node: `thm:perexpkno` -/
@@ -2204,23 +2128,6 @@ theorem BoundedSequence.perexpkno
       limsup (fun n => (As n).expectInf P) atTop
   exact ⟨hlowLimits.1.trans (hper.1.trans hlimLimits.1.symm),
     hhighLimits.2.trans (hper.2.trans hlimLimits.2.symm)⟩
-
-/-- `perexpkno` with the rational share bound obtained from the `BoundedSequence` itself
-(`exists_rat_shareBound`) rather than asked of the client. -/
-lemma BoundedSequence.perexpkno_ofBounded
-    {As : ℕ → LUVCombination} {P : History} {DP : DeductiveProcess}
-    [IsLogicalInductor P DP]
-    (h : BoundedSequence As P)
-    (ops : MeshSoftmaxOperationalWitness As P)
-    (hvalued : WorldValued As DP)
-    (hcode : ∀ n p, p ∈ (As n).terms → p.2.MachineThresholdCodes)
-    (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
-    liminf (futureLow As P) atTop =
-        liminf (fun n => (As n).expectInf P) atTop ∧
-      limsup (futureHigh As P) atTop =
-        limsup (fun n => (As n).expectInf P) atTop := by
-  obtain ⟨b, hb, hshare⟩ := h.exists_rat_shareBound
-  exact h.perexpkno ops hvalued hcode b hb hshare hworld
 
 /-- `thm:expcoh`: exact completed-world LUV values bound the true limiting expectation,
 which in turn coheres with the market's diagonal expectations.
@@ -2296,27 +2203,6 @@ theorem BoundedSequence.expcoh
         _ ≤ limsup (completedAffineHigh Ms P DP) atTop := haff.2.2
         _ = limsup (completedHigh As P DP) atTop := hhighLimits.2.symm
 
-/-- `expcoh` with the rational share bound obtained from the `BoundedSequence` itself
-(`exists_rat_shareBound`) rather than asked of the client. -/
-lemma BoundedSequence.expcoh_ofBounded
-    {As : ℕ → LUVCombination} {P : History} {DP : DeductiveProcess}
-    [IsLogicalInductor P DP]
-    (h : BoundedSequence As P)
-    (ops : MeshSoftmaxOperationalWitness As P)
-    (hvalued : WorldValued As DP)
-    (hcode : ∀ n p, p ∈ (As n).terms → p.2.MachineThresholdCodes)
-    (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
-    (liminf (completedLow As P DP) atTop ≤
-        liminf (fun n => (As n).expectInf P) atTop ∧
-      liminf (fun n => (As n).expectInf P) atTop ≤
-        liminf (fun n => (As n).expect P n) atTop) ∧
-      (limsup (fun n => (As n).expect P n) atTop ≤
-          limsup (fun n => (As n).expectInf P) atTop ∧
-        limsup (fun n => (As n).expectInf P) atTop ≤
-          limsup (completedHigh As P DP) atTop) := by
-  obtain ⟨b, hb, hshare⟩ := h.exists_rat_shareBound
-  exact h.expcoh ops hvalued hcode b hb hshare hworld
-
 /-! ## Statistical expectation lifts -/
 
 end LUVCombination
@@ -2335,7 +2221,7 @@ private lemma weightedAverage_split_of_sub_tendsto_zero
           weightedAverage w x n + weightedAverage w (fun i => y i - x i) n ∧
         |weightedAverage w (fun i => y i - x i) n| < ε / 2 := by
   have havg : Tendsto (weightedAverage w (fun i => y i - x i)) atTop (𝓝 0) :=
-    LUVCombination.weightedAverage_tendsto_zero_of_tendsto_zero hw0 hdiv hsub
+    weightedAverage_tendsto_zero_of_tendsto_zero hw0 hdiv hsub
   have herr : ∀ᶠ n in atTop, |weightedAverage w (fun i => y i - x i) n| < ε / 2 := by
     obtain ⟨N, hN⟩ := Metric.tendsto_atTop.1 havg (ε / 2) (half_pos hε)
     refine eventually_atTop.2 ⟨N, fun n hn => ?_⟩
@@ -2450,9 +2336,9 @@ bare generable divergent weighting, with no deferral function at all.  Recorded 
 in `notes/paper-errata.md`.
 
 The rational share bound `b` occurs in the *types* of `hverify` and `hverifyNeg`, through
-`normalizedMesh As b`, so there is no `_ofBounded` form of this statement: a client has
-to choose `b` (`BoundedSequence.exists_rat_shareBound` supplies one) before it can even
-state the verifier premises. -/
+`normalizedMesh As b`, so it cannot be discharged from the `BoundedSequence` after the
+fact: a client has to choose `b` (`BoundedSequence.exists_rat_shareBound` supplies one)
+before it can even state the verifier premises. -/
 lemma BoundedSequence.recurringunbiasednessexp_of_historicalVerifiers
     {As : ℕ → LUVCombination} {P : History} {DP : DeductiveProcess}
     [IsLogicalInductor P DP]
@@ -2546,9 +2432,9 @@ theorem, so it is stated here; the mirror half of the same correction is
 `notes/paper-errata.md`.
 
 The rational share bound `b` occurs in the *types* of `emit` and `bridge`, through
-`normalizedMesh As b`, so there is no `_ofBounded` form of this statement: a client has
-to choose `b` (`BoundedSequence.exists_rat_shareBound` supplies one) before it can even
-state the operational premises.
+`normalizedMesh As b`, so it cannot be discharged from the `BoundedSequence` after the
+fact: a client has to choose `b` (`BoundedSequence.exists_rat_shareBound` supplies one)
+before it can even state the operational premises.
 Paper node: `thm:wubexp` -/
 theorem BoundedSequence.wubexp
     {As : ℕ → LUVCombination} {P : History} {DP : DeductiveProcess}
@@ -2628,10 +2514,10 @@ theorem BoundedSequence.wubexp
 historical-verifiability premises for the normalized threshold mesh.
 
 The rational share bound `b` occurs in the *types* of `clock`, `hverify` and `hverifyNeg`,
-through `normalizedMesh As b`, so this statement and its two siblings have no `_ofBounded`
-form: a client has to choose `b` (`BoundedSequence.exists_rat_shareBound` supplies one)
-before it can state the premises. -/
-lemma BoundedSequence.prandexp_of_historicalVerifiers
+through `normalizedMesh As b`, so neither this statement nor its sibling can discharge it
+from the `BoundedSequence` after the fact: a client has to choose `b`
+(`BoundedSequence.exists_rat_shareBound` supplies one) before it can state the premises. -/
+lemma BoundedSequence.prandexp_above_of_historicalVerifiers
     {As : ℕ → LUVCombination} {P : History} {DP : DeductiveProcess}
     [IsLogicalInductor P DP]
     (h : BoundedSequence As P)
@@ -2708,40 +2594,6 @@ lemma BoundedSequence.prandexp_below_of_historicalVerifiers
     simpa only [q, normalizedMesh, AffineCombination.scale_price, EF.denote_const,
       meshAffine_price_diagonal] using haff
   exact asympLE_zero_of_const_mul_pos hq hscaled
-
-/-- The equality direction mentioned in the paper immediately after `thm:prandexp`. -/
-lemma BoundedSequence.prandexp_eq_of_historicalVerifiers
-    {As : ℕ → LUVCombination} {P : History} {DP : DeductiveProcess}
-    [IsLogicalInductor P DP]
-    (h : BoundedSequence As P)
-    (hvalued : WorldValued As DP)
-    {truth : ℕ → ℝ} (hdet : DeterminedViaTheory As P DP truth)
-    (b : ℚ) (hshare : ∀ n, (As n).shareNorm P ≤ (b : ℝ))
-    (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
-    (f : DeferralFunction) {err : ℕ → ℝ}
-    (clock : PatientSettlementClock (normalizedMesh As b) P DP
-      (normalizedMeshTruth As P DP hworld b) err f)
-    (hpseudo : Pseudorandom truth f P)
-    (hverify : ∀ (W : ℕ → EF) (hWgen : PGenerableWeighting W),
-      AffineCombination.BiasRunHistoricallyVerifiable
-        (normalizedMesh As b) (h.normalizedMesh_poly b) W hWgen P DP)
-    (hverifyNeg : ∀ (W : ℕ → EF) (hWgen : PGenerableWeighting W),
-      AffineCombination.BiasRunHistoricallyVerifiable
-        (fun n => (normalizedMesh As b n).neg)
-        (h.normalizedMesh_poly b).neg W hWgen P DP)
-    (hverifyNegNeg : ∀ (W : ℕ → EF) (hWgen : PGenerableWeighting W),
-      AffineCombination.BiasRunHistoricallyVerifiable
-        (fun n => ((normalizedMesh As b n).neg).neg)
-        (h.normalizedMesh_poly b).neg.neg W hWgen P DP) :
-    (fun n => (As n).expect P n) ≈ₙ (fun _ => 0) := by
-  have hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1 :=
-    fun n φ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n φ
-  rw [asympEq_iff_asympLE_asympGE]
-  exact ⟨
-    h.prandexp_below_of_historicalVerifiers hvalued hdet b hshare hworld f clock hpseudo.2
-      hverifyNeg hverifyNegNeg,
-    h.prandexp_of_historicalVerifiers hvalued hdet b hshare hworld f clock hpseudo.1
-      hverify hverifyNeg⟩
 
 end LUVCombination
 

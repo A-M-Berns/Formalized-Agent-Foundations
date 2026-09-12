@@ -26,9 +26,11 @@ exactly the runs of the form `ArithSource.sourceTokens s ++ rest` with
 * **primitive recursive** (`sourceRun_prim`), so the gate can sit inside the emission
   calculus rather than in the metatheory.
 
-`sourceRun_full_prim` is the single entry point out of the module: `admissibleName_primrec`
-(`Construction/Knowledge/SourceWindow.lean`) uses it to make `AdmissibleName` a decidable
-primitive-recursive test.  Nothing outside this file uses the recognizers themselves.
+Four names leave the module, all consumed by `Construction/Knowledge/SourceWindow.lean`:
+`sourceRun_full_prim` makes `AdmissibleName` a decidable primitive-recursive test
+(`admissibleName_primrec`), and `sourceRun` together with its soundness
+(`exists_source_of_sourceRun`) and completeness (`sourceRun_sourceTokens`) is what
+`AdmissibleName` is *stated* at.  Nothing else here is used outside the file.
 
 The alphabet recognized is the paper's own source alphabet — `ArithSource.sourceTokens`
 tags, the normal-form expansion tags `20`/`21`/`22` among them — and not Foundation's
@@ -953,24 +955,74 @@ private lemma natRunG_spec (m : ℕ) :
   rw [List.getElem?_eq_getElem hib, Option.getD_some, List.getElem_map,
     List.getElem_range]
 
-private lemma natRunG_prim : Primrec natRunG := by
-  have hfuel : Primrec fun prev : List (Option (ℕ × List ℕ)) =>
-      prev.length.unpair.1 :=
-    Primrec.fst.comp (Primrec.unpair.comp Primrec.list_length)
-  have hts0 : Primrec fun p : List (Option (ℕ × List ℕ)) × ℕ =>
+/-! ### Shared `Primrec` projections of the recursion context
+
+The three level recognizers (`natRunG`, `termLevelG`, `sourceLevelG`) run the same
+course-of-values recursion over `RCtx = ((prev, fuel), (tag, rest))`, so the projections of
+that context — and the two `prev`-table lookups the binary nodes take — are assembled once
+here rather than re-derived in each proof. -/
+
+/-- The fuel component of the packed recursion index, read off the history's length. -/
+private lemma rctxLevelFuel_prim :
+    Primrec fun prev : List (Option (ℕ × List ℕ)) => prev.length.unpair.1 :=
+  Primrec.fst.comp (Primrec.unpair.comp Primrec.list_length)
+
+/-- The token run of the packed recursion index, likewise. -/
+private lemma rctxLevelTokens_prim :
+    Primrec fun p : List (Option (ℕ × List ℕ)) × ℕ =>
       Denumerable.ofNat (List ℕ) p.1.length.unpair.2 :=
-    (Primrec.ofNat (List ℕ)).comp
-      (Primrec.snd.comp (Primrec.unpair.comp (Primrec.list_length.comp Primrec.fst)))
-  have hprev : Primrec fun x : RCtx => x.1.1 := Primrec.fst.comp Primrec.fst
-  have hfuel' : Primrec fun x : RCtx => x.1.2 := Primrec.snd.comp Primrec.fst
-  have ht : Primrec fun x : RCtx => x.2.1 := Primrec.fst.comp Primrec.snd
-  have hrest : Primrec fun x : RCtx => x.2.2 := Primrec.snd.comp Primrec.snd
-  have hlook : Primrec fun x : RCtx =>
-      ((x.1.1[Nat.pair x.1.2 (Encodable.encode x.2.2)]?).getD none) :=
-    Primrec.option_getD.comp
-      (Primrec.list_getElem?.comp hprev
-        (Primrec₂.natPair.comp hfuel' (Primrec.encode.comp hrest)))
-      (Primrec.const none)
+  (Primrec.ofNat (List ℕ)).comp
+    (Primrec.snd.comp (Primrec.unpair.comp (Primrec.list_length.comp Primrec.fst)))
+
+/-- The recursion history. -/
+private lemma rctxPrev_prim : Primrec fun x : RCtx => x.1.1 := Primrec.fst.comp Primrec.fst
+
+/-- The remaining fuel. -/
+private lemma rctxFuel_prim : Primrec fun x : RCtx => x.1.2 := Primrec.snd.comp Primrec.fst
+
+/-- The head tag. -/
+private lemma rctxTag_prim : Primrec fun x : RCtx => x.2.1 := Primrec.fst.comp Primrec.snd
+
+/-- The unread suffix. -/
+private lemma rctxRest_prim : Primrec fun x : RCtx => x.2.2 := Primrec.snd.comp Primrec.snd
+
+/-- The leaf answer: level `0`, nothing consumed. -/
+private lemma rctxConst_prim :
+    Primrec fun x : RCtx => (some (0, x.2.2) : Option (ℕ × List ℕ)) :=
+  Primrec.option_some.comp ((Primrec.const 0).pair rctxRest_prim)
+
+/-- One lookup into the recursion history at the current suffix. -/
+private lemma rctxLook_prim :
+    Primrec fun x : RCtx => ((x.1.1[Nat.pair x.1.2 (Encodable.encode x.2.2)]?).getD none) :=
+  Primrec.option_getD.comp
+    (Primrec.list_getElem?.comp rctxPrev_prim
+      (Primrec₂.natPair.comp rctxFuel_prim (Primrec.encode.comp rctxRest_prim)))
+    (Primrec.const none)
+
+/-- The second lookup a binary node takes, at the suffix the first one left. -/
+private lemma rctxLookPair_prim :
+    Primrec fun y : RCtx × (ℕ × List ℕ) =>
+      ((y.1.1.1[Nat.pair y.1.1.2 (Encodable.encode y.2.2)]?).getD none) :=
+  Primrec.option_getD.comp
+    (Primrec.list_getElem?.comp (rctxPrev_prim.comp Primrec.fst)
+      (Primrec₂.natPair.comp (rctxFuel_prim.comp Primrec.fst)
+        (Primrec.encode.comp (Primrec.snd.comp Primrec.snd))))
+    (Primrec.const none)
+
+/-- Combining two child answers: the larger level, the later suffix. -/
+private lemma rctxMax_prim :
+    Primrec fun z : (RCtx × (ℕ × List ℕ)) × (ℕ × List ℕ) => (max z.1.2.1 z.2.1, z.2.2) :=
+  (Primrec.nat_max.comp (Primrec.fst.comp (Primrec.snd.comp Primrec.fst))
+    (Primrec.fst.comp Primrec.snd)).pair (Primrec.snd.comp Primrec.snd)
+
+private lemma natRunG_prim : Primrec natRunG := by
+  have hfuel := rctxLevelFuel_prim
+  have hts0 := rctxLevelTokens_prim
+  have hprev := rctxPrev_prim
+  have hfuel' := rctxFuel_prim
+  have ht := rctxTag_prim
+  have hrest := rctxRest_prim
+  have hlook := rctxLook_prim
   have hzero : Primrec fun x : RCtx => (some (0, x.2.2) : Option (ℕ × List ℕ)) :=
     Primrec.option_some.comp ((Primrec.const 0).pair hrest)
   have heven : Primrec fun x : RCtx =>
@@ -1096,41 +1148,21 @@ private lemma termLevelG_spec (m : ℕ) :
     List.getElem_range]
 
 private lemma termLevelG_prim : Primrec termLevelG := by
-  have hfuel : Primrec fun prev : List (Option (ℕ × List ℕ)) =>
-      prev.length.unpair.1 :=
-    Primrec.fst.comp (Primrec.unpair.comp Primrec.list_length)
-  have hts0 : Primrec fun p : List (Option (ℕ × List ℕ)) × ℕ =>
-      Denumerable.ofNat (List ℕ) p.1.length.unpair.2 :=
-    (Primrec.ofNat (List ℕ)).comp
-      (Primrec.snd.comp (Primrec.unpair.comp (Primrec.list_length.comp Primrec.fst)))
-  have hprev : Primrec fun x : RCtx => x.1.1 := Primrec.fst.comp Primrec.fst
-  have hfuel' : Primrec fun x : RCtx => x.1.2 := Primrec.snd.comp Primrec.fst
-  have ht : Primrec fun x : RCtx => x.2.1 := Primrec.fst.comp Primrec.snd
-  have hrest : Primrec fun x : RCtx => x.2.2 := Primrec.snd.comp Primrec.snd
+  have hfuel := rctxLevelFuel_prim
+  have hts0 := rctxLevelTokens_prim
+  have hprev := rctxPrev_prim
+  have hfuel' := rctxFuel_prim
+  have ht := rctxTag_prim
+  have hrest := rctxRest_prim
   have hnat : Primrec fun x : RCtx =>
       (structuredNatRun x.1.2 x.2.2).map fun p => (p.1 + 1, p.2) :=
     Primrec.option_map (structuredNatRun_prim.comp hfuel' hrest)
       ((Primrec.succ.comp (Primrec.fst.comp Primrec.snd)).pair
         (Primrec.snd.comp Primrec.snd)).to₂
-  have hconst : Primrec fun x : RCtx => (some (0, x.2.2) : Option (ℕ × List ℕ)) :=
-    Primrec.option_some.comp ((Primrec.const 0).pair hrest)
-  have hlook1 : Primrec fun x : RCtx =>
-      ((x.1.1[Nat.pair x.1.2 (Encodable.encode x.2.2)]?).getD none) :=
-    Primrec.option_getD.comp
-      (Primrec.list_getElem?.comp hprev
-        (Primrec₂.natPair.comp hfuel' (Primrec.encode.comp hrest)))
-      (Primrec.const none)
-  have hlook2 : Primrec fun y : RCtx × (ℕ × List ℕ) =>
-      ((y.1.1.1[Nat.pair y.1.1.2 (Encodable.encode y.2.2)]?).getD none) :=
-    Primrec.option_getD.comp
-      (Primrec.list_getElem?.comp (hprev.comp Primrec.fst)
-        (Primrec₂.natPair.comp (hfuel'.comp Primrec.fst)
-          (Primrec.encode.comp (Primrec.snd.comp Primrec.snd))))
-      (Primrec.const none)
-  have hmax : Primrec fun z : (RCtx × (ℕ × List ℕ)) × (ℕ × List ℕ) =>
-      (max z.1.2.1 z.2.1, z.2.2) :=
-    (Primrec.nat_max.comp (Primrec.fst.comp (Primrec.snd.comp Primrec.fst))
-      (Primrec.fst.comp Primrec.snd)).pair (Primrec.snd.comp Primrec.snd)
+  have hconst := rctxConst_prim
+  have hlook1 := rctxLook_prim
+  have hlook2 := rctxLookPair_prim
+  have hmax := rctxMax_prim
   have hbin : Primrec fun x : RCtx =>
       ((x.1.1[Nat.pair x.1.2 (Encodable.encode x.2.2)]?).getD none).bind fun p =>
         ((x.1.1[Nat.pair x.1.2 (Encodable.encode p.2)]?).getD none).map fun q =>
@@ -1257,36 +1289,16 @@ private lemma sourceLevelG_spec (m : ℕ) :
     List.getElem_range]
 
 private lemma sourceLevelG_prim : Primrec sourceLevelG := by
-  have hfuel : Primrec fun prev : List (Option (ℕ × List ℕ)) =>
-      prev.length.unpair.1 :=
-    Primrec.fst.comp (Primrec.unpair.comp Primrec.list_length)
-  have hts0 : Primrec fun p : List (Option (ℕ × List ℕ)) × ℕ =>
-      Denumerable.ofNat (List ℕ) p.1.length.unpair.2 :=
-    (Primrec.ofNat (List ℕ)).comp
-      (Primrec.snd.comp (Primrec.unpair.comp (Primrec.list_length.comp Primrec.fst)))
-  have hprev : Primrec fun x : RCtx => x.1.1 := Primrec.fst.comp Primrec.fst
-  have hfuel' : Primrec fun x : RCtx => x.1.2 := Primrec.snd.comp Primrec.fst
-  have ht : Primrec fun x : RCtx => x.2.1 := Primrec.fst.comp Primrec.snd
-  have hrest : Primrec fun x : RCtx => x.2.2 := Primrec.snd.comp Primrec.snd
-  have hconst : Primrec fun x : RCtx => (some (0, x.2.2) : Option (ℕ × List ℕ)) :=
-    Primrec.option_some.comp ((Primrec.const 0).pair hrest)
-  have hlook1 : Primrec fun x : RCtx =>
-      ((x.1.1[Nat.pair x.1.2 (Encodable.encode x.2.2)]?).getD none) :=
-    Primrec.option_getD.comp
-      (Primrec.list_getElem?.comp hprev
-        (Primrec₂.natPair.comp hfuel' (Primrec.encode.comp hrest)))
-      (Primrec.const none)
-  have hlook2 : Primrec fun y : RCtx × (ℕ × List ℕ) =>
-      ((y.1.1.1[Nat.pair y.1.1.2 (Encodable.encode y.2.2)]?).getD none) :=
-    Primrec.option_getD.comp
-      (Primrec.list_getElem?.comp (hprev.comp Primrec.fst)
-        (Primrec₂.natPair.comp (hfuel'.comp Primrec.fst)
-          (Primrec.encode.comp (Primrec.snd.comp Primrec.snd))))
-      (Primrec.const none)
-  have hmax : Primrec fun z : (RCtx × (ℕ × List ℕ)) × (ℕ × List ℕ) =>
-      (max z.1.2.1 z.2.1, z.2.2) :=
-    (Primrec.nat_max.comp (Primrec.fst.comp (Primrec.snd.comp Primrec.fst))
-      (Primrec.fst.comp Primrec.snd)).pair (Primrec.snd.comp Primrec.snd)
+  have hfuel := rctxLevelFuel_prim
+  have hts0 := rctxLevelTokens_prim
+  have hprev := rctxPrev_prim
+  have hfuel' := rctxFuel_prim
+  have ht := rctxTag_prim
+  have hrest := rctxRest_prim
+  have hconst := rctxConst_prim
+  have hlook1 := rctxLook_prim
+  have hlook2 := rctxLookPair_prim
+  have hmax := rctxMax_prim
   have hterm1 : Primrec fun x : RCtx => termLevelRun x.1.2 x.2.2 :=
     termLevelRun_prim.comp hfuel' hrest
   have hterm2 : Primrec fun y : RCtx × (ℕ × List ℕ) => termLevelRun y.1.1.2 y.2.2 :=

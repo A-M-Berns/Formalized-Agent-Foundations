@@ -36,30 +36,33 @@ incompatible with the `OutAcc` emission convention — out of the compiler entir
 `OutAcc ys` is carried through every machine here unchanged.
 
 The cost is that a compiled machine does its work even when the guard fails and the answer
-is discarded. That is bounded work, and `codeEvalSteps` (`Framework/Machine/CodeSteps.lean`)
-bounds the whole code tree, so it does not threaten the polynomial bound.
+is discarded. That is bounded work, and `codeMachineTime`
+(`Framework/Machine/EvalnRegBound.lean`) bounds the whole code tree, so it does not threaten
+the polynomial bound.
 
 ## Coverage
 
 **All eight constructors.** `zero`, `succ`, `left` and `right` compile to straight-line
 machines directly; `pair`, `comp`, `prec` and `rfind'` compile through the register-window
 layout (`codeRegs`, `codeLocal`), which gives each child its own register block and lets a
-node address its children uniformly. `compileCodeAt` is total on every code
-(`compileCodeAt_isSome`), and `codeVals_encodes` proves the compiled machine's answer
+node address its children uniformly. `compiledTM` is a total recursion on `Code`, and
+`codeVals_encodes` proves the compiled machine's answer
 registers hold `evaln`'s tag and value for every `c`. The register and step bounds are in
 `Framework/Machine/EvalnRegBound.lean`.
 
 ## Where it is consumed
 
 `compiledTM` and `codeVals_encodes` are consumed by `Framework/Machine/EvalnRegBound.lean`
-(the register bound `codeRegBound` and the step bound `codeMachineTime`) and by
-`Framework/Machine/TraderMachine.lean` (the trader machine), which also takes
-`resultTag`/`resultVal`, `ChildEncodes`, `runChildFixed`, `codeRegs`, `codeLocal`,
-`precSelf` and `rfSelf`. Together they are what makes `PolyFueledTrader.toEfficientlyComputable`
+(the register bound `codeRegBound` and the step bound `codeMachineTime`), which also takes
+`ChildEncodes`, `precSelf` and `rfSelf`, and by `Framework/Machine/TraderMachine.lean` (the
+trader machine), which takes `resultTag`/`resultVal`, `runChildFixed`, `codeRegs` and
+`codeLocal`. `Framework/Efficiency.lean` maps the chain the two of them close. Together they
+are what makes `PolyFueledTrader.toEfficientlyComputable`
 provable, so this module is the sufficiency half of the `dd:fuel` certificate device.
 
-Two generic facts live here for want of an upstream home: `runChildFixed`, which asks for a
-child's specification only at the vector it is actually run on, and `forRegs_hoareTime`, the
+Three generic facts live here for want of an upstream home: `update_lt`/`update_le`, the
+single-register counterpart of `writeWindow_bounded`; `runChildFixed`, which asks for a
+child's specification only at the vector it is actually run on; and `forRegs_hoareTime`, the
 register-block loop rule.
 -/
 
@@ -68,6 +71,26 @@ namespace LogicalInduction.EvalnCompiler
 open Complexity Complexity.TM
 
 variable {n : ℕ}
+
+/-- **A single register update keeps a bound.** Updating a `B`-bounded register vector at
+one index by a `B`-bounded value leaves it `B`-bounded. This is the step every phase's
+bound chain takes between consecutive `Function.update`s; `writeWindow_bounded` is the
+whole-window analogue, and `complexitylib` carries no single-update sibling. -/
+lemma update_lt {ι : Type*} [DecidableEq ι] {V : ι → ℕ} {B : ℕ} (hV : ∀ k, V k < B)
+    {i : ι} {v : ℕ} (hv : v < B) (k : ι) : Function.update V i v k < B := by
+  simp only [Function.update_apply]
+  split_ifs
+  · exact hv
+  · exact hV k
+
+/-- The non-strict counterpart of `update_lt`: an update by a value at most `B` keeps every
+register at most `B`. -/
+lemma update_le {ι : Type*} [DecidableEq ι] {V : ι → ℕ} {B : ℕ} (hV : ∀ k, V k ≤ B)
+    {i : ι} {v : ℕ} (hv : v ≤ B) (k : ι) : Function.update V i v k ≤ B := by
+  simp only [Function.update_apply]
+  split_ifs
+  · exact hv
+  · exact hV k
 
 /-! ## The exact `evaln` equations for the non-recursive constructors -/
 
@@ -237,8 +260,8 @@ lemma compileZero_hoareTime (r : CodeRegs n) (v : Fin 16 → ℕ) (B : ℕ)
     (ltFlagTime_le_arith (v 0) (v 1) (v 5) (v 4) B (hle 0) (hle 1) (hle 5) (hle 4))
   set V1 := Function.update (Function.update v 5 (v 1 - v 0)) 4
       (if v 0 < v 1 then 1 else 0) with hV1
-  have g1_4 : V1 4 = (if v 0 < v 1 then 1 else 0) := by rw [hV1]; simp [Function.update_apply]
-  have g1_2 : V1 2 = v 2 := by rw [hV1]; simp [Function.update_apply]
+  have g1_4 : V1 4 = (if v 0 < v 1 then 1 else 0) := by rw [hV1]; simp
+  have g1_2 : V1 2 = v 2 := by rw [hV1]; simp
   -- S2: tag := gflag
   have h2 := copyIntoTM_hoareTime (r 4) (r 2) (r.ne (by decide))
       (if v 0 < v 1 then 1 else 0) (v 2) inp₀ (regsWork r w₀ V1) ys hinp₀
@@ -248,7 +271,7 @@ lemma compileZero_hoareTime (r : CodeRegs n) (v : Fin 16 → ℕ) (B : ℕ)
     (copyIntoTime_le_arith (if v 0 < v 1 then 1 else 0) (v 2) B
       (by have := hB 0; split_ifs <;> omega) (hle 2))
   set V2 := Function.update V1 2 (if v 0 < v 1 then 1 else 0) with hV2
-  have g2_3 : V2 3 = v 3 := by rw [hV2, hV1]; simp [Function.update_apply]
+  have g2_3 : V2 3 = v 3 := by rw [hV2, hV1]; simp
   -- S3: val := 0
   have h3 := clearRegTM_hoareTime (r 3) (v 3) inp₀ (regsWork r w₀ V2) ys hinp₀
       (fun i _ => hpv V2 i) (by rw [regsWork_apply, g2_3])
@@ -309,8 +332,8 @@ lemma compileSucc_hoareTime (r : CodeRegs n) (v : Fin 16 → ℕ) (B : ℕ)
     (ltFlagTime_le_arith (v 0) (v 1) (v 5) (v 4) B (hle 0) (hle 1) (hle 5) (hle 4))
   set V1 := Function.update (Function.update v 5 (v 1 - v 0)) 4
       (if v 0 < v 1 then 1 else 0) with hV1
-  have g1_0 : V1 0 = v 0 := by rw [hV1]; simp [Function.update_apply]
-  have g1_6 : V1 6 = v 6 := by rw [hV1]; simp [Function.update_apply]
+  have g1_0 : V1 0 = v 0 := by rw [hV1]; simp
+  have g1_6 : V1 6 = v 6 := by rw [hV1]; simp
   -- S2: sc := n
   have h2 := copyIntoTM_hoareTime (r 0) (r 6) (r.ne (by decide)) (v 0) (v 6) inp₀
       (regsWork r w₀ V1) ys hinp₀ (fun i _ => hpv V1 i)
@@ -318,7 +341,7 @@ lemma compileSucc_hoareTime (r : CodeRegs n) (v : Fin 16 → ℕ) (B : ℕ)
   rw [regsWork_update] at h2
   replace h2 := h2.mono_bound (copyIntoTime_le_arith (v 0) (v 6) B (hle 0) (hle 6))
   set V2 := Function.update V1 6 (v 0) with hV2
-  have g2_6 : V2 6 = v 0 := by rw [hV2]; simp [Function.update_apply]
+  have g2_6 : V2 6 = v 0 := by rw [hV2]; simp
   -- S3: sc := n + 1
   have h3 := incRegTM_hoareTime (r 6) (v 0) inp₀ (regsWork r w₀ V2) ys hinp₀
       (fun i _ => hpv V2 i) (by rw [regsWork_apply, g2_6])
@@ -326,8 +349,8 @@ lemma compileSucc_hoareTime (r : CodeRegs n) (v : Fin 16 → ℕ) (B : ℕ)
   replace h3 := h3.mono_bound (regOpTime_le_arith (v 0) B (hle 0))
   set V3 := Function.update V2 6 (v 0 + 1) with hV3
   have g3_4 : V3 4 = (if v 0 < v 1 then 1 else 0) := by
-    rw [hV3, hV2, hV1]; simp [Function.update_apply]
-  have g3_2 : V3 2 = v 2 := by rw [hV3, hV2, hV1]; simp [Function.update_apply]
+    rw [hV3, hV2, hV1]; simp
+  have g3_2 : V3 2 = v 2 := by rw [hV3, hV2, hV1]; simp
   -- S4: tag := gflag
   have h4 := copyIntoTM_hoareTime (r 4) (r 2) (r.ne (by decide))
       (if v 0 < v 1 then 1 else 0) (v 2) inp₀ (regsWork r w₀ V3) ys hinp₀
@@ -336,7 +359,7 @@ lemma compileSucc_hoareTime (r : CodeRegs n) (v : Fin 16 → ℕ) (B : ℕ)
   replace h4 := h4.mono_bound
     (copyIntoTime_le_arith (if v 0 < v 1 then 1 else 0) (v 2) B hg (hle 2))
   set V4 := Function.update V3 2 (if v 0 < v 1 then 1 else 0) with hV4
-  have g4_3 : V4 3 = v 3 := by rw [hV4, hV3, hV2, hV1]; simp [Function.update_apply]
+  have g4_3 : V4 3 = v 3 := by rw [hV4, hV3, hV2, hV1]; simp
   -- S5: val := 0
   have h5 := clearRegTM_hoareTime (r 3) (v 3) inp₀ (regsWork r w₀ V4) ys hinp₀
       (fun i _ => hpv V4 i) (by rw [regsWork_apply, g4_3])
@@ -344,9 +367,9 @@ lemma compileSucc_hoareTime (r : CodeRegs n) (v : Fin 16 → ℕ) (B : ℕ)
   replace h5 := h5.mono_bound (regOpTime_le_arith (v 3) B (hle 3))
   set V5 := Function.update V4 3 0 with hV5
   have g5_4 : V5 4 = (if v 0 < v 1 then 1 else 0) := by
-    rw [hV5, hV4, hV3, hV2, hV1]; simp [Function.update_apply]
-  have g5_6 : V5 6 = v 0 + 1 := by rw [hV5, hV4, hV3]; simp [Function.update_apply]
-  have g5_3 : V5 3 = 0 := by rw [hV5]; simp [Function.update_apply]
+    rw [hV5, hV4, hV3, hV2, hV1]; simp
+  have g5_6 : V5 6 = v 0 + 1 := by rw [hV5, hV4, hV3]; simp
+  have g5_3 : V5 3 = 0 := by rw [hV5]; simp
   -- S6: val := gflag * (n + 1)
   have h6 := mulAddIntoTM_hoareTime (r 4) (r 6) (r 3)
       (r.ne (by decide)) (r.ne (by decide)) (r.ne (by decide))
@@ -371,27 +394,27 @@ lemma compileSucc_hoareTime (r : CodeRegs n) (v : Fin 16 → ℕ) (B : ℕ)
 /-! ### `Code.left` and `Code.right`
 
 Both are `unpairTM` on the input, masked by the guard flag. The nine registers `unpairTM`
-needs are the window `6`–`14` of the compiled layout, reached through `unpairWindow`; the
+needs are the window `6`–`14` of the compiled layout, reached through `unpairSlot`; the
 loop counter it needs is the input register itself, which `forRegTM` leaves untouched. -/
 
 /-- The nine-register window `unpairTM` runs in: compiled registers `6`–`14`. -/
-def unpairWindow : Fin 9 ↪ Fin 16 :=
+def unpairSlot : Fin 9 ↪ Fin 16 :=
   ⟨fun j => ⟨j.val + 6, by have := j.isLt; omega⟩, by
     intro a b h
     have : a.val + 6 = b.val + 6 := congrArg Fin.val h
     exact Fin.ext (by omega)⟩
 
-@[simp] lemma unpairWindow_zero : unpairWindow 0 = (6 : Fin 16) := by decide
-@[simp] lemma unpairWindow_one : unpairWindow 1 = (7 : Fin 16) := by decide
+@[simp] lemma unpairSlot_zero : unpairSlot 0 = (6 : Fin 16) := by decide
+@[simp] lemma unpairSlot_one : unpairSlot 1 = (7 : Fin 16) := by decide
 
 /-- `evaln k left n` / `evaln k right n`, sharing one machine: unpair the input into the
     window, then mask the selected component by the guard flag. -/
 def compileProj (r : CodeRegs n) (wj : Fin 9) : TM n :=
   seqTM (ltFlagTM (r 0) (r 1) (r 5) (r 4)) <|
-  seqTM (unpairTM (unpairWindow.trans r) (r 0)) <|
+  seqTM (unpairTM (unpairSlot.trans r) (r 0)) <|
   seqTM (copyIntoTM (r 4) (r 2)) <|
   seqTM (clearRegTM (r 3))
-        (mulAddIntoTM (r 4) (r (unpairWindow wj)) (r 3))
+        (mulAddIntoTM (r 4) (r (unpairSlot wj)) (r 3))
 
 /-- The state after the shared guard stage. -/
 def afterGuard (v : Fin 16 → ℕ) : Fin 16 → ℕ :=
@@ -399,29 +422,29 @@ def afterGuard (v : Fin 16 → ℕ) : Fin 16 → ℕ :=
 
 /-- The state after the unpair stage. -/
 noncomputable def afterUnpair (v : Fin 16 → ℕ) : Fin 16 → ℕ :=
-  writeWindow unpairWindow (afterGuard v)
-    (unpairVals (fun j => afterGuard v (unpairWindow j)) (v 0))
+  writeWindow unpairSlot (afterGuard v)
+    (unpairVals (fun j => afterGuard v (unpairSlot j)) (v 0))
 
 /-- The register vector `compileProj` leaves. `wj` selects the half of the unpairing window
 the projection reads, so the one machine serves both `left` and `right`. -/
 noncomputable def projVals (v : Fin 16 → ℕ) (wj : Fin 9) : Fin 16 → ℕ :=
   Function.update (Function.update (afterUnpair v) 2 (if v 0 < v 1 then 1 else 0)) 3
-    (0 + (if v 0 < v 1 then 1 else 0) * afterUnpair v (unpairWindow wj))
+    (0 + (if v 0 < v 1 then 1 else 0) * afterUnpair v (unpairSlot wj))
 
 lemma afterGuard_zero (v : Fin 16 → ℕ) : afterGuard v 0 = v 0 := by
-  simp [afterGuard, Function.update_apply]
+  simp [afterGuard]
 
 lemma afterUnpair_window (v : Fin 16 → ℕ) (j : Fin 9) :
-    afterUnpair v (unpairWindow j) =
-      unpairVals (fun i => afterGuard v (unpairWindow i)) (v 0) j := by
+    afterUnpair v (unpairSlot j) =
+      unpairVals (fun i => afterGuard v (unpairSlot i)) (v 0) j := by
   rw [afterUnpair, writeWindow_apply]
 
 lemma afterUnpair_left (v : Fin 16 → ℕ) :
-    afterUnpair v (unpairWindow 0) = (Nat.unpair (v 0)).1 := by
+    afterUnpair v (unpairSlot 0) = (Nat.unpair (v 0)).1 := by
   rw [afterUnpair_window, unpairVals_zero]
 
 lemma afterUnpair_right (v : Fin 16 → ℕ) :
-    afterUnpair v (unpairWindow 1) = (Nat.unpair (v 0)).2 := by
+    afterUnpair v (unpairSlot 1) = (Nat.unpair (v 0)).2 := by
   rw [afterUnpair_window, unpairVals_one]
 
 lemma leftVals_encodes (v : Fin 16 → ℕ) :
@@ -481,8 +504,8 @@ lemma afterUnpair_lt (v : Fin 16 → ℕ) (B : ℕ) (hB2 : 2 ≤ B) (hv : ∀ k,
   intro k
   simp only [afterUnpair]
   refine writeWindow_bounded _ _ _ B hag (fun j => ?_) k
-  have hb := unpairVals_bounded (fun i => afterGuard v (unpairWindow i)) (B - 1)
-    (fun i => by have := hag (unpairWindow i); omega) (v 0)
+  have hb := unpairVals_bounded (fun i => afterGuard v (unpairSlot i)) (B - 1)
+    (fun i => by have := hag (unpairSlot i); omega) (v 0)
     (by have := hv 0; omega) j
   omega
 
@@ -490,7 +513,7 @@ lemma projVals_lt (v : Fin 16 → ℕ) (wj : Fin 9) (B : ℕ) (hB2 : 2 ≤ B)
     (hv : ∀ k, v k < B) : ∀ k, projVals v wj k < B := by
   have hau := afterUnpair_lt v B hB2 hv
   intro k
-  have hw := hau (unpairWindow wj)
+  have hw := hau (unpairSlot wj)
   have hk := hau k
   simp only [projVals, Function.update_apply]
   by_cases hg : v 0 < v 1 <;> simp only [hg, if_true, if_false] <;> split_ifs <;> omega
@@ -526,35 +549,35 @@ lemma compileProj_hoareTime (r : CodeRegs n) (wj : Fin 9) (v : Fin 16 → ℕ) (
     simp only [Function.update_apply]
     split_ifs <;> (have h1 := hle 1; have hk := hle k; omega)
   -- S2: unpair the input into the window
-  have hctr : ∀ k : Fin 9, (unpairWindow.trans r) k ≠ r 0 := by
+  have hctr : ∀ k : Fin 9, (unpairSlot.trans r) k ≠ r 0 := by
     intro k
     refine Regs.ne r ?_
     intro e
     have := congrArg Fin.val e
-    simp [unpairWindow] at this
-  have h2 := unpairTM_hoareTime_arith (unpairWindow.trans r) (r 0) hctr
-      (fun j => afterGuard v (unpairWindow j)) (v 0) B inp₀
+    simp [unpairSlot] at this
+  have h2 := unpairTM_hoareTime_arith (unpairSlot.trans r) (r 0) hctr
+      (fun j => afterGuard v (unpairSlot j)) (v 0) B inp₀
       (regsWork r w₀ (afterGuard v)) ys hinp₀ (hpv (afterGuard v))
       (by rw [regsWork_apply, afterGuard_zero]) (hle 0)
-      (fun k => hAGle (unpairWindow k))
+      (fun k => hAGle (unpairSlot k))
   rw [← regsWork_restrict, regsWork_window] at h2
-  have hAU : writeWindow unpairWindow (afterGuard v)
-      (unpairVals (fun j => afterGuard v (unpairWindow j)) (v 0)) = afterUnpair v := rfl
+  have hAU : writeWindow unpairSlot (afterGuard v)
+      (unpairVals (fun j => afterGuard v (unpairSlot j)) (v 0)) = afterUnpair v := rfl
   rw [hAU] at h2
   have hAUle : ∀ k, afterUnpair v k ≤ B := by
     intro k
-    by_cases hk : ∃ j, unpairWindow j = k
+    by_cases hk : ∃ j, unpairSlot j = k
     · obtain ⟨j, rfl⟩ := hk
       rw [afterUnpair_window]
-      exact unpairVals_bounded _ B (fun i => hAGle (unpairWindow i)) (v 0) (hle 0) j
+      exact unpairVals_bounded _ B (fun i => hAGle (unpairSlot i)) (v 0) (hle 0) j
     · rw [afterUnpair, writeWindow_of_ne _ _ _ (fun j e => hk ⟨j, e⟩)]
       exact hAGle k
   have hAU4 : afterUnpair v 4 = (if v 0 < v 1 then 1 else 0) := by
     rw [afterUnpair, writeWindow_of_ne _ _ _ (by decide), afterGuard]
-    simp [Function.update_apply]
+    simp
   have hAU2 : afterUnpair v 2 = v 2 := by
     rw [afterUnpair, writeWindow_of_ne _ _ _ (by decide), afterGuard]
-    simp [Function.update_apply]
+    simp
   -- S3: tag := gflag
   have h3 := copyIntoTM_hoareTime (r 4) (r 2) (r.ne (by decide))
       (if v 0 < v 1 then 1 else 0) (v 2) inp₀ (regsWork r w₀ (afterUnpair v)) ys hinp₀
@@ -564,7 +587,7 @@ lemma compileProj_hoareTime (r : CodeRegs n) (wj : Fin 9) (v : Fin 16 → ℕ) (
   replace h3 := h3.mono_bound
     (copyIntoTime_le_arith (if v 0 < v 1 then 1 else 0) (v 2) B hg (hle 2))
   set V3 := Function.update (afterUnpair v) 2 (if v 0 < v 1 then 1 else 0) with hV3
-  have g3_3 : V3 3 = afterUnpair v 3 := by rw [hV3]; simp [Function.update_apply]
+  have g3_3 : V3 3 = afterUnpair v 3 := by rw [hV3]; simp
   -- S4: val := 0
   have h4 := clearRegTM_hoareTime (r 3) (afterUnpair v 3) inp₀ (regsWork r w₀ V3) ys hinp₀
       (fun i _ => hpv V3 i) (by rw [regsWork_apply, g3_3])
@@ -572,30 +595,30 @@ lemma compileProj_hoareTime (r : CodeRegs n) (wj : Fin 9) (v : Fin 16 → ℕ) (
   replace h4 := h4.mono_bound (regOpTime_le_arith (afterUnpair v 3) B (hAUle 3))
   set V4 := Function.update V3 3 0 with hV4
   have g4_4 : V4 4 = (if v 0 < v 1 then 1 else 0) := by
-    rw [hV4, hV3]; simp [Function.update_apply, hAU4]
-  have g4_w : V4 (unpairWindow wj) = afterUnpair v (unpairWindow wj) := by
+    rw [hV4, hV3]; simp [hAU4]
+  have g4_w : V4 (unpairSlot wj) = afterUnpair v (unpairSlot wj) := by
     rw [hV4, hV3]
-    have h2' : unpairWindow wj ≠ (2 : Fin 16) := by
-      intro e; have := congrArg Fin.val e; simp [unpairWindow] at this
-    have h3' : unpairWindow wj ≠ (3 : Fin 16) := by
-      intro e; have := congrArg Fin.val e; simp [unpairWindow] at this
-    simp [Function.update_apply, h2', h3']
-  have g4_3 : V4 3 = 0 := by rw [hV4]; simp [Function.update_apply]
+    have h2' : unpairSlot wj ≠ (2 : Fin 16) := by
+      intro e; have := congrArg Fin.val e; simp [unpairSlot] at this
+    have h3' : unpairSlot wj ≠ (3 : Fin 16) := by
+      intro e; have := congrArg Fin.val e; simp [unpairSlot] at this
+    simp [h2', h3']
+  have g4_3 : V4 3 = 0 := by rw [hV4]; simp
   -- S5: val := gflag * projection
-  have h5 := mulAddIntoTM_hoareTime (r 4) (r (unpairWindow wj)) (r 3)
-      (r.ne (by intro e; have := congrArg Fin.val e; simp [unpairWindow] at this))
+  have h5 := mulAddIntoTM_hoareTime (r 4) (r (unpairSlot wj)) (r 3)
+      (r.ne (by intro e; have := congrArg Fin.val e; simp [unpairSlot] at this))
       (r.ne (by decide))
-      (r.ne (by intro e; have := congrArg Fin.val e; simp [unpairWindow] at this))
-      (if v 0 < v 1 then 1 else 0) (afterUnpair v (unpairWindow wj)) 0 inp₀
+      (r.ne (by intro e; have := congrArg Fin.val e; simp [unpairSlot] at this))
+      (if v 0 < v 1 then 1 else 0) (afterUnpair v (unpairSlot wj)) 0 inp₀
       (regsWork r w₀ V4) ys hinp₀ (fun i _ => hpv V4 i)
       (by rw [regsWork_apply, g4_4]) (by rw [regsWork_apply, g4_w])
       (by rw [regsWork_apply, g4_3])
   rw [regsWork_update] at h5
   replace h5 := h5.mono_bound
     (mulAddTime_le_arith (if v 0 < v 1 then 1 else 0)
-      (afterUnpair v (unpairWindow wj)) 0 B hg (hAUle _) (by omega))
+      (afterUnpair v (unpairSlot wj)) 0 B hg (hAUle _) (by omega))
   have hfin : Function.update V4 3
-      (0 + (if v 0 < v 1 then 1 else 0) * afterUnpair v (unpairWindow wj))
+      (0 + (if v 0 < v 1 then 1 else 0) * afterUnpair v (unpairSlot wj))
       = projVals v wj := by
     rw [hV4, hV3, projVals, Function.update_idem]
   rw [hfin] at h5
@@ -668,7 +691,7 @@ lemma comp_mask_tag (k : ℕ) (cf cg : Nat.Partrec.Code) (m : ℕ) :
           * resultTag (Nat.Partrec.Code.evaln k cf
               (resultVal (Nat.Partrec.Code.evaln k cg m))) := by
   rw [evaln_comp_eq]
-  cases hG : Nat.Partrec.Code.evaln k cg m <;> split_ifs <;> simp [Seq.seq]
+  cases hG : Nat.Partrec.Code.evaln k cg m <;> split_ifs <;> simp
 
 lemma comp_mask_val (k : ℕ) (cf cg : Nat.Partrec.Code) (m : ℕ) :
     resultVal (Nat.Partrec.Code.evaln k (cf.comp cg) m)
@@ -678,7 +701,7 @@ lemma comp_mask_val (k : ℕ) (cf cg : Nat.Partrec.Code) (m : ℕ) :
           * resultVal (Nat.Partrec.Code.evaln k cf
               (resultVal (Nat.Partrec.Code.evaln k cg m))) := by
   rw [evaln_comp_eq]
-  cases hG : Nat.Partrec.Code.evaln k cg m <;> split_ifs <;> simp [Seq.seq]
+  cases hG : Nat.Partrec.Code.evaln k cg m <;> split_ifs <;> simp
 /-! ## Ambient-arity compilation: size-indexed disjoint register intervals
 
 A compiled machine for `c` uses `codeRegs c` registers of an ambient file, laid out as
@@ -695,7 +718,8 @@ that is structural (`writeWindow_of_ne` on an index range), not a frame argument
     Defined by direct structural recursion rather than through a size function, so that
     `codeRegs (pair cf cg)` reduces to `16 + codeRegs cf + codeRegs cg` **definitionally**.
     A `prec` or `rfind'` node is thirty-three wide rather than sixteen: it needs more
-    working registers, and the thirty-third is its loop counter, which must sit *outside*
+    working registers, and the node's thirty-third register — laid out last, at the ambient
+    index `precLoopIdx` / `rfLoopIdx` names — is its loop counter, which must sit *outside*
     the block its loop body names (`precMain`/`precLoopIdx`, `rfMain`/`rfLoopIdx`).
     Without the definitional reduction every recursive call in the compiler would need a
     transport along an arity equation, and the dependent-type friction would spread through
@@ -717,34 +741,34 @@ lemma codeRegs_ge (c : Nat.Partrec.Code) : 16 ≤ codeRegs c := by
 
 For `pair cf cg` / `comp cf cg` the ambient arity is `codeRegs = 16 + af + ag`, and it
 splits into three disjoint intervals: the node's own sixteen at offset `0`, the first
-child's subtree at `16`, the second's at `16 + af`. `selfW`/`leftLoc`/`rightLoc` name the
-three *local* sixteen-register blocks; `leftSub`/`rightSub` name the children's whole
+child's subtree at `16`, the second's at `16 + af`. `binSelf`/`binLeftLoc`/`binRightLoc` name the
+three *local* sixteen-register blocks; `binLeftSub`/`binRightSub` name the children's whole
 subtrees, which is what a child machine's spec is stated over. -/
 
 section Binary
 variable {af ag : ℕ}
 
 /-- The node's own sixteen registers. -/
-def selfW (af ag : ℕ) : Fin 16 ↪ Fin (16 + af + ag) := shiftEmb 0 (by omega)
+def binSelf (af ag : ℕ) : Fin 16 ↪ Fin (16 + af + ag) := shiftEmb 0 (by omega)
 /-- The first child's whole subtree. -/
-def leftSub (af ag : ℕ) : Fin af ↪ Fin (16 + af + ag) := shiftEmb 16 (by omega)
+def binLeftSub (af ag : ℕ) : Fin af ↪ Fin (16 + af + ag) := shiftEmb 16 (by omega)
 /-- The second child's whole subtree. -/
-def rightSub (af ag : ℕ) : Fin ag ↪ Fin (16 + af + ag) := shiftEmb (16 + af) (by omega)
+def binRightSub (af ag : ℕ) : Fin ag ↪ Fin (16 + af + ag) := shiftEmb (16 + af) (by omega)
 /-- The first child's own sixteen. -/
-def leftLoc (af ag : ℕ) (h : 16 ≤ af) : Fin 16 ↪ Fin (16 + af + ag) :=
+def binLeftLoc (af ag : ℕ) (h : 16 ≤ af) : Fin 16 ↪ Fin (16 + af + ag) :=
   shiftEmb 16 (by omega)
 /-- The second child's own sixteen. -/
-def rightLoc (af ag : ℕ) (h : 16 ≤ ag) : Fin 16 ↪ Fin (16 + af + ag) :=
+def binRightLoc (af ag : ℕ) (h : 16 ≤ ag) : Fin 16 ↪ Fin (16 + af + ag) :=
   shiftEmb (16 + af) (by omega)
 
 /-- A child's local block is the first sixteen of its subtree. -/
-lemma leftLoc_eq (h : 16 ≤ af) (j : Fin 16) :
-    leftLoc af ag h j = leftSub af ag ⟨(j : ℕ), by have := j.isLt; omega⟩ := by
-  apply Fin.ext; simp [leftLoc, leftSub, shiftEmb_val]
+lemma binLeftLoc_eq (h : 16 ≤ af) (j : Fin 16) :
+    binLeftLoc af ag h j = binLeftSub af ag ⟨(j : ℕ), by have := j.isLt; omega⟩ := by
+  apply Fin.ext; simp [binLeftLoc, binLeftSub, shiftEmb_val]
 
-lemma rightLoc_eq (h : 16 ≤ ag) (j : Fin 16) :
-    rightLoc af ag h j = rightSub af ag ⟨(j : ℕ), by have := j.isLt; omega⟩ := by
-  apply Fin.ext; simp [rightLoc, rightSub, shiftEmb_val]
+lemma binRightLoc_eq (h : 16 ≤ ag) (j : Fin 16) :
+    binRightLoc af ag h j = binRightSub af ag ⟨(j : ℕ), by have := j.isLt; omega⟩ := by
+  apply Fin.ext; simp [binRightLoc, binRightSub, shiftEmb_val]
 
 /-- `pairTM` occupies registers `6`–`13` of the node's own block. -/
 def pairSlot : Fin 8 ↪ Fin 16 := shiftEmb 6 (by omega)
@@ -758,35 +782,35 @@ All of them reduce to arithmetic on the three offsets `0`, `16`, `16 + af`. -/
 section BinaryNe
 variable {af ag : ℕ}
 
-lemma selfW_ne_selfW (i j : Fin 16) (h : (i : ℕ) ≠ (j : ℕ)) :
-    selfW af ag i ≠ selfW af ag j := by
+lemma binSelf_ne_self (i j : Fin 16) (h : (i : ℕ) ≠ (j : ℕ)) :
+    binSelf af ag i ≠ binSelf af ag j := by
   apply amb_ne; simpa using h
 
-lemma selfW_ne_leftLoc (haf : 16 ≤ af) (i j : Fin 16) :
-    selfW af ag i ≠ leftLoc af ag haf j := by
+lemma binSelf_ne_leftLoc (haf : 16 ≤ af) (i j : Fin 16) :
+    binSelf af ag i ≠ binLeftLoc af ag haf j := by
   apply amb_ne; have := i.isLt; simp; omega
 
-lemma selfW_ne_rightLoc (hag : 16 ≤ ag) (haf : 16 ≤ af) (i j : Fin 16) :
-    selfW af ag i ≠ rightLoc af ag hag j := by
+lemma binSelf_ne_rightLoc (hag : 16 ≤ ag) (haf : 16 ≤ af) (i j : Fin 16) :
+    binSelf af ag i ≠ binRightLoc af ag hag j := by
   apply amb_ne; have := i.isLt; simp; omega
 
-lemma leftLoc_ne_rightLoc (haf : 16 ≤ af) (hag : 16 ≤ ag) (i j : Fin 16) :
-    leftLoc af ag haf i ≠ rightLoc af ag hag j := by
+lemma binLeftLoc_ne_rightLoc (haf : 16 ≤ af) (hag : 16 ≤ ag) (i j : Fin 16) :
+    binLeftLoc af ag haf i ≠ binRightLoc af ag hag j := by
   apply amb_ne; have := i.isLt; simp; omega
 
 /-- The self block is outside the first child's subtree. -/
-lemma leftSub_ne_selfW (i : Fin af) (j : Fin 16) :
-    leftSub af ag i ≠ selfW af ag j := by
+lemma binLeftSub_ne_self (i : Fin af) (j : Fin 16) :
+    binLeftSub af ag i ≠ binSelf af ag j := by
   apply amb_ne; have := j.isLt; simp; omega
 
 /-- The self block is outside the second child's subtree. -/
-lemma rightSub_ne_selfW (haf : 16 ≤ af) (i : Fin ag) (j : Fin 16) :
-    rightSub af ag i ≠ selfW af ag j := by
+lemma binRightSub_ne_self (haf : 16 ≤ af) (i : Fin ag) (j : Fin 16) :
+    binRightSub af ag i ≠ binSelf af ag j := by
   apply amb_ne; have := j.isLt; simp; omega
 
 /-- The first child's block is outside the second child's subtree. -/
-lemma rightSub_ne_leftLoc (haf : 16 ≤ af) (i : Fin ag) (j : Fin 16) :
-    rightSub af ag i ≠ leftLoc af ag haf j := by
+lemma binRightSub_ne_leftLoc (haf : 16 ≤ af) (i : Fin ag) (j : Fin 16) :
+    binRightSub af ag i ≠ binLeftLoc af ag haf j := by
   apply amb_ne; have := j.isLt; simp; omega
 
 end BinaryNe
@@ -835,19 +859,19 @@ section PhaseA
 variable {af ag : ℕ}
 
 /-- The first child's subtree misses the second child's block. -/
-lemma leftSub_ne_rightLoc (hag : 16 ≤ ag) (i : Fin af) (j : Fin 16) :
-    leftSub af ag i ≠ rightLoc af ag hag j := by
+lemma binLeftSub_ne_rightLoc (hag : 16 ≤ ag) (i : Fin af) (j : Fin 16) :
+    binLeftSub af ag i ≠ binRightLoc af ag hag j := by
   apply amb_ne; have := i.isLt; simp; omega
 
 /-- **`pair`, phase A: run the children.** Copies the node's input and fuel into each child's
 local registers and runs the two child machines. -/
 def pairPhaseA (af ag : ℕ) (haf : 16 ≤ af) (hag : 16 ≤ ag)
     (R : Regs (16 + af + ag) n) (Mf Mg : TM n) : TM n :=
-  seqTM (copyIntoTM (R (selfW af ag 0)) (R (leftLoc af ag haf 0))) <|
-  seqTM (copyIntoTM (R (selfW af ag 1)) (R (leftLoc af ag haf 1))) <|
+  seqTM (copyIntoTM (R (binSelf af ag 0)) (R (binLeftLoc af ag haf 0))) <|
+  seqTM (copyIntoTM (R (binSelf af ag 1)) (R (binLeftLoc af ag haf 1))) <|
   seqTM Mf <|
-  seqTM (copyIntoTM (R (selfW af ag 0)) (R (rightLoc af ag hag 0))) <|
-  seqTM (copyIntoTM (R (selfW af ag 1)) (R (rightLoc af ag hag 1)))
+  seqTM (copyIntoTM (R (binSelf af ag 0)) (R (binRightLoc af ag hag 0))) <|
+  seqTM (copyIntoTM (R (binSelf af ag 1)) (R (binRightLoc af ag hag 1)))
         Mg
 
 /-- The ambient register vector `pairPhaseA` produces, parametric in the two child
@@ -855,32 +879,34 @@ semantics. -/
 noncomputable def pairPhaseAVec (af ag : ℕ) (haf : 16 ≤ af) (hag : 16 ≤ ag)
     (Ff : (Fin af → ℕ) → Fin af → ℕ) (Fg : (Fin ag → ℕ) → Fin ag → ℕ)
     (V : Fin (16 + af + ag) → ℕ) : Fin (16 + af + ag) → ℕ :=
-  let V1 := Function.update V (leftLoc af ag haf 0) (V (selfW af ag 0))
-  let V2 := Function.update V1 (leftLoc af ag haf 1) (V (selfW af ag 1))
-  let V3 := writeWindow (leftSub af ag) V2 (Ff (fun j => V2 (leftSub af ag j)))
-  let V4 := Function.update V3 (rightLoc af ag hag 0) (V (selfW af ag 0))
-  let V5 := Function.update V4 (rightLoc af ag hag 1) (V (selfW af ag 1))
-  writeWindow (rightSub af ag) V5 (Fg (fun j => V5 (rightSub af ag j)))
+  let V1 := Function.update V (binLeftLoc af ag haf 0) (V (binSelf af ag 0))
+  let V2 := Function.update V1 (binLeftLoc af ag haf 1) (V (binSelf af ag 1))
+  let V3 := writeWindow (binLeftSub af ag) V2 (Ff (fun j => V2 (binLeftSub af ag j)))
+  let V4 := Function.update V3 (binRightLoc af ag hag 0) (V (binSelf af ag 0))
+  let V5 := Function.update V4 (binRightLoc af ag hag 1) (V (binSelf af ag 1))
+  writeWindow (binRightSub af ag) V5 (Fg (fun j => V5 (binRightSub af ag j)))
 
 /-- The vector the left child sees: its own subtree, with the parent's input and fuel
     written into its interface. -/
 noncomputable def pairLeftIn (af ag : ℕ) (haf : 16 ≤ af) (V : Fin (16 + af + ag) → ℕ) :
     Fin af → ℕ :=
   fun j =>
-    Function.update (Function.update V (leftLoc af ag haf 0) (V (selfW af ag 0)))
-      (leftLoc af ag haf 1) (V (selfW af ag 1)) (leftSub af ag j)
+    Function.update (Function.update V (binLeftLoc af ag haf 0) (V (binSelf af ag 0)))
+      (binLeftLoc af ag haf 1) (V (binSelf af ag 1)) (binLeftSub af ag j)
 /-- The vector the right child sees. -/
 noncomputable def pairRightIn (af ag : ℕ) (haf : 16 ≤ af) (hag : 16 ≤ ag)
     (Ff : (Fin af → ℕ) → Fin af → ℕ) (V : Fin (16 + af + ag) → ℕ) : Fin ag → ℕ :=
   fun j =>
     Function.update
       (Function.update
-        (writeWindow (leftSub af ag)
-          (Function.update (Function.update V (leftLoc af ag haf 0) (V (selfW af ag 0)))
-            (leftLoc af ag haf 1) (V (selfW af ag 1)))
+        (writeWindow (binLeftSub af ag)
+          (Function.update (Function.update V (binLeftLoc af ag haf 0) (V (binSelf af ag 0)))
+            (binLeftLoc af ag haf 1) (V (binSelf af ag 1)))
           (Ff (pairLeftIn af ag haf V)))
-        (rightLoc af ag hag 0) (V (selfW af ag 0)))
-      (rightLoc af ag hag 1) (V (selfW af ag 1)) (rightSub af ag j)
+        (binRightLoc af ag hag 0) (V (binSelf af ag 0)))
+      (binRightLoc af ag hag 1) (V (binSelf af ag 1)) (binRightSub af ag j)
+/-- **`pair` Phase A Hoare specification.** The two children run in their own subtrees,
+    each on the node's input and fuel, and neither disturbs the other's block. -/
 lemma pairPhaseA_hoareTime (haf : 16 ≤ af) (hag : 16 ≤ ag)
     (R : Regs (16 + af + ag) n) (Mf Mg : TM n)
     (Ff : (Fin af → ℕ) → Fin af → ℕ) (Fg : (Fin ag → ℕ) → Fin ag → ℕ) (tf tg : ℕ)
@@ -888,18 +914,17 @@ lemma pairPhaseA_hoareTime (haf : 16 ≤ af) (hag : 16 ≤ ag)
     (inp₀ : Tape) (w₀ : Fin n → Tape) (ys : List Bool)
     (hinp₀ : Parked inp₀) (hpark : ∀ i, Parked (w₀ i)) (hB : ∀ k, V k < B)
     (hFfB : ∀ k, Ff (pairLeftIn af ag haf V) k < B)
-    (hFgB : ∀ k, Fg (pairRightIn af ag haf hag Ff V) k < B)
     (hMf : ∀ Wb : Fin n → Tape, (∀ i, Parked (Wb i)) →
       Mf.HoareTime
-        (EmitPred inp₀ (regsWork ((leftSub af ag).trans R) Wb
+        (EmitPred inp₀ (regsWork ((binLeftSub af ag).trans R) Wb
           (pairLeftIn af ag haf V)) ys)
-        (EmitPred inp₀ (regsWork ((leftSub af ag).trans R) Wb
+        (EmitPred inp₀ (regsWork ((binLeftSub af ag).trans R) Wb
           (Ff (pairLeftIn af ag haf V))) ys) tf)
     (hMg : ∀ Wb : Fin n → Tape, (∀ i, Parked (Wb i)) →
       Mg.HoareTime
-        (EmitPred inp₀ (regsWork ((rightSub af ag).trans R) Wb
+        (EmitPred inp₀ (regsWork ((binRightSub af ag).trans R) Wb
           (pairRightIn af ag haf hag Ff V)) ys)
-        (EmitPred inp₀ (regsWork ((rightSub af ag).trans R) Wb
+        (EmitPred inp₀ (regsWork ((binRightSub af ag).trans R) Wb
           (Fg (pairRightIn af ag haf hag Ff V))) ys) tg) :
     (pairPhaseA af ag haf hag R Mf Mg).HoareTime
       (EmitPred inp₀ (regsWork R w₀ V) ys)
@@ -908,81 +933,75 @@ lemma pairPhaseA_hoareTime (haf : 16 ≤ af) (hag : 16 ≤ ag)
   have hpv := parked_regsWork R hpark
   have hle : ∀ k, V k ≤ B := fun k => Nat.le_of_lt (hB k)
   -- S1
-  have h1 := copyIntoTM_hoareTime (R (selfW af ag 0)) (R (leftLoc af ag haf 0))
-      (Regs.ne R (selfW_ne_leftLoc haf 0 0)) (V (selfW af ag 0)) (V (leftLoc af ag haf 0))
+  have h1 := copyIntoTM_hoareTime (R (binSelf af ag 0)) (R (binLeftLoc af ag haf 0))
+      (Regs.ne R (binSelf_ne_leftLoc haf 0 0)) (V (binSelf af ag 0)) (V (binLeftLoc af ag haf 0))
       inp₀ (regsWork R w₀ V) ys hinp₀ (fun i _ => hpv V i)
       (regsWork_apply R w₀ V _) (regsWork_apply R w₀ V _)
   rw [regsWork_update] at h1
   replace h1 := h1.mono_bound (copyIntoTime_le_arith _ _ B (hle _) (hle _))
-  set V1 := Function.update V (leftLoc af ag haf 0) (V (selfW af ag 0)) with hV1
+  set V1 := Function.update V (binLeftLoc af ag haf 0) (V (binSelf af ag 0)) with hV1
   have b1 : ∀ k, V1 k < B := by
-    intro k; rw [hV1]; simp only [Function.update_apply]; split_ifs <;> exact hB _
+    rw [hV1]; exact update_lt hB (hB _)
   -- S2
-  have h2 := copyIntoTM_hoareTime (R (selfW af ag 1)) (R (leftLoc af ag haf 1))
-      (Regs.ne R (selfW_ne_leftLoc haf 1 1)) (V (selfW af ag 1)) (V1 (leftLoc af ag haf 1))
+  have h2 := copyIntoTM_hoareTime (R (binSelf af ag 1)) (R (binLeftLoc af ag haf 1))
+      (Regs.ne R (binSelf_ne_leftLoc haf 1 1)) (V (binSelf af ag 1)) (V1 (binLeftLoc af ag haf 1))
       inp₀ (regsWork R w₀ V1) ys hinp₀ (fun i _ => hpv V1 i)
       (by rw [regsWork_apply, hV1,
-        Function.update_of_ne (selfW_ne_leftLoc haf 1 0)])
+        Function.update_of_ne (binSelf_ne_leftLoc haf 1 0)])
       (regsWork_apply R w₀ V1 _)
   rw [regsWork_update] at h2
   replace h2 := h2.mono_bound
     (copyIntoTime_le_arith _ _ B (hle _) (Nat.le_of_lt (b1 _)))
-  set V2 := Function.update V1 (leftLoc af ag haf 1) (V (selfW af ag 1)) with hV2
+  set V2 := Function.update V1 (binLeftLoc af ag haf 1) (V (binSelf af ag 1)) with hV2
   have b2 : ∀ k, V2 k < B := by
-    intro k; rw [hV2]; simp only [Function.update_apply]; split_ifs
-    · exact hB _
-    · exact b1 _
+    rw [hV2]; exact update_lt b1 (hB _)
   -- everything outside the first subtree is still `V`
-  have out2 : ∀ k, (∀ j, leftSub af ag j ≠ k) → V2 k = V k := by
+  have out2 : ∀ k, (∀ j, binLeftSub af ag j ≠ k) → V2 k = V k := by
     intro k hk
-    have e0 : leftLoc af ag haf 0 ≠ k := by
-      rw [leftLoc_eq]; exact hk _
-    have e1 : leftLoc af ag haf 1 ≠ k := by
-      rw [leftLoc_eq]; exact hk _
+    have e0 : binLeftLoc af ag haf 0 ≠ k := by
+      rw [binLeftLoc_eq]; exact hk _
+    have e1 : binLeftLoc af ag haf 1 ≠ k := by
+      rw [binLeftLoc_eq]; exact hk _
     rw [hV2, Function.update_of_ne (Ne.symm e1), hV1, Function.update_of_ne (Ne.symm e0)]
   -- S3: run cf
-  have h3 := runChildFixed (leftSub af ag) R Mf Ff tf w₀ hpark V2 hMf
-  set V3 := writeWindow (leftSub af ag) V2 (Ff (fun j => V2 (leftSub af ag j))) with hV3
+  have h3 := runChildFixed (binLeftSub af ag) R Mf Ff tf w₀ hpark V2 hMf
+  set V3 := writeWindow (binLeftSub af ag) V2 (Ff (fun j => V2 (binLeftSub af ag j))) with hV3
   have b3 : ∀ k, V3 k < B := by
     intro k; rw [hV3]
     exact writeWindow_bounded _ _ _ B b2 (fun j => hFfB j) k
-  have out3 : ∀ k, (∀ j, leftSub af ag j ≠ k) → V3 k = V k := by
+  have out3 : ∀ k, (∀ j, binLeftSub af ag j ≠ k) → V3 k = V k := by
     intro k hk
     rw [hV3, runChild_frame _ _ _ hk]; exact out2 k hk
   -- S4
-  have h4 := copyIntoTM_hoareTime (R (selfW af ag 0)) (R (rightLoc af ag hag 0))
-      (Regs.ne R (selfW_ne_rightLoc hag haf 0 0)) (V (selfW af ag 0))
-      (V3 (rightLoc af ag hag 0))
+  have h4 := copyIntoTM_hoareTime (R (binSelf af ag 0)) (R (binRightLoc af ag hag 0))
+      (Regs.ne R (binSelf_ne_rightLoc hag haf 0 0)) (V (binSelf af ag 0))
+      (V3 (binRightLoc af ag hag 0))
       inp₀ (regsWork R w₀ V3) ys hinp₀ (fun i _ => hpv V3 i)
-      (by rw [regsWork_apply, out3 _ (fun j => leftSub_ne_selfW j 0)])
+      (by rw [regsWork_apply, out3 _ (fun j => binLeftSub_ne_self j 0)])
       (regsWork_apply R w₀ V3 _)
   rw [regsWork_update] at h4
   replace h4 := h4.mono_bound
     (copyIntoTime_le_arith _ _ B (hle _) (Nat.le_of_lt (b3 _)))
-  set V4 := Function.update V3 (rightLoc af ag hag 0) (V (selfW af ag 0)) with hV4
+  set V4 := Function.update V3 (binRightLoc af ag hag 0) (V (binSelf af ag 0)) with hV4
   have b4 : ∀ k, V4 k < B := by
-    intro k; rw [hV4]; simp only [Function.update_apply]; split_ifs
-    · exact hB _
-    · exact b3 _
+    rw [hV4]; exact update_lt b3 (hB _)
   -- S5
-  have h5 := copyIntoTM_hoareTime (R (selfW af ag 1)) (R (rightLoc af ag hag 1))
-      (Regs.ne R (selfW_ne_rightLoc hag haf 1 1)) (V (selfW af ag 1))
-      (V4 (rightLoc af ag hag 1))
+  have h5 := copyIntoTM_hoareTime (R (binSelf af ag 1)) (R (binRightLoc af ag hag 1))
+      (Regs.ne R (binSelf_ne_rightLoc hag haf 1 1)) (V (binSelf af ag 1))
+      (V4 (binRightLoc af ag hag 1))
       inp₀ (regsWork R w₀ V4) ys hinp₀ (fun i _ => hpv V4 i)
       (by rw [regsWork_apply, hV4,
-        Function.update_of_ne (selfW_ne_rightLoc hag haf 1 0),
-        out3 _ (fun j => leftSub_ne_selfW j 1)])
+        Function.update_of_ne (binSelf_ne_rightLoc hag haf 1 0),
+        out3 _ (fun j => binLeftSub_ne_self j 1)])
       (regsWork_apply R w₀ V4 _)
   rw [regsWork_update] at h5
   replace h5 := h5.mono_bound
     (copyIntoTime_le_arith _ _ B (hle _) (Nat.le_of_lt (b4 _)))
-  set V5 := Function.update V4 (rightLoc af ag hag 1) (V (selfW af ag 1)) with hV5
+  set V5 := Function.update V4 (binRightLoc af ag hag 1) (V (binSelf af ag 1)) with hV5
   have b5 : ∀ k, V5 k < B := by
-    intro k; rw [hV5]; simp only [Function.update_apply]; split_ifs
-    · exact hB _
-    · exact b4 _
+    rw [hV5]; exact update_lt b4 (hB _)
   -- S6: run cg
-  have h6 := runChildFixed (rightSub af ag) R Mg Fg tg w₀ hpark V5 hMg
+  have h6 := runChildFixed (binRightSub af ag) R Mg Fg tg w₀ hpark V5 hMg
   exact (seqEmit hinp₀ (hpv V1) h1 <|
     seqEmit hinp₀ (hpv V2) h2 <|
     seqEmit hinp₀ (hpv V3) h3 <|
@@ -1008,39 +1027,39 @@ window, pairs them, and masks tag and value by both children's tags and the node
 guard. -/
 def pairPhaseB (af ag : ℕ) (haf : 16 ≤ af) (hag : 16 ≤ ag)
     (R : Regs (16 + af + ag) n) : TM n :=
-  seqTM (copyIntoTM (R (leftLoc af ag haf 3)) (R (selfW af ag 6))) <|
-  seqTM (copyIntoTM (R (rightLoc af ag hag 3)) (R (selfW af ag 7))) <|
-  seqTM (pairTM (pairSlot.trans ((selfW af ag).trans R))) <|
-  seqTM (ltFlagTM (R (selfW af ag 0)) (R (selfW af ag 1))
-          (R (selfW af ag 5)) (R (selfW af ag 4))) <|
-  seqTM (clearRegTM (R (selfW af ag 14))) <|
-  seqTM (mulAddIntoTM (R (selfW af ag 4)) (R (leftLoc af ag haf 2))
-          (R (selfW af ag 14))) <|
-  seqTM (clearRegTM (R (selfW af ag 2))) <|
-  seqTM (mulAddIntoTM (R (selfW af ag 14)) (R (rightLoc af ag hag 2))
-          (R (selfW af ag 2))) <|
-  seqTM (clearRegTM (R (selfW af ag 3)))
-        (mulAddIntoTM (R (selfW af ag 2)) (R (selfW af ag 12)) (R (selfW af ag 3)))
+  seqTM (copyIntoTM (R (binLeftLoc af ag haf 3)) (R (binSelf af ag 6))) <|
+  seqTM (copyIntoTM (R (binRightLoc af ag hag 3)) (R (binSelf af ag 7))) <|
+  seqTM (pairTM (pairSlot.trans ((binSelf af ag).trans R))) <|
+  seqTM (ltFlagTM (R (binSelf af ag 0)) (R (binSelf af ag 1))
+          (R (binSelf af ag 5)) (R (binSelf af ag 4))) <|
+  seqTM (clearRegTM (R (binSelf af ag 14))) <|
+  seqTM (mulAddIntoTM (R (binSelf af ag 4)) (R (binLeftLoc af ag haf 2))
+          (R (binSelf af ag 14))) <|
+  seqTM (clearRegTM (R (binSelf af ag 2))) <|
+  seqTM (mulAddIntoTM (R (binSelf af ag 14)) (R (binRightLoc af ag hag 2))
+          (R (binSelf af ag 2))) <|
+  seqTM (clearRegTM (R (binSelf af ag 3)))
+        (mulAddIntoTM (R (binSelf af ag 2)) (R (binSelf af ag 12)) (R (binSelf af ag 3)))
 
 /-- The ambient register vector `pairPhaseB` produces. -/
 noncomputable def pairPhaseBVec (af ag : ℕ) (haf : 16 ≤ af) (hag : 16 ≤ ag)
     (W : Fin (16 + af + ag) → ℕ) : Fin (16 + af + ag) → ℕ :=
-  let W7 := Function.update W (selfW af ag 6) (W (leftLoc af ag haf 3))
-  let W8 := Function.update W7 (selfW af ag 7) (W7 (rightLoc af ag hag 3))
-  let W9 := writeWindow (pairSlot.trans (selfW af ag)) W8
-              (pairVals (fun j => W8 ((pairSlot.trans (selfW af ag)) j)))
-  let W10 := Function.update W9 (selfW af ag 5) (W9 (selfW af ag 1) - W9 (selfW af ag 0))
-  let W11 := Function.update W10 (selfW af ag 4)
-              (if W9 (selfW af ag 0) < W9 (selfW af ag 1) then 1 else 0)
-  let W12 := Function.update W11 (selfW af ag 14) 0
-  let W13 := Function.update W12 (selfW af ag 14)
-              (0 + W12 (selfW af ag 4) * W12 (leftLoc af ag haf 2))
-  let W14 := Function.update W13 (selfW af ag 2) 0
-  let W15 := Function.update W14 (selfW af ag 2)
-              (0 + W14 (selfW af ag 14) * W14 (rightLoc af ag hag 2))
-  let W16 := Function.update W15 (selfW af ag 3) 0
-  Function.update W16 (selfW af ag 3)
-    (0 + W16 (selfW af ag 2) * W16 (selfW af ag 12))
+  let W7 := Function.update W (binSelf af ag 6) (W (binLeftLoc af ag haf 3))
+  let W8 := Function.update W7 (binSelf af ag 7) (W7 (binRightLoc af ag hag 3))
+  let W9 := writeWindow (pairSlot.trans (binSelf af ag)) W8
+              (pairVals (fun j => W8 ((pairSlot.trans (binSelf af ag)) j)))
+  let W10 := Function.update W9 (binSelf af ag 5) (W9 (binSelf af ag 1) - W9 (binSelf af ag 0))
+  let W11 := Function.update W10 (binSelf af ag 4)
+              (if W9 (binSelf af ag 0) < W9 (binSelf af ag 1) then 1 else 0)
+  let W12 := Function.update W11 (binSelf af ag 14) 0
+  let W13 := Function.update W12 (binSelf af ag 14)
+              (0 + W12 (binSelf af ag 4) * W12 (binLeftLoc af ag haf 2))
+  let W14 := Function.update W13 (binSelf af ag 2) 0
+  let W15 := Function.update W14 (binSelf af ag 2)
+              (0 + W14 (binSelf af ag 14) * W14 (binRightLoc af ag hag 2))
+  let W16 := Function.update W15 (binSelf af ag 3) 0
+  Function.update W16 (binSelf af ag 3)
+    (0 + W16 (binSelf af ag 2) * W16 (binSelf af ag 12))
 
 end PhaseB
 
@@ -1050,33 +1069,33 @@ variable {af ag : ℕ}
 /-- `pairTM`'s eight registers, as an ambient window: offset `6` of the node's block. -/
 def pairAmb (af ag : ℕ) : Fin 8 ↪ Fin (16 + af + ag) := shiftEmb 6 (by omega)
 
-lemma pairAmb_eq : pairSlot.trans (selfW af ag) = pairAmb af ag := by
+lemma pairAmb_eq : pairSlot.trans (binSelf af ag) = pairAmb af ag := by
   apply Function.Embedding.ext
   intro j
   apply Fin.ext
-  simp [pairSlot, selfW, pairAmb, shiftEmb_val]
+  simp [pairSlot, binSelf, pairAmb, shiftEmb_val]
 
-lemma pairAmb_ne_selfW (i : Fin 8) (j : Fin 16) (h : 6 + (i : ℕ) ≠ (j : ℕ)) :
-    pairAmb af ag i ≠ selfW af ag j := by
+lemma pairAmb_ne_self (i : Fin 8) (j : Fin 16) (h : 6 + (i : ℕ) ≠ (j : ℕ)) :
+    pairAmb af ag i ≠ binSelf af ag j := by
   apply amb_ne; simpa using h
 
 lemma pairAmb_ne_leftLoc (haf : 16 ≤ af) (i : Fin 8) (j : Fin 16) :
-    pairAmb af ag i ≠ leftLoc af ag haf j := by
+    pairAmb af ag i ≠ binLeftLoc af ag haf j := by
   apply amb_ne; have := i.isLt; simp; omega
 
 lemma pairAmb_ne_rightLoc (hag : 16 ≤ ag) (haf : 16 ≤ af) (i : Fin 8) (j : Fin 16) :
-    pairAmb af ag i ≠ rightLoc af ag hag j := by
+    pairAmb af ag i ≠ binRightLoc af ag hag j := by
   apply amb_ne; have := i.isLt; simp; omega
 
-lemma pairTrans_zero : (pairSlot.trans (selfW af ag)) 0 = selfW af ag 6 := by
+lemma pairTrans_zero : (pairSlot.trans (binSelf af ag)) 0 = binSelf af ag 6 := by
   have h : pairSlot 0 = (6 : Fin 16) := by decide
   simp [Function.Embedding.trans_apply, h]
 
-lemma pairTrans_one : (pairSlot.trans (selfW af ag)) 1 = selfW af ag 7 := by
+lemma pairTrans_one : (pairSlot.trans (binSelf af ag)) 1 = binSelf af ag 7 := by
   have h : pairSlot 1 = (7 : Fin 16) := by decide
   simp [Function.Embedding.trans_apply, h]
 
-lemma pairTrans_six : (pairSlot.trans (selfW af ag)) 6 = selfW af ag 12 := by
+lemma pairTrans_six : (pairSlot.trans (binSelf af ag)) 6 = binSelf af ag 12 := by
   have h : pairSlot 6 = (12 : Fin 16) := by decide
   simp [Function.Embedding.trans_apply, h]
 
@@ -1102,98 +1121,98 @@ this mechanism. -/
 section BinaryRead
 variable {af ag : ℕ}
 
-lemma selfW_update_apply (i j : Fin 16) (X : Fin (16 + af + ag) → ℕ) (x : ℕ) :
-    Function.update X (selfW af ag j) x (selfW af ag i)
-      = if (i : ℕ) = (j : ℕ) then x else X (selfW af ag i) := by
+lemma binSelf_update_apply (i j : Fin 16) (X : Fin (16 + af + ag) → ℕ) (x : ℕ) :
+    Function.update X (binSelf af ag j) x (binSelf af ag i)
+      = if (i : ℕ) = (j : ℕ) then x else X (binSelf af ag i) := by
   by_cases h : (i : ℕ) = (j : ℕ)
   · rw [if_pos h, Fin.ext h, Function.update_self]
-  · rw [if_neg h, Function.update_of_ne (selfW_ne_selfW i j h)]
+  · rw [if_neg h, Function.update_of_ne (binSelf_ne_self i j h)]
 
-lemma leftLoc_update_apply (haf : 16 ≤ af) (i j : Fin 16)
+lemma binLeftLoc_update_apply (haf : 16 ≤ af) (i j : Fin 16)
     (X : Fin (16 + af + ag) → ℕ) (x : ℕ) :
-    Function.update X (leftLoc af ag haf j) x (leftLoc af ag haf i)
-      = if (i : ℕ) = (j : ℕ) then x else X (leftLoc af ag haf i) := by
-  by_cases h : (i : ℕ) = (j : ℕ)
-  · rw [if_pos h, Fin.ext h, Function.update_self]
-  · rw [if_neg h, Function.update_of_ne (fun e => h (by
-      have := congrArg (Fin.val) e
-      simpa [leftLoc, shiftEmb_val] using this))]
-
-lemma rightLoc_update_apply (hag : 16 ≤ ag) (i j : Fin 16)
-    (X : Fin (16 + af + ag) → ℕ) (x : ℕ) :
-    Function.update X (rightLoc af ag hag j) x (rightLoc af ag hag i)
-      = if (i : ℕ) = (j : ℕ) then x else X (rightLoc af ag hag i) := by
+    Function.update X (binLeftLoc af ag haf j) x (binLeftLoc af ag haf i)
+      = if (i : ℕ) = (j : ℕ) then x else X (binLeftLoc af ag haf i) := by
   by_cases h : (i : ℕ) = (j : ℕ)
   · rw [if_pos h, Fin.ext h, Function.update_self]
   · rw [if_neg h, Function.update_of_ne (fun e => h (by
       have := congrArg (Fin.val) e
-      simpa [rightLoc, shiftEmb_val] using this))]
+      simpa [binLeftLoc, shiftEmb_val] using this))]
 
-@[simp] lemma selfW_leftLoc_upd (haf : 16 ≤ af) (i j : Fin 16)
+lemma binRightLoc_update_apply (hag : 16 ≤ ag) (i j : Fin 16)
     (X : Fin (16 + af + ag) → ℕ) (x : ℕ) :
-    Function.update X (leftLoc af ag haf j) x (selfW af ag i) = X (selfW af ag i) :=
-  Function.update_of_ne (selfW_ne_leftLoc haf i j) x X
+    Function.update X (binRightLoc af ag hag j) x (binRightLoc af ag hag i)
+      = if (i : ℕ) = (j : ℕ) then x else X (binRightLoc af ag hag i) := by
+  by_cases h : (i : ℕ) = (j : ℕ)
+  · rw [if_pos h, Fin.ext h, Function.update_self]
+  · rw [if_neg h, Function.update_of_ne (fun e => h (by
+      have := congrArg (Fin.val) e
+      simpa [binRightLoc, shiftEmb_val] using this))]
 
-@[simp] lemma selfW_rightLoc_upd (hag : 16 ≤ ag) (haf : 16 ≤ af) (i j : Fin 16)
+@[simp] lemma binSelf_leftLoc_upd (haf : 16 ≤ af) (i j : Fin 16)
     (X : Fin (16 + af + ag) → ℕ) (x : ℕ) :
-    Function.update X (rightLoc af ag hag j) x (selfW af ag i) = X (selfW af ag i) :=
-  Function.update_of_ne (selfW_ne_rightLoc hag haf i j) x X
+    Function.update X (binLeftLoc af ag haf j) x (binSelf af ag i) = X (binSelf af ag i) :=
+  Function.update_of_ne (binSelf_ne_leftLoc haf i j) x X
 
-@[simp] lemma leftLoc_selfW_upd (haf : 16 ≤ af) (i j : Fin 16)
+@[simp] lemma binSelf_rightLoc_upd (hag : 16 ≤ ag) (haf : 16 ≤ af) (i j : Fin 16)
     (X : Fin (16 + af + ag) → ℕ) (x : ℕ) :
-    Function.update X (selfW af ag j) x (leftLoc af ag haf i) = X (leftLoc af ag haf i) :=
-  Function.update_of_ne (Ne.symm (selfW_ne_leftLoc haf j i)) x X
+    Function.update X (binRightLoc af ag hag j) x (binSelf af ag i) = X (binSelf af ag i) :=
+  Function.update_of_ne (binSelf_ne_rightLoc hag haf i j) x X
 
-@[simp] lemma rightLoc_selfW_upd (hag : 16 ≤ ag) (haf : 16 ≤ af) (i j : Fin 16)
+@[simp] lemma binLeftLoc_self_upd (haf : 16 ≤ af) (i j : Fin 16)
     (X : Fin (16 + af + ag) → ℕ) (x : ℕ) :
-    Function.update X (selfW af ag j) x (rightLoc af ag hag i)
-      = X (rightLoc af ag hag i) :=
-  Function.update_of_ne (Ne.symm (selfW_ne_rightLoc hag haf j i)) x X
+    Function.update X (binSelf af ag j) x (binLeftLoc af ag haf i) = X (binLeftLoc af ag haf i) :=
+  Function.update_of_ne (Ne.symm (binSelf_ne_leftLoc haf j i)) x X
 
-@[simp] lemma leftLoc_rightLoc_upd (haf : 16 ≤ af) (hag : 16 ≤ ag) (i j : Fin 16)
+@[simp] lemma binRightLoc_self_upd (hag : 16 ≤ ag) (haf : 16 ≤ af) (i j : Fin 16)
     (X : Fin (16 + af + ag) → ℕ) (x : ℕ) :
-    Function.update X (rightLoc af ag hag j) x (leftLoc af ag haf i)
-      = X (leftLoc af ag haf i) :=
-  Function.update_of_ne (leftLoc_ne_rightLoc haf hag i j) x X
+    Function.update X (binSelf af ag j) x (binRightLoc af ag hag i)
+      = X (binRightLoc af ag hag i) :=
+  Function.update_of_ne (Ne.symm (binSelf_ne_rightLoc hag haf j i)) x X
 
-@[simp] lemma rightLoc_leftLoc_upd (haf : 16 ≤ af) (hag : 16 ≤ ag) (i j : Fin 16)
+@[simp] lemma binLeftLoc_rightLoc_upd (haf : 16 ≤ af) (hag : 16 ≤ ag) (i j : Fin 16)
     (X : Fin (16 + af + ag) → ℕ) (x : ℕ) :
-    Function.update X (leftLoc af ag haf j) x (rightLoc af ag hag i)
-      = X (rightLoc af ag hag i) :=
-  Function.update_of_ne (Ne.symm (leftLoc_ne_rightLoc haf hag j i)) x X
+    Function.update X (binRightLoc af ag hag j) x (binLeftLoc af ag haf i)
+      = X (binLeftLoc af ag haf i) :=
+  Function.update_of_ne (binLeftLoc_ne_rightLoc haf hag i j) x X
+
+@[simp] lemma binRightLoc_leftLoc_upd (haf : 16 ≤ af) (hag : 16 ≤ ag) (i j : Fin 16)
+    (X : Fin (16 + af + ag) → ℕ) (x : ℕ) :
+    Function.update X (binLeftLoc af ag haf j) x (binRightLoc af ag hag i)
+      = X (binRightLoc af ag hag i) :=
+  Function.update_of_ne (Ne.symm (binLeftLoc_ne_rightLoc haf hag j i)) x X
 
 /-! ### The two child subtrees, as windows -/
 
-lemma leftSub_win_selfW (i : Fin 16) (X : Fin (16 + af + ag) → ℕ) (u : Fin af → ℕ) :
-    writeWindow (leftSub af ag) X u (selfW af ag i) = X (selfW af ag i) :=
-  writeWindow_of_ne _ _ _ (fun t => leftSub_ne_selfW t i)
+lemma binLeftSub_win_self (i : Fin 16) (X : Fin (16 + af + ag) → ℕ) (u : Fin af → ℕ) :
+    writeWindow (binLeftSub af ag) X u (binSelf af ag i) = X (binSelf af ag i) :=
+  writeWindow_of_ne _ _ _ (fun t => binLeftSub_ne_self t i)
 
-lemma leftSub_win_leftLoc (haf : 16 ≤ af) (j : Fin 16) (X : Fin (16 + af + ag) → ℕ)
+lemma binLeftSub_win_leftLoc (haf : 16 ≤ af) (j : Fin 16) (X : Fin (16 + af + ag) → ℕ)
     (u : Fin af → ℕ) :
-    writeWindow (leftSub af ag) X u (leftLoc af ag haf j)
+    writeWindow (binLeftSub af ag) X u (binLeftLoc af ag haf j)
       = u ⟨(j : ℕ), by have := j.isLt; omega⟩ := by
-  rw [leftLoc_eq haf, writeWindow_apply]
+  rw [binLeftLoc_eq haf, writeWindow_apply]
 
-lemma leftSub_win_rightLoc (hag : 16 ≤ ag) (j : Fin 16) (X : Fin (16 + af + ag) → ℕ)
+lemma binLeftSub_win_rightLoc (hag : 16 ≤ ag) (j : Fin 16) (X : Fin (16 + af + ag) → ℕ)
     (u : Fin af → ℕ) :
-    writeWindow (leftSub af ag) X u (rightLoc af ag hag j) = X (rightLoc af ag hag j) :=
-  writeWindow_of_ne _ _ _ (fun t => leftSub_ne_rightLoc hag t j)
+    writeWindow (binLeftSub af ag) X u (binRightLoc af ag hag j) = X (binRightLoc af ag hag j) :=
+  writeWindow_of_ne _ _ _ (fun t => binLeftSub_ne_rightLoc hag t j)
 
-lemma rightSub_win_selfW (haf : 16 ≤ af) (i : Fin 16) (X : Fin (16 + af + ag) → ℕ)
+lemma binRightSub_win_self (haf : 16 ≤ af) (i : Fin 16) (X : Fin (16 + af + ag) → ℕ)
     (u : Fin ag → ℕ) :
-    writeWindow (rightSub af ag) X u (selfW af ag i) = X (selfW af ag i) :=
-  writeWindow_of_ne _ _ _ (fun t => rightSub_ne_selfW haf t i)
+    writeWindow (binRightSub af ag) X u (binSelf af ag i) = X (binSelf af ag i) :=
+  writeWindow_of_ne _ _ _ (fun t => binRightSub_ne_self haf t i)
 
-lemma rightSub_win_rightLoc (hag : 16 ≤ ag) (j : Fin 16) (X : Fin (16 + af + ag) → ℕ)
+lemma binRightSub_win_rightLoc (hag : 16 ≤ ag) (j : Fin 16) (X : Fin (16 + af + ag) → ℕ)
     (u : Fin ag → ℕ) :
-    writeWindow (rightSub af ag) X u (rightLoc af ag hag j)
+    writeWindow (binRightSub af ag) X u (binRightLoc af ag hag j)
       = u ⟨(j : ℕ), by have := j.isLt; omega⟩ := by
-  rw [rightLoc_eq hag, writeWindow_apply]
+  rw [binRightLoc_eq hag, writeWindow_apply]
 
-lemma rightSub_win_leftLoc (haf : 16 ≤ af) (j : Fin 16) (X : Fin (16 + af + ag) → ℕ)
+lemma binRightSub_win_leftLoc (haf : 16 ≤ af) (j : Fin 16) (X : Fin (16 + af + ag) → ℕ)
     (u : Fin ag → ℕ) :
-    writeWindow (rightSub af ag) X u (leftLoc af ag haf j) = X (leftLoc af ag haf j) :=
-  writeWindow_of_ne _ _ _ (fun t => rightSub_ne_leftLoc haf t j)
+    writeWindow (binRightSub af ag) X u (binLeftLoc af ag haf j) = X (binLeftLoc af ag haf j) :=
+  writeWindow_of_ne _ _ _ (fun t => binRightSub_ne_leftLoc haf t j)
 
 /-! ### The pairing window inside the node's own block -/
 
@@ -1212,38 +1231,38 @@ lemma pairVals_apply (v : Fin 8 → ℕ) (k : Fin 8) :
   norm_num
 
 /-- The pairing window as a total read-off: slots `6`–`13` of the node's block. -/
-lemma pairWin_selfW_apply (i : Fin 16) (X : Fin (16 + af + ag) → ℕ) (u : Fin 8 → ℕ) :
-    writeWindow (pairSlot.trans (selfW af ag)) X u (selfW af ag i)
+lemma pairWin_self_apply (i : Fin 16) (X : Fin (16 + af + ag) → ℕ) (u : Fin 8 → ℕ) :
+    writeWindow (pairSlot.trans (binSelf af ag)) X u (binSelf af ag i)
       = if h : 6 ≤ (i : ℕ) ∧ (i : ℕ) < 14 then u ⟨(i : ℕ) - 6, by omega⟩
-        else X (selfW af ag i) := by
+        else X (binSelf af ag i) := by
   by_cases h : 6 ≤ (i : ℕ) ∧ (i : ℕ) < 14
   · rw [dif_pos h]
-    have hid : (pairSlot.trans (selfW af ag)) ⟨(i : ℕ) - 6, by omega⟩ = selfW af ag i := by
+    have hid : (pairSlot.trans (binSelf af ag)) ⟨(i : ℕ) - 6, by omega⟩ = binSelf af ag i := by
       apply Fin.ext
-      simp [pairSlot, selfW, shiftEmb_val]
+      simp [pairSlot, binSelf, shiftEmb_val]
       omega
     rw [← hid, writeWindow_apply]
   · rw [dif_neg h, pairAmb_eq]
-    refine writeWindow_of_ne _ _ _ (fun t => pairAmb_ne_selfW t i ?_)
+    refine writeWindow_of_ne _ _ _ (fun t => pairAmb_ne_self t i ?_)
     have := t.isLt
     simp at h ⊢
     omega
 
 lemma pairWin_twelve (X : Fin (16 + af + ag) → ℕ) (u : Fin 8 → ℕ) :
-    writeWindow (pairSlot.trans (selfW af ag)) X u (selfW af ag 12) = u 6 := by
+    writeWindow (pairSlot.trans (binSelf af ag)) X u (binSelf af ag 12) = u 6 := by
   rw [← pairTrans_six, writeWindow_apply]
 
 lemma pairWin_leftLoc (haf : 16 ≤ af) (j : Fin 16) (X : Fin (16 + af + ag) → ℕ)
     (u : Fin 8 → ℕ) :
-    writeWindow (pairSlot.trans (selfW af ag)) X u (leftLoc af ag haf j)
-      = X (leftLoc af ag haf j) := by
+    writeWindow (pairSlot.trans (binSelf af ag)) X u (binLeftLoc af ag haf j)
+      = X (binLeftLoc af ag haf j) := by
   rw [pairAmb_eq]
   exact writeWindow_of_ne _ _ _ (fun t => pairAmb_ne_leftLoc haf t j)
 
 lemma pairWin_rightLoc (hag : 16 ≤ ag) (haf : 16 ≤ af) (j : Fin 16)
     (X : Fin (16 + af + ag) → ℕ) (u : Fin 8 → ℕ) :
-    writeWindow (pairSlot.trans (selfW af ag)) X u (rightLoc af ag hag j)
-      = X (rightLoc af ag hag j) := by
+    writeWindow (pairSlot.trans (binSelf af ag)) X u (binRightLoc af ag hag j)
+      = X (binRightLoc af ag hag j) := by
   rw [pairAmb_eq]
   exact writeWindow_of_ne _ _ _ (fun t => pairAmb_ne_rightLoc hag haf t j)
 
@@ -1252,13 +1271,15 @@ end BinaryRead
 section PhaseBMain
 variable {af ag : ℕ}
 
+/-- **`pair` Phase B Hoare specification.** The two answers are paired and the result is
+    masked by the guard and both children's tags. -/
 lemma pairPhaseB_hoareTime (haf : 16 ≤ af) (hag : 16 ≤ ag)
     (R : Regs (16 + af + ag) n) (W : Fin (16 + af + ag) → ℕ) (B : ℕ)
     (inp₀ : Tape) (w₀ : Fin n → Tape) (ys : List Bool)
     (hinp₀ : Parked inp₀) (hpark : ∀ i, Parked (w₀ i)) (hB2 : 2 ≤ B)
     (hW : ∀ k, W k < B)
-    (hfit : Nat.pair (W (leftLoc af ag haf 3)) (W (rightLoc af ag hag 3)) < B)
-    (htagF : W (leftLoc af ag haf 2) ≤ 1) (htagG : W (rightLoc af ag hag 2) ≤ 1) :
+    (hfit : Nat.pair (W (binLeftLoc af ag haf 3)) (W (binRightLoc af ag hag 3)) < B)
+    (htagF : W (binLeftLoc af ag haf 2) ≤ 1) :
     (pairPhaseB af ag haf hag R).HoareTime
       (EmitPred inp₀ (regsWork R w₀ W) ys)
       (EmitPred inp₀ (regsWork R w₀ (pairPhaseBVec af ag haf hag W)) ys)
@@ -1266,51 +1287,51 @@ lemma pairPhaseB_hoareTime (haf : 16 ≤ af) (hag : 16 ≤ ag)
   have hpv := parked_regsWork R hpark
   have hle : ∀ k, W k ≤ B := fun k => Nat.le_of_lt (hW k)
   -- S7: pair slot a := cf.val
-  have h7 := copyIntoTM_hoareTime (R (leftLoc af ag haf 3)) (R (selfW af ag 6))
-      (Regs.ne R (Ne.symm (selfW_ne_leftLoc haf 6 3)))
-      (W (leftLoc af ag haf 3)) (W (selfW af ag 6))
+  have h7 := copyIntoTM_hoareTime (R (binLeftLoc af ag haf 3)) (R (binSelf af ag 6))
+      (Regs.ne R (Ne.symm (binSelf_ne_leftLoc haf 6 3)))
+      (W (binLeftLoc af ag haf 3)) (W (binSelf af ag 6))
       inp₀ (regsWork R w₀ W) ys hinp₀ (fun i _ => hpv W i)
       (regsWork_apply R w₀ W _) (regsWork_apply R w₀ W _)
   rw [regsWork_update] at h7
   replace h7 := h7.mono_bound (copyIntoTime_le_arith _ _ B (hle _) (hle _))
-  set W7 := Function.update W (selfW af ag 6) (W (leftLoc af ag haf 3)) with hW7
+  set W7 := Function.update W (binSelf af ag 6) (W (binLeftLoc af ag haf 3)) with hW7
   have b7 : ∀ k, W7 k < B := by
-    intro k; rw [hW7]; simp only [Function.update_apply]; split_ifs <;> exact hW _
-  have r7_Lg3 : W7 (rightLoc af ag hag 3) = W (rightLoc af ag hag 3) := by
-    rw [hW7, Function.update_of_ne (Ne.symm (selfW_ne_rightLoc hag haf 6 3))]
+    rw [hW7]; exact update_lt hW (hW _)
+  have r7_Lg3 : W7 (binRightLoc af ag hag 3) = W (binRightLoc af ag hag 3) := by
+    rw [hW7, Function.update_of_ne (Ne.symm (binSelf_ne_rightLoc hag haf 6 3))]
   -- S8: pair slot b := cg.val
-  have h8 := copyIntoTM_hoareTime (R (rightLoc af ag hag 3)) (R (selfW af ag 7))
-      (Regs.ne R (Ne.symm (selfW_ne_rightLoc hag haf 7 3)))
-      (W7 (rightLoc af ag hag 3)) (W7 (selfW af ag 7))
+  have h8 := copyIntoTM_hoareTime (R (binRightLoc af ag hag 3)) (R (binSelf af ag 7))
+      (Regs.ne R (Ne.symm (binSelf_ne_rightLoc hag haf 7 3)))
+      (W7 (binRightLoc af ag hag 3)) (W7 (binSelf af ag 7))
       inp₀ (regsWork R w₀ W7) ys hinp₀ (fun i _ => hpv W7 i)
       (regsWork_apply R w₀ W7 _) (regsWork_apply R w₀ W7 _)
   rw [regsWork_update] at h8
   replace h8 := h8.mono_bound
     (copyIntoTime_le_arith _ _ B (Nat.le_of_lt (b7 _)) (Nat.le_of_lt (b7 _)))
-  set W8 := Function.update W7 (selfW af ag 7) (W7 (rightLoc af ag hag 3)) with hW8
+  set W8 := Function.update W7 (binSelf af ag 7) (W7 (binRightLoc af ag hag 3)) with hW8
   have b8 : ∀ k, W8 k < B := by
-    intro k; rw [hW8]; simp only [Function.update_apply]; split_ifs <;> exact b7 _
-  have r8_6 : W8 (selfW af ag 6) = W (leftLoc af ag haf 3) := by
-    rw [hW8, Function.update_of_ne (selfW_ne_selfW 6 7 (by decide)), hW7,
+    rw [hW8]; exact update_lt b7 (b7 _)
+  have r8_6 : W8 (binSelf af ag 6) = W (binLeftLoc af ag haf 3) := by
+    rw [hW8, Function.update_of_ne (binSelf_ne_self 6 7 (by decide)), hW7,
       Function.update_self]
-  have r8_7 : W8 (selfW af ag 7) = W (rightLoc af ag hag 3) := by
+  have r8_7 : W8 (binSelf af ag 7) = W (binRightLoc af ag hag 3) := by
     rw [hW8, Function.update_self, r7_Lg3]
   have hps0 : pairSlot 0 = (6 : Fin 16) := by decide
   have hps1 : pairSlot 1 = (7 : Fin 16) := by decide
   -- S9: pair the two values
   have hpairspec : ∀ (Wb : Fin n → Tape) (u : Fin 8 → ℕ), (∀ i, Parked (Wb i)) →
       (∀ k, u k < B) →
-      (pairTM (pairSlot.trans ((selfW af ag).trans R))).HoareTime
-        (EmitPred inp₀ (regsWork ((pairSlot.trans (selfW af ag)).trans R) Wb u) ys)
-        (EmitPred inp₀ (regsWork ((pairSlot.trans (selfW af ag)).trans R) Wb
+      (pairTM (pairSlot.trans ((binSelf af ag).trans R))).HoareTime
+        (EmitPred inp₀ (regsWork ((pairSlot.trans (binSelf af ag)).trans R) Wb u) ys)
+        (EmitPred inp₀ (regsWork ((pairSlot.trans (binSelf af ag)).trans R) Wb
           (pairVals u)) ys) (evalnArithmeticCost B) :=
     fun Wb u hp hu => pairTM_hoareTime_arith _ u B inp₀ Wb ys hinp₀ hp
       (fun k => Nat.le_of_lt (hu k))
-  have h9 := runChild (pairSlot.trans (selfW af ag)) R
-      (pairTM (pairSlot.trans ((selfW af ag).trans R))) pairVals
+  have h9 := runChild (pairSlot.trans (binSelf af ag)) R
+      (pairTM (pairSlot.trans ((binSelf af ag).trans R))) pairVals
       (evalnArithmeticCost B) B w₀ hpark W8 b8 hpairspec
-  set W9 := writeWindow (pairSlot.trans (selfW af ag)) W8
-      (pairVals (fun j => W8 ((pairSlot.trans (selfW af ag)) j))) with hW9
+  set W9 := writeWindow (pairSlot.trans (binSelf af ag)) W8
+      (pairVals (fun j => W8 ((pairSlot.trans (binSelf af ag)) j))) with hW9
   have b9 : ∀ k, W9 k < B := by
     intro k; rw [hW9]
     refine writeWindow_bounded _ _ _ B b8 (fun j => ?_) k
@@ -1320,40 +1341,40 @@ lemma pairPhaseB_hoareTime (haf : 16 ≤ af) (hag : 16 ≤ ag)
 
   -- reads through the pair window
   have r9 : ∀ (i : Fin 16), (∀ j : Fin 8, 6 + (j : ℕ) ≠ (i : ℕ)) →
-      W9 (selfW af ag i) = W (selfW af ag i) := by
+      W9 (binSelf af ag i) = W (binSelf af ag i) := by
     intro i hi
     have h6 : (i : ℕ) ≠ ((6 : Fin 16) : ℕ) := by
       have := hi 0; simp at this ⊢; omega
     have h7 : (i : ℕ) ≠ ((7 : Fin 16) : ℕ) := by
       have := hi 1; simp at this ⊢; omega
     rw [hW9, runChild_frame _ _ _ (fun j => by
-        rw [pairAmb_eq]; exact pairAmb_ne_selfW j i (hi j)),
-      hW8, Function.update_of_ne (selfW_ne_selfW i 7 h7),
-      hW7, Function.update_of_ne (selfW_ne_selfW i 6 h6)]
-  have r9_Lf : ∀ j : Fin 16, W9 (leftLoc af ag haf j) = W (leftLoc af ag haf j) := by
+        rw [pairAmb_eq]; exact pairAmb_ne_self j i (hi j)),
+      hW8, Function.update_of_ne (binSelf_ne_self i 7 h7),
+      hW7, Function.update_of_ne (binSelf_ne_self i 6 h6)]
+  have r9_Lf : ∀ j : Fin 16, W9 (binLeftLoc af ag haf j) = W (binLeftLoc af ag haf j) := by
     intro j
     rw [hW9, runChild_frame _ _ _ (fun i => by
         rw [pairAmb_eq]; exact pairAmb_ne_leftLoc haf i j),
-      hW8, Function.update_of_ne (Ne.symm (selfW_ne_leftLoc haf 7 j)),
-      hW7, Function.update_of_ne (Ne.symm (selfW_ne_leftLoc haf 6 j))]
-  have r9_Lg : ∀ j : Fin 16, W9 (rightLoc af ag hag j) = W (rightLoc af ag hag j) := by
+      hW8, Function.update_of_ne (Ne.symm (binSelf_ne_leftLoc haf 7 j)),
+      hW7, Function.update_of_ne (Ne.symm (binSelf_ne_leftLoc haf 6 j))]
+  have r9_Lg : ∀ j : Fin 16, W9 (binRightLoc af ag hag j) = W (binRightLoc af ag hag j) := by
     intro j
     rw [hW9, runChild_frame _ _ _ (fun i => by
         rw [pairAmb_eq]; exact pairAmb_ne_rightLoc hag haf i j),
-      hW8, Function.update_of_ne (Ne.symm (selfW_ne_rightLoc hag haf 7 j)),
-      hW7, Function.update_of_ne (Ne.symm (selfW_ne_rightLoc hag haf 6 j))]
-  have r9_12 : W9 (selfW af ag 12)
-      = Nat.pair (W (leftLoc af ag haf 3)) (W (rightLoc af ag hag 3)) := by
+      hW8, Function.update_of_ne (Ne.symm (binSelf_ne_rightLoc hag haf 7 j)),
+      hW7, Function.update_of_ne (Ne.symm (binSelf_ne_rightLoc hag haf 6 j))]
+  have r9_12 : W9 (binSelf af ag 12)
+      = Nat.pair (W (binLeftLoc af ag haf 3)) (W (binRightLoc af ag hag 3)) := by
     rw [← pairTrans_six, hW9, writeWindow_apply]
     simp only [pairVals, Function.Embedding.trans_apply, hps0, hps1]
     simp [r8_6, r8_7]
   -- S10: the outer guard
-  have h10 := ltFlagTM_hoareTime (R (selfW af ag 0)) (R (selfW af ag 1))
-      (R (selfW af ag 5)) (R (selfW af ag 4))
-      (Regs.ne R (selfW_ne_selfW 0 5 (by decide)))
-      (Regs.ne R (selfW_ne_selfW 1 5 (by decide)))
-      (Regs.ne R (selfW_ne_selfW 5 4 (by decide)))
-      (W9 (selfW af ag 0)) (W9 (selfW af ag 1)) (W9 (selfW af ag 5)) (W9 (selfW af ag 4))
+  have h10 := ltFlagTM_hoareTime (R (binSelf af ag 0)) (R (binSelf af ag 1))
+      (R (binSelf af ag 5)) (R (binSelf af ag 4))
+      (Regs.ne R (binSelf_ne_self 0 5 (by decide)))
+      (Regs.ne R (binSelf_ne_self 1 5 (by decide)))
+      (Regs.ne R (binSelf_ne_self 5 4 (by decide)))
+      (W9 (binSelf af ag 0)) (W9 (binSelf af ag 1)) (W9 (binSelf af ag 5)) (W9 (binSelf af ag 4))
       inp₀ (regsWork R w₀ W9) ys hinp₀ (fun i => hpv W9 i)
       (regsWork_apply R w₀ W9 _) (regsWork_apply R w₀ W9 _)
       (regsWork_apply R w₀ W9 _) (regsWork_apply R w₀ W9 _)
@@ -1362,120 +1383,114 @@ lemma pairPhaseB_hoareTime (haf : 16 ≤ af) (hag : 16 ≤ ag)
     (ltFlagTime_le_arith _ _ _ _ B (Nat.le_of_lt (b9 _)) (Nat.le_of_lt (b9 _))
       (Nat.le_of_lt (b9 _)) (Nat.le_of_lt (b9 _)))
   set W11 := Function.update
-      (Function.update W9 (selfW af ag 5) (W9 (selfW af ag 1) - W9 (selfW af ag 0)))
-      (selfW af ag 4)
-      (if W9 (selfW af ag 0) < W9 (selfW af ag 1) then 1 else 0) with hW11
+      (Function.update W9 (binSelf af ag 5) (W9 (binSelf af ag 1) - W9 (binSelf af ag 0)))
+      (binSelf af ag 4)
+      (if W9 (binSelf af ag 0) < W9 (binSelf af ag 1) then 1 else 0) with hW11
   have b11 : ∀ k, W11 k < B := by
     intro k; rw [hW11]; simp only [Function.update_apply]
-    split_ifs <;> first | omega | (have := b9 (selfW af ag 1); omega) | exact b9 _
-  have r11_14 : W11 (selfW af ag 14) = W (selfW af ag 14) := by
-    rw [hW11, Function.update_of_ne (selfW_ne_selfW 14 4 (by decide)),
-      Function.update_of_ne (selfW_ne_selfW 14 5 (by decide))]
+    split_ifs <;> first | omega | (have := b9 (binSelf af ag 1); omega) | exact b9 _
+  have r11_14 : W11 (binSelf af ag 14) = W (binSelf af ag 14) := by
+    rw [hW11, Function.update_of_ne (binSelf_ne_self 14 4 (by decide)),
+      Function.update_of_ne (binSelf_ne_self 14 5 (by decide))]
     exact r9 14 (by intro j; have := j.isLt; simp; omega)
-  have r11_4 : W11 (selfW af ag 4)
-      = (if W9 (selfW af ag 0) < W9 (selfW af ag 1) then 1 else 0) := by
+  have r11_4 : W11 (binSelf af ag 4)
+      = (if W9 (binSelf af ag 0) < W9 (binSelf af ag 1) then 1 else 0) := by
     rw [hW11, Function.update_self]
-  have r11_Lf2 : W11 (leftLoc af ag haf 2) = W (leftLoc af ag haf 2) := by
-    rw [hW11, Function.update_of_ne (Ne.symm (selfW_ne_leftLoc haf 4 2)),
-      Function.update_of_ne (Ne.symm (selfW_ne_leftLoc haf 5 2))]
+  have r11_Lf2 : W11 (binLeftLoc af ag haf 2) = W (binLeftLoc af ag haf 2) := by
+    rw [hW11, Function.update_of_ne (Ne.symm (binSelf_ne_leftLoc haf 4 2)),
+      Function.update_of_ne (Ne.symm (binSelf_ne_leftLoc haf 5 2))]
     exact r9_Lf 2
   -- S11: clear the mask scratch
-  have h11 := clearRegTM_hoareTime (R (selfW af ag 14)) (W11 (selfW af ag 14)) inp₀
+  have h11 := clearRegTM_hoareTime (R (binSelf af ag 14)) (W11 (binSelf af ag 14)) inp₀
       (regsWork R w₀ W11) ys hinp₀ (fun i _ => hpv W11 i) (regsWork_apply R w₀ W11 _)
   rw [regsWork_update] at h11
   replace h11 := h11.mono_bound (regOpTime_le_arith _ B (Nat.le_of_lt (b11 _)))
-  set W12 := Function.update W11 (selfW af ag 14) 0 with hW12
+  set W12 := Function.update W11 (binSelf af ag 14) 0 with hW12
   have b12 : ∀ k, W12 k < B := by
-    intro k; rw [hW12]; simp only [Function.update_apply]; split_ifs
-    · omega
-    · exact b11 _
+    rw [hW12]; exact update_lt b11 (by omega)
   -- S12: scratch := gflag * cf.tag
-  have h12 := mulAddIntoTM_hoareTime (R (selfW af ag 4)) (R (leftLoc af ag haf 2))
-      (R (selfW af ag 14))
-      (Regs.ne R (selfW_ne_leftLoc haf 4 2))
-      (Regs.ne R (selfW_ne_selfW 4 14 (by decide)))
-      (Regs.ne R (Ne.symm (selfW_ne_leftLoc haf 14 2)))
-      (W12 (selfW af ag 4)) (W12 (leftLoc af ag haf 2)) 0
+  have h12 := mulAddIntoTM_hoareTime (R (binSelf af ag 4)) (R (binLeftLoc af ag haf 2))
+      (R (binSelf af ag 14))
+      (Regs.ne R (binSelf_ne_leftLoc haf 4 2))
+      (Regs.ne R (binSelf_ne_self 4 14 (by decide)))
+      (Regs.ne R (Ne.symm (binSelf_ne_leftLoc haf 14 2)))
+      (W12 (binSelf af ag 4)) (W12 (binLeftLoc af ag haf 2)) 0
       inp₀ (regsWork R w₀ W12) ys hinp₀ (fun i _ => hpv W12 i)
       (regsWork_apply R w₀ W12 _) (regsWork_apply R w₀ W12 _)
       (by rw [regsWork_apply, hW12, Function.update_self])
   rw [regsWork_update] at h12
   replace h12 := h12.mono_bound
     (mulAddTime_le_arith _ _ 0 B (Nat.le_of_lt (b12 _)) (Nat.le_of_lt (b12 _)) (by omega))
-  set W13 := Function.update W12 (selfW af ag 14)
-      (0 + W12 (selfW af ag 4) * W12 (leftLoc af ag haf 2)) with hW13
-  have hflag12 : W12 (selfW af ag 4) ≤ 1 := by
-    rw [hW12, Function.update_of_ne (selfW_ne_selfW 4 14 (by decide)), r11_4]
+  set W13 := Function.update W12 (binSelf af ag 14)
+      (0 + W12 (binSelf af ag 4) * W12 (binLeftLoc af ag haf 2)) with hW13
+  have hflag12 : W12 (binSelf af ag 4) ≤ 1 := by
+    rw [hW12, Function.update_of_ne (binSelf_ne_self 4 14 (by decide)), r11_4]
     split_ifs <;> omega
   have b13 : ∀ k, W13 k < B := by
-    intro k; rw [hW13]; simp only [Function.update_apply]; split_ifs
-    · have := b12 (leftLoc af ag haf 2)
-      calc 0 + W12 (selfW af ag 4) * W12 (leftLoc af ag haf 2)
-          ≤ 1 * W12 (leftLoc af ag haf 2) := by
-            simpa using Nat.mul_le_mul hflag12 (le_refl _)
-        _ < B := by omega
-    · exact b12 _
+    rw [hW13]
+    refine update_lt b12 ?_
+    have := b12 (binLeftLoc af ag haf 2)
+    calc 0 + W12 (binSelf af ag 4) * W12 (binLeftLoc af ag haf 2)
+        ≤ 1 * W12 (binLeftLoc af ag haf 2) := by
+          simpa using Nat.mul_le_mul hflag12 (le_refl _)
+      _ < B := by omega
   -- S13: clear the tag
-  have h13 := clearRegTM_hoareTime (R (selfW af ag 2)) (W13 (selfW af ag 2)) inp₀
+  have h13 := clearRegTM_hoareTime (R (binSelf af ag 2)) (W13 (binSelf af ag 2)) inp₀
       (regsWork R w₀ W13) ys hinp₀ (fun i _ => hpv W13 i) (regsWork_apply R w₀ W13 _)
   rw [regsWork_update] at h13
   replace h13 := h13.mono_bound (regOpTime_le_arith _ B (Nat.le_of_lt (b13 _)))
-  set W14 := Function.update W13 (selfW af ag 2) 0 with hW14
+  set W14 := Function.update W13 (binSelf af ag 2) 0 with hW14
   have b14 : ∀ k, W14 k < B := by
-    intro k; rw [hW14]; simp only [Function.update_apply]; split_ifs
-    · omega
-    · exact b13 _
+    rw [hW14]; exact update_lt b13 (by omega)
   -- S14: tag := scratch * cg.tag
-  have h14 := mulAddIntoTM_hoareTime (R (selfW af ag 14)) (R (rightLoc af ag hag 2))
-      (R (selfW af ag 2))
-      (Regs.ne R (selfW_ne_rightLoc hag haf 14 2))
-      (Regs.ne R (selfW_ne_selfW 14 2 (by decide)))
-      (Regs.ne R (Ne.symm (selfW_ne_rightLoc hag haf 2 2)))
-      (W14 (selfW af ag 14)) (W14 (rightLoc af ag hag 2)) 0
+  have h14 := mulAddIntoTM_hoareTime (R (binSelf af ag 14)) (R (binRightLoc af ag hag 2))
+      (R (binSelf af ag 2))
+      (Regs.ne R (binSelf_ne_rightLoc hag haf 14 2))
+      (Regs.ne R (binSelf_ne_self 14 2 (by decide)))
+      (Regs.ne R (Ne.symm (binSelf_ne_rightLoc hag haf 2 2)))
+      (W14 (binSelf af ag 14)) (W14 (binRightLoc af ag hag 2)) 0
       inp₀ (regsWork R w₀ W14) ys hinp₀ (fun i _ => hpv W14 i)
       (regsWork_apply R w₀ W14 _) (regsWork_apply R w₀ W14 _)
       (by rw [regsWork_apply, hW14, Function.update_self])
   rw [regsWork_update] at h14
   replace h14 := h14.mono_bound
     (mulAddTime_le_arith _ _ 0 B (Nat.le_of_lt (b14 _)) (Nat.le_of_lt (b14 _)) (by omega))
-  set W15 := Function.update W14 (selfW af ag 2)
-      (0 + W14 (selfW af ag 14) * W14 (rightLoc af ag hag 2)) with hW15
-  have hflag14 : W14 (selfW af ag 14) ≤ 1 := by
-    rw [hW14, Function.update_of_ne (selfW_ne_selfW 14 2 (by decide)), hW13,
+  set W15 := Function.update W14 (binSelf af ag 2)
+      (0 + W14 (binSelf af ag 14) * W14 (binRightLoc af ag hag 2)) with hW15
+  have hflag14 : W14 (binSelf af ag 14) ≤ 1 := by
+    rw [hW14, Function.update_of_ne (binSelf_ne_self 14 2 (by decide)), hW13,
       Function.update_self]
-    have := b12 (leftLoc af ag haf 2)
-    calc 0 + W12 (selfW af ag 4) * W12 (leftLoc af ag haf 2)
-        ≤ 1 * W12 (leftLoc af ag haf 2) := by
+    have := b12 (binLeftLoc af ag haf 2)
+    calc 0 + W12 (binSelf af ag 4) * W12 (binLeftLoc af ag haf 2)
+        ≤ 1 * W12 (binLeftLoc af ag haf 2) := by
           simpa using Nat.mul_le_mul hflag12 (le_refl _)
-      _ = W12 (leftLoc af ag haf 2) := by omega
+      _ = W12 (binLeftLoc af ag haf 2) := by omega
       _ ≤ 1 := by
-          rw [hW12, Function.update_of_ne (Ne.symm (selfW_ne_leftLoc haf 14 2)), r11_Lf2]
+          rw [hW12, Function.update_of_ne (Ne.symm (binSelf_ne_leftLoc haf 14 2)), r11_Lf2]
           exact htagF
   have b15 : ∀ k, W15 k < B := by
-    intro k; rw [hW15]; simp only [Function.update_apply]; split_ifs
-    · have := b14 (rightLoc af ag hag 2)
-      calc 0 + W14 (selfW af ag 14) * W14 (rightLoc af ag hag 2)
-          ≤ 1 * W14 (rightLoc af ag hag 2) := by
-            simpa using Nat.mul_le_mul hflag14 (le_refl _)
-        _ < B := by omega
-    · exact b14 _
+    rw [hW15]
+    refine update_lt b14 ?_
+    have := b14 (binRightLoc af ag hag 2)
+    calc 0 + W14 (binSelf af ag 14) * W14 (binRightLoc af ag hag 2)
+        ≤ 1 * W14 (binRightLoc af ag hag 2) := by
+          simpa using Nat.mul_le_mul hflag14 (le_refl _)
+      _ < B := by omega
   -- S15: clear the value
-  have h15 := clearRegTM_hoareTime (R (selfW af ag 3)) (W15 (selfW af ag 3)) inp₀
+  have h15 := clearRegTM_hoareTime (R (binSelf af ag 3)) (W15 (binSelf af ag 3)) inp₀
       (regsWork R w₀ W15) ys hinp₀ (fun i _ => hpv W15 i) (regsWork_apply R w₀ W15 _)
   rw [regsWork_update] at h15
   replace h15 := h15.mono_bound (regOpTime_le_arith _ B (Nat.le_of_lt (b15 _)))
-  set W16 := Function.update W15 (selfW af ag 3) 0 with hW16
+  set W16 := Function.update W15 (binSelf af ag 3) 0 with hW16
   have b16 : ∀ k, W16 k < B := by
-    intro k; rw [hW16]; simp only [Function.update_apply]; split_ifs
-    · omega
-    · exact b15 _
+    rw [hW16]; exact update_lt b15 (by omega)
   -- S16: value := tag * pair
-  have h16 := mulAddIntoTM_hoareTime (R (selfW af ag 2)) (R (selfW af ag 12))
-      (R (selfW af ag 3))
-      (Regs.ne R (selfW_ne_selfW 2 12 (by decide)))
-      (Regs.ne R (selfW_ne_selfW 2 3 (by decide)))
-      (Regs.ne R (selfW_ne_selfW 12 3 (by decide)))
-      (W16 (selfW af ag 2)) (W16 (selfW af ag 12)) 0
+  have h16 := mulAddIntoTM_hoareTime (R (binSelf af ag 2)) (R (binSelf af ag 12))
+      (R (binSelf af ag 3))
+      (Regs.ne R (binSelf_ne_self 2 12 (by decide)))
+      (Regs.ne R (binSelf_ne_self 2 3 (by decide)))
+      (Regs.ne R (binSelf_ne_self 12 3 (by decide)))
+      (W16 (binSelf af ag 2)) (W16 (binSelf af ag 12)) 0
       inp₀ (regsWork R w₀ W16) ys hinp₀ (fun i _ => hpv W16 i)
       (regsWork_apply R w₀ W16 _) (regsWork_apply R w₀ W16 _)
       (by rw [regsWork_apply, hW16, Function.update_self])
@@ -1511,28 +1526,22 @@ lemma pairPhaseAVec_lt (haf : 16 ≤ af) (hag : 16 ≤ ag)
     ∀ k, pairPhaseAVec af ag haf hag Ff Fg V k < B := by
   intro k
   simp only [pairPhaseAVec]
-  set V1 := Function.update V (leftLoc af ag haf 0) (V (selfW af ag 0)) with hV1
-  set V2 := Function.update V1 (leftLoc af ag haf 1) (V (selfW af ag 1)) with hV2
-  set V3 := writeWindow (leftSub af ag) V2 (Ff fun j => V2 (leftSub af ag j)) with hV3
-  set V4 := Function.update V3 (rightLoc af ag hag 0) (V (selfW af ag 0)) with hV4
-  set V5 := Function.update V4 (rightLoc af ag hag 1) (V (selfW af ag 1)) with hV5
+  set V1 := Function.update V (binLeftLoc af ag haf 0) (V (binSelf af ag 0)) with hV1
+  set V2 := Function.update V1 (binLeftLoc af ag haf 1) (V (binSelf af ag 1)) with hV2
+  set V3 := writeWindow (binLeftSub af ag) V2 (Ff fun j => V2 (binLeftSub af ag j)) with hV3
+  set V4 := Function.update V3 (binRightLoc af ag hag 0) (V (binSelf af ag 0)) with hV4
+  set V5 := Function.update V4 (binRightLoc af ag hag 1) (V (binSelf af ag 1)) with hV5
   have b1 : ∀ k, V1 k < B := by
-    intro k; rw [hV1]; simp only [Function.update_apply]; split_ifs <;> exact hB _
+    rw [hV1]; exact update_lt hB (hB _)
   have b2 : ∀ k, V2 k < B := by
-    intro k; rw [hV2]; simp only [Function.update_apply]; split_ifs
-    · exact hB _
-    · exact b1 _
+    rw [hV2]; exact update_lt b1 (hB _)
   have b3 : ∀ k, V3 k < B := by
     intro k; rw [hV3]
     exact writeWindow_bounded _ _ _ B b2 (fun j => hFfB j) k
   have b4 : ∀ k, V4 k < B := by
-    intro k; rw [hV4]; simp only [Function.update_apply]; split_ifs
-    · exact hB _
-    · exact b3 _
+    rw [hV4]; exact update_lt b3 (hB _)
   have b5 : ∀ k, V5 k < B := by
-    intro k; rw [hV5]; simp only [Function.update_apply]; split_ifs
-    · exact hB _
-    · exact b4 _
+    rw [hV5]; exact update_lt b4 (hB _)
   exact writeWindow_bounded _ _ _ B b5 (fun j => hFgB j) k
 
 /-- **`pair`, complete.** Both children run in their own subtrees, their values are paired,
@@ -1547,30 +1556,29 @@ lemma compilePairTM_hoareTime (haf : 16 ≤ af) (hag : 16 ≤ ag)
     (hFgB : ∀ k, Fg (pairRightIn af ag haf hag Ff V) k < B)
     (hMf : ∀ Wb : Fin n → Tape, (∀ i, Parked (Wb i)) →
       Mf.HoareTime
-        (EmitPred inp₀ (regsWork ((leftSub af ag).trans R) Wb
+        (EmitPred inp₀ (regsWork ((binLeftSub af ag).trans R) Wb
           (pairLeftIn af ag haf V)) ys)
-        (EmitPred inp₀ (regsWork ((leftSub af ag).trans R) Wb
+        (EmitPred inp₀ (regsWork ((binLeftSub af ag).trans R) Wb
           (Ff (pairLeftIn af ag haf V))) ys) tf)
     (hMg : ∀ Wb : Fin n → Tape, (∀ i, Parked (Wb i)) →
       Mg.HoareTime
-        (EmitPred inp₀ (regsWork ((rightSub af ag).trans R) Wb
+        (EmitPred inp₀ (regsWork ((binRightSub af ag).trans R) Wb
           (pairRightIn af ag haf hag Ff V)) ys)
-        (EmitPred inp₀ (regsWork ((rightSub af ag).trans R) Wb
+        (EmitPred inp₀ (regsWork ((binRightSub af ag).trans R) Wb
           (Fg (pairRightIn af ag haf hag Ff V))) ys) tg)
-    (hfit : Nat.pair (pairPhaseAVec af ag haf hag Ff Fg V (leftLoc af ag haf 3))
-              (pairPhaseAVec af ag haf hag Ff Fg V (rightLoc af ag hag 3)) < B)
-    (htagF : pairPhaseAVec af ag haf hag Ff Fg V (leftLoc af ag haf 2) ≤ 1)
-    (htagG : pairPhaseAVec af ag haf hag Ff Fg V (rightLoc af ag hag 2) ≤ 1) :
+    (hfit : Nat.pair (pairPhaseAVec af ag haf hag Ff Fg V (binLeftLoc af ag haf 3))
+              (pairPhaseAVec af ag haf hag Ff Fg V (binRightLoc af ag hag 3)) < B)
+    (htagF : pairPhaseAVec af ag haf hag Ff Fg V (binLeftLoc af ag haf 2) ≤ 1) :
     (compilePairTM af ag haf hag R Mf Mg).HoareTime
       (EmitPred inp₀ (regsWork R w₀ V) ys)
       (EmitPred inp₀ (regsWork R w₀
         (pairPhaseBVec af ag haf hag (pairPhaseAVec af ag haf hag Ff Fg V))) ys)
       (14 * evalnArithmeticCost B + tf + tg + 15) := by
   have hA := pairPhaseA_hoareTime haf hag R Mf Mg Ff Fg tf tg V B inp₀ w₀ ys hinp₀ hpark
-    hB hFfB hFgB hMf hMg
+    hB hFfB hMf hMg
   have hAlt := pairPhaseAVec_lt haf hag Ff Fg V B hB hFfB hFgB
   have hBph := pairPhaseB_hoareTime haf hag R (pairPhaseAVec af ag haf hag Ff Fg V) B
-    inp₀ w₀ ys hinp₀ hpark hB2 hAlt hfit htagF htagG
+    inp₀ w₀ ys hinp₀ hpark hB2 hAlt hfit htagF
   exact (seqEmit hinp₀ (parked_regsWork R hpark _) hA hBph).mono_bound (by omega)
 
 end PairCompose
@@ -1589,11 +1597,11 @@ child runs unconditionally on `resultVal` of the inner answer, which is the cano
 when the inner call failed; the mask in phase B discards the result. -/
 def compPhaseA (af ag : ℕ) (haf : 16 ≤ af) (hag : 16 ≤ ag)
     (R : Regs (16 + af + ag) n) (Mf Mg : TM n) : TM n :=
-  seqTM (copyIntoTM (R (selfW af ag 0)) (R (rightLoc af ag hag 0))) <|
-  seqTM (copyIntoTM (R (selfW af ag 1)) (R (rightLoc af ag hag 1))) <|
+  seqTM (copyIntoTM (R (binSelf af ag 0)) (R (binRightLoc af ag hag 0))) <|
+  seqTM (copyIntoTM (R (binSelf af ag 1)) (R (binRightLoc af ag hag 1))) <|
   seqTM Mg <|
-  seqTM (copyIntoTM (R (rightLoc af ag hag 3)) (R (leftLoc af ag haf 0))) <|
-  seqTM (copyIntoTM (R (selfW af ag 1)) (R (leftLoc af ag haf 1)))
+  seqTM (copyIntoTM (R (binRightLoc af ag hag 3)) (R (binLeftLoc af ag haf 0))) <|
+  seqTM (copyIntoTM (R (binSelf af ag 1)) (R (binLeftLoc af ag haf 1)))
         Mf
 
 /-- The ambient register vector `compPhaseA` produces, parametric in the two child
@@ -1601,54 +1609,55 @@ semantics. -/
 noncomputable def compPhaseAVec (af ag : ℕ) (haf : 16 ≤ af) (hag : 16 ≤ ag)
     (Ff : (Fin af → ℕ) → Fin af → ℕ) (Fg : (Fin ag → ℕ) → Fin ag → ℕ)
     (V : Fin (16 + af + ag) → ℕ) : Fin (16 + af + ag) → ℕ :=
-  let V1 := Function.update V (rightLoc af ag hag 0) (V (selfW af ag 0))
-  let V2 := Function.update V1 (rightLoc af ag hag 1) (V (selfW af ag 1))
-  let V3 := writeWindow (rightSub af ag) V2 (Fg (fun j => V2 (rightSub af ag j)))
-  let V4 := Function.update V3 (leftLoc af ag haf 0) (V3 (rightLoc af ag hag 3))
-  let V5 := Function.update V4 (leftLoc af ag haf 1) (V (selfW af ag 1))
-  writeWindow (leftSub af ag) V5 (Ff (fun j => V5 (leftSub af ag j)))
+  let V1 := Function.update V (binRightLoc af ag hag 0) (V (binSelf af ag 0))
+  let V2 := Function.update V1 (binRightLoc af ag hag 1) (V (binSelf af ag 1))
+  let V3 := writeWindow (binRightSub af ag) V2 (Fg (fun j => V2 (binRightSub af ag j)))
+  let V4 := Function.update V3 (binLeftLoc af ag haf 0) (V3 (binRightLoc af ag hag 3))
+  let V5 := Function.update V4 (binLeftLoc af ag haf 1) (V (binSelf af ag 1))
+  writeWindow (binLeftSub af ag) V5 (Ff (fun j => V5 (binLeftSub af ag j)))
 
 /-- The vector the second child sees: the parent's input and fuel. -/
 noncomputable def compRightIn (af ag : ℕ) (hag : 16 ≤ ag) (V : Fin (16 + af + ag) → ℕ) :
     Fin ag → ℕ :=
   fun j =>
-    Function.update (Function.update V (rightLoc af ag hag 0) (V (selfW af ag 0)))
-      (rightLoc af ag hag 1) (V (selfW af ag 1)) (rightSub af ag j)
+    Function.update (Function.update V (binRightLoc af ag hag 0) (V (binSelf af ag 0)))
+      (binRightLoc af ag hag 1) (V (binSelf af ag 1)) (binRightSub af ag j)
 /-- The vector the first child sees: `cg`'s value as its input, the parent's fuel. -/
 noncomputable def compLeftIn (af ag : ℕ) (haf : 16 ≤ af) (hag : 16 ≤ ag)
     (Fg : (Fin ag → ℕ) → Fin ag → ℕ) (V : Fin (16 + af + ag) → ℕ) : Fin af → ℕ :=
   fun j =>
     Function.update
       (Function.update
-        (writeWindow (rightSub af ag)
-          (Function.update (Function.update V (rightLoc af ag hag 0) (V (selfW af ag 0)))
-            (rightLoc af ag hag 1) (V (selfW af ag 1)))
+        (writeWindow (binRightSub af ag)
+          (Function.update (Function.update V (binRightLoc af ag hag 0) (V (binSelf af ag 0)))
+            (binRightLoc af ag hag 1) (V (binSelf af ag 1)))
           (Fg (compRightIn af ag hag V)))
-        (leftLoc af ag haf 0)
-        (writeWindow (rightSub af ag)
-          (Function.update (Function.update V (rightLoc af ag hag 0) (V (selfW af ag 0)))
-            (rightLoc af ag hag 1) (V (selfW af ag 1)))
-          (Fg (compRightIn af ag hag V)) (rightLoc af ag hag 3)))
-      (leftLoc af ag haf 1) (V (selfW af ag 1)) (leftSub af ag j)
+        (binLeftLoc af ag haf 0)
+        (writeWindow (binRightSub af ag)
+          (Function.update (Function.update V (binRightLoc af ag hag 0) (V (binSelf af ag 0)))
+            (binRightLoc af ag hag 1) (V (binSelf af ag 1)))
+          (Fg (compRightIn af ag hag V)) (binRightLoc af ag hag 3)))
+      (binLeftLoc af ag haf 1) (V (binSelf af ag 1)) (binLeftSub af ag j)
+/-- **`comp` Phase A Hoare specification.** `cg` runs first, its value becomes `cf`'s
+    input, and `cf` runs unconditionally; Phase B's mask discards a garbage answer. -/
 lemma compPhaseA_hoareTime (haf : 16 ≤ af) (hag : 16 ≤ ag)
     (R : Regs (16 + af + ag) n) (Mf Mg : TM n)
     (Ff : (Fin af → ℕ) → Fin af → ℕ) (Fg : (Fin ag → ℕ) → Fin ag → ℕ) (tf tg : ℕ)
     (V : Fin (16 + af + ag) → ℕ) (B : ℕ)
     (inp₀ : Tape) (w₀ : Fin n → Tape) (ys : List Bool)
     (hinp₀ : Parked inp₀) (hpark : ∀ i, Parked (w₀ i)) (hB : ∀ k, V k < B)
-    (hFfB : ∀ k, Ff (compLeftIn af ag haf hag Fg V) k < B)
     (hFgB : ∀ k, Fg (compRightIn af ag hag V) k < B)
     (hMf : ∀ Wb : Fin n → Tape, (∀ i, Parked (Wb i)) →
       Mf.HoareTime
-        (EmitPred inp₀ (regsWork ((leftSub af ag).trans R) Wb
+        (EmitPred inp₀ (regsWork ((binLeftSub af ag).trans R) Wb
           (compLeftIn af ag haf hag Fg V)) ys)
-        (EmitPred inp₀ (regsWork ((leftSub af ag).trans R) Wb
+        (EmitPred inp₀ (regsWork ((binLeftSub af ag).trans R) Wb
           (Ff (compLeftIn af ag haf hag Fg V))) ys) tf)
     (hMg : ∀ Wb : Fin n → Tape, (∀ i, Parked (Wb i)) →
       Mg.HoareTime
-        (EmitPred inp₀ (regsWork ((rightSub af ag).trans R) Wb
+        (EmitPred inp₀ (regsWork ((binRightSub af ag).trans R) Wb
           (compRightIn af ag hag V)) ys)
-        (EmitPred inp₀ (regsWork ((rightSub af ag).trans R) Wb
+        (EmitPred inp₀ (regsWork ((binRightSub af ag).trans R) Wb
           (Fg (compRightIn af ag hag V))) ys) tg) :
     (compPhaseA af ag haf hag R Mf Mg).HoareTime
       (EmitPred inp₀ (regsWork R w₀ V) ys)
@@ -1657,79 +1666,73 @@ lemma compPhaseA_hoareTime (haf : 16 ≤ af) (hag : 16 ≤ ag)
   have hpv := parked_regsWork R hpark
   have hle : ∀ k, V k ≤ B := fun k => Nat.le_of_lt (hB k)
   -- S1: cg.input := parent input
-  have h1 := copyIntoTM_hoareTime (R (selfW af ag 0)) (R (rightLoc af ag hag 0))
-      (Regs.ne R (selfW_ne_rightLoc hag haf 0 0)) (V (selfW af ag 0))
-      (V (rightLoc af ag hag 0))
+  have h1 := copyIntoTM_hoareTime (R (binSelf af ag 0)) (R (binRightLoc af ag hag 0))
+      (Regs.ne R (binSelf_ne_rightLoc hag haf 0 0)) (V (binSelf af ag 0))
+      (V (binRightLoc af ag hag 0))
       inp₀ (regsWork R w₀ V) ys hinp₀ (fun i _ => hpv V i)
       (regsWork_apply R w₀ V _) (regsWork_apply R w₀ V _)
   rw [regsWork_update] at h1
   replace h1 := h1.mono_bound (copyIntoTime_le_arith _ _ B (hle _) (hle _))
-  set V1 := Function.update V (rightLoc af ag hag 0) (V (selfW af ag 0)) with hV1
+  set V1 := Function.update V (binRightLoc af ag hag 0) (V (binSelf af ag 0)) with hV1
   have b1 : ∀ k, V1 k < B := by
-    intro k; rw [hV1]; simp only [Function.update_apply]; split_ifs <;> exact hB _
+    rw [hV1]; exact update_lt hB (hB _)
   -- S2: cg.fuel := parent fuel
-  have h2 := copyIntoTM_hoareTime (R (selfW af ag 1)) (R (rightLoc af ag hag 1))
-      (Regs.ne R (selfW_ne_rightLoc hag haf 1 1)) (V (selfW af ag 1))
-      (V1 (rightLoc af ag hag 1))
+  have h2 := copyIntoTM_hoareTime (R (binSelf af ag 1)) (R (binRightLoc af ag hag 1))
+      (Regs.ne R (binSelf_ne_rightLoc hag haf 1 1)) (V (binSelf af ag 1))
+      (V1 (binRightLoc af ag hag 1))
       inp₀ (regsWork R w₀ V1) ys hinp₀ (fun i _ => hpv V1 i)
       (by rw [regsWork_apply, hV1,
-        Function.update_of_ne (selfW_ne_rightLoc hag haf 1 0)])
+        Function.update_of_ne (binSelf_ne_rightLoc hag haf 1 0)])
       (regsWork_apply R w₀ V1 _)
   rw [regsWork_update] at h2
   replace h2 := h2.mono_bound
     (copyIntoTime_le_arith _ _ B (hle _) (Nat.le_of_lt (b1 _)))
-  set V2 := Function.update V1 (rightLoc af ag hag 1) (V (selfW af ag 1)) with hV2
+  set V2 := Function.update V1 (binRightLoc af ag hag 1) (V (binSelf af ag 1)) with hV2
   have b2 : ∀ k, V2 k < B := by
-    intro k; rw [hV2]; simp only [Function.update_apply]; split_ifs
-    · exact hB _
-    · exact b1 _
-  have out2 : ∀ k, (∀ j, rightSub af ag j ≠ k) → V2 k = V k := by
+    rw [hV2]; exact update_lt b1 (hB _)
+  have out2 : ∀ k, (∀ j, binRightSub af ag j ≠ k) → V2 k = V k := by
     intro k hk
-    have e0 : rightLoc af ag hag 0 ≠ k := by rw [rightLoc_eq]; exact hk _
-    have e1 : rightLoc af ag hag 1 ≠ k := by rw [rightLoc_eq]; exact hk _
+    have e0 : binRightLoc af ag hag 0 ≠ k := by rw [binRightLoc_eq]; exact hk _
+    have e1 : binRightLoc af ag hag 1 ≠ k := by rw [binRightLoc_eq]; exact hk _
     rw [hV2, Function.update_of_ne (Ne.symm e1), hV1, Function.update_of_ne (Ne.symm e0)]
   -- S3: run cg
-  have h3 := runChildFixed (rightSub af ag) R Mg Fg tg w₀ hpark V2 hMg
-  set V3 := writeWindow (rightSub af ag) V2 (Fg (fun j => V2 (rightSub af ag j))) with hV3
+  have h3 := runChildFixed (binRightSub af ag) R Mg Fg tg w₀ hpark V2 hMg
+  set V3 := writeWindow (binRightSub af ag) V2 (Fg (fun j => V2 (binRightSub af ag j))) with hV3
   have b3 : ∀ k, V3 k < B := by
     intro k; rw [hV3]
     exact writeWindow_bounded _ _ _ B b2 (fun j => hFgB j) k
-  have out3 : ∀ k, (∀ j, rightSub af ag j ≠ k) → V3 k = V k := by
+  have out3 : ∀ k, (∀ j, binRightSub af ag j ≠ k) → V3 k = V k := by
     intro k hk
     rw [hV3, runChild_frame _ _ _ hk]; exact out2 k hk
   -- S4: cf.input := cg's value
-  have h4 := copyIntoTM_hoareTime (R (rightLoc af ag hag 3)) (R (leftLoc af ag haf 0))
-      (Regs.ne R (Ne.symm (leftLoc_ne_rightLoc haf hag 0 3)))
-      (V3 (rightLoc af ag hag 3)) (V3 (leftLoc af ag haf 0))
+  have h4 := copyIntoTM_hoareTime (R (binRightLoc af ag hag 3)) (R (binLeftLoc af ag haf 0))
+      (Regs.ne R (Ne.symm (binLeftLoc_ne_rightLoc haf hag 0 3)))
+      (V3 (binRightLoc af ag hag 3)) (V3 (binLeftLoc af ag haf 0))
       inp₀ (regsWork R w₀ V3) ys hinp₀ (fun i _ => hpv V3 i)
       (regsWork_apply R w₀ V3 _) (regsWork_apply R w₀ V3 _)
   rw [regsWork_update] at h4
   replace h4 := h4.mono_bound
     (copyIntoTime_le_arith _ _ B (Nat.le_of_lt (b3 _)) (Nat.le_of_lt (b3 _)))
-  set V4 := Function.update V3 (leftLoc af ag haf 0) (V3 (rightLoc af ag hag 3)) with hV4
+  set V4 := Function.update V3 (binLeftLoc af ag haf 0) (V3 (binRightLoc af ag hag 3)) with hV4
   have b4 : ∀ k, V4 k < B := by
-    intro k; rw [hV4]; simp only [Function.update_apply]; split_ifs
-    · exact b3 _
-    · exact b3 _
+    rw [hV4]; exact update_lt b3 (b3 _)
   -- S5: cf.fuel := parent fuel
-  have h5 := copyIntoTM_hoareTime (R (selfW af ag 1)) (R (leftLoc af ag haf 1))
-      (Regs.ne R (selfW_ne_leftLoc haf 1 1)) (V (selfW af ag 1))
-      (V4 (leftLoc af ag haf 1))
+  have h5 := copyIntoTM_hoareTime (R (binSelf af ag 1)) (R (binLeftLoc af ag haf 1))
+      (Regs.ne R (binSelf_ne_leftLoc haf 1 1)) (V (binSelf af ag 1))
+      (V4 (binLeftLoc af ag haf 1))
       inp₀ (regsWork R w₀ V4) ys hinp₀ (fun i _ => hpv V4 i)
       (by rw [regsWork_apply, hV4,
-        Function.update_of_ne (selfW_ne_leftLoc haf 1 0),
-        out3 _ (fun j => rightSub_ne_selfW haf j 1)])
+        Function.update_of_ne (binSelf_ne_leftLoc haf 1 0),
+        out3 _ (fun j => binRightSub_ne_self haf j 1)])
       (regsWork_apply R w₀ V4 _)
   rw [regsWork_update] at h5
   replace h5 := h5.mono_bound
     (copyIntoTime_le_arith _ _ B (hle _) (Nat.le_of_lt (b4 _)))
-  set V5 := Function.update V4 (leftLoc af ag haf 1) (V (selfW af ag 1)) with hV5
+  set V5 := Function.update V4 (binLeftLoc af ag haf 1) (V (binSelf af ag 1)) with hV5
   have b5 : ∀ k, V5 k < B := by
-    intro k; rw [hV5]; simp only [Function.update_apply]; split_ifs
-    · exact hB _
-    · exact b4 _
+    rw [hV5]; exact update_lt b4 (hB _)
   -- S6: run cf
-  have h6 := runChildFixed (leftSub af ag) R Mf Ff tf w₀ hpark V5 hMf
+  have h6 := runChildFixed (binLeftSub af ag) R Mf Ff tf w₀ hpark V5 hMf
   exact (seqEmit hinp₀ (hpv V1) h1 <|
     seqEmit hinp₀ (hpv V2) h2 <|
     seqEmit hinp₀ (hpv V3) h3 <|
@@ -1750,52 +1753,54 @@ variable {af ag : ℕ}
 it and by both children's tags. -/
 def compPhaseB (af ag : ℕ) (haf : 16 ≤ af) (hag : 16 ≤ ag)
     (R : Regs (16 + af + ag) n) : TM n :=
-  seqTM (ltFlagTM (R (selfW af ag 0)) (R (selfW af ag 1))
-          (R (selfW af ag 5)) (R (selfW af ag 4))) <|
-  seqTM (clearRegTM (R (selfW af ag 14))) <|
-  seqTM (mulAddIntoTM (R (selfW af ag 4)) (R (rightLoc af ag hag 2))
-          (R (selfW af ag 14))) <|
-  seqTM (clearRegTM (R (selfW af ag 2))) <|
-  seqTM (mulAddIntoTM (R (selfW af ag 14)) (R (leftLoc af ag haf 2))
-          (R (selfW af ag 2))) <|
-  seqTM (clearRegTM (R (selfW af ag 3)))
-        (mulAddIntoTM (R (selfW af ag 2)) (R (leftLoc af ag haf 3)) (R (selfW af ag 3)))
+  seqTM (ltFlagTM (R (binSelf af ag 0)) (R (binSelf af ag 1))
+          (R (binSelf af ag 5)) (R (binSelf af ag 4))) <|
+  seqTM (clearRegTM (R (binSelf af ag 14))) <|
+  seqTM (mulAddIntoTM (R (binSelf af ag 4)) (R (binRightLoc af ag hag 2))
+          (R (binSelf af ag 14))) <|
+  seqTM (clearRegTM (R (binSelf af ag 2))) <|
+  seqTM (mulAddIntoTM (R (binSelf af ag 14)) (R (binLeftLoc af ag haf 2))
+          (R (binSelf af ag 2))) <|
+  seqTM (clearRegTM (R (binSelf af ag 3)))
+        (mulAddIntoTM (R (binSelf af ag 2)) (R (binLeftLoc af ag haf 3)) (R (binSelf af ag 3)))
 
 /-- The ambient register vector `compPhaseB` produces. -/
 noncomputable def compPhaseBVec (af ag : ℕ) (haf : 16 ≤ af) (hag : 16 ≤ ag)
     (W : Fin (16 + af + ag) → ℕ) : Fin (16 + af + ag) → ℕ :=
-  let W1 := Function.update W (selfW af ag 5) (W (selfW af ag 1) - W (selfW af ag 0))
-  let W2 := Function.update W1 (selfW af ag 4)
-              (if W (selfW af ag 0) < W (selfW af ag 1) then 1 else 0)
-  let W3 := Function.update W2 (selfW af ag 14) 0
-  let W4 := Function.update W3 (selfW af ag 14)
-              (0 + W3 (selfW af ag 4) * W3 (rightLoc af ag hag 2))
-  let W5 := Function.update W4 (selfW af ag 2) 0
-  let W6 := Function.update W5 (selfW af ag 2)
-              (0 + W5 (selfW af ag 14) * W5 (leftLoc af ag haf 2))
-  let W7 := Function.update W6 (selfW af ag 3) 0
-  Function.update W7 (selfW af ag 3)
-    (0 + W7 (selfW af ag 2) * W7 (leftLoc af ag haf 3))
+  let W1 := Function.update W (binSelf af ag 5) (W (binSelf af ag 1) - W (binSelf af ag 0))
+  let W2 := Function.update W1 (binSelf af ag 4)
+              (if W (binSelf af ag 0) < W (binSelf af ag 1) then 1 else 0)
+  let W3 := Function.update W2 (binSelf af ag 14) 0
+  let W4 := Function.update W3 (binSelf af ag 14)
+              (0 + W3 (binSelf af ag 4) * W3 (binRightLoc af ag hag 2))
+  let W5 := Function.update W4 (binSelf af ag 2) 0
+  let W6 := Function.update W5 (binSelf af ag 2)
+              (0 + W5 (binSelf af ag 14) * W5 (binLeftLoc af ag haf 2))
+  let W7 := Function.update W6 (binSelf af ag 3) 0
+  Function.update W7 (binSelf af ag 3)
+    (0 + W7 (binSelf af ag 2) * W7 (binLeftLoc af ag haf 3))
 
+/-- **`comp` Phase B Hoare specification.** The outer answer is masked by both children's
+    tags, so a failed `cg` zeroes the node's result. -/
 lemma compPhaseB_hoareTime (haf : 16 ≤ af) (hag : 16 ≤ ag)
     (R : Regs (16 + af + ag) n) (W : Fin (16 + af + ag) → ℕ) (B : ℕ)
     (inp₀ : Tape) (w₀ : Fin n → Tape) (ys : List Bool)
     (hinp₀ : Parked inp₀) (hpark : ∀ i, Parked (w₀ i)) (hW : ∀ k, W k < B)
-    (htagG : W (rightLoc af ag hag 2) ≤ 1) (htagF : W (leftLoc af ag haf 2) ≤ 1) :
+    (htagG : W (binRightLoc af ag hag 2) ≤ 1) (htagF : W (binLeftLoc af ag haf 2) ≤ 1) :
     (compPhaseB af ag haf hag R).HoareTime
       (EmitPred inp₀ (regsWork R w₀ W) ys)
       (EmitPred inp₀ (regsWork R w₀ (compPhaseBVec af ag haf hag W)) ys)
       (7 * evalnArithmeticCost B + 6) := by
   have hpv := parked_regsWork R hpark
   have hle : ∀ k, W k ≤ B := fun k => Nat.le_of_lt (hW k)
-  have hBpos : 0 < B := Nat.lt_of_le_of_lt (Nat.zero_le _) (hW (selfW af ag 0))
+  have hBpos : 0 < B := Nat.lt_of_le_of_lt (Nat.zero_le _) (hW (binSelf af ag 0))
   -- S1: the outer guard
-  have h1 := ltFlagTM_hoareTime (R (selfW af ag 0)) (R (selfW af ag 1))
-      (R (selfW af ag 5)) (R (selfW af ag 4))
-      (Regs.ne R (selfW_ne_selfW 0 5 (by decide)))
-      (Regs.ne R (selfW_ne_selfW 1 5 (by decide)))
-      (Regs.ne R (selfW_ne_selfW 5 4 (by decide)))
-      (W (selfW af ag 0)) (W (selfW af ag 1)) (W (selfW af ag 5)) (W (selfW af ag 4))
+  have h1 := ltFlagTM_hoareTime (R (binSelf af ag 0)) (R (binSelf af ag 1))
+      (R (binSelf af ag 5)) (R (binSelf af ag 4))
+      (Regs.ne R (binSelf_ne_self 0 5 (by decide)))
+      (Regs.ne R (binSelf_ne_self 1 5 (by decide)))
+      (Regs.ne R (binSelf_ne_self 5 4 (by decide)))
+      (W (binSelf af ag 0)) (W (binSelf af ag 1)) (W (binSelf af ag 5)) (W (binSelf af ag 4))
       inp₀ (regsWork R w₀ W) ys hinp₀ (fun i => hpv W i)
       (regsWork_apply R w₀ W _) (regsWork_apply R w₀ W _)
       (regsWork_apply R w₀ W _) (regsWork_apply R w₀ W _)
@@ -1803,134 +1808,128 @@ lemma compPhaseB_hoareTime (haf : 16 ≤ af) (hag : 16 ≤ ag)
   replace h1 := h1.mono_bound
     (ltFlagTime_le_arith _ _ _ _ B (hle _) (hle _) (hle _) (hle _))
   set W2 := Function.update
-      (Function.update W (selfW af ag 5) (W (selfW af ag 1) - W (selfW af ag 0)))
-      (selfW af ag 4) (if W (selfW af ag 0) < W (selfW af ag 1) then 1 else 0) with hW2
+      (Function.update W (binSelf af ag 5) (W (binSelf af ag 1) - W (binSelf af ag 0)))
+      (binSelf af ag 4) (if W (binSelf af ag 0) < W (binSelf af ag 1) then 1 else 0) with hW2
   have b2 : ∀ k, W2 k < B := by
     intro k; rw [hW2]; simp only [Function.update_apply]
-    split_ifs <;> first | omega | (have := hW (selfW af ag 1); omega) | exact hW _
-  have r2_4 : W2 (selfW af ag 4)
-      = (if W (selfW af ag 0) < W (selfW af ag 1) then 1 else 0) := by
+    split_ifs <;> first | omega | (have := hW (binSelf af ag 1); omega) | exact hW _
+  have r2_4 : W2 (binSelf af ag 4)
+      = (if W (binSelf af ag 0) < W (binSelf af ag 1) then 1 else 0) := by
     rw [hW2, Function.update_self]
-  have r2_14 : W2 (selfW af ag 14) = W (selfW af ag 14) := by
-    rw [hW2, Function.update_of_ne (selfW_ne_selfW 14 4 (by decide)),
-      Function.update_of_ne (selfW_ne_selfW 14 5 (by decide))]
-  have r2_Lg2 : W2 (rightLoc af ag hag 2) = W (rightLoc af ag hag 2) := by
-    rw [hW2, Function.update_of_ne (Ne.symm (selfW_ne_rightLoc hag haf 4 2)),
-      Function.update_of_ne (Ne.symm (selfW_ne_rightLoc hag haf 5 2))]
+  have r2_14 : W2 (binSelf af ag 14) = W (binSelf af ag 14) := by
+    rw [hW2, Function.update_of_ne (binSelf_ne_self 14 4 (by decide)),
+      Function.update_of_ne (binSelf_ne_self 14 5 (by decide))]
+  have r2_Lg2 : W2 (binRightLoc af ag hag 2) = W (binRightLoc af ag hag 2) := by
+    rw [hW2, Function.update_of_ne (Ne.symm (binSelf_ne_rightLoc hag haf 4 2)),
+      Function.update_of_ne (Ne.symm (binSelf_ne_rightLoc hag haf 5 2))]
   -- S2: clear the mask scratch
-  have h2 := clearRegTM_hoareTime (R (selfW af ag 14)) (W2 (selfW af ag 14)) inp₀
+  have h2 := clearRegTM_hoareTime (R (binSelf af ag 14)) (W2 (binSelf af ag 14)) inp₀
       (regsWork R w₀ W2) ys hinp₀ (fun i _ => hpv W2 i) (regsWork_apply R w₀ W2 _)
   rw [regsWork_update] at h2
   replace h2 := h2.mono_bound (regOpTime_le_arith _ B (Nat.le_of_lt (b2 _)))
-  set W3 := Function.update W2 (selfW af ag 14) 0 with hW3
+  set W3 := Function.update W2 (binSelf af ag 14) 0 with hW3
   have b3 : ∀ k, W3 k < B := by
-    intro k; rw [hW3]; simp only [Function.update_apply]; split_ifs
-    · omega
-    · exact b2 _
-  have hflag3 : W3 (selfW af ag 4) ≤ 1 := by
-    rw [hW3, Function.update_of_ne (selfW_ne_selfW 4 14 (by decide)), r2_4]
+    rw [hW3]; exact update_lt b2 (by omega)
+  have hflag3 : W3 (binSelf af ag 4) ≤ 1 := by
+    rw [hW3, Function.update_of_ne (binSelf_ne_self 4 14 (by decide)), r2_4]
     split_ifs <;> omega
-  have r3_Lg2 : W3 (rightLoc af ag hag 2) = W (rightLoc af ag hag 2) := by
-    rw [hW3, Function.update_of_ne (Ne.symm (selfW_ne_rightLoc hag haf 14 2)), r2_Lg2]
+  have r3_Lg2 : W3 (binRightLoc af ag hag 2) = W (binRightLoc af ag hag 2) := by
+    rw [hW3, Function.update_of_ne (Ne.symm (binSelf_ne_rightLoc hag haf 14 2)), r2_Lg2]
   -- S3: scratch := gflag * cg.tag
-  have h3 := mulAddIntoTM_hoareTime (R (selfW af ag 4)) (R (rightLoc af ag hag 2))
-      (R (selfW af ag 14))
-      (Regs.ne R (selfW_ne_rightLoc hag haf 4 2))
-      (Regs.ne R (selfW_ne_selfW 4 14 (by decide)))
-      (Regs.ne R (Ne.symm (selfW_ne_rightLoc hag haf 14 2)))
-      (W3 (selfW af ag 4)) (W3 (rightLoc af ag hag 2)) 0
+  have h3 := mulAddIntoTM_hoareTime (R (binSelf af ag 4)) (R (binRightLoc af ag hag 2))
+      (R (binSelf af ag 14))
+      (Regs.ne R (binSelf_ne_rightLoc hag haf 4 2))
+      (Regs.ne R (binSelf_ne_self 4 14 (by decide)))
+      (Regs.ne R (Ne.symm (binSelf_ne_rightLoc hag haf 14 2)))
+      (W3 (binSelf af ag 4)) (W3 (binRightLoc af ag hag 2)) 0
       inp₀ (regsWork R w₀ W3) ys hinp₀ (fun i _ => hpv W3 i)
       (regsWork_apply R w₀ W3 _) (regsWork_apply R w₀ W3 _)
       (by rw [regsWork_apply, hW3, Function.update_self])
   rw [regsWork_update] at h3
   replace h3 := h3.mono_bound
     (mulAddTime_le_arith _ _ 0 B (Nat.le_of_lt (b3 _)) (Nat.le_of_lt (b3 _)) (by omega))
-  set W4 := Function.update W3 (selfW af ag 14)
-      (0 + W3 (selfW af ag 4) * W3 (rightLoc af ag hag 2)) with hW4
-  have hmask4 : W4 (selfW af ag 14) ≤ 1 := by
+  set W4 := Function.update W3 (binSelf af ag 14)
+      (0 + W3 (binSelf af ag 4) * W3 (binRightLoc af ag hag 2)) with hW4
+  have hmask4 : W4 (binSelf af ag 14) ≤ 1 := by
     rw [hW4, Function.update_self, r3_Lg2]
-    calc 0 + W3 (selfW af ag 4) * W (rightLoc af ag hag 2)
+    calc 0 + W3 (binSelf af ag 4) * W (binRightLoc af ag hag 2)
         ≤ 1 * 1 := by simpa using Nat.mul_le_mul hflag3 htagG
       _ = 1 := by norm_num
   have b4 : ∀ k, W4 k < B := by
-    intro k; rw [hW4]; simp only [Function.update_apply]; split_ifs
-    · have hb := b3 (rightLoc af ag hag 2)
-      calc 0 + W3 (selfW af ag 4) * W3 (rightLoc af ag hag 2)
-          ≤ 1 * W3 (rightLoc af ag hag 2) := by
-            simpa using Nat.mul_le_mul hflag3 (le_refl (W3 (rightLoc af ag hag 2)))
-        _ < B := by omega
-    · exact b3 _
-  have r4_Lf2 : W4 (leftLoc af ag haf 2) = W (leftLoc af ag haf 2) := by
-    rw [hW4, Function.update_of_ne (Ne.symm (selfW_ne_leftLoc haf 14 2)), hW3,
-      Function.update_of_ne (Ne.symm (selfW_ne_leftLoc haf 14 2)), hW2,
-      Function.update_of_ne (Ne.symm (selfW_ne_leftLoc haf 4 2)),
-      Function.update_of_ne (Ne.symm (selfW_ne_leftLoc haf 5 2))]
+    rw [hW4]
+    refine update_lt b3 ?_
+    have hb := b3 (binRightLoc af ag hag 2)
+    calc 0 + W3 (binSelf af ag 4) * W3 (binRightLoc af ag hag 2)
+        ≤ 1 * W3 (binRightLoc af ag hag 2) := by
+          simpa using Nat.mul_le_mul hflag3 (le_refl (W3 (binRightLoc af ag hag 2)))
+      _ < B := by omega
+  have r4_Lf2 : W4 (binLeftLoc af ag haf 2) = W (binLeftLoc af ag haf 2) := by
+    rw [hW4, Function.update_of_ne (Ne.symm (binSelf_ne_leftLoc haf 14 2)), hW3,
+      Function.update_of_ne (Ne.symm (binSelf_ne_leftLoc haf 14 2)), hW2,
+      Function.update_of_ne (Ne.symm (binSelf_ne_leftLoc haf 4 2)),
+      Function.update_of_ne (Ne.symm (binSelf_ne_leftLoc haf 5 2))]
   -- S4: clear the tag
-  have h4 := clearRegTM_hoareTime (R (selfW af ag 2)) (W4 (selfW af ag 2)) inp₀
+  have h4 := clearRegTM_hoareTime (R (binSelf af ag 2)) (W4 (binSelf af ag 2)) inp₀
       (regsWork R w₀ W4) ys hinp₀ (fun i _ => hpv W4 i) (regsWork_apply R w₀ W4 _)
   rw [regsWork_update] at h4
   replace h4 := h4.mono_bound (regOpTime_le_arith _ B (Nat.le_of_lt (b4 _)))
-  set W5 := Function.update W4 (selfW af ag 2) 0 with hW5
+  set W5 := Function.update W4 (binSelf af ag 2) 0 with hW5
   have b5 : ∀ k, W5 k < B := by
-    intro k; rw [hW5]; simp only [Function.update_apply]; split_ifs
-    · omega
-    · exact b4 _
-  have hmask5 : W5 (selfW af ag 14) ≤ 1 := by
-    rw [hW5, Function.update_of_ne (selfW_ne_selfW 14 2 (by decide))]; exact hmask4
-  have r5_Lf2 : W5 (leftLoc af ag haf 2) = W (leftLoc af ag haf 2) := by
-    rw [hW5, Function.update_of_ne (Ne.symm (selfW_ne_leftLoc haf 2 2)), r4_Lf2]
+    rw [hW5]; exact update_lt b4 (by omega)
+  have hmask5 : W5 (binSelf af ag 14) ≤ 1 := by
+    rw [hW5, Function.update_of_ne (binSelf_ne_self 14 2 (by decide))]; exact hmask4
+  have r5_Lf2 : W5 (binLeftLoc af ag haf 2) = W (binLeftLoc af ag haf 2) := by
+    rw [hW5, Function.update_of_ne (Ne.symm (binSelf_ne_leftLoc haf 2 2)), r4_Lf2]
   -- S5: tag := scratch * cf.tag
-  have h5 := mulAddIntoTM_hoareTime (R (selfW af ag 14)) (R (leftLoc af ag haf 2))
-      (R (selfW af ag 2))
-      (Regs.ne R (selfW_ne_leftLoc haf 14 2))
-      (Regs.ne R (selfW_ne_selfW 14 2 (by decide)))
-      (Regs.ne R (Ne.symm (selfW_ne_leftLoc haf 2 2)))
-      (W5 (selfW af ag 14)) (W5 (leftLoc af ag haf 2)) 0
+  have h5 := mulAddIntoTM_hoareTime (R (binSelf af ag 14)) (R (binLeftLoc af ag haf 2))
+      (R (binSelf af ag 2))
+      (Regs.ne R (binSelf_ne_leftLoc haf 14 2))
+      (Regs.ne R (binSelf_ne_self 14 2 (by decide)))
+      (Regs.ne R (Ne.symm (binSelf_ne_leftLoc haf 2 2)))
+      (W5 (binSelf af ag 14)) (W5 (binLeftLoc af ag haf 2)) 0
       inp₀ (regsWork R w₀ W5) ys hinp₀ (fun i _ => hpv W5 i)
       (regsWork_apply R w₀ W5 _) (regsWork_apply R w₀ W5 _)
       (by rw [regsWork_apply, hW5, Function.update_self])
   rw [regsWork_update] at h5
   replace h5 := h5.mono_bound
     (mulAddTime_le_arith _ _ 0 B (Nat.le_of_lt (b5 _)) (Nat.le_of_lt (b5 _)) (by omega))
-  set W6 := Function.update W5 (selfW af ag 2)
-      (0 + W5 (selfW af ag 14) * W5 (leftLoc af ag haf 2)) with hW6
-  have hmask6 : W6 (selfW af ag 2) ≤ 1 := by
+  set W6 := Function.update W5 (binSelf af ag 2)
+      (0 + W5 (binSelf af ag 14) * W5 (binLeftLoc af ag haf 2)) with hW6
+  have hmask6 : W6 (binSelf af ag 2) ≤ 1 := by
     rw [hW6, Function.update_self, r5_Lf2]
-    calc 0 + W5 (selfW af ag 14) * W (leftLoc af ag haf 2)
+    calc 0 + W5 (binSelf af ag 14) * W (binLeftLoc af ag haf 2)
         ≤ 1 * 1 := by simpa using Nat.mul_le_mul hmask5 htagF
       _ = 1 := by norm_num
   have b6 : ∀ k, W6 k < B := by
-    intro k; rw [hW6]; simp only [Function.update_apply]; split_ifs
-    · have hb := b5 (leftLoc af ag haf 2)
-      calc 0 + W5 (selfW af ag 14) * W5 (leftLoc af ag haf 2)
-          ≤ 1 * W5 (leftLoc af ag haf 2) := by
-            simpa using Nat.mul_le_mul hmask5 (le_refl (W5 (leftLoc af ag haf 2)))
-        _ < B := by omega
-    · exact b5 _
-  have r6_Lf3 : W6 (leftLoc af ag haf 3) = W (leftLoc af ag haf 3) := by
-    rw [hW6, Function.update_of_ne (Ne.symm (selfW_ne_leftLoc haf 2 3)), hW5,
-      Function.update_of_ne (Ne.symm (selfW_ne_leftLoc haf 2 3)), hW4,
-      Function.update_of_ne (Ne.symm (selfW_ne_leftLoc haf 14 3)), hW3,
-      Function.update_of_ne (Ne.symm (selfW_ne_leftLoc haf 14 3)), hW2,
-      Function.update_of_ne (Ne.symm (selfW_ne_leftLoc haf 4 3)),
-      Function.update_of_ne (Ne.symm (selfW_ne_leftLoc haf 5 3))]
+    rw [hW6]
+    refine update_lt b5 ?_
+    have hb := b5 (binLeftLoc af ag haf 2)
+    calc 0 + W5 (binSelf af ag 14) * W5 (binLeftLoc af ag haf 2)
+        ≤ 1 * W5 (binLeftLoc af ag haf 2) := by
+          simpa using Nat.mul_le_mul hmask5 (le_refl (W5 (binLeftLoc af ag haf 2)))
+      _ < B := by omega
+  have r6_Lf3 : W6 (binLeftLoc af ag haf 3) = W (binLeftLoc af ag haf 3) := by
+    rw [hW6, Function.update_of_ne (Ne.symm (binSelf_ne_leftLoc haf 2 3)), hW5,
+      Function.update_of_ne (Ne.symm (binSelf_ne_leftLoc haf 2 3)), hW4,
+      Function.update_of_ne (Ne.symm (binSelf_ne_leftLoc haf 14 3)), hW3,
+      Function.update_of_ne (Ne.symm (binSelf_ne_leftLoc haf 14 3)), hW2,
+      Function.update_of_ne (Ne.symm (binSelf_ne_leftLoc haf 4 3)),
+      Function.update_of_ne (Ne.symm (binSelf_ne_leftLoc haf 5 3))]
   -- S6: clear the value
-  have h6 := clearRegTM_hoareTime (R (selfW af ag 3)) (W6 (selfW af ag 3)) inp₀
+  have h6 := clearRegTM_hoareTime (R (binSelf af ag 3)) (W6 (binSelf af ag 3)) inp₀
       (regsWork R w₀ W6) ys hinp₀ (fun i _ => hpv W6 i) (regsWork_apply R w₀ W6 _)
   rw [regsWork_update] at h6
   replace h6 := h6.mono_bound (regOpTime_le_arith _ B (Nat.le_of_lt (b6 _)))
-  set W7 := Function.update W6 (selfW af ag 3) 0 with hW7
+  set W7 := Function.update W6 (binSelf af ag 3) 0 with hW7
   have b7 : ∀ k, W7 k < B := by
-    intro k; rw [hW7]; simp only [Function.update_apply]; split_ifs
-    · omega
-    · exact b6 _
+    rw [hW7]; exact update_lt b6 (by omega)
   -- S7: value := tag * cf.value
-  have h7 := mulAddIntoTM_hoareTime (R (selfW af ag 2)) (R (leftLoc af ag haf 3))
-      (R (selfW af ag 3))
-      (Regs.ne R (selfW_ne_leftLoc haf 2 3))
-      (Regs.ne R (selfW_ne_selfW 2 3 (by decide)))
-      (Regs.ne R (Ne.symm (selfW_ne_leftLoc haf 3 3)))
-      (W7 (selfW af ag 2)) (W7 (leftLoc af ag haf 3)) 0
+  have h7 := mulAddIntoTM_hoareTime (R (binSelf af ag 2)) (R (binLeftLoc af ag haf 3))
+      (R (binSelf af ag 3))
+      (Regs.ne R (binSelf_ne_leftLoc haf 2 3))
+      (Regs.ne R (binSelf_ne_self 2 3 (by decide)))
+      (Regs.ne R (Ne.symm (binSelf_ne_leftLoc haf 3 3)))
+      (W7 (binSelf af ag 2)) (W7 (binLeftLoc af ag haf 3)) 0
       inp₀ (regsWork R w₀ W7) ys hinp₀ (fun i _ => hpv W7 i)
       (regsWork_apply R w₀ W7 _) (regsWork_apply R w₀ W7 _)
       (by rw [regsWork_apply, hW7, Function.update_self])
@@ -1963,28 +1962,22 @@ lemma compPhaseAVec_lt (haf : 16 ≤ af) (hag : 16 ≤ ag)
     ∀ k, compPhaseAVec af ag haf hag Ff Fg V k < B := by
   intro k
   simp only [compPhaseAVec]
-  set V1 := Function.update V (rightLoc af ag hag 0) (V (selfW af ag 0)) with hV1
-  set V2 := Function.update V1 (rightLoc af ag hag 1) (V (selfW af ag 1)) with hV2
-  set V3 := writeWindow (rightSub af ag) V2 (Fg fun j => V2 (rightSub af ag j)) with hV3
-  set V4 := Function.update V3 (leftLoc af ag haf 0) (V3 (rightLoc af ag hag 3)) with hV4
-  set V5 := Function.update V4 (leftLoc af ag haf 1) (V (selfW af ag 1)) with hV5
+  set V1 := Function.update V (binRightLoc af ag hag 0) (V (binSelf af ag 0)) with hV1
+  set V2 := Function.update V1 (binRightLoc af ag hag 1) (V (binSelf af ag 1)) with hV2
+  set V3 := writeWindow (binRightSub af ag) V2 (Fg fun j => V2 (binRightSub af ag j)) with hV3
+  set V4 := Function.update V3 (binLeftLoc af ag haf 0) (V3 (binRightLoc af ag hag 3)) with hV4
+  set V5 := Function.update V4 (binLeftLoc af ag haf 1) (V (binSelf af ag 1)) with hV5
   have b1 : ∀ k, V1 k < B := by
-    intro k; rw [hV1]; simp only [Function.update_apply]; split_ifs <;> exact hB _
+    rw [hV1]; exact update_lt hB (hB _)
   have b2 : ∀ k, V2 k < B := by
-    intro k; rw [hV2]; simp only [Function.update_apply]; split_ifs
-    · exact hB _
-    · exact b1 _
+    rw [hV2]; exact update_lt b1 (hB _)
   have b3 : ∀ k, V3 k < B := by
     intro k; rw [hV3]
     exact writeWindow_bounded _ _ _ B b2 (fun j => hFgB j) k
   have b4 : ∀ k, V4 k < B := by
-    intro k; rw [hV4]; simp only [Function.update_apply]; split_ifs
-    · exact b3 _
-    · exact b3 _
+    rw [hV4]; exact update_lt b3 (b3 _)
   have b5 : ∀ k, V5 k < B := by
-    intro k; rw [hV5]; simp only [Function.update_apply]; split_ifs
-    · exact hB _
-    · exact b4 _
+    rw [hV5]; exact update_lt b4 (hB _)
   exact writeWindow_bounded _ _ _ B b5 (fun j => hFfB j) k
 
 /-- **`comp`, complete.** -/
@@ -1998,25 +1991,25 @@ lemma compileCompTM_hoareTime (haf : 16 ≤ af) (hag : 16 ≤ ag)
     (hFgB : ∀ k, Fg (compRightIn af ag hag V) k < B)
     (hMf : ∀ Wb : Fin n → Tape, (∀ i, Parked (Wb i)) →
       Mf.HoareTime
-        (EmitPred inp₀ (regsWork ((leftSub af ag).trans R) Wb
+        (EmitPred inp₀ (regsWork ((binLeftSub af ag).trans R) Wb
           (compLeftIn af ag haf hag Fg V)) ys)
-        (EmitPred inp₀ (regsWork ((leftSub af ag).trans R) Wb
+        (EmitPred inp₀ (regsWork ((binLeftSub af ag).trans R) Wb
           (Ff (compLeftIn af ag haf hag Fg V))) ys) tf)
     (hMg : ∀ Wb : Fin n → Tape, (∀ i, Parked (Wb i)) →
       Mg.HoareTime
-        (EmitPred inp₀ (regsWork ((rightSub af ag).trans R) Wb
+        (EmitPred inp₀ (regsWork ((binRightSub af ag).trans R) Wb
           (compRightIn af ag hag V)) ys)
-        (EmitPred inp₀ (regsWork ((rightSub af ag).trans R) Wb
+        (EmitPred inp₀ (regsWork ((binRightSub af ag).trans R) Wb
           (Fg (compRightIn af ag hag V))) ys) tg)
-    (htagG : compPhaseAVec af ag haf hag Ff Fg V (rightLoc af ag hag 2) ≤ 1)
-    (htagF : compPhaseAVec af ag haf hag Ff Fg V (leftLoc af ag haf 2) ≤ 1) :
+    (htagG : compPhaseAVec af ag haf hag Ff Fg V (binRightLoc af ag hag 2) ≤ 1)
+    (htagF : compPhaseAVec af ag haf hag Ff Fg V (binLeftLoc af ag haf 2) ≤ 1) :
     (compileCompTM af ag haf hag R Mf Mg).HoareTime
       (EmitPred inp₀ (regsWork R w₀ V) ys)
       (EmitPred inp₀ (regsWork R w₀
         (compPhaseBVec af ag haf hag (compPhaseAVec af ag haf hag Ff Fg V))) ys)
       (11 * evalnArithmeticCost B + tf + tg + 12) := by
   have hA := compPhaseA_hoareTime haf hag R Mf Mg Ff Fg tf tg V B inp₀ w₀ ys hinp₀ hpark
-    hB hFfB hFgB hMf hMg
+    hB hFgB hMf hMg
   have hAlt := compPhaseAVec_lt haf hag Ff Fg V B hB hFfB hFgB
   have hBph := compPhaseB_hoareTime haf hag R (compPhaseAVec af ag haf hag Ff Fg V) B
     inp₀ w₀ ys hinp₀ hpark hAlt htagG htagF
@@ -2171,7 +2164,7 @@ lemma precRunG_succ_tag (cf cg : Nat.Partrec.Code) (a f j : ℕ) :
           * resultTag (Nat.Partrec.Code.evaln (f + (j + 1)) cg
               (Nat.pair a (Nat.pair j (resultVal (precRunG cf cg a f j))))) := by
   rw [precRunG]
-  cases hp : precRunG cf cg a f j <;> simp [hp]
+  cases hp : precRunG cf cg a f j <;> simp
 
 lemma precRunG_succ_val (cf cg : Nat.Partrec.Code) (a f j : ℕ) :
     resultVal (precRunG cf cg a f (j + 1))
@@ -2181,7 +2174,7 @@ lemma precRunG_succ_val (cf cg : Nat.Partrec.Code) (a f j : ℕ) :
           * resultVal (Nat.Partrec.Code.evaln (f + (j + 1)) cg
               (Nat.pair a (Nat.pair j (resultVal (precRunG cf cg a f j))))) := by
   rw [precRunG]
-  cases hp : precRunG cf cg a f j <;> simp [hp]
+  cases hp : precRunG cf cg a f j <;> simp
 
 @[simp] lemma precRunG_zero (cf cg : Nat.Partrec.Code) (a f : ℕ) :
     precRunG cf cg a f 0 = Nat.Partrec.Code.evaln f cf a := rfl
@@ -2234,9 +2227,9 @@ parent reads a `prec` child exactly like any other.
 | `16`–`24` | the `unpairTM` / `pairTM` window (nine registers; `pairTM` uses eight) |
 | `25`–`31` | spare |
 
-The loop `forRegTM` runs is driven off the *ambient* counter `precLoopIdx`, the
-thirty-third register, outside the thirty-two this table describes; the setup copies `m`
-into it. Because the counter is outside the body's block, `forRegs_hoareTime` applies with
+The loop `forRegTM` runs is driven off the *ambient* counter `precLoopIdx`, the node's
+thirty-third register, laid out last at ambient index `32 + af + ag` and so outside the
+thirty-two this table describes; the setup copies `m` into it. Because the counter is outside the body's block, `forRegs_hoareTime` applies with
 no re-indexing and the loop never touches a child window. -/
 
 section PrecLayout
@@ -2418,7 +2411,7 @@ lemma precRightLoc_update_apply (hag : 16 ≤ ag) (i j : Fin 16)
 
 /-! #### Windows -/
 
-lemma precPairWin_selfW_apply (i : Fin 32) (X : Fin (32 + af + ag) → ℕ) (u : Fin 8 → ℕ) :
+lemma precPairWin_self_apply (i : Fin 32) (X : Fin (32 + af + ag) → ℕ) (u : Fin 8 → ℕ) :
     writeWindow (precPairW af ag) X u (precSelf af ag i)
       = if h : 16 ≤ (i : ℕ) ∧ (i : ℕ) < 24 then u ⟨(i : ℕ) - 16, by omega⟩
         else X (precSelf af ag i) := by
@@ -2435,7 +2428,7 @@ lemma precPairWin_selfW_apply (i : Fin 32) (X : Fin (32 + af + ag) → ℕ) (u :
     simp at h ⊢
     omega
 
-lemma precUnpairWin_selfW_apply (i : Fin 32) (X : Fin (32 + af + ag) → ℕ)
+lemma precUnpairWin_self_apply (i : Fin 32) (X : Fin (32 + af + ag) → ℕ)
     (u : Fin 9 → ℕ) :
     writeWindow (precUnpairW af ag) X u (precSelf af ag i)
       = if h : 16 ≤ (i : ℕ) ∧ (i : ℕ) < 25 then u ⟨(i : ℕ) - 16, by omega⟩
@@ -2477,7 +2470,7 @@ lemma precUnpairWin_selfW_apply (i : Fin 32) (X : Fin (32 + af + ag) → ℕ)
       = X (precRightLoc af ag hag j) :=
   writeWindow_of_ne _ _ _ (fun t => precUnpairW_ne_rightLoc hag haf t j)
 
-@[simp] lemma precLeftSub_win_selfW (i : Fin 32) (X : Fin (32 + af + ag) → ℕ)
+@[simp] lemma precLeftSub_win_self (i : Fin 32) (X : Fin (32 + af + ag) → ℕ)
     (u : Fin af → ℕ) :
     writeWindow (precLeftSub af ag) X u (precSelf af ag i) = X (precSelf af ag i) :=
   writeWindow_of_ne _ _ _ (fun t => precLeftSub_ne_self t i)
@@ -2494,7 +2487,7 @@ lemma precLeftSub_win_leftLoc (haf : 16 ≤ af) (j : Fin 16)
       = X (precRightLoc af ag hag j) :=
   writeWindow_of_ne _ _ _ (fun t => precLeftSub_ne_rightLoc hag t j)
 
-@[simp] lemma precRightSub_win_selfW (haf : 16 ≤ af) (i : Fin 32)
+@[simp] lemma precRightSub_win_self (haf : 16 ≤ af) (i : Fin 32)
     (X : Fin (32 + af + ag) → ℕ) (u : Fin ag → ℕ) :
     writeWindow (precRightSub af ag) X u (precSelf af ag i) = X (precSelf af ag i) :=
   writeWindow_of_ne _ _ _ (fun t => precRightSub_ne_self haf t i)
@@ -2528,7 +2521,7 @@ variable {af ag : ℕ}
 /-- **One level of the `prec` loop.** Pairs the current level index with the accumulator,
 pairs that with `a`, runs the step child `Mg` on the result at the level's fuel, folds its
 answer into the accumulator and the `alive` mask, and advances the level. -/
-def precBodyTM (af ag : ℕ) (haf : 16 ≤ af) (hag : 16 ≤ ag)
+def precBodyTM (af ag : ℕ) (hag : 16 ≤ ag)
     (R : Regs (32 + af + ag) n) (Mg : TM n) : TM n :=
   seqTM (copyIntoTM (R (precSelf af ag 9)) (R (precSelf af ag 16))) <|
   seqTM (copyIntoTM (R (precSelf af ag 11)) (R (precSelf af ag 17))) <|
@@ -2552,7 +2545,7 @@ def precBodyTM (af ag : ℕ) (haf : 16 ≤ af) (hag : 16 ≤ ag)
 /-- The state one iteration hands `cg`: the reconstructed input `Nat.pair a (Nat.pair j
     acc)` in `cg`'s input register, the level fuel in its fuel register, and the level
     counter and fuel already advanced. -/
-noncomputable def precBodyPre (af ag : ℕ) (haf : 16 ≤ af) (hag : 16 ≤ ag)
+noncomputable def precBodyPre (af ag : ℕ) (hag : 16 ≤ ag)
     (V : Fin (32 + af + ag) → ℕ) : Fin (32 + af + ag) → ℕ :=
   let V1 := Function.update V (precSelf af ag 16) (V (precSelf af ag 9))
   let V2 := Function.update V1 (precSelf af ag 17) (V1 (precSelf af ag 11))
@@ -2568,10 +2561,10 @@ noncomputable def precBodyPre (af ag : ℕ) (haf : 16 ≤ af) (hag : 16 ≤ ag)
   Function.update V9 (precRightLoc af ag hag 1) (V9 (precSelf af ag 12))
 
 /-- The ambient register vector one iteration produces. -/
-noncomputable def precBodyVals (af ag : ℕ) (haf : 16 ≤ af) (hag : 16 ≤ ag)
+noncomputable def precBodyVals (af ag : ℕ) (hag : 16 ≤ ag)
     (Fg : (Fin ag → ℕ) → Fin ag → ℕ) (V : Fin (32 + af + ag) → ℕ) :
     Fin (32 + af + ag) → ℕ :=
-  let V10 := precBodyPre af ag haf hag V
+  let V10 := precBodyPre af ag hag V
   let V11 := writeWindow (precRightSub af ag) V10
                (Fg (fun i => V10 ((precRightSub af ag) i)))
   let V12 := Function.update V11 (precSelf af ag 13) 0
@@ -2583,19 +2576,19 @@ noncomputable def precBodyVals (af ag : ℕ) (haf : 16 ≤ af) (hag : 16 ≤ ag)
     (0 + V15 (precSelf af ag 10) * V15 (precRightLoc af ag hag 3))
 
 /-- The loop state after `j` iterations. -/
-noncomputable def precLoopVals (af ag : ℕ) (haf : 16 ≤ af) (hag : 16 ≤ ag)
+noncomputable def precLoopVals (af ag : ℕ) (hag : 16 ≤ ag)
     (Fg : (Fin ag → ℕ) → Fin ag → ℕ) (V₀ : Fin (32 + af + ag) → ℕ) (j : ℕ) :
     Fin (32 + af + ag) → ℕ :=
-  (precBodyVals af ag haf hag Fg)^[j] V₀
+  (precBodyVals af ag hag Fg)^[j] V₀
 
-@[simp] lemma precLoopVals_zero (haf : 16 ≤ af) (hag : 16 ≤ ag)
+@[simp] lemma precLoopVals_zero (hag : 16 ≤ ag)
     (Fg : (Fin ag → ℕ) → Fin ag → ℕ) (V₀ : Fin (32 + af + ag) → ℕ) :
-    precLoopVals af ag haf hag Fg V₀ 0 = V₀ := rfl
+    precLoopVals af ag hag Fg V₀ 0 = V₀ := rfl
 
-lemma precLoopVals_succ (haf : 16 ≤ af) (hag : 16 ≤ ag)
+lemma precLoopVals_succ (hag : 16 ≤ ag)
     (Fg : (Fin ag → ℕ) → Fin ag → ℕ) (V₀ : Fin (32 + af + ag) → ℕ) (j : ℕ) :
-    precLoopVals af ag haf hag Fg V₀ (j + 1)
-      = precBodyVals af ag haf hag Fg (precLoopVals af ag haf hag Fg V₀ j) := by
+    precLoopVals af ag hag Fg V₀ (j + 1)
+      = precBodyVals af ag hag Fg (precLoopVals af ag hag Fg V₀ j) := by
   rw [precLoopVals, precLoopVals, Function.iterate_succ_apply']
 
 end PrecBody
@@ -2608,9 +2601,12 @@ section PrecBodyProof
 variable {af ag : ℕ}
 
 /-- The vector `cg` is run on at this level. -/
-noncomputable def precChildIn (af ag : ℕ) (haf : 16 ≤ af) (hag : 16 ≤ ag)
+noncomputable def precChildIn (af ag : ℕ) (hag : 16 ≤ ag)
     (V : Fin (32 + af + ag) → ℕ) : Fin ag → ℕ :=
-  fun i => precBodyPre af ag haf hag V (precRightSub af ag i)
+  fun i => precBodyPre af ag hag V (precRightSub af ag i)
+-- Sixteen sequenced stages, each adding a `Function.update` to the state vector; the
+-- `whnf` of the composed vector exceeds the default budget.  The other `_hoareTime`
+-- lemmas in this file have shorter stage lists and compile at the default.
 set_option maxHeartbeats 1000000 in
 /-- **`precBodyTM` Hoare specification.** One level of the reconstruction.
 
@@ -2624,7 +2620,7 @@ lemma precBody_hoareTime (haf : 16 ≤ af) (hag : 16 ≤ ag)
     (inp₀ : Tape) (w₀ : Fin n → Tape) (ys : List Bool)
     (hinp₀ : Parked inp₀) (hpark : ∀ i, Parked (w₀ i)) (hB2 : 2 ≤ B)
     (hV : ∀ k, V k < B)
-    (hFgB : ∀ k, Fg (precChildIn af ag haf hag V) k < B)
+    (hFgB : ∀ k, Fg (precChildIn af ag hag V) k < B)
     (hFgTag : ∀ u : Fin ag → ℕ, Fg u ⟨2, by omega⟩ ≤ 1)
     (halive : V (precSelf af ag 10) ≤ 1)
     (hj1 : V (precSelf af ag 9) + 1 < B)
@@ -2635,12 +2631,12 @@ lemma precBody_hoareTime (haf : 16 ≤ af) (hag : 16 ≤ ag)
     (hMg : ∀ Wb : Fin n → Tape, (∀ i, Parked (Wb i)) →
       Mg.HoareTime
         (EmitPred inp₀ (regsWork ((precRightSub af ag).trans R) Wb
-          (precChildIn af ag haf hag V)) ys)
+          (precChildIn af ag hag V)) ys)
         (EmitPred inp₀ (regsWork ((precRightSub af ag).trans R) Wb
-          (Fg (precChildIn af ag haf hag V))) ys) tg) :
-    (precBodyTM af ag haf hag R Mg).HoareTime
+          (Fg (precChildIn af ag hag V))) ys) tg) :
+    (precBodyTM af ag hag R Mg).HoareTime
       (EmitPred inp₀ (regsWork R w₀ V) ys)
-      (EmitPred inp₀ (regsWork R w₀ (precBodyVals af ag haf hag Fg V)) ys)
+      (EmitPred inp₀ (regsWork R w₀ (precBodyVals af ag hag Fg V)) ys)
       (15 * evalnArithmeticCost B + tg + 15) := by
   have hpv := parked_regsWork R hpark
   have hle : ∀ k, V k ≤ B := fun k => Nat.le_of_lt (hV k)
@@ -2654,7 +2650,7 @@ lemma precBody_hoareTime (haf : 16 ≤ af) (hag : 16 ≤ ag)
   replace h1 := h1.mono_bound (copyIntoTime_le_arith _ _ B (hle _) (hle _))
   set V1 := Function.update V (precSelf af ag 16) (V (precSelf af ag 9)) with hV1
   have b1 : ∀ k, V1 k < B := by
-    intro k; rw [hV1]; simp only [Function.update_apply]; split_ifs <;> exact hV _
+    rw [hV1]; exact update_lt hV (hV _)
   -- S2: pair slot 1 := acc
   have h2 := copyIntoTM_hoareTime (R (precSelf af ag 11)) (R (precSelf af ag 17))
       (Regs.ne R (precSelf_ne_self 11 17 (by decide)))
@@ -2666,7 +2662,7 @@ lemma precBody_hoareTime (haf : 16 ≤ af) (hag : 16 ≤ ag)
     (copyIntoTime_le_arith _ _ B (Nat.le_of_lt (b1 _)) (Nat.le_of_lt (b1 _)))
   set V2 := Function.update V1 (precSelf af ag 17) (V1 (precSelf af ag 11)) with hV2
   have b2 : ∀ k, V2 k < B := by
-    intro k; rw [hV2]; simp only [Function.update_apply]; split_ifs <;> exact b1 _
+    rw [hV2]; exact update_lt b1 (b1 _)
   -- reads of the pair window at entry to S3
   have hw0 : V2 ((precPairW af ag) 0) = V (precSelf af ag 9) := by
     rw [show (precPairW af ag) 0 = precSelf af ag 16 from by
@@ -2718,7 +2714,7 @@ lemma precBody_hoareTime (haf : 16 ≤ af) (hag : 16 ≤ ag)
     (copyIntoTime_le_arith _ _ B (Nat.le_of_lt (b3 _)) (Nat.le_of_lt (b3 _)))
   set V4 := Function.update V3 (precSelf af ag 17) (V3 (precSelf af ag 22)) with hV4
   have b4 : ∀ k, V4 k < B := by
-    intro k; rw [hV4]; simp only [Function.update_apply]; split_ifs <;> exact b3 _
+    rw [hV4]; exact update_lt b3 (b3 _)
   -- S5: pair slot 0 := a
   have h5 := copyIntoTM_hoareTime (R (precSelf af ag 6)) (R (precSelf af ag 16))
       (Regs.ne R (precSelf_ne_self 6 16 (by decide)))
@@ -2730,7 +2726,7 @@ lemma precBody_hoareTime (haf : 16 ≤ af) (hag : 16 ≤ ag)
     (copyIntoTime_le_arith _ _ B (Nat.le_of_lt (b4 _)) (Nat.le_of_lt (b4 _)))
   set V5 := Function.update V4 (precSelf af ag 16) (V4 (precSelf af ag 6)) with hV5
   have b5 : ∀ k, V5 k < B := by
-    intro k; rw [hV5]; simp only [Function.update_apply]; split_ifs <;> exact b4 _
+    rw [hV5]; exact update_lt b4 (b4 _)
   have r5_w0 : V5 ((precPairW af ag) 0) = V (precSelf af ag 6) := by
     rw [precPairW_zero, hV5, Function.update_self, hV4,
       Function.update_of_ne (precSelf_ne_self 6 17 (by decide))]
@@ -2773,9 +2769,8 @@ lemma precBody_hoareTime (haf : 16 ≤ af) (hag : 16 ≤ ag)
   replace h7 := h7.mono_bound (regOpTime_le_arith _ B (Nat.le_of_lt (b6 _)))
   set V7 := Function.update V6 (precSelf af ag 9) (V6 (precSelf af ag 9) + 1) with hV7
   have b7 : ∀ k, V7 k < B := by
-    intro k; rw [hV7]; simp only [Function.update_apply]; split_ifs
-    · rw [out6 9 (by intro t; have := t.isLt; simp; omega)]; exact hj1
-    · exact b6 _
+    rw [hV7]
+    exact update_lt b6 (by rw [out6 9 (by intro t; have := t.isLt; simp; omega)]; exact hj1)
   -- S8: curFuel := curFuel + 1
   have h8 := incRegTM_hoareTime (R (precSelf af ag 12)) (V7 (precSelf af ag 12)) inp₀
       (regsWork R w₀ V7) ys hinp₀ (fun i _ => hpv V7 i) (regsWork_apply R w₀ V7 _)
@@ -2783,11 +2778,11 @@ lemma precBody_hoareTime (haf : 16 ≤ af) (hag : 16 ≤ ag)
   replace h8 := h8.mono_bound (regOpTime_le_arith _ B (Nat.le_of_lt (b7 _)))
   set V8 := Function.update V7 (precSelf af ag 12) (V7 (precSelf af ag 12) + 1) with hV8
   have b8 : ∀ k, V8 k < B := by
-    intro k; rw [hV8]; simp only [Function.update_apply]; split_ifs
-    · rw [hV7, Function.update_of_ne (precSelf_ne_self 12 9 (by decide)),
-        out6 12 (by intro t; have := t.isLt; simp; omega)]
-      exact hf1
-    · exact b7 _
+    rw [hV8]
+    refine update_lt b7 ?_
+    rw [hV7, Function.update_of_ne (precSelf_ne_self 12 9 (by decide)),
+      out6 12 (by intro t; have := t.isLt; simp; omega)]
+    exact hf1
   -- S9: cg.input := the reconstructed pair
   have h9 := copyIntoTM_hoareTime (R (precSelf af ag 22)) (R (precRightLoc af ag hag 0))
       (Regs.ne R (precSelf_ne_rightLoc hag haf 22 0))
@@ -2800,7 +2795,7 @@ lemma precBody_hoareTime (haf : 16 ≤ af) (hag : 16 ≤ ag)
   set V9 := Function.update V8 (precRightLoc af ag hag 0) (V8 (precSelf af ag 22))
     with hV9
   have b9 : ∀ k, V9 k < B := by
-    intro k; rw [hV9]; simp only [Function.update_apply]; split_ifs <;> exact b8 _
+    rw [hV9]; exact update_lt b8 (b8 _)
   -- S10: cg.fuel := curFuel
   have h10 := copyIntoTM_hoareTime (R (precSelf af ag 12)) (R (precRightLoc af ag hag 1))
       (Regs.ne R (precSelf_ne_rightLoc hag haf 12 1))
@@ -2813,7 +2808,7 @@ lemma precBody_hoareTime (haf : 16 ≤ af) (hag : 16 ≤ ag)
   set V10 := Function.update V9 (precRightLoc af ag hag 1) (V9 (precSelf af ag 12))
     with hV10
   have b10 : ∀ k, V10 k < B := by
-    intro k; rw [hV10]; simp only [Function.update_apply]; split_ifs <;> exact b9 _
+    rw [hV10]; exact update_lt b9 (b9 _)
   -- S11: run cg
   have h11 := runChildFixed (precRightSub af ag) R Mg Fg tg w₀ hpark V10 hMg
   set V11 := writeWindow (precRightSub af ag) V10
@@ -2848,9 +2843,7 @@ lemma precBody_hoareTime (haf : 16 ≤ af) (hag : 16 ≤ ag)
   replace h12 := h12.mono_bound (regOpTime_le_arith _ B (Nat.le_of_lt (b11 _)))
   set V12 := Function.update V11 (precSelf af ag 13) 0 with hV12
   have b12 : ∀ k, V12 k < B := by
-    intro k; rw [hV12]; simp only [Function.update_apply]; split_ifs
-    · omega
-    · exact b11 _
+    rw [hV12]; exact update_lt b11 (by omega)
   have hAlive12 : V12 (precSelf af ag 10) ≤ 1 := by
     rw [hV12, Function.update_of_ne (precSelf_ne_self 10 13 (by decide))]; exact hAlive11
   have hTag12 : V12 (precRightLoc af ag hag 2) ≤ 1 := by
@@ -2877,9 +2870,8 @@ lemma precBody_hoareTime (haf : 16 ≤ af) (hag : 16 ≤ ag)
         ≤ 1 * 1 := by simpa using Nat.mul_le_mul hAlive12 hTag12
       _ = 1 := by norm_num
   have b13 : ∀ k, V13 k < B := by
-    intro k; rw [hV13]; simp only [Function.update_apply]; split_ifs
-    · have h := hMask13; rw [hV13, Function.update_self] at h; omega
-    · exact b12 _
+    rw [hV13]
+    exact update_lt b12 (by have h := hMask13; rw [hV13, Function.update_self] at h; omega)
   -- S14: alive := temp
   have h14 := copyIntoTM_hoareTime (R (precSelf af ag 13)) (R (precSelf af ag 10))
       (Regs.ne R (precSelf_ne_self 13 10 (by decide)))
@@ -2891,7 +2883,7 @@ lemma precBody_hoareTime (haf : 16 ≤ af) (hag : 16 ≤ ag)
     (copyIntoTime_le_arith _ _ B (Nat.le_of_lt (b13 _)) (Nat.le_of_lt (b13 _)))
   set V14 := Function.update V13 (precSelf af ag 10) (V13 (precSelf af ag 13)) with hV14
   have b14 : ∀ k, V14 k < B := by
-    intro k; rw [hV14]; simp only [Function.update_apply]; split_ifs <;> exact b13 _
+    rw [hV14]; exact update_lt b13 (b13 _)
   have hAlive14 : V14 (precSelf af ag 10) ≤ 1 := by
     rw [hV14, Function.update_self]; exact hMask13
   -- S15: clear acc
@@ -2901,9 +2893,7 @@ lemma precBody_hoareTime (haf : 16 ≤ af) (hag : 16 ≤ ag)
   replace h15 := h15.mono_bound (regOpTime_le_arith _ B (Nat.le_of_lt (b14 _)))
   set V15 := Function.update V14 (precSelf af ag 11) 0 with hV15
   have b15 : ∀ k, V15 k < B := by
-    intro k; rw [hV15]; simp only [Function.update_apply]; split_ifs
-    · omega
-    · exact b14 _
+    rw [hV15]; exact update_lt b14 (by omega)
   have hAlive15 : V15 (precSelf af ag 10) ≤ 1 := by
     rw [hV15, Function.update_of_ne (precSelf_ne_self 10 11 (by decide))]; exact hAlive14
   -- S16: acc := alive * cg.value
@@ -2946,57 +2936,57 @@ section PrecLevelSem
 variable {af ag : ℕ}
 
 lemma precBodyPre_pairOut (haf : 16 ≤ af) (hag : 16 ≤ ag) (V : Fin (32 + af + ag) → ℕ) :
-    precBodyPre af ag haf hag V (precSelf af ag 22)
+    precBodyPre af ag hag V (precSelf af ag 22)
       = Nat.pair (V (precSelf af ag 6))
           (Nat.pair (V (precSelf af ag 9)) (V (precSelf af ag 11))) := by
   simp only [precBodyPre, precSelf_update_apply, precSelf_rightLoc_upd hag haf,
-    precPairWin_selfW_apply, pairVals_apply, precPairW_zero, precPairW_one]
+    precPairWin_self_apply, pairVals_apply, precPairW_zero, precPairW_one]
   norm_num
 
 lemma precBodyPre_childIn_zero (haf : 16 ≤ af) (hag : 16 ≤ ag)
     (V : Fin (32 + af + ag) → ℕ) :
-    precBodyPre af ag haf hag V (precRightLoc af ag hag 0)
+    precBodyPre af ag hag V (precRightLoc af ag hag 0)
       = Nat.pair (V (precSelf af ag 6))
           (Nat.pair (V (precSelf af ag 9)) (V (precSelf af ag 11))) := by
   have h := precBodyPre_pairOut haf hag V
   simp only [precBodyPre, precRightLoc_update_apply hag, precRightLoc_self_upd hag haf,
     precPairWin_rightLoc hag haf] at h ⊢
   norm_num at h ⊢
-  simp only [precSelf_update_apply, precPairWin_selfW_apply, pairVals_apply,
+  simp only [precSelf_update_apply, precPairWin_self_apply, pairVals_apply,
     precPairW_zero, precPairW_one] at h ⊢
   norm_num at h ⊢
 
 lemma precBodyPre_childIn_one (haf : 16 ≤ af) (hag : 16 ≤ ag)
     (V : Fin (32 + af + ag) → ℕ) :
-    precBodyPre af ag haf hag V (precRightLoc af ag hag 1)
+    precBodyPre af ag hag V (precRightLoc af ag hag 1)
       = V (precSelf af ag 12) + 1 := by
   simp only [precBodyPre, precRightLoc_update_apply hag, precRightLoc_self_upd hag haf,
     precPairWin_rightLoc hag haf]
   norm_num
-  simp only [precSelf_update_apply, precPairWin_selfW_apply,
-    precSelf_rightLoc_upd hag haf, precPairW_zero, precPairW_one]
+  simp only [precSelf_update_apply, precPairWin_self_apply,
+    precSelf_rightLoc_upd hag haf]
   norm_num
 
 /-- The counter and the level fuel are advanced before `cg` runs. -/
 lemma precBodyPre_j (haf : 16 ≤ af) (hag : 16 ≤ ag) (V : Fin (32 + af + ag) → ℕ) :
-    precBodyPre af ag haf hag V (precSelf af ag 9) = V (precSelf af ag 9) + 1 := by
+    precBodyPre af ag hag V (precSelf af ag 9) = V (precSelf af ag 9) + 1 := by
   simp only [precBodyPre, precSelf_update_apply, precSelf_rightLoc_upd hag haf,
-    precPairWin_selfW_apply]
+    precPairWin_self_apply]
   norm_num
 
 lemma precBodyPre_fuel (haf : 16 ≤ af) (hag : 16 ≤ ag) (V : Fin (32 + af + ag) → ℕ) :
-    precBodyPre af ag haf hag V (precSelf af ag 12) = V (precSelf af ag 12) + 1 := by
+    precBodyPre af ag hag V (precSelf af ag 12) = V (precSelf af ag 12) + 1 := by
   simp only [precBodyPre, precSelf_update_apply, precSelf_rightLoc_upd hag haf,
-    precPairWin_selfW_apply]
+    precPairWin_self_apply]
   norm_num
 
 /-- Every other node register in `0`–`15` is untouched by the pre-state. -/
 lemma precBodyPre_self (haf : 16 ≤ af) (hag : 16 ≤ ag) (V : Fin (32 + af + ag) → ℕ)
     (i : Fin 32) (hw : ¬ (16 ≤ (i : ℕ) ∧ (i : ℕ) < 24)) (h9 : (i : ℕ) ≠ 9)
     (h12 : (i : ℕ) ≠ 12) :
-    precBodyPre af ag haf hag V (precSelf af ag i) = V (precSelf af ag i) := by
+    precBodyPre af ag hag V (precSelf af ag i) = V (precSelf af ag i) := by
   simp only [precBodyPre, precSelf_update_apply, precSelf_rightLoc_upd hag haf,
-    precPairWin_selfW_apply, dif_neg hw]
+    precPairWin_self_apply, dif_neg hw]
   have h16 : (i : ℕ) ≠ 16 := by omega
   have h17 : (i : ℕ) ≠ 17 := by omega
   norm_num [h9, h12, h16, h17]
@@ -3004,57 +2994,58 @@ lemma precBodyPre_self (haf : 16 ≤ af) (hag : 16 ≤ ag) (V : Fin (32 + af + a
 /-! #### The level -/
 
 lemma precChildIn_zero (haf : 16 ≤ af) (hag : 16 ≤ ag) (V : Fin (32 + af + ag) → ℕ) :
-    precChildIn af ag haf hag V ⟨0, by omega⟩
+    precChildIn af ag hag V ⟨0, by omega⟩
       = Nat.pair (V (precSelf af ag 6))
           (Nat.pair (V (precSelf af ag 9)) (V (precSelf af ag 11))) := by
   have h : precRightSub af ag ⟨0, by omega⟩ = precRightLoc af ag hag 0 := by
     apply Fin.ext; simp [precRightSub, precRightLoc, shiftEmb_val]
-  rw [precChildIn, h, precBodyPre_childIn_zero]
+  rw [precChildIn, h, precBodyPre_childIn_zero haf hag]
 
 lemma precChildIn_one (haf : 16 ≤ af) (hag : 16 ≤ ag) (V : Fin (32 + af + ag) → ℕ) :
-    precChildIn af ag haf hag V ⟨1, by omega⟩ = V (precSelf af ag 12) + 1 := by
+    precChildIn af ag hag V ⟨1, by omega⟩ = V (precSelf af ag 12) + 1 := by
   have h : precRightSub af ag ⟨1, by omega⟩ = precRightLoc af ag hag 1 := by
     apply Fin.ext; simp [precRightSub, precRightLoc, shiftEmb_val]
-  rw [precChildIn, h, precBodyPre_childIn_one]
+  rw [precChildIn, h, precBodyPre_childIn_one haf hag]
 
 section
 variable (haf : 16 ≤ af) (hag : 16 ≤ ag) (Fg : (Fin ag → ℕ) → Fin ag → ℕ)
   (V : Fin (32 + af + ag) → ℕ)
+include haf
 
 lemma precBodyVals_a :
-    precBodyVals af ag haf hag Fg V (precSelf af ag 6) = V (precSelf af ag 6) := by
-  simp only [precBodyVals, precSelf_update_apply, precRightSub_win_selfW haf]
+    precBodyVals af ag hag Fg V (precSelf af ag 6) = V (precSelf af ag 6) := by
+  simp only [precBodyVals, precSelf_update_apply, precRightSub_win_self haf]
   norm_num
   exact precBodyPre_self haf hag V 6 (by norm_num) (by norm_num) (by norm_num)
 
 lemma precBodyVals_j :
-    precBodyVals af ag haf hag Fg V (precSelf af ag 9) = V (precSelf af ag 9) + 1 := by
-  simp only [precBodyVals, precSelf_update_apply, precRightSub_win_selfW haf]
+    precBodyVals af ag hag Fg V (precSelf af ag 9) = V (precSelf af ag 9) + 1 := by
+  simp only [precBodyVals, precSelf_update_apply, precRightSub_win_self haf]
   norm_num
   exact precBodyPre_j haf hag V
 
 lemma precBodyVals_fuel :
-    precBodyVals af ag haf hag Fg V (precSelf af ag 12) = V (precSelf af ag 12) + 1 := by
-  simp only [precBodyVals, precSelf_update_apply, precRightSub_win_selfW haf]
+    precBodyVals af ag hag Fg V (precSelf af ag 12) = V (precSelf af ag 12) + 1 := by
+  simp only [precBodyVals, precSelf_update_apply, precRightSub_win_self haf]
   norm_num
   exact precBodyPre_fuel haf hag V
 
 lemma precBodyVals_alive :
-    precBodyVals af ag haf hag Fg V (precSelf af ag 10)
+    precBodyVals af ag hag Fg V (precSelf af ag 10)
       = V (precSelf af ag 10)
-          * Fg (precChildIn af ag haf hag V) ⟨2, by omega⟩ := by
-  simp only [precBodyVals, precSelf_update_apply, precRightSub_win_selfW haf,
+          * Fg (precChildIn af ag hag V) ⟨2, by omega⟩ := by
+  simp only [precBodyVals, precSelf_update_apply, precRightSub_win_self haf,
     precRightLoc_self_upd hag haf, precRightSub_win_rightLoc hag]
   norm_num
   rw [precBodyPre_self haf hag V 10 (by norm_num) (by norm_num) (by norm_num)]
   rfl
 
 lemma precBodyVals_acc :
-    precBodyVals af ag haf hag Fg V (precSelf af ag 11)
+    precBodyVals af ag hag Fg V (precSelf af ag 11)
       = V (precSelf af ag 10)
-          * Fg (precChildIn af ag haf hag V) ⟨2, by omega⟩
-          * Fg (precChildIn af ag haf hag V) ⟨3, by omega⟩ := by
-  simp only [precBodyVals, precSelf_update_apply, precRightSub_win_selfW haf,
+          * Fg (precChildIn af ag hag V) ⟨2, by omega⟩
+          * Fg (precChildIn af ag hag V) ⟨3, by omega⟩ := by
+  simp only [precBodyVals, precSelf_update_apply, precRightSub_win_self haf,
     precRightLoc_self_upd hag haf, precRightSub_win_rightLoc hag]
   norm_num
   rw [precBodyPre_self haf hag V 10 (by norm_num) (by norm_num) (by norm_num)]
@@ -3076,12 +3067,12 @@ variable {af ag : ℕ}
 lemma precBodyVals_isLevel (haf : 16 ≤ af) (hag : 16 ≤ ag) (cg : Nat.Partrec.Code)
     (Fg : (Fin ag → ℕ) → Fin ag → ℕ) (hFg : ChildEncodes ag hag cg Fg)
     (V : Fin (32 + af + ag) → ℕ) :
-    precBodyVals af ag haf hag Fg V (precSelf af ag 10)
+    precBodyVals af ag hag Fg V (precSelf af ag 10)
         = V (precSelf af ag 10)
           * resultTag (Nat.Partrec.Code.evaln (V (precSelf af ag 12) + 1) cg
               (Nat.pair (V (precSelf af ag 6))
                 (Nat.pair (V (precSelf af ag 9)) (V (precSelf af ag 11))))) ∧
-      precBodyVals af ag haf hag Fg V (precSelf af ag 11)
+      precBodyVals af ag hag Fg V (precSelf af ag 11)
         = V (precSelf af ag 10)
           * resultTag (Nat.Partrec.Code.evaln (V (precSelf af ag 12) + 1) cg
               (Nat.pair (V (precSelf af ag 6))
@@ -3089,11 +3080,11 @@ lemma precBodyVals_isLevel (haf : 16 ≤ af) (hag : 16 ≤ ag) (cg : Nat.Partrec
           * resultVal (Nat.Partrec.Code.evaln (V (precSelf af ag 12) + 1) cg
               (Nat.pair (V (precSelf af ag 6))
                 (Nat.pair (V (precSelf af ag 9)) (V (precSelf af ag 11))))) := by
-  obtain ⟨htag, hval⟩ := hFg (precChildIn af ag haf hag V)
-  rw [precChildIn_zero, precChildIn_one] at htag hval
+  obtain ⟨htag, hval⟩ := hFg (precChildIn af ag hag V)
+  rw [precChildIn_zero haf hag, precChildIn_one haf hag] at htag hval
   refine ⟨?_, ?_⟩
-  · rw [precBodyVals_alive, htag]
-  · rw [precBodyVals_acc, htag, hval]
+  · rw [precBodyVals_alive haf, htag]
+  · rw [precBodyVals_acc haf, htag, hval]
 
 /-- **The loop invariant.** -/
 lemma precLoopVals_spec (haf : 16 ≤ af) (hag : 16 ≤ ag) (cf cg : Nat.Partrec.Code)
@@ -3107,12 +3098,12 @@ lemma precLoopVals_spec (haf : 16 ≤ af) (hag : 16 ≤ ag) (cf cg : Nat.Partrec
     (h11 : V₀ (precSelf af ag 11)
       = resultVal (Nat.Partrec.Code.evaln f₀ cf a))
     (i : ℕ) :
-    precLoopVals af ag haf hag Fg V₀ i (precSelf af ag 6) = a ∧
-      precLoopVals af ag haf hag Fg V₀ i (precSelf af ag 9) = i ∧
-      precLoopVals af ag haf hag Fg V₀ i (precSelf af ag 12) = f₀ + i ∧
-      precLoopVals af ag haf hag Fg V₀ i (precSelf af ag 10)
+    precLoopVals af ag hag Fg V₀ i (precSelf af ag 6) = a ∧
+      precLoopVals af ag hag Fg V₀ i (precSelf af ag 9) = i ∧
+      precLoopVals af ag hag Fg V₀ i (precSelf af ag 12) = f₀ + i ∧
+      precLoopVals af ag hag Fg V₀ i (precSelf af ag 10)
         = resultTag (precRunG cf cg a f₀ i) ∧
-      precLoopVals af ag haf hag Fg V₀ i (precSelf af ag 11)
+      precLoopVals af ag hag Fg V₀ i (precSelf af ag 11)
         = resultVal (precRunG cf cg a f₀ i) := by
   induction i with
   | zero => exact ⟨h6, h9, by simpa using h12, by simpa [precRunG] using h10,
@@ -3120,12 +3111,12 @@ lemma precLoopVals_spec (haf : 16 ≤ af) (hag : 16 ≤ ag) (cf cg : Nat.Partrec
   | succ k ih =>
     obtain ⟨e6, e9, e12, e10, e11⟩ := ih
     obtain ⟨ha, hc⟩ := precBodyVals_isLevel haf hag cg Fg hFg
-      (precLoopVals af ag haf hag Fg V₀ k)
+      (precLoopVals af ag hag Fg V₀ k)
     rw [e6, e9, e12, e10, e11] at ha hc
     refine ⟨?_, ?_, ?_, ?_, ?_⟩
-    · rw [precLoopVals_succ, precBodyVals_a, e6]
-    · rw [precLoopVals_succ, precBodyVals_j, e9]
-    · rw [precLoopVals_succ, precBodyVals_fuel, e12]; omega
+    · rw [precLoopVals_succ, precBodyVals_a haf, e6]
+    · rw [precLoopVals_succ, precBodyVals_j haf, e9]
+    · rw [precLoopVals_succ, precBodyVals_fuel haf, e12]; omega
     · rw [precLoopVals_succ, ha, precRunG_succ_tag,
         show f₀ + (k + 1) = f₀ + k + 1 from (Nat.add_assoc f₀ k 1).symm]
     · rw [precLoopVals_succ, hc, precRunG_succ_val,
@@ -3142,21 +3133,21 @@ is what the loop invariant needs. -/
 section PrecBodyBound
 variable {af ag : ℕ}
 
-lemma precBodyPre_lt (haf : 16 ≤ af) (hag : 16 ≤ ag) (V : Fin (32 + af + ag) → ℕ) (B : ℕ)
+lemma precBodyPre_lt (hag : 16 ≤ ag) (V : Fin (32 + af + ag) → ℕ) (B : ℕ)
     (hB2 : 2 ≤ B) (hV : ∀ k, V k < B)
     (hj1 : V (precSelf af ag 9) + 1 < B) (hf1 : V (precSelf af ag 12) + 1 < B)
     (hp1 : Nat.pair (V (precSelf af ag 9)) (V (precSelf af ag 11)) < B)
     (hp2 : Nat.pair (V (precSelf af ag 6))
       (Nat.pair (V (precSelf af ag 9)) (V (precSelf af ag 11))) < B) :
-    ∀ k, precBodyPre af ag haf hag V k < B := by
+    ∀ k, precBodyPre af ag hag V k < B := by
   intro k
   simp only [precBodyPre]
   set V1 := Function.update V (precSelf af ag 16) (V (precSelf af ag 9)) with hV1
   have b1 : ∀ k, V1 k < B := by
-    intro k; rw [hV1]; simp only [Function.update_apply]; split_ifs <;> exact hV _
+    rw [hV1]; exact update_lt hV (hV _)
   set V2 := Function.update V1 (precSelf af ag 17) (V1 (precSelf af ag 11)) with hV2
   have b2 : ∀ k, V2 k < B := by
-    intro k; rw [hV2]; simp only [Function.update_apply]; split_ifs <;> exact b1 _
+    rw [hV2]; exact update_lt b1 (b1 _)
   have hw0 : V2 ((precPairW af ag) 0) = V (precSelf af ag 9) := by
     rw [precPairW_zero, hV2, precSelf_update_apply, hV1, precSelf_update_apply]; norm_num
   have hw1 : V2 ((precPairW af ag) 1) = V (precSelf af ag 11) := by
@@ -3175,10 +3166,10 @@ lemma precBodyPre_lt (haf : 16 ≤ af) (hag : 16 ≤ ag) (V : Fin (32 + af + ag)
     simp [hw0, hw1]
   set V4 := Function.update V3 (precSelf af ag 17) (V3 (precSelf af ag 22)) with hV4
   have b4 : ∀ k, V4 k < B := by
-    intro k; rw [hV4]; simp only [Function.update_apply]; split_ifs <;> exact b3 _
+    rw [hV4]; exact update_lt b3 (b3 _)
   set V5 := Function.update V4 (precSelf af ag 16) (V4 (precSelf af ag 6)) with hV5
   have b5 : ∀ k, V5 k < B := by
-    intro k; rw [hV5]; simp only [Function.update_apply]; split_ifs <;> exact b4 _
+    rw [hV5]; exact update_lt b4 (b4 _)
   have r5_w0 : V5 ((precPairW af ag) 0) = V (precSelf af ag 6) := by
     rw [precPairW_zero, hV5, Function.update_self, hV4,
       Function.update_of_ne (precSelf_ne_self 6 17 (by decide)), hV3,
@@ -3211,20 +3202,19 @@ lemma precBodyPre_lt (haf : 16 ≤ af) (hag : 16 ≤ ag) (V : Fin (32 + af + ag)
       hV1, Function.update_of_ne (precSelf_ne_self i 16 h16)]
   set V7 := Function.update V6 (precSelf af ag 9) (V6 (precSelf af ag 9) + 1) with hV7
   have b7 : ∀ k, V7 k < B := by
-    intro k; rw [hV7]; simp only [Function.update_apply]; split_ifs
-    · rw [out6 9 (by intro t; have := t.isLt; simp; omega)]; exact hj1
-    · exact b6 _
+    rw [hV7]
+    exact update_lt b6 (by rw [out6 9 (by intro t; have := t.isLt; simp; omega)]; exact hj1)
   set V8 := Function.update V7 (precSelf af ag 12) (V7 (precSelf af ag 12) + 1) with hV8
   have b8 : ∀ k, V8 k < B := by
-    intro k; rw [hV8]; simp only [Function.update_apply]; split_ifs
-    · rw [hV7, Function.update_of_ne (precSelf_ne_self 12 9 (by decide)),
-        out6 12 (by intro t; have := t.isLt; simp; omega)]
-      exact hf1
-    · exact b7 _
+    rw [hV8]
+    refine update_lt b7 ?_
+    rw [hV7, Function.update_of_ne (precSelf_ne_self 12 9 (by decide)),
+      out6 12 (by intro t; have := t.isLt; simp; omega)]
+    exact hf1
   set V9 := Function.update V8 (precRightLoc af ag hag 0) (V8 (precSelf af ag 22))
     with hV9
   have b9 : ∀ k, V9 k < B := by
-    intro k; rw [hV9]; simp only [Function.update_apply]; split_ifs <;> exact b8 _
+    rw [hV9]; exact update_lt b8 (b8 _)
   simp only [Function.update_apply]
   split_ifs <;> exact b9 _
 
@@ -3236,30 +3226,28 @@ lemma precBodyVals_lt (haf : 16 ≤ af) (hag : 16 ≤ ag)
     (hp1 : Nat.pair (V (precSelf af ag 9)) (V (precSelf af ag 11)) < B)
     (hp2 : Nat.pair (V (precSelf af ag 6))
       (Nat.pair (V (precSelf af ag 9)) (V (precSelf af ag 11))) < B)
-    (hFgB : ∀ k, Fg (precChildIn af ag haf hag V) k < B)
+    (hFgB : ∀ k, Fg (precChildIn af ag hag V) k < B)
     (hFgTag : ∀ u : Fin ag → ℕ, Fg u ⟨2, by omega⟩ ≤ 1) :
-    ∀ k, precBodyVals af ag haf hag Fg V k < B := by
-  have bpre := precBodyPre_lt haf hag V B hB2 hV hj1 hf1 hp1 hp2
-  have halive' : precBodyPre af ag haf hag V (precSelf af ag 10) ≤ 1 := by
+    ∀ k, precBodyVals af ag hag Fg V k < B := by
+  have bpre := precBodyPre_lt hag V B hB2 hV hj1 hf1 hp1 hp2
+  have halive' : precBodyPre af ag hag V (precSelf af ag 10) ≤ 1 := by
     rw [precBodyPre_self haf hag V 10 (by norm_num) (by norm_num) (by norm_num)]
     exact halive
   intro k
   simp only [precBodyVals]
-  set V11 := writeWindow (precRightSub af ag) (precBodyPre af ag haf hag V)
-      (Fg (fun i => precBodyPre af ag haf hag V ((precRightSub af ag) i))) with hV11
+  set V11 := writeWindow (precRightSub af ag) (precBodyPre af ag hag V)
+      (Fg (fun i => precBodyPre af ag hag V ((precRightSub af ag) i))) with hV11
   have b11 : ∀ k, V11 k < B := by
     intro k; rw [hV11]
     exact writeWindow_bounded _ _ _ B bpre (fun i => hFgB i) k
   have r11_10 : V11 (precSelf af ag 10) ≤ 1 := by
-    rw [hV11, precRightSub_win_selfW haf]; exact halive'
+    rw [hV11, precRightSub_win_self haf]; exact halive'
   have r11_tag : V11 (precRightLoc af ag hag 2) ≤ 1 := by
     rw [hV11, precRightSub_win_rightLoc hag]
     exact hFgTag _
   set V12 := Function.update V11 (precSelf af ag 13) 0 with hV12
   have b12 : ∀ k, V12 k < B := by
-    intro k; rw [hV12]; simp only [Function.update_apply]; split_ifs
-    · omega
-    · exact b11 _
+    rw [hV12]; exact update_lt b11 (by omega)
   have r12_10 : V12 (precSelf af ag 10) ≤ 1 := by
     rw [hV12, precSelf_update_apply]; norm_num; exact r11_10
   have r12_tag : V12 (precRightLoc af ag hag 2) ≤ 1 := by
@@ -3272,19 +3260,15 @@ lemma precBodyVals_lt (haf : 16 ≤ af) (hag : 16 ≤ ag)
         ≤ 1 * 1 := by simpa using Nat.mul_le_mul r12_10 r12_tag
       _ = 1 := by norm_num
   have b13 : ∀ k, V13 k < B := by
-    intro k; rw [hV13]; simp only [Function.update_apply]; split_ifs
-    · have h := m13; rw [hV13, Function.update_self] at h; omega
-    · exact b12 _
+    rw [hV13]; exact update_lt b12 (by have h := m13; rw [hV13, Function.update_self] at h; omega)
   set V14 := Function.update V13 (precSelf af ag 10) (V13 (precSelf af ag 13)) with hV14
   have b14 : ∀ k, V14 k < B := by
-    intro k; rw [hV14]; simp only [Function.update_apply]; split_ifs <;> exact b13 _
+    rw [hV14]; exact update_lt b13 (b13 _)
   have m14 : V14 (precSelf af ag 10) ≤ 1 := by
     rw [hV14, Function.update_self]; exact m13
   set V15 := Function.update V14 (precSelf af ag 11) 0 with hV15
   have b15 : ∀ k, V15 k < B := by
-    intro k; rw [hV15]; simp only [Function.update_apply]; split_ifs
-    · omega
-    · exact b14 _
+    rw [hV15]; exact update_lt b14 (by omega)
   have m15 : V15 (precSelf af ag 10) ≤ 1 := by
     rw [hV15, precSelf_update_apply]; norm_num; exact m14
   simp only [Function.update_apply]
@@ -3338,8 +3322,9 @@ end RegsLoop
 /-! ## `prec`: the loop
 
 The node's block is thirty-three plus its two subtrees: the extra register is the loop
-counter, and it sits **outside** the thirty-two the body names, so `forRegs_hoareTime`
-applies with no re-indexing. -/
+counter, the node's thirty-third, laid out last at ambient index `32 + af + ag`
+(`precLoopIdx`), so it sits **outside** the thirty-two the body names and
+`forRegs_hoareTime` applies with no re-indexing. -/
 
 section PrecLoop
 variable {af ag : ℕ}
@@ -3375,27 +3360,27 @@ lemma precLoop_hoareTime (haf : 16 ≤ af) (hag : 16 ≤ ag)
     (hinp₀ : Parked inp₀) (hpark : ∀ i, Parked (w₀ i)) (hB2 : 2 ≤ B)
     (hw₀l : w₀ l = regTape m)
     (hFgB : ∀ i, i < m →
-      ∀ k, Fg (precChildIn af ag haf hag (precLoopVals af ag haf hag Fg V₀ i)) k < B)
+      ∀ k, Fg (precChildIn af ag hag (precLoopVals af ag hag Fg V₀ i)) k < B)
     (hFgTag : ∀ u : Fin ag → ℕ, Fg u ⟨2, by omega⟩ ≤ 1)
-    (hOK : ∀ i, i < m → PrecBodyOK af ag B (precLoopVals af ag haf hag Fg V₀ i))
+    (hOK : ∀ i, i < m → PrecBodyOK af ag B (precLoopVals af ag hag Fg V₀ i))
     (hMg : ∀ i, i < m → ∀ Wb : Fin n → Tape, (∀ j, Parked (Wb j)) →
       Mg.HoareTime
         (EmitPred inp₀ (regsWork ((precRightSub af ag).trans R) Wb
-          (precChildIn af ag haf hag (precLoopVals af ag haf hag Fg V₀ i))) ys)
+          (precChildIn af ag hag (precLoopVals af ag hag Fg V₀ i))) ys)
         (EmitPred inp₀ (regsWork ((precRightSub af ag).trans R) Wb
-          (Fg (precChildIn af ag haf hag (precLoopVals af ag haf hag Fg V₀ i)))) ys) tg) :
-    (forRegTM (precBodyTM af ag haf hag R Mg) l).HoareTime
+          (Fg (precChildIn af ag hag (precLoopVals af ag hag Fg V₀ i)))) ys) tg) :
+    (forRegTM (precBodyTM af ag hag R Mg) l).HoareTime
       (EmitPred inp₀ (regsWork R w₀ V₀) ys)
-      (EmitPred inp₀ (regsWork R w₀ (precLoopVals af ag haf hag Fg V₀ m)) ys)
+      (EmitPred inp₀ (regsWork R w₀ (precLoopVals af ag hag Fg V₀ m)) ys)
       (m * ((15 * evalnArithmeticCost B + tg + 15) + 2) + (m + 2)) := by
-  refine forRegs_hoareTime R (precBodyTM af ag haf hag R Mg) l hl
+  refine forRegs_hoareTime R (precBodyTM af ag hag R Mg) l hl
     m (15 * evalnArithmeticCost B + tg + 15)
-    (precLoopVals af ag haf hag Fg V₀) inp₀ w₀ (fun _ => ys) hinp₀ hpark hw₀l ?_
+    (precLoopVals af ag hag Fg V₀) inp₀ w₀ (fun _ => ys) hinp₀ hpark hw₀l ?_
   intro i hi w hw
   obtain ⟨hb, halive, hj1, hf1, hp1, hp2⟩ := hOK i hi
   rw [precLoopVals_succ]
   exact precBody_hoareTime haf hag R Mg Fg tg
-    (precLoopVals af ag haf hag Fg V₀ i) B inp₀ w ys hinp₀ hw hB2 hb (hFgB i hi) hFgTag
+    (precLoopVals af ag hag Fg V₀ i) B inp₀ w ys hinp₀ hw hB2 hb (hFgB i hi) hFgTag
     halive hj1 hf1 hp1 hp2 (hMg i hi)
 
 end PrecLoop
@@ -3454,7 +3439,7 @@ variable {af ag : ℕ}
 /-- **The `prec` setup.** Unpairs the input into `a` and `m`, computes the base fuel
 `fuel - m`, runs the base child `Mf` on `a` at that fuel, seeds the accumulator and the
 `alive` mask, and copies `m` into the ambient loop counter `l`. -/
-def precSetupTM (af ag : ℕ) (haf : 16 ≤ af) (hag : 16 ≤ ag)
+def precSetupTM (af ag : ℕ) (haf : 16 ≤ af)
     (R : Regs (32 + af + ag) n) (l : Fin n) (Mf : TM n) : TM n :=
   seqTM (unpairTM ((precUnpairW af ag).trans R) (R (precSelf af ag 0))) <|
   seqTM (copyIntoTM (R (precSelf af ag 16)) (R (precSelf af ag 6))) <|
@@ -3472,7 +3457,7 @@ def precSetupTM (af ag : ℕ) (haf : 16 ≤ af) (hag : 16 ≤ ag)
 
 /-- The state the setup hands `cf`: the unpaired `a` in `cf`'s input register and the base
     fuel `fuel - m` in its fuel register. -/
-noncomputable def precSetupPre (af ag : ℕ) (haf : 16 ≤ af) (hag : 16 ≤ ag)
+noncomputable def precSetupPre (af ag : ℕ) (haf : 16 ≤ af)
     (V : Fin (32 + af + ag) → ℕ) : Fin (32 + af + ag) → ℕ :=
   let U1 := writeWindow (precUnpairW af ag) V
               (unpairVals (fun j => V (precUnpairW af ag j)) (V (precSelf af ag 0)))
@@ -3486,10 +3471,10 @@ noncomputable def precSetupPre (af ag : ℕ) (haf : 16 ≤ af) (hag : 16 ≤ ag)
 
 /-- The register vector the setup produces. The loop counter is *not* part of it: it lives
     outside the block, and the last stage writes it into the ambient tape family. -/
-noncomputable def precSetupVals (af ag : ℕ) (haf : 16 ≤ af) (hag : 16 ≤ ag)
+noncomputable def precSetupVals (af ag : ℕ) (haf : 16 ≤ af)
     (Ff : (Fin af → ℕ) → Fin af → ℕ) (V : Fin (32 + af + ag) → ℕ) :
     Fin (32 + af + ag) → ℕ :=
-  let U7 := precSetupPre af ag haf hag V
+  let U7 := precSetupPre af ag haf V
   let U8 := writeWindow (precLeftSub af ag) U7 (Ff (fun i => U7 (precLeftSub af ag i)))
   let U9 := Function.update U8 (precSelf af ag 9) 0
   let U10 := Function.update U9 (precSelf af ag 10) (U9 (precLeftLoc af ag haf 2))
@@ -3497,12 +3482,11 @@ noncomputable def precSetupVals (af ag : ℕ) (haf : 16 ≤ af) (hag : 16 ≤ ag
   Function.update U11 (precSelf af ag 12) (U11 (precSelf af ag 8))
 
 /-- The vector `cf` is run on in the setup: the unpaired `a` and the base fuel. -/
-noncomputable def precBaseIn (af ag : ℕ) (haf : 16 ≤ af) (hag : 16 ≤ ag)
+noncomputable def precBaseIn (af ag : ℕ) (haf : 16 ≤ af)
     (V : Fin (32 + af + ag) → ℕ) : Fin af → ℕ :=
-  fun i => precSetupPre af ag haf hag V (precLeftSub af ag i)
-set_option maxHeartbeats 1000000 in
+  fun i => precSetupPre af ag haf V (precLeftSub af ag i)
 /-- **`precSetupTM` Hoare specification.** -/
-lemma precSetup_hoareTime (haf : 16 ≤ af) (hag : 16 ≤ ag)
+lemma precSetup_hoareTime (haf : 16 ≤ af)
     (R : Regs (32 + af + ag) n) (l : Fin n) (hl : ∀ k, R k ≠ l) (Mf : TM n)
     (Ff : (Fin af → ℕ) → Fin af → ℕ) (tf : ℕ)
     (V : Fin (32 + af + ag) → ℕ) (B : ℕ)
@@ -3510,20 +3494,20 @@ lemma precSetup_hoareTime (haf : 16 ≤ af) (hag : 16 ≤ ag)
     (hinp₀ : Parked inp₀) (hpark : ∀ i, Parked (w₀ i))
     (cl : ℕ) (hlc : w₀ l = regTape cl) (hclB : cl ≤ B)
     (hV : ∀ k, V k < B)
-    (hFfB : ∀ k, Ff (precBaseIn af ag haf hag V) k < B)
+    (hFfB : ∀ k, Ff (precBaseIn af ag haf V) k < B)
     (hMf : ∀ Wb : Fin n → Tape, (∀ i, Parked (Wb i)) →
       Mf.HoareTime
         (EmitPred inp₀ (regsWork ((precLeftSub af ag).trans R) Wb
-          (precBaseIn af ag haf hag V)) ys)
+          (precBaseIn af ag haf V)) ys)
         (EmitPred inp₀ (regsWork ((precLeftSub af ag).trans R) Wb
-          (Ff (precBaseIn af ag haf hag V))) ys) tf) :
-    (precSetupTM af ag haf hag R l Mf).HoareTime
+          (Ff (precBaseIn af ag haf V))) ys) tf) :
+    (precSetupTM af ag haf R l Mf).HoareTime
       (EmitPred inp₀ (regsWork R w₀ V) ys)
       (EmitPred inp₀
         (regsWork R
           (Function.update w₀ l
-            (regTape (precSetupVals af ag haf hag Ff V (precSelf af ag 7))))
-          (precSetupVals af ag haf hag Ff V)) ys)
+            (regTape (precSetupVals af ag haf Ff V (precSelf af ag 7))))
+          (precSetupVals af ag haf Ff V)) ys)
       (12 * evalnArithmeticCost B + tf + 12) := by
   have hpv := parked_regsWork R hpark
   have hle : ∀ k, V k ≤ B := fun k => Nat.le_of_lt (hV k)
@@ -3563,7 +3547,7 @@ lemma precSetup_hoareTime (haf : 16 ≤ af) (hag : 16 ≤ ag)
     (copyIntoTime_le_arith _ _ B (Nat.le_of_lt (b1 _)) (Nat.le_of_lt (b1 _)))
   set V2 := Function.update V1 (precSelf af ag 6) (V1 (precSelf af ag 16)) with hV2
   have b2 : ∀ k, V2 k < B := by
-    intro k; rw [hV2]; simp only [Function.update_apply]; split_ifs <;> exact b1 _
+    rw [hV2]; exact update_lt b1 (b1 _)
   -- S3: m := (unpair inp).2
   have h3 := copyIntoTM_hoareTime (R (precSelf af ag 17)) (R (precSelf af ag 7))
       (Regs.ne R (precSelf_ne_self 17 7 (by decide)))
@@ -3575,7 +3559,7 @@ lemma precSetup_hoareTime (haf : 16 ≤ af) (hag : 16 ≤ ag)
     (copyIntoTime_le_arith _ _ B (Nat.le_of_lt (b2 _)) (Nat.le_of_lt (b2 _)))
   set V3 := Function.update V2 (precSelf af ag 7) (V2 (precSelf af ag 17)) with hV3
   have b3 : ∀ k, V3 k < B := by
-    intro k; rw [hV3]; simp only [Function.update_apply]; split_ifs <;> exact b2 _
+    rw [hV3]; exact update_lt b2 (b2 _)
   -- S4: baseFuel := fuel
   have h4 := copyIntoTM_hoareTime (R (precSelf af ag 1)) (R (precSelf af ag 8))
       (Regs.ne R (precSelf_ne_self 1 8 (by decide)))
@@ -3587,7 +3571,7 @@ lemma precSetup_hoareTime (haf : 16 ≤ af) (hag : 16 ≤ ag)
     (copyIntoTime_le_arith _ _ B (Nat.le_of_lt (b3 _)) (Nat.le_of_lt (b3 _)))
   set V4 := Function.update V3 (precSelf af ag 8) (V3 (precSelf af ag 1)) with hV4
   have b4 : ∀ k, V4 k < B := by
-    intro k; rw [hV4]; simp only [Function.update_apply]; split_ifs <;> exact b3 _
+    rw [hV4]; exact update_lt b3 (b3 _)
   -- S5: baseFuel := fuel - m
   have h5 := subIntoTM_hoareTime (R (precSelf af ag 7)) (R (precSelf af ag 8))
       (Regs.ne R (precSelf_ne_self 7 8 (by decide)))
@@ -3600,9 +3584,7 @@ lemma precSetup_hoareTime (haf : 16 ≤ af) (hag : 16 ≤ ag)
   set V5 := Function.update V4 (precSelf af ag 8)
       (V4 (precSelf af ag 8) - V4 (precSelf af ag 7)) with hV5
   have b5 : ∀ k, V5 k < B := by
-    intro k; rw [hV5]; simp only [Function.update_apply]; split_ifs
-    · have := b4 (precSelf af ag 8); omega
-    · exact b4 _
+    rw [hV5]; exact update_lt b4 (by have := b4 (precSelf af ag 8); omega)
   -- S6: cf.input := a
   have h6 := copyIntoTM_hoareTime (R (precSelf af ag 6)) (R (precLeftLoc af ag haf 0))
       (Regs.ne R (precSelf_ne_leftLoc haf 6 0))
@@ -3614,7 +3596,7 @@ lemma precSetup_hoareTime (haf : 16 ≤ af) (hag : 16 ≤ ag)
     (copyIntoTime_le_arith _ _ B (Nat.le_of_lt (b5 _)) (Nat.le_of_lt (b5 _)))
   set V6 := Function.update V5 (precLeftLoc af ag haf 0) (V5 (precSelf af ag 6)) with hV6
   have b6 : ∀ k, V6 k < B := by
-    intro k; rw [hV6]; simp only [Function.update_apply]; split_ifs <;> exact b5 _
+    rw [hV6]; exact update_lt b5 (b5 _)
   -- S7: cf.fuel := baseFuel
   have h7 := copyIntoTM_hoareTime (R (precSelf af ag 8)) (R (precLeftLoc af ag haf 1))
       (Regs.ne R (precSelf_ne_leftLoc haf 8 1))
@@ -3626,7 +3608,7 @@ lemma precSetup_hoareTime (haf : 16 ≤ af) (hag : 16 ≤ ag)
     (copyIntoTime_le_arith _ _ B (Nat.le_of_lt (b6 _)) (Nat.le_of_lt (b6 _)))
   set V7 := Function.update V6 (precLeftLoc af ag haf 1) (V6 (precSelf af ag 8)) with hV7
   have b7 : ∀ k, V7 k < B := by
-    intro k; rw [hV7]; simp only [Function.update_apply]; split_ifs <;> exact b6 _
+    rw [hV7]; exact update_lt b6 (b6 _)
   -- S8: run cf
   have h8 := runChildFixed (precLeftSub af ag) R Mf Ff tf w₀ hpark V7 hMf
   set V8 := writeWindow (precLeftSub af ag) V7
@@ -3641,9 +3623,7 @@ lemma precSetup_hoareTime (haf : 16 ≤ af) (hag : 16 ≤ ag)
   replace h9 := h9.mono_bound (regOpTime_le_arith _ B (Nat.le_of_lt (b8 _)))
   set V9 := Function.update V8 (precSelf af ag 9) 0 with hV9
   have b9 : ∀ k, V9 k < B := by
-    intro k; rw [hV9]; simp only [Function.update_apply]; split_ifs
-    · exact hB0
-    · exact b8 _
+    rw [hV9]; exact update_lt b8 (by exact hB0)
   -- S10: alive := cf's tag
   have h10 := copyIntoTM_hoareTime (R (precLeftLoc af ag haf 2)) (R (precSelf af ag 10))
       (Regs.ne R (Ne.symm (precSelf_ne_leftLoc haf 10 2)))
@@ -3655,7 +3635,7 @@ lemma precSetup_hoareTime (haf : 16 ≤ af) (hag : 16 ≤ ag)
     (copyIntoTime_le_arith _ _ B (Nat.le_of_lt (b9 _)) (Nat.le_of_lt (b9 _)))
   set V10 := Function.update V9 (precSelf af ag 10) (V9 (precLeftLoc af ag haf 2)) with hV10
   have b10 : ∀ k, V10 k < B := by
-    intro k; rw [hV10]; simp only [Function.update_apply]; split_ifs <;> exact b9 _
+    rw [hV10]; exact update_lt b9 (b9 _)
   -- S11: acc := cf's value
   have h11 := copyIntoTM_hoareTime (R (precLeftLoc af ag haf 3)) (R (precSelf af ag 11))
       (Regs.ne R (Ne.symm (precSelf_ne_leftLoc haf 11 3)))
@@ -3668,7 +3648,7 @@ lemma precSetup_hoareTime (haf : 16 ≤ af) (hag : 16 ≤ ag)
   set V11 := Function.update V10 (precSelf af ag 11) (V10 (precLeftLoc af ag haf 3))
     with hV11
   have b11 : ∀ k, V11 k < B := by
-    intro k; rw [hV11]; simp only [Function.update_apply]; split_ifs <;> exact b10 _
+    rw [hV11]; exact update_lt b10 (b10 _)
   -- S12: curFuel := baseFuel
   have h12 := copyIntoTM_hoareTime (R (precSelf af ag 8)) (R (precSelf af ag 12))
       (Regs.ne R (precSelf_ne_self 8 12 (by decide)))
@@ -3680,7 +3660,7 @@ lemma precSetup_hoareTime (haf : 16 ≤ af) (hag : 16 ≤ ag)
     (copyIntoTime_le_arith _ _ B (Nat.le_of_lt (b11 _)) (Nat.le_of_lt (b11 _)))
   set V12 := Function.update V11 (precSelf af ag 12) (V11 (precSelf af ag 8)) with hV12
   have b12 : ∀ k, V12 k < B := by
-    intro k; rw [hV12]; simp only [Function.update_apply]; split_ifs <;> exact b11 _
+    rw [hV12]; exact update_lt b11 (b11 _)
   -- S13: the loop counter, an ambient register outside the block
   have h13 := copyIntoTM_hoareTime (R (precSelf af ag 7)) l (hl _)
       (V12 (precSelf af ag 7)) cl
@@ -3737,7 +3717,8 @@ noncomputable def precFinishVals (af ag : ℕ) (W : Fin (32 + af + ag) → ℕ) 
   Function.update W5 (precSelf af ag 3)
     (0 + W5 (precSelf af ag 2) * W5 (precSelf af ag 11))
 
-set_option maxHeartbeats 1000000 in
+/-- **`precFinishTM` Hoare specification.** The loop's accumulator and alive flag are
+    copied into the node's answer registers, the value masked by the flag. -/
 lemma precFinish_hoareTime (R : Regs (32 + af + ag) n) (W : Fin (32 + af + ag) → ℕ) (B : ℕ)
     (inp₀ : Tape) (w₀ : Fin n → Tape) (ys : List Bool)
     (hinp₀ : Parked inp₀) (hpark : ∀ i, Parked (w₀ i)) (hW : ∀ k, W k < B)
@@ -3785,9 +3766,7 @@ lemma precFinish_hoareTime (R : Regs (32 + af + ag) n) (W : Fin (32 + af + ag) �
   replace h2 := h2.mono_bound (regOpTime_le_arith _ B (Nat.le_of_lt (b2 _)))
   set W3 := Function.update W2 (precSelf af ag 2) 0 with hW3
   have b3 : ∀ k, W3 k < B := by
-    intro k; rw [hW3]; simp only [Function.update_apply]; split_ifs
-    · have := hW (precSelf af ag 0); omega
-    · exact b2 _
+    rw [hW3]; exact update_lt b2 (by have := hW (precSelf af ag 0); omega)
   have hflag3 : W3 (precSelf af ag 4) ≤ 1 := by
     rw [hW3, Function.update_of_ne (precSelf_ne_self 4 2 (by decide)), r2_4]
     split_ifs <;> omega
@@ -3814,13 +3793,13 @@ lemma precFinish_hoareTime (R : Regs (32 + af + ag) n) (W : Fin (32 + af + ag) �
         ≤ 1 * 1 := by simpa using Nat.mul_le_mul hflag3 halive
       _ = 1 := by norm_num
   have b4 : ∀ k, W4 k < B := by
-    intro k; rw [hW4]; simp only [Function.update_apply]; split_ifs
-    · have hb := b3 (precSelf af ag 10)
-      calc 0 + W3 (precSelf af ag 4) * W3 (precSelf af ag 10)
-          ≤ 1 * W3 (precSelf af ag 10) := by
-            simpa using Nat.mul_le_mul hflag3 (le_refl (W3 (precSelf af ag 10)))
-        _ < B := by omega
-    · exact b3 _
+    rw [hW4]
+    refine update_lt b3 ?_
+    have hb := b3 (precSelf af ag 10)
+    calc 0 + W3 (precSelf af ag 4) * W3 (precSelf af ag 10)
+        ≤ 1 * W3 (precSelf af ag 10) := by
+          simpa using Nat.mul_le_mul hflag3 (le_refl (W3 (precSelf af ag 10)))
+      _ < B := by omega
   -- S4: clear the value
   have h4 := clearRegTM_hoareTime (R (precSelf af ag 3)) (W4 (precSelf af ag 3)) inp₀
       (regsWork R w₀ W4) ys hinp₀ (fun i _ => hpv W4 i) (regsWork_apply R w₀ W4 _)
@@ -3828,9 +3807,7 @@ lemma precFinish_hoareTime (R : Regs (32 + af + ag) n) (W : Fin (32 + af + ag) �
   replace h4 := h4.mono_bound (regOpTime_le_arith _ B (Nat.le_of_lt (b4 _)))
   set W5 := Function.update W4 (precSelf af ag 3) 0 with hW5
   have b5 : ∀ k, W5 k < B := by
-    intro k; rw [hW5]; simp only [Function.update_apply]; split_ifs
-    · have := hW (precSelf af ag 0); omega
-    · exact b4 _
+    rw [hW5]; exact update_lt b4 (by have := hW (precSelf af ag 0); omega)
   -- S5: value := tag * acc
   have h5 := mulAddIntoTM_hoareTime (R (precSelf af ag 2)) (R (precSelf af ag 11))
       (R (precSelf af ag 3))
@@ -3860,20 +3837,20 @@ variable {af ag : ℕ}
 lemma precBodyVals_self (haf : 16 ≤ af) (hag : 16 ≤ ag)
     (Fg : (Fin ag → ℕ) → Fin ag → ℕ) (V : Fin (32 + af + ag) → ℕ) (i : Fin 32)
     (hw : ¬ (16 ≤ (i : ℕ) ∧ (i : ℕ) < 24)) (h9 : ¬ (9 ≤ (i : ℕ) ∧ (i : ℕ) ≤ 13)) :
-    precBodyVals af ag haf hag Fg V (precSelf af ag i) = V (precSelf af ag i) := by
+    precBodyVals af ag hag Fg V (precSelf af ag i) = V (precSelf af ag i) := by
   have e9 : (i : ℕ) ≠ 9 := by omega
   have e10 : (i : ℕ) ≠ 10 := by omega
   have e11 : (i : ℕ) ≠ 11 := by omega
   have e12 : (i : ℕ) ≠ 12 := by omega
   have e13 : (i : ℕ) ≠ 13 := by omega
-  simp only [precBodyVals, precSelf_update_apply, precRightSub_win_selfW haf]
+  simp only [precBodyVals, precSelf_update_apply, precRightSub_win_self haf]
   norm_num [e10, e11, e13]
   exact precBodyPre_self haf hag V i hw e9 e12
 
 lemma precLoopVals_frame (haf : 16 ≤ af) (hag : 16 ≤ ag)
     (Fg : (Fin ag → ℕ) → Fin ag → ℕ) (V₀ : Fin (32 + af + ag) → ℕ) (i : Fin 32)
     (hw : ¬ (16 ≤ (i : ℕ) ∧ (i : ℕ) < 24)) (h9 : ¬ (9 ≤ (i : ℕ) ∧ (i : ℕ) ≤ 13)) :
-    ∀ t, precLoopVals af ag haf hag Fg V₀ t (precSelf af ag i)
+    ∀ t, precLoopVals af ag hag Fg V₀ t (precSelf af ag i)
       = V₀ (precSelf af ag i) := by
   intro t
   induction t with
@@ -3882,71 +3859,71 @@ lemma precLoopVals_frame (haf : 16 ≤ af) (hag : 16 ≤ ag)
 
 /-! #### The setup -/
 
-lemma precSetupPre_a (haf : 16 ≤ af) (hag : 16 ≤ ag) (V : Fin (32 + af + ag) → ℕ) :
-    precSetupPre af ag haf hag V (precSelf af ag 6)
+lemma precSetupPre_a (haf : 16 ≤ af) (V : Fin (32 + af + ag) → ℕ) :
+    precSetupPre af ag haf V (precSelf af ag 6)
       = (Nat.unpair (V (precSelf af ag 0))).1 := by
   simp only [precSetupPre, precSelf_update_apply, precSelf_leftLoc_upd haf,
-    precUnpairWin_selfW_apply]
+    precUnpairWin_self_apply]
   norm_num
   exact unpairVals_zero _ _
 
-lemma precSetupPre_m (haf : 16 ≤ af) (hag : 16 ≤ ag) (V : Fin (32 + af + ag) → ℕ) :
-    precSetupPre af ag haf hag V (precSelf af ag 7)
+lemma precSetupPre_m (haf : 16 ≤ af) (V : Fin (32 + af + ag) → ℕ) :
+    precSetupPre af ag haf V (precSelf af ag 7)
       = (Nat.unpair (V (precSelf af ag 0))).2 := by
   simp only [precSetupPre, precSelf_update_apply, precSelf_leftLoc_upd haf,
-    precUnpairWin_selfW_apply]
+    precUnpairWin_self_apply]
   norm_num
   exact unpairVals_one _ _
 
-lemma precSetupPre_base (haf : 16 ≤ af) (hag : 16 ≤ ag) (V : Fin (32 + af + ag) → ℕ) :
-    precSetupPre af ag haf hag V (precSelf af ag 8)
+lemma precSetupPre_base (haf : 16 ≤ af) (V : Fin (32 + af + ag) → ℕ) :
+    precSetupPre af ag haf V (precSelf af ag 8)
       = V (precSelf af ag 1) - (Nat.unpair (V (precSelf af ag 0))).2 := by
   simp only [precSetupPre, precSelf_update_apply, precSelf_leftLoc_upd haf,
-    precUnpairWin_selfW_apply]
+    precUnpairWin_self_apply]
   norm_num
   rw [unpairVals_one]
 
-lemma precSetupPre_self (haf : 16 ≤ af) (hag : 16 ≤ ag) (V : Fin (32 + af + ag) → ℕ)
+lemma precSetupPre_self (haf : 16 ≤ af) (V : Fin (32 + af + ag) → ℕ)
     (i : Fin 32) (hw : ¬ (16 ≤ (i : ℕ) ∧ (i : ℕ) < 25)) (h6 : (i : ℕ) ≠ 6)
     (h7 : (i : ℕ) ≠ 7) (h8 : (i : ℕ) ≠ 8) :
-    precSetupPre af ag haf hag V (precSelf af ag i) = V (precSelf af ag i) := by
+    precSetupPre af ag haf V (precSelf af ag i) = V (precSelf af ag i) := by
   simp only [precSetupPre, precSelf_update_apply, precSelf_leftLoc_upd haf,
-    precUnpairWin_selfW_apply, dif_neg hw]
+    precUnpairWin_self_apply, dif_neg hw]
   norm_num [h6, h7, h8]
 
-lemma precSetupPre_childIn_zero (haf : 16 ≤ af) (hag : 16 ≤ ag)
+lemma precSetupPre_childIn_zero (haf : 16 ≤ af)
     (V : Fin (32 + af + ag) → ℕ) :
-    precSetupPre af ag haf hag V (precLeftLoc af ag haf 0)
+    precSetupPre af ag haf V (precLeftLoc af ag haf 0)
       = (Nat.unpair (V (precSelf af ag 0))).1 := by
-  have h := precSetupPre_a haf hag V
+  have h := precSetupPre_a haf V
   simp only [precSetupPre, precLeftLoc_update_apply haf, precLeftLoc_self_upd haf,
     precUnpairWin_leftLoc haf] at h ⊢
   norm_num at h ⊢
-  simp only [precSelf_update_apply, precUnpairWin_selfW_apply] at h ⊢
+  simp only [precSelf_update_apply, precUnpairWin_self_apply] at h ⊢
   norm_num at h ⊢
   exact h
 
-lemma precSetupPre_childIn_one (haf : 16 ≤ af) (hag : 16 ≤ ag)
+lemma precSetupPre_childIn_one (haf : 16 ≤ af)
     (V : Fin (32 + af + ag) → ℕ) :
-    precSetupPre af ag haf hag V (precLeftLoc af ag haf 1)
+    precSetupPre af ag haf V (precLeftLoc af ag haf 1)
       = V (precSelf af ag 1) - (Nat.unpair (V (precSelf af ag 0))).2 := by
-  have h := precSetupPre_base haf hag V
+  have h := precSetupPre_base haf V
   simp only [precSetupPre, precLeftLoc_update_apply haf, precLeftLoc_self_upd haf,
     precUnpairWin_leftLoc haf] at h ⊢
   norm_num at h ⊢
-  simp only [precSelf_update_apply, precUnpairWin_selfW_apply] at h ⊢
+  simp only [precSelf_update_apply, precUnpairWin_self_apply] at h ⊢
   norm_num at h ⊢
   exact h
 
-lemma precBaseIn_zero (haf : 16 ≤ af) (hag : 16 ≤ ag) (V : Fin (32 + af + ag) → ℕ) :
-    precBaseIn af ag haf hag V ⟨0, by omega⟩
+lemma precBaseIn_zero (haf : 16 ≤ af) (V : Fin (32 + af + ag) → ℕ) :
+    precBaseIn af ag haf V ⟨0, by omega⟩
       = (Nat.unpair (V (precSelf af ag 0))).1 := by
   have h : precLeftSub af ag ⟨0, by omega⟩ = precLeftLoc af ag haf 0 := by
     apply Fin.ext; simp [precLeftSub, precLeftLoc, shiftEmb_val]
   rw [precBaseIn, h, precSetupPre_childIn_zero]
 
-lemma precBaseIn_one (haf : 16 ≤ af) (hag : 16 ≤ ag) (V : Fin (32 + af + ag) → ℕ) :
-    precBaseIn af ag haf hag V ⟨1, by omega⟩
+lemma precBaseIn_one (haf : 16 ≤ af) (V : Fin (32 + af + ag) → ℕ) :
+    precBaseIn af ag haf V ⟨1, by omega⟩
       = V (precSelf af ag 1) - (Nat.unpair (V (precSelf af ag 0))).2 := by
   have h : precLeftSub af ag ⟨1, by omega⟩ = precLeftLoc af ag haf 1 := by
     apply Fin.ext; simp [precLeftSub, precLeftLoc, shiftEmb_val]
@@ -3959,51 +3936,51 @@ variable (haf : 16 ≤ af) (hag : 16 ≤ ag) (Ff : (Fin af → ℕ) → Fin af �
 lemma precSetupVals_self (i : Fin 32) (hw : ¬ (16 ≤ (i : ℕ) ∧ (i : ℕ) < 25))
     (h6 : (i : ℕ) ≠ 6) (h7 : (i : ℕ) ≠ 7) (h8 : (i : ℕ) ≠ 8)
     (h9 : ¬ (9 ≤ (i : ℕ) ∧ (i : ℕ) ≤ 12)) :
-    precSetupVals af ag haf hag Ff V (precSelf af ag i) = V (precSelf af ag i) := by
+    precSetupVals af ag haf Ff V (precSelf af ag i) = V (precSelf af ag i) := by
   have e9 : (i : ℕ) ≠ 9 := by omega
   have e10 : (i : ℕ) ≠ 10 := by omega
   have e11 : (i : ℕ) ≠ 11 := by omega
   have e12 : (i : ℕ) ≠ 12 := by omega
-  simp only [precSetupVals, precSelf_update_apply, precLeftSub_win_selfW]
+  simp only [precSetupVals, precSelf_update_apply, precLeftSub_win_self]
   norm_num [e9, e10, e11, e12]
-  exact precSetupPre_self haf hag V i hw h6 h7 h8
+  exact precSetupPre_self haf V i hw h6 h7 h8
 
 lemma precSetupVals_a :
-    precSetupVals af ag haf hag Ff V (precSelf af ag 6)
+    precSetupVals af ag haf Ff V (precSelf af ag 6)
       = (Nat.unpair (V (precSelf af ag 0))).1 := by
-  simp only [precSetupVals, precSelf_update_apply, precLeftSub_win_selfW]
+  simp only [precSetupVals, precSelf_update_apply, precLeftSub_win_self]
   norm_num
-  exact precSetupPre_a haf hag V
+  exact precSetupPre_a haf V
 
 lemma precSetupVals_m :
-    precSetupVals af ag haf hag Ff V (precSelf af ag 7)
+    precSetupVals af ag haf Ff V (precSelf af ag 7)
       = (Nat.unpair (V (precSelf af ag 0))).2 := by
-  simp only [precSetupVals, precSelf_update_apply, precLeftSub_win_selfW]
+  simp only [precSetupVals, precSelf_update_apply, precLeftSub_win_self]
   norm_num
-  exact precSetupPre_m haf hag V
+  exact precSetupPre_m haf V
 
-lemma precSetupVals_j : precSetupVals af ag haf hag Ff V (precSelf af ag 9) = 0 := by
+lemma precSetupVals_j : precSetupVals af ag haf Ff V (precSelf af ag 9) = 0 := by
   simp only [precSetupVals, precSelf_update_apply]
   norm_num
 
 lemma precSetupVals_curFuel :
-    precSetupVals af ag haf hag Ff V (precSelf af ag 12)
+    precSetupVals af ag haf Ff V (precSelf af ag 12)
       = V (precSelf af ag 1) - (Nat.unpair (V (precSelf af ag 0))).2 := by
-  simp only [precSetupVals, precSelf_update_apply, precLeftSub_win_selfW]
+  simp only [precSetupVals, precSelf_update_apply, precLeftSub_win_self]
   norm_num
-  exact precSetupPre_base haf hag V
+  exact precSetupPre_base haf V
 
 lemma precSetupVals_alive :
-    precSetupVals af ag haf hag Ff V (precSelf af ag 10)
-      = Ff (precBaseIn af ag haf hag V) ⟨2, by omega⟩ := by
+    precSetupVals af ag haf Ff V (precSelf af ag 10)
+      = Ff (precBaseIn af ag haf V) ⟨2, by omega⟩ := by
   simp only [precSetupVals, precSelf_update_apply, precLeftLoc_self_upd haf,
     precLeftSub_win_leftLoc haf]
   norm_num
   rfl
 
 lemma precSetupVals_acc :
-    precSetupVals af ag haf hag Ff V (precSelf af ag 11)
-      = Ff (precBaseIn af ag haf hag V) ⟨3, by omega⟩ := by
+    precSetupVals af ag haf Ff V (precSelf af ag 11)
+      = Ff (precBaseIn af ag haf V) ⟨3, by omega⟩ := by
   simp only [precSetupVals, precSelf_update_apply, precLeftLoc_self_upd haf,
     precLeftSub_win_leftLoc haf]
   norm_num
@@ -4013,17 +3990,17 @@ end
 
 /-! #### The finish -/
 
-lemma precFinishVals_tag (haf : 16 ≤ af) (hag : 16 ≤ ag) (W : Fin (32 + af + ag) → ℕ) :
+lemma precFinishVals_tag (W : Fin (32 + af + ag) → ℕ) :
     precFinishVals af ag W (precSelf af ag 2)
       = (if W (precSelf af ag 0) < W (precSelf af ag 1) then 1 else 0)
           * W (precSelf af ag 10) := by
   simp only [precFinishVals, precSelf_update_apply]
   norm_num
 
-lemma precFinishVals_val (haf : 16 ≤ af) (hag : 16 ≤ ag) (W : Fin (32 + af + ag) → ℕ) :
+lemma precFinishVals_val (W : Fin (32 + af + ag) → ℕ) :
     precFinishVals af ag W (precSelf af ag 3)
       = precFinishVals af ag W (precSelf af ag 2) * W (precSelf af ag 11) := by
-  rw [precFinishVals_tag haf hag]
+  rw [precFinishVals_tag]
   simp only [precFinishVals, precSelf_update_apply]
   norm_num
 
@@ -4041,18 +4018,17 @@ variable {af ag : ℕ}
 counter `l`, then the finish. -/
 def precTM (af ag : ℕ) (haf : 16 ≤ af) (hag : 16 ≤ ag)
     (R : Regs (32 + af + ag) n) (l : Fin n) (Mf Mg : TM n) : TM n :=
-  seqTM (precSetupTM af ag haf hag R l Mf)
-    (seqTM (forRegTM (precBodyTM af ag haf hag R Mg) l) (precFinishTM af ag R))
+  seqTM (precSetupTM af ag haf R l Mf)
+    (seqTM (forRegTM (precBodyTM af ag hag R Mg) l) (precFinishTM af ag R))
 
 /-- The register vector the whole `prec` node produces. -/
 noncomputable def precVals (af ag : ℕ) (haf : 16 ≤ af) (hag : 16 ≤ ag)
     (Ff : (Fin af → ℕ) → Fin af → ℕ) (Fg : (Fin ag → ℕ) → Fin ag → ℕ)
     (V : Fin (32 + af + ag) → ℕ) : Fin (32 + af + ag) → ℕ :=
   precFinishVals af ag
-    (precLoopVals af ag haf hag Fg (precSetupVals af ag haf hag Ff V)
-      (precSetupVals af ag haf hag Ff V (precSelf af ag 7)))
+    (precLoopVals af ag hag Fg (precSetupVals af ag haf Ff V)
+      (precSetupVals af ag haf Ff V (precSelf af ag 7)))
 
-set_option maxHeartbeats 1000000 in
 /-- **`prec`, complete.** -/
 lemma precTM_hoareTime (haf : 16 ≤ af) (hag : 16 ≤ ag)
     (R : Regs (32 + af + ag) n) (l : Fin n) (hl : ∀ k, R k ≠ l) (Mf Mg : TM n)
@@ -4062,43 +4038,43 @@ lemma precTM_hoareTime (haf : 16 ≤ af) (hag : 16 ≤ ag)
     (hinp₀ : Parked inp₀) (hpark : ∀ i, Parked (w₀ i))
     (cl : ℕ) (hlc : w₀ l = regTape cl) (hclB : cl ≤ B)
     (hB2 : 2 ≤ B) (hV : ∀ k, V k < B)
-    (hFfB : ∀ k, Ff (precBaseIn af ag haf hag V) k < B)
-    (hFgB : ∀ i, i < precSetupVals af ag haf hag Ff V (precSelf af ag 7) →
-      ∀ k, Fg (precChildIn af ag haf hag
-        (precLoopVals af ag haf hag Fg (precSetupVals af ag haf hag Ff V) i)) k < B)
+    (hFfB : ∀ k, Ff (precBaseIn af ag haf V) k < B)
+    (hFgB : ∀ i, i < precSetupVals af ag haf Ff V (precSelf af ag 7) →
+      ∀ k, Fg (precChildIn af ag hag
+        (precLoopVals af ag hag Fg (precSetupVals af ag haf Ff V) i)) k < B)
     (hFgTag : ∀ u : Fin ag → ℕ, Fg u ⟨2, by omega⟩ ≤ 1)
-    (hOK : ∀ i, i ≤ precSetupVals af ag haf hag Ff V (precSelf af ag 7) →
+    (hOK : ∀ i, i ≤ precSetupVals af ag haf Ff V (precSelf af ag 7) →
       PrecBodyOK af ag B
-        (precLoopVals af ag haf hag Fg (precSetupVals af ag haf hag Ff V) i))
+        (precLoopVals af ag hag Fg (precSetupVals af ag haf Ff V) i))
     (hMf : ∀ Wb : Fin n → Tape, (∀ i, Parked (Wb i)) →
       Mf.HoareTime
         (EmitPred inp₀ (regsWork ((precLeftSub af ag).trans R) Wb
-          (precBaseIn af ag haf hag V)) ys)
+          (precBaseIn af ag haf V)) ys)
         (EmitPred inp₀ (regsWork ((precLeftSub af ag).trans R) Wb
-          (Ff (precBaseIn af ag haf hag V))) ys) tf)
-    (hMg : ∀ i, i < precSetupVals af ag haf hag Ff V (precSelf af ag 7) →
+          (Ff (precBaseIn af ag haf V))) ys) tf)
+    (hMg : ∀ i, i < precSetupVals af ag haf Ff V (precSelf af ag 7) →
       ∀ Wb : Fin n → Tape, (∀ j, Parked (Wb j)) →
       Mg.HoareTime
         (EmitPred inp₀ (regsWork ((precRightSub af ag).trans R) Wb
-          (precChildIn af ag haf hag
-            (precLoopVals af ag haf hag Fg (precSetupVals af ag haf hag Ff V) i))) ys)
+          (precChildIn af ag hag
+            (precLoopVals af ag hag Fg (precSetupVals af ag haf Ff V) i))) ys)
         (EmitPred inp₀ (regsWork ((precRightSub af ag).trans R) Wb
-          (Fg (precChildIn af ag haf hag
-            (precLoopVals af ag haf hag Fg (precSetupVals af ag haf hag Ff V) i)))) ys)
+          (Fg (precChildIn af ag hag
+            (precLoopVals af ag hag Fg (precSetupVals af ag haf Ff V) i)))) ys)
         tg) :
     (precTM af ag haf hag R l Mf Mg).HoareTime
       (EmitPred inp₀ (regsWork R w₀ V) ys)
       (EmitPred inp₀
         (regsWork R
           (Function.update w₀ l
-            (regTape (precSetupVals af ag haf hag Ff V (precSelf af ag 7))))
+            (regTape (precSetupVals af ag haf Ff V (precSelf af ag 7))))
           (precVals af ag haf hag Ff Fg V)) ys)
       ((12 * evalnArithmeticCost B + tf + 12) + 1 +
-        ((precSetupVals af ag haf hag Ff V (precSelf af ag 7)) *
+        ((precSetupVals af ag haf Ff V (precSelf af ag 7)) *
             ((15 * evalnArithmeticCost B + tg + 15) + 2) +
-          ((precSetupVals af ag haf hag Ff V (precSelf af ag 7)) + 2) + 1 +
+          ((precSetupVals af ag haf Ff V (precSelf af ag 7)) + 2) + 1 +
           (5 * evalnArithmeticCost B + 4))) := by
-  set S := precSetupVals af ag haf hag Ff V with hS
+  set S := precSetupVals af ag haf Ff V with hS
   set m := S (precSelf af ag 7) with hm
   set w₁ := Function.update w₀ l (regTape m) with hw₁
   have hpark₁ : ∀ i, Parked (w₁ i) := by
@@ -4106,14 +4082,14 @@ lemma precTM_hoareTime (haf : 16 ≤ af) (hag : 16 ≤ ag)
     by_cases hi : i = l
     · subst hi; rw [Function.update_self]; exact parked_regTape _
     · rw [Function.update_of_ne hi]; exact hpark i
-  have hsetup := precSetup_hoareTime haf hag R l hl Mf Ff tf V B inp₀ w₀ ys hinp₀ hpark
+  have hsetup := precSetup_hoareTime haf R l hl Mf Ff tf V B inp₀ w₀ ys hinp₀ hpark
     cl hlc hclB hV hFfB hMf
   have hloop := precLoop_hoareTime (af := af) (ag := ag) haf hag R l hl Mg Fg tg B m S
     inp₀ w₁ ys hinp₀ hpark₁ hB2 (by rw [hw₁, Function.update_self]) hFgB hFgTag
     (fun i hi => hOK i (Nat.le_of_lt hi)) hMg
   obtain ⟨hLb, hLalive, -, -, -, -⟩ := hOK m le_rfl
   have hfin := precFinish_hoareTime (af := af) (ag := ag) R
-    (precLoopVals af ag haf hag Fg S m) B inp₀ w₁ ys hinp₀ hpark₁ hLb hLalive
+    (precLoopVals af ag hag Fg S m) B inp₀ w₁ ys hinp₀ hpark₁ hLb hLalive
   exact seqEmit hinp₀ (parked_regsWork R hpark₁ S) hsetup
     (seqEmit hinp₀ (parked_regsWork R hpark₁ _) hloop hfin)
 
@@ -4138,38 +4114,38 @@ lemma precVals_encodes (haf : 16 ≤ af) (hag : 16 ≤ ag) (cf cg : Nat.Partrec.
             (V (precSelf af ag 0))) := by
   have hpair : Nat.pair (Nat.unpair (V (precSelf af ag 0))).1
       (Nat.unpair (V (precSelf af ag 0))).2 = V (precSelf af ag 0) := Nat.pair_unpair _
-  obtain ⟨hbt, hbv⟩ := hFf (precBaseIn af ag haf hag V)
+  obtain ⟨hbt, hbv⟩ := hFf (precBaseIn af ag haf V)
   rw [precBaseIn_zero, precBaseIn_one] at hbt hbv
   obtain ⟨-, -, -, hL10, hL11⟩ :=
-    precLoopVals_spec haf hag cf cg Fg hFg (precSetupVals af ag haf hag Ff V)
+    precLoopVals_spec haf hag cf cg Fg hFg (precSetupVals af ag haf Ff V)
       (Nat.unpair (V (precSelf af ag 0))).1
       (V (precSelf af ag 1) - (Nat.unpair (V (precSelf af ag 0))).2)
-      (precSetupVals_a haf hag Ff V) (precSetupVals_j haf hag Ff V)
-      (precSetupVals_curFuel haf hag Ff V)
+      (precSetupVals_a haf Ff V) (precSetupVals_j haf Ff V)
+      (precSetupVals_curFuel haf Ff V)
       (by rw [precSetupVals_alive, hbt]) (by rw [precSetupVals_acc, hbv])
       (Nat.unpair (V (precSelf af ag 0))).2
-  have hL0 : precLoopVals af ag haf hag Fg (precSetupVals af ag haf hag Ff V)
+  have hL0 : precLoopVals af ag hag Fg (precSetupVals af ag haf Ff V)
       (Nat.unpair (V (precSelf af ag 0))).2 (precSelf af ag 0) = V (precSelf af ag 0) := by
     rw [precLoopVals_frame haf hag Fg _ 0 (by norm_num) (by norm_num),
-      precSetupVals_self haf hag Ff V 0 (by norm_num) (by norm_num) (by norm_num)
+      precSetupVals_self haf Ff V 0 (by norm_num) (by norm_num) (by norm_num)
         (by norm_num) (by norm_num)]
-  have hL1 : precLoopVals af ag haf hag Fg (precSetupVals af ag haf hag Ff V)
+  have hL1 : precLoopVals af ag hag Fg (precSetupVals af ag haf Ff V)
       (Nat.unpair (V (precSelf af ag 0))).2 (precSelf af ag 1) = V (precSelf af ag 1) := by
     rw [precLoopVals_frame haf hag Fg _ 1 (by norm_num) (by norm_num),
-      precSetupVals_self haf hag Ff V 1 (by norm_num) (by norm_num) (by norm_num)
+      precSetupVals_self haf Ff V 1 (by norm_num) (by norm_num) (by norm_num)
         (by norm_num) (by norm_num)]
   have htag : precVals af ag haf hag Ff Fg V (precSelf af ag 2)
       = (if V (precSelf af ag 0) < V (precSelf af ag 1) then 1 else 0)
           * resultTag (precRunG cf cg (Nat.unpair (V (precSelf af ag 0))).1
               (V (precSelf af ag 1) - (Nat.unpair (V (precSelf af ag 0))).2)
               (Nat.unpair (V (precSelf af ag 0))).2) := by
-    rw [precVals, precSetupVals_m, precFinishVals_tag haf hag, hL0, hL1, hL10]
+    rw [precVals, precSetupVals_m, precFinishVals_tag, hL0, hL1, hL10]
   have hval : precVals af ag haf hag Ff Fg V (precSelf af ag 3)
       = precVals af ag haf hag Ff Fg V (precSelf af ag 2)
           * resultVal (precRunG cf cg (Nat.unpair (V (precSelf af ag 0))).1
               (V (precSelf af ag 1) - (Nat.unpair (V (precSelf af ag 0))).2)
               (Nat.unpair (V (precSelf af ag 0))).2) := by
-    rw [precVals, precSetupVals_m, precFinishVals_val haf hag, hL11]
+    rw [precVals, precSetupVals_m, precFinishVals_val, hL11]
   by_cases hg : V (precSelf af ag 0) < V (precSelf af ag 1)
   · have hout : Nat.pair (Nat.unpair (V (precSelf af ag 0))).1
         (Nat.unpair (V (precSelf af ag 0))).2 < V (precSelf af ag 1) := by
@@ -4193,8 +4169,8 @@ end PrecEncodes
 section PrecSetupBound
 variable {af ag : ℕ}
 
-lemma precSetupPre_lt (haf : 16 ≤ af) (hag : 16 ≤ ag) (V : Fin (32 + af + ag) → ℕ)
-    (B : ℕ) (hV : ∀ k, V k < B) : ∀ k, precSetupPre af ag haf hag V k < B := by
+lemma precSetupPre_lt (haf : 16 ≤ af) (V : Fin (32 + af + ag) → ℕ)
+    (B : ℕ) (hV : ∀ k, V k < B) : ∀ k, precSetupPre af ag haf V k < B := by
   have hB0 : 0 < B := Nat.lt_of_le_of_lt (Nat.zero_le _) (hV (precSelf af ag 0))
   intro k
   simp only [precSetupPre]
@@ -4209,50 +4185,46 @@ lemma precSetupPre_lt (haf : 16 ≤ af) (hag : 16 ≤ ag) (V : Fin (32 + af + ag
     omega
   set U2 := Function.update U1 (precSelf af ag 6) (U1 (precSelf af ag 16)) with hU2
   have b2 : ∀ k, U2 k < B := by
-    intro k; rw [hU2]; simp only [Function.update_apply]; split_ifs <;> exact b1 _
+    rw [hU2]; exact update_lt b1 (b1 _)
   set U3 := Function.update U2 (precSelf af ag 7) (U2 (precSelf af ag 17)) with hU3
   have b3 : ∀ k, U3 k < B := by
-    intro k; rw [hU3]; simp only [Function.update_apply]; split_ifs <;> exact b2 _
+    rw [hU3]; exact update_lt b2 (b2 _)
   set U4 := Function.update U3 (precSelf af ag 8) (U3 (precSelf af ag 1)) with hU4
   have b4 : ∀ k, U4 k < B := by
-    intro k; rw [hU4]; simp only [Function.update_apply]; split_ifs <;> exact b3 _
+    rw [hU4]; exact update_lt b3 (b3 _)
   set U5 := Function.update U4 (precSelf af ag 8)
       (U4 (precSelf af ag 8) - U4 (precSelf af ag 7)) with hU5
   have b5 : ∀ k, U5 k < B := by
-    intro k; rw [hU5]; simp only [Function.update_apply]; split_ifs
-    · have := b4 (precSelf af ag 8); omega
-    · exact b4 _
+    rw [hU5]; exact update_lt b4 (by have := b4 (precSelf af ag 8); omega)
   set U6 := Function.update U5 (precLeftLoc af ag haf 0) (U5 (precSelf af ag 6)) with hU6
   have b6 : ∀ k, U6 k < B := by
-    intro k; rw [hU6]; simp only [Function.update_apply]; split_ifs <;> exact b5 _
+    rw [hU6]; exact update_lt b5 (b5 _)
   simp only [Function.update_apply]; split_ifs <;> exact b6 _
 
-lemma precSetupVals_lt (haf : 16 ≤ af) (hag : 16 ≤ ag)
+lemma precSetupVals_lt (haf : 16 ≤ af)
     (Ff : (Fin af → ℕ) → Fin af → ℕ) (V : Fin (32 + af + ag) → ℕ) (B : ℕ)
     (hV : ∀ k, V k < B)
-    (hFfB : ∀ k, Ff (precBaseIn af ag haf hag V) k < B) :
-    ∀ k, precSetupVals af ag haf hag Ff V k < B := by
+    (hFfB : ∀ k, Ff (precBaseIn af ag haf V) k < B) :
+    ∀ k, precSetupVals af ag haf Ff V k < B := by
   have hB0 : 0 < B := Nat.lt_of_le_of_lt (Nat.zero_le _) (hV (precSelf af ag 0))
-  have b7 := precSetupPre_lt haf hag V B hV
+  have b7 := precSetupPre_lt haf V B hV
   intro k
   simp only [precSetupVals]
-  set U8 := writeWindow (precLeftSub af ag) (precSetupPre af ag haf hag V)
-      (Ff (fun i => precSetupPre af ag haf hag V (precLeftSub af ag i))) with hU8
+  set U8 := writeWindow (precLeftSub af ag) (precSetupPre af ag haf V)
+      (Ff (fun i => precSetupPre af ag haf V (precLeftSub af ag i))) with hU8
   have b8 : ∀ k, U8 k < B := by
     intro k; rw [hU8]
     exact writeWindow_bounded _ _ _ B b7 (fun i => hFfB i) k
   set U9 := Function.update U8 (precSelf af ag 9) 0 with hU9
   have b9 : ∀ k, U9 k < B := by
-    intro k; rw [hU9]; simp only [Function.update_apply]; split_ifs
-    · exact hB0
-    · exact b8 _
+    rw [hU9]; exact update_lt b8 (by exact hB0)
   set U10 := Function.update U9 (precSelf af ag 10) (U9 (precLeftLoc af ag haf 2)) with hU10
   have b10 : ∀ k, U10 k < B := by
-    intro k; rw [hU10]; simp only [Function.update_apply]; split_ifs <;> exact b9 _
+    rw [hU10]; exact update_lt b9 (b9 _)
   set U11 := Function.update U10 (precSelf af ag 11) (U10 (precLeftLoc af ag haf 3))
     with hU11
   have b11 : ∀ k, U11 k < B := by
-    intro k; rw [hU11]; simp only [Function.update_apply]; split_ifs <;> exact b10 _
+    rw [hU11]; exact update_lt b10 (b10 _)
   simp only [Function.update_apply]; split_ifs <;> exact b11 _
 
 end PrecSetupBound
@@ -4355,7 +4327,8 @@ end RfindPure
 /-! ## `rfind'`: register layout
 
 Like `prec`, an `rfind'` node is thirty-three registers wide plus its child's subtree: the
-thirty-third is the loop counter, which must sit outside the block the body names.
+node's thirty-third register — laid out last, at ambient index `32 + af` (`rfLoopIdx`) — is
+the loop counter, which must sit outside the block the body names.
 
 ```
 0–5  interface + outer guard      6 a   7 m   8 curFuel
@@ -4400,10 +4373,6 @@ lemma rfPairW_ne_self (i : Fin 8) (j : Fin 32) (h : 20 + (i : ℕ) ≠ (j : ℕ)
 lemma rfUnpairW_ne_self (i : Fin 9) (j : Fin 32) (h : 20 + (i : ℕ) ≠ (j : ℕ)) :
     rfUnpairW af i ≠ rfSelf af j := by
   apply amb_ne; simpa using h
-
-lemma rfPairW_ne_loc (haf : 16 ≤ af) (i : Fin 8) (j : Fin 16) :
-    rfPairW af i ≠ rfLoc af haf j := by
-  apply amb_ne; have := i.isLt; simp; omega
 
 /-- A child's local block is the first sixteen of its subtree. -/
 lemma rfLoc_eq (haf : 16 ≤ af) (j : Fin 16) :
@@ -4462,7 +4431,7 @@ def rfPhaseB1 (af : ℕ) (haf : 16 ≤ af) (R : Regs (32 + af) n) : TM n :=
 
 /-- **`rfind'`, phase B, second half.** Commits the index when the level fires, clears the
 `searching` flag, and advances the index and the fuel. -/
-def rfPhaseB2 (af : ℕ) (haf : 16 ≤ af) (R : Regs (32 + af) n) : TM n :=
+def rfPhaseB2 (af : ℕ) (R : Regs (32 + af) n) : TM n :=
   seqTM (mulAddIntoTM (R (rfSelf af 15)) (R (rfSelf af 7)) (R (rfSelf af 11))) <|
   seqTM (addIntoTM (R (rfSelf af 15)) (R (rfSelf af 10))) <|
   seqTM (copyIntoTM (R (rfSelf af 12)) (R (rfSelf af 16))) <|
@@ -4475,7 +4444,7 @@ def rfPhaseB2 (af : ℕ) (haf : 16 ≤ af) (R : Regs (32 + af) n) : TM n :=
 
 /-- **`rfind'`, phase B.** The two halves in sequence. -/
 def rfPhaseB (af : ℕ) (haf : 16 ≤ af) (R : Regs (32 + af) n) : TM n :=
-  seqTM (rfPhaseB1 af haf R) (rfPhaseB2 af haf R)
+  seqTM (rfPhaseB1 af haf R) (rfPhaseB2 af R)
 
 /-- **One level of the `rfind'` loop:** run the child, then test and commit. -/
 def rfBodyTM (af : ℕ) (haf : 16 ≤ af) (R : Regs (32 + af) n) (Mf : TM n) : TM n :=
@@ -4523,7 +4492,7 @@ noncomputable def rfPhaseB1Vals (af : ℕ) (haf : 16 ≤ af) (W : Fin (32 + af) 
 
 /-- What phase B2 leaves: the hit folded into `found` and `result`, `searching` narrowed
     by the zero test, and the level advanced. -/
-noncomputable def rfPhaseB2Vals (af : ℕ) (haf : 16 ≤ af) (V14 : Fin (32 + af) → ℕ) :
+noncomputable def rfPhaseB2Vals (af : ℕ) (V14 : Fin (32 + af) → ℕ) :
     Fin (32 + af) → ℕ :=
   let V15 := Function.update V14 (rfSelf af 11)
                (V14 (rfSelf af 11) + V14 (rfSelf af 15) * V14 (rfSelf af 7))
@@ -4542,7 +4511,7 @@ noncomputable def rfPhaseB2Vals (af : ℕ) (haf : 16 ≤ af) (V14 : Fin (32 + af
 /-- The ambient register vector `rfPhaseB` produces. -/
 noncomputable def rfPhaseBVals (af : ℕ) (haf : 16 ≤ af) (W : Fin (32 + af) → ℕ) :
     Fin (32 + af) → ℕ :=
-  rfPhaseB2Vals af haf (rfPhaseB1Vals af haf W)
+  rfPhaseB2Vals af (rfPhaseB1Vals af haf W)
 
 /-- The ambient register vector one level produces. -/
 noncomputable def rfBodyVals (af : ℕ) (haf : 16 ≤ af)
@@ -4572,7 +4541,6 @@ variable {af : ℕ}
 noncomputable def rfChildIn (af : ℕ) (haf : 16 ≤ af) (V : Fin (32 + af) → ℕ) :
     Fin af → ℕ :=
   fun i => rfPhaseAPre af haf V (rfSub af i)
-set_option maxHeartbeats 1000000 in
 /-- **`rfPhaseA` Hoare specification.** -/
 lemma rfPhaseA_hoareTime (haf : 16 ≤ af)
     (R : Regs (32 + af) n) (Mf : TM n)
@@ -4582,7 +4550,6 @@ lemma rfPhaseA_hoareTime (haf : 16 ≤ af)
     (hinp₀ : Parked inp₀) (hpark : ∀ i, Parked (w₀ i)) (hB2 : 2 ≤ B)
     (hV : ∀ k, V k < B)
     (hp : Nat.pair (V (rfSelf af 6)) (V (rfSelf af 7)) < B)
-    (hFfB : ∀ k, Ff (rfChildIn af haf V) k < B)
     (hMf : ∀ Wb : Fin n → Tape, (∀ i, Parked (Wb i)) →
       Mf.HoareTime
         (EmitPred inp₀ (regsWork ((rfSub af).trans R) Wb (rfChildIn af haf V)) ys)
@@ -4604,7 +4571,7 @@ lemma rfPhaseA_hoareTime (haf : 16 ≤ af)
   replace h1 := h1.mono_bound (copyIntoTime_le_arith _ _ B (hle _) (hle _))
   set V1 := Function.update V (rfSelf af 20) (V (rfSelf af 6)) with hV1
   have b1 : ∀ k, V1 k < B := by
-    intro k; rw [hV1]; simp only [Function.update_apply]; split_ifs <;> exact hV _
+    rw [hV1]; exact update_lt hV (hV _)
   -- S2: pair slot 1 := m
   have h2 := copyIntoTM_hoareTime (R (rfSelf af 7)) (R (rfSelf af 21))
       (Regs.ne R (rfSelf_ne_self 7 21 (by decide)))
@@ -4616,7 +4583,7 @@ lemma rfPhaseA_hoareTime (haf : 16 ≤ af)
     (copyIntoTime_le_arith _ _ B (Nat.le_of_lt (b1 _)) (Nat.le_of_lt (b1 _)))
   set V2 := Function.update V1 (rfSelf af 21) (V1 (rfSelf af 7)) with hV2
   have b2 : ∀ k, V2 k < B := by
-    intro k; rw [hV2]; simp only [Function.update_apply]; split_ifs <;> exact b1 _
+    rw [hV2]; exact update_lt b1 (b1 _)
   have hw0 : V2 ((rfPairW af) 0) = V (rfSelf af 6) := by
     rw [rfPairW_zero, hV2, Function.update_of_ne (rfSelf_ne_self 20 21 (by decide)),
       hV1, Function.update_self]
@@ -4657,7 +4624,7 @@ lemma rfPhaseA_hoareTime (haf : 16 ≤ af)
     (copyIntoTime_le_arith _ _ B (Nat.le_of_lt (b3 _)) (Nat.le_of_lt (b3 _)))
   set V4 := Function.update V3 (rfLoc af haf 0) (V3 (rfSelf af 26)) with hV4
   have b4 : ∀ k, V4 k < B := by
-    intro k; rw [hV4]; simp only [Function.update_apply]; split_ifs <;> exact b3 _
+    rw [hV4]; exact update_lt b3 (b3 _)
   -- S5: cf.fuel := curFuel
   have h5 := copyIntoTM_hoareTime (R (rfSelf af 8)) (R (rfLoc af haf 1))
       (Regs.ne R (rfSelf_ne_loc haf 8 1))
@@ -4669,7 +4636,7 @@ lemma rfPhaseA_hoareTime (haf : 16 ≤ af)
     (copyIntoTime_le_arith _ _ B (Nat.le_of_lt (b4 _)) (Nat.le_of_lt (b4 _)))
   set V5 := Function.update V4 (rfLoc af haf 1) (V4 (rfSelf af 8)) with hV5
   have b5 : ∀ k, V5 k < B := by
-    intro k; rw [hV5]; simp only [Function.update_apply]; split_ifs <;> exact b4 _
+    rw [hV5]; exact update_lt b4 (b4 _)
   -- S6: the level guard
   have h6 := ltFlagTM_hoareTime (R (rfSelf af 26)) (R (rfSelf af 8)) (R (rfSelf af 5))
       (R (rfSelf af 13))
@@ -4765,6 +4732,15 @@ lemma rfPhaseB1Vals_frame (haf : 16 ≤ af) (W : Fin (32 + af) → ℕ) {k : Fin
   simp only [rfPhaseB1Vals, Function.update_of_ne h15, Function.update_of_ne h14,
     Function.update_of_ne h5, Function.update_of_ne h9, Function.update_of_ne h17]
 
+/-- Phase B1 touches only registers `5`, `9`, `14`, `15` and `17`: `rfPhaseB1Vals_frame`
+    read at the node's own window. -/
+lemma rfPhaseB1Vals_of_ne (haf : 16 ≤ af) (W : Fin (32 + af) → ℕ) (i : Fin 32)
+    (h5 : (i : ℕ) ≠ 5) (h9 : (i : ℕ) ≠ 9) (h14 : (i : ℕ) ≠ 14) (h15 : (i : ℕ) ≠ 15)
+    (h17 : (i : ℕ) ≠ 17) :
+    rfPhaseB1Vals af haf W (rfSelf af i) = W (rfSelf af i) :=
+  rfPhaseB1Vals_frame haf W (rfSelf_ne_self i 5 h5) (rfSelf_ne_self i 9 h9)
+    (rfSelf_ne_self i 14 h14) (rfSelf_ne_self i 15 h15) (rfSelf_ne_self i 17 h17)
+
 /-- Phase B1 keeps every register inside the bound. -/
 lemma rfPhaseB1Vals_lt (haf : 16 ≤ af) (W : Fin (32 + af) → ℕ) (B : ℕ) (hB2 : 2 ≤ B)
     (hW : ∀ k, W k < B) (hsearch : W (rfSelf af 9) ≤ 1) (hgflag : W (rfSelf af 13) ≤ 1)
@@ -4797,14 +4773,6 @@ lemma rfPhaseB1Vals_lt (haf : 16 ≤ af) (W : Fin (32 + af) → ℕ) (B : ℕ) (
       _ < B := by omega
   · rw [rfPhaseB1Vals_frame haf W h5 h9 h14 h15 h17]; exact hW k
 
-/-- Phase B1 touches only registers `5`, `9`, `14`, `15` and `17`. -/
-lemma rfPhaseB1Vals_of_ne (haf : 16 ≤ af) (W : Fin (32 + af) → ℕ) (i : Fin 32)
-    (h5 : (i : ℕ) ≠ 5) (h9 : (i : ℕ) ≠ 9) (h14 : (i : ℕ) ≠ 14) (h15 : (i : ℕ) ≠ 15)
-    (h17 : (i : ℕ) ≠ 17) :
-    rfPhaseB1Vals af haf W (rfSelf af i) = W (rfSelf af i) := by
-  simp [rfPhaseB1Vals, rfSelf_update_apply, rfLoc_update_apply haf, h5, h9, h14, h15, h17]
-
-set_option maxHeartbeats 1000000 in
 /-- **`rfPhaseB1` Hoare specification.** The guard, the child's tag and the zero test are
     reduced to two flags: `searching` and `hit`. -/
 lemma rfPhaseB1_hoareTime (haf : 16 ≤ af)
@@ -4829,9 +4797,7 @@ lemma rfPhaseB1_hoareTime (haf : 16 ≤ af)
   replace h8 := h8.mono_bound (regOpTime_le_arith _ B (hle _))
   set V8 := Function.update W (rfSelf af 17) 0 with hV8
   have b8 : ∀ k, V8 k < B := by
-    intro k; rw [hV8]; simp only [Function.update_apply]; split_ifs
-    · omega
-    · exact hW _
+    rw [hV8]; exact update_lt hW (by omega)
   have r8_9 : V8 (rfSelf af 9) = W (rfSelf af 9) := by
     rw [hV8, rfSelf_update_apply]; norm_num
   have r8_13 : V8 (rfSelf af 13) = W (rfSelf af 13) := by
@@ -4857,9 +4823,7 @@ lemma rfPhaseB1_hoareTime (haf : 16 ≤ af)
           simpa using Nat.mul_le_mul hsearch hgflag
       _ = 1 := by norm_num
   have b9 : ∀ k, V9 k < B := by
-    intro k; rw [hV9]; simp only [Function.update_apply]; split_ifs
-    · have h := m9; rw [hV9, Function.update_self] at h; omega
-    · exact b8 _
+    rw [hV9]; exact update_lt b8 (by have h := m9; rw [hV9, Function.update_self] at h; omega)
   -- S3: clear searching
   have h10 := clearRegTM_hoareTime (R (rfSelf af 9)) (V9 (rfSelf af 9)) inp₀
       (regsWork R w₀ V9) ys hinp₀ (fun i _ => hpv V9 i) (regsWork_apply R w₀ V9 _)
@@ -4867,9 +4831,7 @@ lemma rfPhaseB1_hoareTime (haf : 16 ≤ af)
   replace h10 := h10.mono_bound (regOpTime_le_arith _ B (Nat.le_of_lt (b9 _)))
   set V10 := Function.update V9 (rfSelf af 9) 0 with hV10
   have b10 : ∀ k, V10 k < B := by
-    intro k; rw [hV10]; simp only [Function.update_apply]; split_ifs
-    · omega
-    · exact b9 _
+    rw [hV10]; exact update_lt b9 (by omega)
   have r10_17 : V10 (rfSelf af 17) ≤ 1 := by
     rw [hV10, rfSelf_update_apply]; norm_num; exact m9
   have r10_L2 : V10 (rfLoc af haf 2) = W (rfLoc af haf 2) := by
@@ -4896,9 +4858,7 @@ lemma rfPhaseB1_hoareTime (haf : 16 ≤ af)
           simpa using Nat.mul_le_mul r10_17 htag
       _ = 1 := by norm_num
   have b11 : ∀ k, V11 k < B := by
-    intro k; rw [hV11]; simp only [Function.update_apply]; split_ifs
-    · have h := m11; rw [hV11, Function.update_self] at h; omega
-    · exact b10 _
+    rw [hV11]; exact update_lt b10 (by have h := m11; rw [hV11, Function.update_self] at h; omega)
   -- S5: the zero test
   have h12 := ltFlagTM_hoareTime (R (rfLoc af haf 3)) (R (rfSelf af 12)) (R (rfSelf af 5))
       (R (rfSelf af 14))
@@ -4934,9 +4894,7 @@ lemma rfPhaseB1_hoareTime (haf : 16 ≤ af)
   replace h13 := h13.mono_bound (regOpTime_le_arith _ B (Nat.le_of_lt (b12 _)))
   set V13 := Function.update V12 (rfSelf af 15) 0 with hV13
   have b13 : ∀ k, V13 k < B := by
-    intro k; rw [hV13]; simp only [Function.update_apply]; split_ifs
-    · omega
-    · exact b12 _
+    rw [hV13]; exact update_lt b12 (by omega)
   have m13_9 : V13 (rfSelf af 9) ≤ 1 := by
     rw [hV13, rfSelf_update_apply]; norm_num; exact m12_9
   have m13_14 : V13 (rfSelf af 14) ≤ 1 := by
@@ -4961,10 +4919,9 @@ lemma rfPhaseB1_hoareTime (haf : 16 ≤ af)
     seqEmit hinp₀ (hpv V12) h12 <|
     seqEmit hinp₀ (hpv V13) h13 h14).mono_bound (by omega)
 
-set_option maxHeartbeats 1000000 in
 /-- **`rfPhaseB2` Hoare specification.** The hit folds into `found` and `result`,
     `searching` is narrowed by the zero test, and the level advances. -/
-lemma rfPhaseB2_hoareTime (haf : 16 ≤ af)
+lemma rfPhaseB2_hoareTime
     (R : Regs (32 + af) n) (X : Fin (32 + af) → ℕ) (B : ℕ)
     (inp₀ : Tape) (w₀ : Fin n → Tape) (ys : List Bool)
     (hinp₀ : Parked inp₀) (hpark : ∀ i, Parked (w₀ i)) (hB2 : 2 ≤ B)
@@ -4974,9 +4931,9 @@ lemma rfPhaseB2_hoareTime (haf : 16 ≤ af)
     (hm1 : X (rfSelf af 7) + 1 < B)
     (hres : X (rfSelf af 11) + X (rfSelf af 7) < B)
     (hfound : X (rfSelf af 10) + 1 < B) :
-    (rfPhaseB2 af haf R).HoareTime
+    (rfPhaseB2 af R).HoareTime
       (EmitPred inp₀ (regsWork R w₀ X) ys)
-      (EmitPred inp₀ (regsWork R w₀ (rfPhaseB2Vals af haf X)) ys)
+      (EmitPred inp₀ (regsWork R w₀ (rfPhaseB2Vals af X)) ys)
       (9 * evalnArithmeticCost B + 8) := by
   have hpv := parked_regsWork R hpark
   have hle : ∀ k, X k ≤ B := fun k => Nat.le_of_lt (hX k)
@@ -5000,9 +4957,7 @@ lemma rfPhaseB2_hoareTime (haf : 16 ≤ af)
           Nat.mul_le_mul hhit (le_refl _)
       _ = X (rfSelf af 7) := by norm_num
   have b15 : ∀ k, V15 k < B := by
-    intro k; rw [hV15]; simp only [Function.update_apply]; split_ifs
-    · omega
-    · exact hX _
+    rw [hV15]; exact update_lt hX (by omega)
   have r15_15 : V15 (rfSelf af 15) = X (rfSelf af 15) := by
     rw [hV15, rfSelf_update_apply]; norm_num
   have r15_10 : V15 (rfSelf af 10) = X (rfSelf af 10) := by
@@ -5019,9 +4974,7 @@ lemma rfPhaseB2_hoareTime (haf : 16 ≤ af)
   set V16 := Function.update V15 (rfSelf af 10)
       (V15 (rfSelf af 10) + V15 (rfSelf af 15)) with hV16
   have b16 : ∀ k, V16 k < B := by
-    intro k; rw [hV16]; simp only [Function.update_apply]; split_ifs
-    · rw [r15_10, r15_15]; omega
-    · exact b15 _
+    rw [hV16]; exact update_lt b15 (by rw [r15_10, r15_15]; omega)
   -- S3: nz := the constant one
   have h17 := copyIntoTM_hoareTime (R (rfSelf af 12)) (R (rfSelf af 16))
       (Regs.ne R (rfSelf_ne_self 12 16 (by decide)))
@@ -5033,7 +4986,7 @@ lemma rfPhaseB2_hoareTime (haf : 16 ≤ af)
     (copyIntoTime_le_arith _ _ B (Nat.le_of_lt (b16 _)) (Nat.le_of_lt (b16 _)))
   set V17 := Function.update V16 (rfSelf af 16) (V16 (rfSelf af 12)) with hV17
   have b17 : ∀ k, V17 k < B := by
-    intro k; rw [hV17]; simp only [Function.update_apply]; split_ifs <;> exact b16 _
+    rw [hV17]; exact update_lt b16 (b16 _)
   -- S4: nz := one - the zero flag
   have h18 := subIntoTM_hoareTime (R (rfSelf af 14)) (R (rfSelf af 16))
       (Regs.ne R (rfSelf_ne_self 14 16 (by decide)))
@@ -5046,9 +4999,7 @@ lemma rfPhaseB2_hoareTime (haf : 16 ≤ af)
   set V18 := Function.update V17 (rfSelf af 16)
       (V17 (rfSelf af 16) - V17 (rfSelf af 14)) with hV18
   have b18 : ∀ k, V18 k < B := by
-    intro k; rw [hV18]; simp only [Function.update_apply]; split_ifs
-    · have := b17 (rfSelf af 16); omega
-    · exact b17 _
+    rw [hV18]; exact update_lt b17 (by have := b17 (rfSelf af 16); omega)
   -- S5: clear the temp
   have h19 := clearRegTM_hoareTime (R (rfSelf af 17)) (V18 (rfSelf af 17)) inp₀
       (regsWork R w₀ V18) ys hinp₀ (fun i _ => hpv V18 i) (regsWork_apply R w₀ V18 _)
@@ -5056,11 +5007,9 @@ lemma rfPhaseB2_hoareTime (haf : 16 ≤ af)
   replace h19 := h19.mono_bound (regOpTime_le_arith _ B (Nat.le_of_lt (b18 _)))
   set V19 := Function.update V18 (rfSelf af 17) 0 with hV19
   have b19 : ∀ k, V19 k < B := by
-    intro k; rw [hV19]; simp only [Function.update_apply]; split_ifs
-    · omega
-    · exact b18 _
+    rw [hV19]; exact update_lt b18 (by omega)
   have r19_9 : V19 (rfSelf af 9) = X (rfSelf af 9) := by
-    simp [hV19, hV18, hV17, hV16, hV15, rfSelf_update_apply]
+    simp [hV19, hV18, hV17, hV16, hV15]
   have m19_9 : V19 (rfSelf af 9) ≤ 1 := by rw [r19_9]; exact hs9
   -- S6: temp := searching * nz
   have h20 := mulAddIntoTM_hoareTime (R (rfSelf af 9)) (R (rfSelf af 16))
@@ -5078,13 +5027,13 @@ lemma rfPhaseB2_hoareTime (haf : 16 ≤ af)
   set V20 := Function.update V19 (rfSelf af 17)
       (0 + V19 (rfSelf af 9) * V19 (rfSelf af 16)) with hV20
   have b20 : ∀ k, V20 k < B := by
-    intro k; rw [hV20]; simp only [Function.update_apply]; split_ifs
-    · have hb := b19 (rfSelf af 16)
-      calc 0 + V19 (rfSelf af 9) * V19 (rfSelf af 16)
-          ≤ 1 * V19 (rfSelf af 16) := by
-            simpa using Nat.mul_le_mul m19_9 (le_refl (V19 (rfSelf af 16)))
-        _ < B := by omega
-    · exact b19 _
+    rw [hV20]
+    refine update_lt b19 ?_
+    have hb := b19 (rfSelf af 16)
+    calc 0 + V19 (rfSelf af 9) * V19 (rfSelf af 16)
+        ≤ 1 * V19 (rfSelf af 16) := by
+          simpa using Nat.mul_le_mul m19_9 (le_refl (V19 (rfSelf af 16)))
+      _ < B := by omega
   -- S7: searching := temp
   have h21 := copyIntoTM_hoareTime (R (rfSelf af 17)) (R (rfSelf af 9))
       (Regs.ne R (rfSelf_ne_self 17 9 (by decide)))
@@ -5096,9 +5045,9 @@ lemma rfPhaseB2_hoareTime (haf : 16 ≤ af)
     (copyIntoTime_le_arith _ _ B (Nat.le_of_lt (b20 _)) (Nat.le_of_lt (b20 _)))
   set V21 := Function.update V20 (rfSelf af 9) (V20 (rfSelf af 17)) with hV21
   have b21 : ∀ k, V21 k < B := by
-    intro k; rw [hV21]; simp only [Function.update_apply]; split_ifs <;> exact b20 _
+    rw [hV21]; exact update_lt b20 (b20 _)
   have r21_7 : V21 (rfSelf af 7) = X (rfSelf af 7) := by
-    simp [hV21, hV20, hV19, hV18, hV17, hV16, hV15, rfSelf_update_apply]
+    simp [hV21, hV20, hV19, hV18, hV17, hV16, hV15]
   -- S8: m := m + 1
   have h22 := incRegTM_hoareTime (R (rfSelf af 7)) (V21 (rfSelf af 7)) inp₀
       (regsWork R w₀ V21) ys hinp₀ (fun i _ => hpv V21 i) (regsWork_apply R w₀ V21 _)
@@ -5106,9 +5055,7 @@ lemma rfPhaseB2_hoareTime (haf : 16 ≤ af)
   replace h22 := h22.mono_bound (regOpTime_le_arith _ B (Nat.le_of_lt (b21 _)))
   set V22 := Function.update V21 (rfSelf af 7) (V21 (rfSelf af 7) + 1) with hV22
   have b22 : ∀ k, V22 k < B := by
-    intro k; rw [hV22]; simp only [Function.update_apply]; split_ifs
-    · rw [r21_7]; exact hm1
-    · exact b21 _
+    rw [hV22]; exact update_lt b21 (by rw [r21_7]; exact hm1)
   -- S9: curFuel := curFuel - 1
   have h23 := decRegTM_hoareTime (R (rfSelf af 8)) (V22 (rfSelf af 8)) inp₀
       (regsWork R w₀ V22) ys hinp₀ (fun i _ => hpv V22 i) (regsWork_apply R w₀ V22 _)
@@ -5148,7 +5095,7 @@ lemma rfLoc_rfLoc_update_apply (haf : 16 ≤ af) (i j : Fin 16)
   Function.update_of_ne (rfSelf_ne_loc haf i j) x X
 
 /-- The pairing window as a total read-off: slots `20`–`27` of the node's block. -/
-lemma rfPairWin_selfW_apply (i : Fin 32) (X : Fin (32 + af) → ℕ) (u : Fin 8 → ℕ) :
+lemma rfPairWin_self_apply (i : Fin 32) (X : Fin (32 + af) → ℕ) (u : Fin 8 → ℕ) :
     writeWindow (rfPairW af) X u (rfSelf af i)
       = if h : 20 ≤ (i : ℕ) ∧ (i : ℕ) < 28 then u ⟨(i : ℕ) - 20, by omega⟩
         else X (rfSelf af i) := by
@@ -5165,13 +5112,8 @@ lemma rfPairWin_selfW_apply (i : Fin 32) (X : Fin (32 + af) → ℕ) (u : Fin 8 
     simp at h ⊢
     omega
 
-lemma rfPairWin_rfLoc (haf : 16 ≤ af) (j : Fin 16) (X : Fin (32 + af) → ℕ)
-    (u : Fin 8 → ℕ) :
-    writeWindow (rfPairW af) X u (rfLoc af haf j) = X (rfLoc af haf j) :=
-  writeWindow_of_ne _ _ _ (fun t => rfPairW_ne_loc haf t j)
-
 /-- The unpairing window as a total read-off: slots `20`–`28`. -/
-lemma rfUnpairWin_selfW_apply (i : Fin 32) (X : Fin (32 + af) → ℕ) (u : Fin 9 → ℕ) :
+lemma rfUnpairWin_self_apply (i : Fin 32) (X : Fin (32 + af) → ℕ) (u : Fin 9 → ℕ) :
     writeWindow (rfUnpairW af) X u (rfSelf af i)
       = if h : 20 ≤ (i : ℕ) ∧ (i : ℕ) < 29 then u ⟨(i : ℕ) - 20, by omega⟩
         else X (rfSelf af i) := by
@@ -5198,30 +5140,30 @@ variable {af : ℕ}
 lemma rfPhaseAPair_pairOut (V : Fin (32 + af) → ℕ) :
     rfPhaseAPair af V (rfSelf af 26)
       = Nat.pair (V (rfSelf af 6)) (V (rfSelf af 7)) := by
-  simp only [rfPhaseAPair, rfPairWin_selfW_apply, pairVals_apply, rfPairW_zero,
+  simp only [rfPhaseAPair, rfPairWin_self_apply, pairVals_apply, rfPairW_zero,
     rfPairW_one, rfSelf_update_apply]
   norm_num
 
-lemma rfPhaseAPair_selfW (V : Fin (32 + af) → ℕ) (i : Fin 32)
+lemma rfPhaseAPair_self (V : Fin (32 + af) → ℕ) (i : Fin 32)
     (h : ¬ (20 ≤ (i : ℕ) ∧ (i : ℕ) < 28)) :
     rfPhaseAPair af V (rfSelf af i) = V (rfSelf af i) := by
   have h20 : (i : ℕ) ≠ 20 := by omega
   have h21 : (i : ℕ) ≠ 21 := by omega
-  simp only [rfPhaseAPair, rfPairWin_selfW_apply, dif_neg h, rfSelf_update_apply]
+  simp only [rfPhaseAPair, rfPairWin_self_apply, dif_neg h, rfSelf_update_apply]
   norm_num [h20, h21]
 
 /-- The child's input register: this level's `Nat.pair a m`. -/
 lemma rfPhaseAPre_childIn_zero (haf : 16 ≤ af) (V : Fin (32 + af) → ℕ) :
     rfPhaseAPre af haf V (rfLoc af haf 0)
       = Nat.pair (V (rfSelf af 6)) (V (rfSelf af 7)) := by
-  simp only [rfPhaseAPre, rfSelf_rfLoc_upd haf, rfLoc_rfLoc_update_apply haf]
+  simp only [rfPhaseAPre, rfSelf_rfLoc_upd haf]
   exact rfPhaseAPair_pairOut V
 
 /-- The child's fuel register: this level's fuel. -/
 lemma rfPhaseAPre_childIn_one (haf : 16 ≤ af) (V : Fin (32 + af) → ℕ) :
     rfPhaseAPre af haf V (rfLoc af haf 1) = V (rfSelf af 8) := by
-  simp only [rfPhaseAPre, rfSelf_rfLoc_upd haf, rfLoc_rfLoc_update_apply haf]
-  exact rfPhaseAPair_selfW V 8 (by norm_num)
+  simp only [rfPhaseAPre, rfSelf_rfLoc_upd haf]
+  exact rfPhaseAPair_self V 8 (by norm_num)
 
 /-- The level guard: `Nat.pair a m < fuel`. -/
 lemma rfPhaseAVals_guard_val (haf : 16 ≤ af) (Ff : (Fin af → ℕ) → Fin af → ℕ)
@@ -5230,7 +5172,7 @@ lemma rfPhaseAVals_guard_val (haf : 16 ≤ af) (Ff : (Fin af → ℕ) → Fin af
       = if Nat.pair (V (rfSelf af 6)) (V (rfSelf af 7)) < V (rfSelf af 8) then 1 else 0 := by
   rw [rfPhaseAVals, writeWindow_of_ne _ _ _ (fun t => rfSub_ne_self t 13)]
   simp only [rfPhaseAPre, Function.update_self, rfSelf_rfLoc_upd haf,
-    rfPhaseAPair_pairOut, rfPhaseAPair_selfW V 8 (by norm_num)]
+    rfPhaseAPair_pairOut, rfPhaseAPair_self V 8 (by norm_num)]
 
 end RfindPhaseASem
 
@@ -5244,7 +5186,7 @@ lemma rfPhaseAPre_self (haf : 16 ≤ af) (V : Fin (32 + af) → ℕ) (i : Fin 32
     rfPhaseAPre af haf V (rfSelf af i) = V (rfSelf af i) := by
   simp only [rfPhaseAPre, rfSelf_update_apply, rfSelf_rfLoc_upd haf]
   norm_num [h5, h13]
-  exact rfPhaseAPair_selfW V i hw
+  exact rfPhaseAPair_self V i hw
 
 lemma rfPhaseAVals_self (haf : 16 ≤ af) (Ff : (Fin af → ℕ) → Fin af → ℕ)
     (V : Fin (32 + af) → ℕ) (i : Fin 32)
@@ -5275,10 +5217,10 @@ lemma rfPhaseAPair_lt (V : Fin (32 + af) → ℕ) (B : ℕ) (hB2 : 2 ≤ B) (hV 
   simp only [rfPhaseAPair]
   set V1 := Function.update V (rfSelf af 20) (V (rfSelf af 6)) with hV1
   have b1 : ∀ k, V1 k < B := by
-    intro k; rw [hV1]; simp only [Function.update_apply]; split_ifs <;> exact hV _
+    rw [hV1]; exact update_lt hV (hV _)
   set V2 := Function.update V1 (rfSelf af 21) (V1 (rfSelf af 7)) with hV2
   have b2 : ∀ k, V2 k < B := by
-    intro k; rw [hV2]; simp only [Function.update_apply]; split_ifs <;> exact b1 _
+    rw [hV2]; exact update_lt b1 (b1 _)
   have hw0 : V2 ((rfPairW af) 0) = V (rfSelf af 6) := by
     rw [rfPairW_zero, hV2, rfSelf_update_apply, hV1, rfSelf_update_apply]; norm_num
   have hw1 : V2 ((rfPairW af) 1) = V (rfSelf af 7) := by
@@ -5298,10 +5240,10 @@ lemma rfPhaseAPre_lt (haf : 16 ≤ af) (V : Fin (32 + af) → ℕ) (B : ℕ) (hB
   set V4 := Function.update (rfPhaseAPair af V) (rfLoc af haf 0)
       (rfPhaseAPair af V (rfSelf af 26)) with hV4
   have b4 : ∀ k, V4 k < B := by
-    intro k; rw [hV4]; simp only [Function.update_apply]; split_ifs <;> exact b3 _
+    rw [hV4]; exact update_lt b3 (b3 _)
   set V5 := Function.update V4 (rfLoc af haf 1) (V4 (rfSelf af 8)) with hV5
   have b5 : ∀ k, V5 k < B := by
-    intro k; rw [hV5]; simp only [Function.update_apply]; split_ifs <;> exact b4 _
+    rw [hV5]; exact update_lt b4 (b4 _)
   intro k
   simp only [Function.update_apply]
   split_ifs <;> first
@@ -5375,7 +5317,7 @@ lemma rfPhaseB_hoareTime (haf : 16 ≤ af)
     rfPhaseB1Vals_frame haf W (rfSelf_ne_self 11 5 (by decide))
       (rfSelf_ne_self 11 9 (by decide)) (rfSelf_ne_self 11 14 (by decide))
       (rfSelf_ne_self 11 15 (by decide)) (rfSelf_ne_self 11 17 (by decide))
-  have h2 := rfPhaseB2_hoareTime haf R (rfPhaseB1Vals af haf W) B inp₀ w₀ ys hinp₀ hpark
+  have h2 := rfPhaseB2_hoareTime R (rfPhaseB1Vals af haf W) B inp₀ w₀ ys hinp₀ hpark
     hB2 hb (rfPhaseB1Vals_hit_le_one haf W hsearch hgflag htag)
     (rfPhaseB1Vals_search_le_one haf W hsearch hgflag htag)
     (by rw [f7]; exact hm1) (by rw [f11, f7]; exact hres) (by rw [f10]; exact hfound)
@@ -5405,7 +5347,7 @@ lemma rfBody_hoareTime (haf : 16 ≤ af)
       (EmitPred inp₀ (regsWork R w₀ V) ys)
       (EmitPred inp₀ (regsWork R w₀ (rfBodyVals af haf Ff V)) ys)
       (22 * evalnArithmeticCost B + tf + 22) := by
-  have hA := rfPhaseA_hoareTime haf R Mf Ff tf V B inp₀ w₀ ys hinp₀ hpark hB2 hV hp hFfB hMf
+  have hA := rfPhaseA_hoareTime haf R Mf Ff tf V B inp₀ w₀ ys hinp₀ hpark hB2 hV hp hMf
   have hAb := rfPhaseAVals_lt haf Ff V B hB2 hV hp hFfB
   have a9 : rfPhaseAVals af haf Ff V (rfSelf af 9) = V (rfSelf af 9) :=
     rfPhaseAVals_self haf Ff V 9 (by norm_num) (by norm_num) (by norm_num)
@@ -5435,44 +5377,51 @@ provided the child's registers really hold `evaln` of the child on the level's i
 section RfindLevelSem
 variable {af : ℕ}
 
-lemma rfPhaseB2Vals_result (haf : 16 ≤ af) (X : Fin (32 + af) → ℕ) :
-    rfPhaseB2Vals af haf X (rfSelf af 11)
+lemma rfPhaseB2Vals_result (X : Fin (32 + af) → ℕ) :
+    rfPhaseB2Vals af X (rfSelf af 11)
       = X (rfSelf af 11) + X (rfSelf af 15) * X (rfSelf af 7) := by
   simp only [rfPhaseB2Vals, rfSelf_update_apply]
   norm_num
 
-lemma rfPhaseB2Vals_found (haf : 16 ≤ af) (X : Fin (32 + af) → ℕ) :
-    rfPhaseB2Vals af haf X (rfSelf af 10) = X (rfSelf af 10) + X (rfSelf af 15) := by
+lemma rfPhaseB2Vals_found (X : Fin (32 + af) → ℕ) :
+    rfPhaseB2Vals af X (rfSelf af 10) = X (rfSelf af 10) + X (rfSelf af 15) := by
   simp only [rfPhaseB2Vals, rfSelf_update_apply]
   norm_num
 
-lemma rfPhaseB2Vals_search (haf : 16 ≤ af) (X : Fin (32 + af) → ℕ) :
-    rfPhaseB2Vals af haf X (rfSelf af 9)
+lemma rfPhaseB2Vals_search (X : Fin (32 + af) → ℕ) :
+    rfPhaseB2Vals af X (rfSelf af 9)
       = X (rfSelf af 9) * (X (rfSelf af 12) - X (rfSelf af 14)) := by
   simp only [rfPhaseB2Vals, rfSelf_update_apply]
   norm_num
 
-lemma rfPhaseB2Vals_m (haf : 16 ≤ af) (X : Fin (32 + af) → ℕ) :
-    rfPhaseB2Vals af haf X (rfSelf af 7) = X (rfSelf af 7) + 1 := by
+lemma rfPhaseB2Vals_m (X : Fin (32 + af) → ℕ) :
+    rfPhaseB2Vals af X (rfSelf af 7) = X (rfSelf af 7) + 1 := by
   simp only [rfPhaseB2Vals, rfSelf_update_apply]
   norm_num
 
-lemma rfPhaseB2Vals_fuel (haf : 16 ≤ af) (X : Fin (32 + af) → ℕ) :
-    rfPhaseB2Vals af haf X (rfSelf af 8) = X (rfSelf af 8) - 1 := by
+lemma rfPhaseB2Vals_fuel (X : Fin (32 + af) → ℕ) :
+    rfPhaseB2Vals af X (rfSelf af 8) = X (rfSelf af 8) - 1 := by
   simp only [rfPhaseB2Vals, rfSelf_update_apply]
   norm_num
 
-/-- Phase B2 writes only `7`–`11`, `16` and `17`. -/
-lemma rfPhaseB2Vals_of_ne (haf : 16 ≤ af) (X : Fin (32 + af) → ℕ) (i : Fin 32)
+/-- Phase B2 writes only `7`–`11`, `16` and `17` — of any register at all. -/
+lemma rfPhaseB2Vals_frame (X : Fin (32 + af) → ℕ) {k : Fin (32 + af)}
+    (h7 : k ≠ rfSelf af 7) (h8 : k ≠ rfSelf af 8) (h9 : k ≠ rfSelf af 9)
+    (h10 : k ≠ rfSelf af 10) (h11 : k ≠ rfSelf af 11) (h16 : k ≠ rfSelf af 16)
+    (h17 : k ≠ rfSelf af 17) :
+    rfPhaseB2Vals af X k = X k := by
+  simp only [rfPhaseB2Vals, Function.update_of_ne h8, Function.update_of_ne h7,
+    Function.update_of_ne h9, Function.update_of_ne h17, Function.update_of_ne h16,
+    Function.update_of_ne h10, Function.update_of_ne h11]
+
+/-- Phase B2 writes only `7`–`11`, `16` and `17`: `rfPhaseB2Vals_frame` read at the node's
+    own window. -/
+lemma rfPhaseB2Vals_of_ne (X : Fin (32 + af) → ℕ) (i : Fin 32)
     (h : ¬ (7 ≤ (i : ℕ) ∧ (i : ℕ) ≤ 11)) (h16 : (i : ℕ) ≠ 16) (h17 : (i : ℕ) ≠ 17) :
-    rfPhaseB2Vals af haf X (rfSelf af i) = X (rfSelf af i) := by
-  have h7 : (i : ℕ) ≠ 7 := by omega
-  have h8 : (i : ℕ) ≠ 8 := by omega
-  have h9 : (i : ℕ) ≠ 9 := by omega
-  have h10 : (i : ℕ) ≠ 10 := by omega
-  have h11 : (i : ℕ) ≠ 11 := by omega
-  simp only [rfPhaseB2Vals, rfSelf_update_apply]
-  norm_num [h7, h8, h9, h10, h11, h16, h17]
+    rfPhaseB2Vals af X (rfSelf af i) = X (rfSelf af i) :=
+  rfPhaseB2Vals_frame X (rfSelf_ne_self i 7 (by omega)) (rfSelf_ne_self i 8 (by omega))
+    (rfSelf_ne_self i 9 (by omega)) (rfSelf_ne_self i 10 (by omega))
+    (rfSelf_ne_self i 11 (by omega)) (rfSelf_ne_self i 16 h16) (rfSelf_ne_self i 17 h17)
 
 /-! #### The level -/
 
@@ -5504,26 +5453,21 @@ noncomputable def rfZero (af : ℕ) (haf : 16 ≤ af) (Ff : (Fin af → ℕ) →
 section
 variable (haf : 16 ≤ af) (Ff : (Fin af → ℕ) → Fin af → ℕ) (V : Fin (32 + af) → ℕ)
 
-private lemma rfA_self (i : Fin 32) (hw : ¬ (20 ≤ (i : ℕ) ∧ (i : ℕ) < 28))
-    (h5 : (i : ℕ) ≠ 5) (h13 : (i : ℕ) ≠ 13) :
-    rfPhaseAVals af haf Ff V (rfSelf af i) = V (rfSelf af i) :=
-  rfPhaseAVals_self haf Ff V i hw h5 h13
-
 private lemma rfB1_frame (i : Fin 32) (hw : ¬ (20 ≤ (i : ℕ) ∧ (i : ℕ) < 28))
     (h5 : (i : ℕ) ≠ 5) (h9 : (i : ℕ) ≠ 9) (h13 : (i : ℕ) ≠ 13) (h14 : (i : ℕ) ≠ 14)
     (h15 : (i : ℕ) ≠ 15) (h17 : (i : ℕ) ≠ 17) :
     rfPhaseB1Vals af haf (rfPhaseAVals af haf Ff V) (rfSelf af i) = V (rfSelf af i) := by
-  rw [rfPhaseB1Vals_of_ne haf _ i h5 h9 h14 h15 h17, rfA_self haf Ff V i hw h5 h13]
+  rw [rfPhaseB1Vals_of_ne haf _ i h5 h9 h14 h15 h17, rfPhaseAVals_self haf Ff V i hw h5 h13]
 
 lemma rfBodyVals_a : rfBodyVals af haf Ff V (rfSelf af 6) = V (rfSelf af 6) := by
   rw [rfBodyVals, rfPhaseBVals,
-    rfPhaseB2Vals_of_ne haf _ 6 (by norm_num) (by norm_num) (by norm_num),
+    rfPhaseB2Vals_of_ne _ 6 (by norm_num) (by norm_num) (by norm_num),
     rfB1_frame haf Ff V 6 (by norm_num) (by norm_num) (by norm_num) (by norm_num)
       (by norm_num) (by norm_num) (by norm_num)]
 
 lemma rfBodyVals_one : rfBodyVals af haf Ff V (rfSelf af 12) = V (rfSelf af 12) := by
   rw [rfBodyVals, rfPhaseBVals,
-    rfPhaseB2Vals_of_ne haf _ 12 (by norm_num) (by norm_num) (by norm_num),
+    rfPhaseB2Vals_of_ne _ 12 (by norm_num) (by norm_num) (by norm_num),
     rfB1_frame haf Ff V 12 (by norm_num) (by norm_num) (by norm_num) (by norm_num)
       (by norm_num) (by norm_num) (by norm_num)]
 
@@ -5541,14 +5485,14 @@ private lemma rfB1_live :
     rfPhaseB1Vals af haf (rfPhaseAVals af haf Ff V) (rfSelf af 9)
       = rfLive af haf Ff V := by
   rw [rfPhaseB1Vals_search, rfLive, rfPhaseAVals_guard_val, rfPhaseAVals_child,
-    rfA_self haf Ff V 9 (by norm_num) (by norm_num) (by norm_num)]
+    rfPhaseAVals_self haf Ff V 9 (by norm_num) (by norm_num) (by norm_num)]
   rfl
 
 private lemma rfB1_zero :
     rfPhaseB1Vals af haf (rfPhaseAVals af haf Ff V) (rfSelf af 14)
       = rfZero af haf Ff V := by
   rw [rfPhaseB1Vals_zero, rfZero, rfPhaseAVals_child,
-    rfA_self haf Ff V 12 (by norm_num) (by norm_num) (by norm_num)]
+    rfPhaseAVals_self haf Ff V 12 (by norm_num) (by norm_num) (by norm_num)]
   rfl
 
 private lemma rfB1_hit :
@@ -5557,7 +5501,7 @@ private lemma rfB1_hit :
   rw [rfPhaseB1Vals_hit, ← rfPhaseB1Vals_search haf (rfPhaseAVals af haf Ff V),
     rfB1_live, ← rfB1_zero]
   rw [rfPhaseB1Vals_zero, rfPhaseAVals_child,
-    rfA_self haf Ff V 12 (by norm_num) (by norm_num) (by norm_num)]
+    rfPhaseAVals_self haf Ff V 12 (by norm_num) (by norm_num) (by norm_num)]
 
 lemma rfBodyVals_search :
     rfBodyVals af haf Ff V (rfSelf af 9)
@@ -5669,35 +5613,25 @@ end RfindClose
 section RfindBodyBound
 variable {af : ℕ}
 
-lemma rfPhaseB2Vals_nz (haf : 16 ≤ af) (X : Fin (32 + af) → ℕ) :
-    rfPhaseB2Vals af haf X (rfSelf af 16)
+lemma rfPhaseB2Vals_nz (X : Fin (32 + af) → ℕ) :
+    rfPhaseB2Vals af X (rfSelf af 16)
       = X (rfSelf af 12) - X (rfSelf af 14) := by
   simp only [rfPhaseB2Vals, rfSelf_update_apply]
   norm_num
 
-lemma rfPhaseB2Vals_temp (haf : 16 ≤ af) (X : Fin (32 + af) → ℕ) :
-    rfPhaseB2Vals af haf X (rfSelf af 17)
+lemma rfPhaseB2Vals_temp (X : Fin (32 + af) → ℕ) :
+    rfPhaseB2Vals af X (rfSelf af 17)
       = X (rfSelf af 9) * (X (rfSelf af 12) - X (rfSelf af 14)) := by
   simp only [rfPhaseB2Vals, rfSelf_update_apply]
   norm_num
 
-/-- Phase B2 writes only `7`–`11`, `16` and `17` — of any register at all. -/
-lemma rfPhaseB2Vals_frame (haf : 16 ≤ af) (X : Fin (32 + af) → ℕ) {k : Fin (32 + af)}
-    (h7 : k ≠ rfSelf af 7) (h8 : k ≠ rfSelf af 8) (h9 : k ≠ rfSelf af 9)
-    (h10 : k ≠ rfSelf af 10) (h11 : k ≠ rfSelf af 11) (h16 : k ≠ rfSelf af 16)
-    (h17 : k ≠ rfSelf af 17) :
-    rfPhaseB2Vals af haf X k = X k := by
-  simp only [rfPhaseB2Vals, Function.update_of_ne h8, Function.update_of_ne h7,
-    Function.update_of_ne h9, Function.update_of_ne h17, Function.update_of_ne h16,
-    Function.update_of_ne h10, Function.update_of_ne h11]
-
-lemma rfPhaseB2Vals_lt (haf : 16 ≤ af) (X : Fin (32 + af) → ℕ) (B : ℕ)
+lemma rfPhaseB2Vals_lt (X : Fin (32 + af) → ℕ) (B : ℕ)
     (hX : ∀ k, X k < B)
     (hhit : X (rfSelf af 15) ≤ 1) (hs9 : X (rfSelf af 9) ≤ 1)
     (hm1 : X (rfSelf af 7) + 1 < B)
     (hres : X (rfSelf af 11) + X (rfSelf af 7) < B)
     (hfound : X (rfSelf af 10) + 1 < B) :
-    ∀ k, rfPhaseB2Vals af haf X k < B := by
+    ∀ k, rfPhaseB2Vals af X k < B := by
   have hmul : X (rfSelf af 15) * X (rfSelf af 7) ≤ X (rfSelf af 7) := by
     calc X (rfSelf af 15) * X (rfSelf af 7) ≤ 1 * X (rfSelf af 7) :=
           Nat.mul_le_mul hhit (le_refl _)
@@ -5729,7 +5663,7 @@ lemma rfPhaseB2Vals_lt (haf : 16 ≤ af) (X : Fin (32 + af) → ℕ) (B : ℕ)
         ≤ 1 * (X (rfSelf af 12) - X (rfSelf af 14)) :=
           Nat.mul_le_mul hs9 (le_refl _)
       _ < B := by omega
-  · rw [rfPhaseB2Vals_frame haf X h7 h8 h9 h10 h11 h16 h17]; exact hX k
+  · rw [rfPhaseB2Vals_frame X h7 h8 h9 h10 h11 h16 h17]; exact hX k
 
 /-- **The level keeps every register inside the bound.** -/
 lemma rfBodyVals_lt (haf : 16 ≤ af) (Ff : (Fin af → ℕ) → Fin af → ℕ)
@@ -5773,7 +5707,7 @@ lemma rfBodyVals_lt (haf : 16 ≤ af) (Ff : (Fin af → ℕ) → Fin af → ℕ)
     rw [rfPhaseB1Vals_frame haf _ (rfSelf_ne_self 11 5 (by decide))
       (rfSelf_ne_self 11 9 (by decide)) (rfSelf_ne_self 11 14 (by decide))
       (rfSelf_ne_self 11 15 (by decide)) (rfSelf_ne_self 11 17 (by decide)), a11]
-  exact rfPhaseB2Vals_lt haf (rfPhaseB1Vals af haf (rfPhaseAVals af haf Ff V)) B hB1b
+  exact rfPhaseB2Vals_lt (rfPhaseB1Vals af haf (rfPhaseAVals af haf Ff V)) B hB1b
     (rfPhaseB1Vals_hit_le_one haf _ (by rw [a9]; exact hsearch)
       (rfPhaseAVals_guard haf Ff V) atag)
     (rfPhaseB1Vals_search_le_one haf _ (by rw [a9]; exact hsearch)
@@ -5794,7 +5728,7 @@ variable {af : ℕ}
 /-- **The `rfind'` setup.** Unpairs the input into `a` and the starting index `m`, seeds the
 `searching` flag and the level fuel, and copies the node's fuel — which is also the loop's
 trip count — into the ambient counter `l`. -/
-def rfSetupTM (af : ℕ) (haf : 16 ≤ af) (R : Regs (32 + af) n) (l : Fin n) : TM n :=
+def rfSetupTM (af : ℕ) (R : Regs (32 + af) n) (l : Fin n) : TM n :=
   seqTM (unpairTM ((rfUnpairW af).trans R) (R (rfSelf af 0))) <|
   seqTM (copyIntoTM (R (rfSelf af 20)) (R (rfSelf af 6))) <|
   seqTM (copyIntoTM (R (rfSelf af 21)) (R (rfSelf af 7))) <|
@@ -5807,7 +5741,7 @@ def rfSetupTM (af : ℕ) (haf : 16 ≤ af) (R : Regs (32 + af) n) (l : Fin n) : 
 
 /-- The ambient register vector `rfSetupTM` produces. The loop counter is not part of it: it
 lives outside the node's block. -/
-noncomputable def rfSetupVals (af : ℕ) (haf : 16 ≤ af) (V : Fin (32 + af) → ℕ) :
+noncomputable def rfSetupVals (af : ℕ) (V : Fin (32 + af) → ℕ) :
     Fin (32 + af) → ℕ :=
   let U1 := writeWindow (rfUnpairW af) V
               (unpairVals (fun j => V (rfUnpairW af j)) (V (rfSelf af 0)))
@@ -5819,21 +5753,20 @@ noncomputable def rfSetupVals (af : ℕ) (haf : 16 ≤ af) (V : Fin (32 + af) �
   let U7 := Function.update U6 (rfSelf af 11) 0
   Function.update U7 (rfSelf af 12) 1
 
-set_option maxHeartbeats 1000000 in
 /-- **`rfSetupTM` Hoare specification.** -/
-lemma rfSetup_hoareTime (haf : 16 ≤ af)
+lemma rfSetup_hoareTime
     (R : Regs (32 + af) n) (l : Fin n) (hl : ∀ k, R k ≠ l)
     (V : Fin (32 + af) → ℕ) (B : ℕ)
     (inp₀ : Tape) (w₀ : Fin n → Tape) (ys : List Bool)
     (hinp₀ : Parked inp₀) (hpark : ∀ i, Parked (w₀ i))
     (cl : ℕ) (hlc : w₀ l = regTape cl) (hclB : cl ≤ B)
     (hB2 : 2 ≤ B) (hV : ∀ k, V k < B) :
-    (rfSetupTM af haf R l).HoareTime
+    (rfSetupTM af R l).HoareTime
       (EmitPred inp₀ (regsWork R w₀ V) ys)
       (EmitPred inp₀
         (regsWork R
-          (Function.update w₀ l (regTape (rfSetupVals af haf V (rfSelf af 1))))
-          (rfSetupVals af haf V)) ys)
+          (Function.update w₀ l (regTape (rfSetupVals af V (rfSelf af 1))))
+          (rfSetupVals af V)) ys)
       (9 * evalnArithmeticCost B + 8) := by
   have hpv := parked_regsWork R hpark
   have hle : ∀ k, V k ≤ B := fun k => Nat.le_of_lt (hV k)
@@ -5865,7 +5798,7 @@ lemma rfSetup_hoareTime (haf : 16 ≤ af)
     (copyIntoTime_le_arith _ _ B (Nat.le_of_lt (b1 _)) (Nat.le_of_lt (b1 _)))
   set V2 := Function.update V1 (rfSelf af 6) (V1 (rfSelf af 20)) with hV2
   have b2 : ∀ k, V2 k < B := by
-    intro k; rw [hV2]; simp only [Function.update_apply]; split_ifs <;> exact b1 _
+    rw [hV2]; exact update_lt b1 (b1 _)
   -- S3: m := the right component
   have h3 := copyIntoTM_hoareTime (R (rfSelf af 21)) (R (rfSelf af 7))
       (Regs.ne R (rfSelf_ne_self 21 7 (by decide)))
@@ -5877,7 +5810,7 @@ lemma rfSetup_hoareTime (haf : 16 ≤ af)
     (copyIntoTime_le_arith _ _ B (Nat.le_of_lt (b2 _)) (Nat.le_of_lt (b2 _)))
   set V3 := Function.update V2 (rfSelf af 7) (V2 (rfSelf af 21)) with hV3
   have b3 : ∀ k, V3 k < B := by
-    intro k; rw [hV3]; simp only [Function.update_apply]; split_ifs <;> exact b2 _
+    rw [hV3]; exact update_lt b2 (b2 _)
   -- S4: curFuel := fuel
   have h4 := copyIntoTM_hoareTime (R (rfSelf af 1)) (R (rfSelf af 8))
       (Regs.ne R (rfSelf_ne_self 1 8 (by decide)))
@@ -5889,7 +5822,7 @@ lemma rfSetup_hoareTime (haf : 16 ≤ af)
     (copyIntoTime_le_arith _ _ B (Nat.le_of_lt (b3 _)) (Nat.le_of_lt (b3 _)))
   set V4 := Function.update V3 (rfSelf af 8) (V3 (rfSelf af 1)) with hV4
   have b4 : ∀ k, V4 k < B := by
-    intro k; rw [hV4]; simp only [Function.update_apply]; split_ifs <;> exact b3 _
+    rw [hV4]; exact update_lt b3 (b3 _)
   -- S5: searching := 1
   have h5 := setOneTM_hoareTime (R (rfSelf af 9)) (V4 (rfSelf af 9)) inp₀
       (regsWork R w₀ V4) ys hinp₀ (fun i _ => hpv V4 i) (regsWork_apply R w₀ V4 _)
@@ -5897,9 +5830,7 @@ lemma rfSetup_hoareTime (haf : 16 ≤ af)
   replace h5 := h5.mono_bound (setOneTime_le_arith _ B (Nat.le_of_lt (b4 _)))
   set V5 := Function.update V4 (rfSelf af 9) 1 with hV5
   have b5 : ∀ k, V5 k < B := by
-    intro k; rw [hV5]; simp only [Function.update_apply]; split_ifs
-    · omega
-    · exact b4 _
+    rw [hV5]; exact update_lt b4 (by omega)
   -- S6: found := 0
   have h6 := clearRegTM_hoareTime (R (rfSelf af 10)) (V5 (rfSelf af 10)) inp₀
       (regsWork R w₀ V5) ys hinp₀ (fun i _ => hpv V5 i) (regsWork_apply R w₀ V5 _)
@@ -5907,9 +5838,7 @@ lemma rfSetup_hoareTime (haf : 16 ≤ af)
   replace h6 := h6.mono_bound (regOpTime_le_arith _ B (Nat.le_of_lt (b5 _)))
   set V6 := Function.update V5 (rfSelf af 10) 0 with hV6
   have b6 : ∀ k, V6 k < B := by
-    intro k; rw [hV6]; simp only [Function.update_apply]; split_ifs
-    · omega
-    · exact b5 _
+    rw [hV6]; exact update_lt b5 (by omega)
   -- S7: result := 0
   have h7 := clearRegTM_hoareTime (R (rfSelf af 11)) (V6 (rfSelf af 11)) inp₀
       (regsWork R w₀ V6) ys hinp₀ (fun i _ => hpv V6 i) (regsWork_apply R w₀ V6 _)
@@ -5917,9 +5846,7 @@ lemma rfSetup_hoareTime (haf : 16 ≤ af)
   replace h7 := h7.mono_bound (regOpTime_le_arith _ B (Nat.le_of_lt (b6 _)))
   set V7 := Function.update V6 (rfSelf af 11) 0 with hV7
   have b7 : ∀ k, V7 k < B := by
-    intro k; rw [hV7]; simp only [Function.update_apply]; split_ifs
-    · omega
-    · exact b6 _
+    rw [hV7]; exact update_lt b6 (by omega)
   -- S8: the constant one
   have h8 := setOneTM_hoareTime (R (rfSelf af 12)) (V7 (rfSelf af 12)) inp₀
       (regsWork R w₀ V7) ys hinp₀ (fun i _ => hpv V7 i) (regsWork_apply R w₀ V7 _)
@@ -5927,9 +5854,7 @@ lemma rfSetup_hoareTime (haf : 16 ≤ af)
   replace h8 := h8.mono_bound (setOneTime_le_arith _ B (Nat.le_of_lt (b7 _)))
   set V8 := Function.update V7 (rfSelf af 12) 1 with hV8
   have b8 : ∀ k, V8 k < B := by
-    intro k; rw [hV8]; simp only [Function.update_apply]; split_ifs
-    · omega
-    · exact b7 _
+    rw [hV8]; exact update_lt b7 (by omega)
   -- S9: the loop counter, an ambient register outside the block
   have h9 := copyIntoTM_hoareTime (R (rfSelf af 1)) l (hl _)
       (V8 (rfSelf af 1)) cl
@@ -5961,6 +5886,8 @@ noncomputable def rfFinishVals (af : ℕ) (W : Fin (32 + af) → ℕ) : Fin (32 
   let W1 := Function.update W (rfSelf af 2) (W (rfSelf af 10))
   Function.update W1 (rfSelf af 3) (W1 (rfSelf af 11))
 
+/-- **`rfFinishTM` Hoare specification.** The search's `found` flag and `result` register
+    are copied into the node's answer registers. -/
 lemma rfFinish_hoareTime (R : Regs (32 + af) n) (W : Fin (32 + af) → ℕ) (B : ℕ)
     (inp₀ : Tape) (w₀ : Fin n → Tape) (ys : List Bool)
     (hinp₀ : Parked inp₀) (hpark : ∀ i, Parked (w₀ i)) (hW : ∀ k, W k < B) :
@@ -5979,7 +5906,7 @@ lemma rfFinish_hoareTime (R : Regs (32 + af) n) (W : Fin (32 + af) → ℕ) (B :
   replace h1 := h1.mono_bound (copyIntoTime_le_arith _ _ B (hle _) (hle _))
   set W1 := Function.update W (rfSelf af 2) (W (rfSelf af 10)) with hW1
   have b1 : ∀ k, W1 k < B := by
-    intro k; rw [hW1]; simp only [Function.update_apply]; split_ifs <;> exact hW _
+    rw [hW1]; exact update_lt hW (hW _)
   have h2 := copyIntoTM_hoareTime (R (rfSelf af 11)) (R (rfSelf af 3))
       (Regs.ne R (rfSelf_ne_self 11 3 (by decide)))
       (W1 (rfSelf af 11)) (W1 (rfSelf af 3))
@@ -6001,7 +5928,7 @@ section RfindCompose
 variable {af : ℕ}
 
 /-- The body's side conditions, at one loop state. -/
-def RfBodyOK (af B : ℕ) (haf : 16 ≤ af) (V : Fin (32 + af) → ℕ) : Prop :=
+def RfBodyOK (af B : ℕ) (V : Fin (32 + af) → ℕ) : Prop :=
   (∀ k, V k < B) ∧ Nat.pair (V (rfSelf af 6)) (V (rfSelf af 7)) < B ∧
     V (rfSelf af 9) ≤ 1 ∧ V (rfSelf af 7) + 1 < B ∧
     V (rfSelf af 11) + V (rfSelf af 7) < B ∧ V (rfSelf af 10) + 1 < B
@@ -6016,7 +5943,7 @@ lemma rfLoop_hoareTime (haf : 16 ≤ af)
     (hw₀l : w₀ l = regTape t)
     (hFfB : ∀ i, i < t → ∀ k, Ff (rfChildIn af haf (rfLoopVals af haf Ff V₀ i)) k < B)
     (hFfTag : ∀ u : Fin af → ℕ, Ff u ⟨2, by omega⟩ ≤ 1)
-    (hOK : ∀ i, i < t → RfBodyOK af B haf (rfLoopVals af haf Ff V₀ i))
+    (hOK : ∀ i, i < t → RfBodyOK af B (rfLoopVals af haf Ff V₀ i))
     (hMf : ∀ i, i < t → ∀ Wb : Fin n → Tape, (∀ j, Parked (Wb j)) →
       Mf.HoareTime
         (EmitPred inp₀ (regsWork ((rfSub af).trans R) Wb
@@ -6040,16 +5967,15 @@ lemma rfLoop_hoareTime (haf : 16 ≤ af)
 ambient counter `l`, then the finish. -/
 def rfindTM (af : ℕ) (haf : 16 ≤ af) (R : Regs (32 + af) n) (l : Fin n) (Mf : TM n) :
     TM n :=
-  seqTM (rfSetupTM af haf R l)
+  seqTM (rfSetupTM af R l)
     (seqTM (forRegTM (rfBodyTM af haf R Mf) l) (rfFinishTM af R))
 
 /-- The register vector the whole `rfind'` node produces. -/
 noncomputable def rfindVals (af : ℕ) (haf : 16 ≤ af)
     (Ff : (Fin af → ℕ) → Fin af → ℕ) (V : Fin (32 + af) → ℕ) : Fin (32 + af) → ℕ :=
   rfFinishVals af
-    (rfLoopVals af haf Ff (rfSetupVals af haf V) (rfSetupVals af haf V (rfSelf af 1)))
+    (rfLoopVals af haf Ff (rfSetupVals af V) (rfSetupVals af V (rfSelf af 1)))
 
-set_option maxHeartbeats 1000000 in
 /-- **`rfind'`, complete.** -/
 lemma rfindTM_hoareTime (haf : 16 ≤ af)
     (R : Regs (32 + af) n) (l : Fin n) (hl : ∀ k, R k ≠ l) (Mf : TM n)
@@ -6059,32 +5985,32 @@ lemma rfindTM_hoareTime (haf : 16 ≤ af)
     (hinp₀ : Parked inp₀) (hpark : ∀ i, Parked (w₀ i))
     (cl : ℕ) (hlc : w₀ l = regTape cl) (hclB : cl ≤ B)
     (hB2 : 2 ≤ B) (hV : ∀ k, V k < B)
-    (hFfB : ∀ i, i < rfSetupVals af haf V (rfSelf af 1) →
+    (hFfB : ∀ i, i < rfSetupVals af V (rfSelf af 1) →
       ∀ k, Ff (rfChildIn af haf
-        (rfLoopVals af haf Ff (rfSetupVals af haf V) i)) k < B)
+        (rfLoopVals af haf Ff (rfSetupVals af V) i)) k < B)
     (hFfTag : ∀ u : Fin af → ℕ, Ff u ⟨2, by omega⟩ ≤ 1)
-    (hOK : ∀ i, i ≤ rfSetupVals af haf V (rfSelf af 1) →
-      RfBodyOK af B haf (rfLoopVals af haf Ff (rfSetupVals af haf V) i))
-    (hMf : ∀ i, i < rfSetupVals af haf V (rfSelf af 1) →
+    (hOK : ∀ i, i ≤ rfSetupVals af V (rfSelf af 1) →
+      RfBodyOK af B (rfLoopVals af haf Ff (rfSetupVals af V) i))
+    (hMf : ∀ i, i < rfSetupVals af V (rfSelf af 1) →
       ∀ Wb : Fin n → Tape, (∀ j, Parked (Wb j)) →
       Mf.HoareTime
         (EmitPred inp₀ (regsWork ((rfSub af).trans R) Wb
-          (rfChildIn af haf (rfLoopVals af haf Ff (rfSetupVals af haf V) i))) ys)
+          (rfChildIn af haf (rfLoopVals af haf Ff (rfSetupVals af V) i))) ys)
         (EmitPred inp₀ (regsWork ((rfSub af).trans R) Wb
           (Ff (rfChildIn af haf
-            (rfLoopVals af haf Ff (rfSetupVals af haf V) i)))) ys) tf) :
+            (rfLoopVals af haf Ff (rfSetupVals af V) i)))) ys) tf) :
     (rfindTM af haf R l Mf).HoareTime
       (EmitPred inp₀ (regsWork R w₀ V) ys)
       (EmitPred inp₀
         (regsWork R
-          (Function.update w₀ l (regTape (rfSetupVals af haf V (rfSelf af 1))))
+          (Function.update w₀ l (regTape (rfSetupVals af V (rfSelf af 1))))
           (rfindVals af haf Ff V)) ys)
       ((9 * evalnArithmeticCost B + 8) + 1 +
-        ((rfSetupVals af haf V (rfSelf af 1)) *
+        ((rfSetupVals af V (rfSelf af 1)) *
             ((22 * evalnArithmeticCost B + tf + 22) + 2) +
-          ((rfSetupVals af haf V (rfSelf af 1)) + 2) + 1 +
+          ((rfSetupVals af V (rfSelf af 1)) + 2) + 1 +
           (2 * evalnArithmeticCost B + 1))) := by
-  set S := rfSetupVals af haf V with hS
+  set S := rfSetupVals af V with hS
   set t := S (rfSelf af 1) with ht
   set w₁ := Function.update w₀ l (regTape t) with hw₁
   have hpark₁ : ∀ i, Parked (w₁ i) := by
@@ -6092,7 +6018,7 @@ lemma rfindTM_hoareTime (haf : 16 ≤ af)
     by_cases hi : i = l
     · subst hi; rw [Function.update_self]; exact parked_regTape _
     · rw [Function.update_of_ne hi]; exact hpark i
-  have hsetup := rfSetup_hoareTime haf R l hl V B inp₀ w₀ ys hinp₀ hpark cl hlc hclB
+  have hsetup := rfSetup_hoareTime R l hl V B inp₀ w₀ ys hinp₀ hpark cl hlc hclB
     hB2 hV
   have hloop := rfLoop_hoareTime (af := af) haf R l hl Mf Ff tf B t S inp₀ w₁ ys hinp₀
     hpark₁ hB2 (by rw [hw₁, Function.update_self]) hFfB hFfTag
@@ -6113,45 +6039,45 @@ variable {af : ℕ}
 /-- Register `1`, the node's fuel, is preserved by the setup. For `rfind'` it is also the
     loop's trip count, which is why `rfBlockVals` seeds the counter from it — hence the
     name. -/
-lemma rfSetupVals_count (haf : 16 ≤ af) (V : Fin (32 + af) → ℕ) :
-    rfSetupVals af haf V (rfSelf af 1) = V (rfSelf af 1) := by
-  simp only [rfSetupVals, rfSelf_update_apply, rfUnpairWin_selfW_apply]
+lemma rfSetupVals_count (V : Fin (32 + af) → ℕ) :
+    rfSetupVals af V (rfSelf af 1) = V (rfSelf af 1) := by
+  simp only [rfSetupVals, rfSelf_update_apply, rfUnpairWin_self_apply]
   norm_num
 
-lemma rfSetupVals_a (haf : 16 ≤ af) (V : Fin (32 + af) → ℕ) :
-    rfSetupVals af haf V (rfSelf af 6) = (Nat.unpair (V (rfSelf af 0))).1 := by
-  simp only [rfSetupVals, rfSelf_update_apply, rfUnpairWin_selfW_apply]
+lemma rfSetupVals_a (V : Fin (32 + af) → ℕ) :
+    rfSetupVals af V (rfSelf af 6) = (Nat.unpair (V (rfSelf af 0))).1 := by
+  simp only [rfSetupVals, rfSelf_update_apply, rfUnpairWin_self_apply]
   norm_num
   exact unpairVals_zero _ _
 
-lemma rfSetupVals_m (haf : 16 ≤ af) (V : Fin (32 + af) → ℕ) :
-    rfSetupVals af haf V (rfSelf af 7) = (Nat.unpair (V (rfSelf af 0))).2 := by
-  simp only [rfSetupVals, rfSelf_update_apply, rfUnpairWin_selfW_apply]
+lemma rfSetupVals_m (V : Fin (32 + af) → ℕ) :
+    rfSetupVals af V (rfSelf af 7) = (Nat.unpair (V (rfSelf af 0))).2 := by
+  simp only [rfSetupVals, rfSelf_update_apply, rfUnpairWin_self_apply]
   norm_num
   exact unpairVals_one _ _
 
-lemma rfSetupVals_fuel (haf : 16 ≤ af) (V : Fin (32 + af) → ℕ) :
-    rfSetupVals af haf V (rfSelf af 8) = V (rfSelf af 1) := by
-  simp only [rfSetupVals, rfSelf_update_apply, rfUnpairWin_selfW_apply]
+lemma rfSetupVals_fuel (V : Fin (32 + af) → ℕ) :
+    rfSetupVals af V (rfSelf af 8) = V (rfSelf af 1) := by
+  simp only [rfSetupVals, rfSelf_update_apply, rfUnpairWin_self_apply]
   norm_num
 
-lemma rfSetupVals_search (haf : 16 ≤ af) (V : Fin (32 + af) → ℕ) :
-    rfSetupVals af haf V (rfSelf af 9) = 1 := by
+lemma rfSetupVals_search (V : Fin (32 + af) → ℕ) :
+    rfSetupVals af V (rfSelf af 9) = 1 := by
   simp only [rfSetupVals, rfSelf_update_apply]
   norm_num
 
-lemma rfSetupVals_found (haf : 16 ≤ af) (V : Fin (32 + af) → ℕ) :
-    rfSetupVals af haf V (rfSelf af 10) = 0 := by
+lemma rfSetupVals_found (V : Fin (32 + af) → ℕ) :
+    rfSetupVals af V (rfSelf af 10) = 0 := by
   simp only [rfSetupVals, rfSelf_update_apply]
   norm_num
 
-lemma rfSetupVals_result (haf : 16 ≤ af) (V : Fin (32 + af) → ℕ) :
-    rfSetupVals af haf V (rfSelf af 11) = 0 := by
+lemma rfSetupVals_result (V : Fin (32 + af) → ℕ) :
+    rfSetupVals af V (rfSelf af 11) = 0 := by
   simp only [rfSetupVals, rfSelf_update_apply]
   norm_num
 
-lemma rfSetupVals_one (haf : 16 ≤ af) (V : Fin (32 + af) → ℕ) :
-    rfSetupVals af haf V (rfSelf af 12) = 1 := by
+lemma rfSetupVals_one (V : Fin (32 + af) → ℕ) :
+    rfSetupVals af V (rfSelf af 12) = 1 := by
   simp only [rfSetupVals, rfSelf_update_apply]
   norm_num
 
@@ -6176,10 +6102,10 @@ lemma rfindVals_encodes (haf : 16 ≤ af) (cf : Nat.Partrec.Code)
       rfindVals af haf Ff V (rfSelf af 3)
         = resultVal (Nat.Partrec.Code.evaln (V (rfSelf af 1)) cf.rfind'
             (V (rfSelf af 0))) := by
-  have hS12 := rfSetupVals_one haf V
+  have hS12 := rfSetupVals_one V
   obtain ⟨-, -, -, -, htriple⟩ :=
-    rfLoopVals_spec haf cf Ff hFf (rfSetupVals af haf V) hS12
-      (rfSetupVals af haf V (rfSelf af 1))
+    rfLoopVals_spec haf cf Ff hFf (rfSetupVals af V) hS12
+      (rfSetupVals af V (rfSelf af 1))
   rw [rfSetupVals_a, rfSetupVals_search, rfSetupVals_found, rfSetupVals_result,
     rfSetupVals_fuel, rfSetupVals_m, rfSetupVals_count] at htriple
   have hspec := rfIter_spec cf (Nat.unpair (V (rfSelf af 0))).1 (V (rfSelf af 1))
@@ -6244,84 +6170,84 @@ section PairSemantics
 variable {af ag : ℕ}
 
 lemma pairLeftIn_zero (haf : 16 ≤ af) (V : Fin (16 + af + ag) → ℕ) :
-    pairLeftIn af ag haf V ⟨0, by omega⟩ = V (selfW af ag 0) := by
-  have h : leftSub af ag ⟨0, by omega⟩ = leftLoc af ag haf 0 := by
-    apply Fin.ext; simp [leftSub, leftLoc, shiftEmb_val]
+    pairLeftIn af ag haf V ⟨0, by omega⟩ = V (binSelf af ag 0) := by
+  have h : binLeftSub af ag ⟨0, by omega⟩ = binLeftLoc af ag haf 0 := by
+    apply Fin.ext; simp [binLeftSub, binLeftLoc, shiftEmb_val]
   simp only [pairLeftIn, h]
-  rw [leftLoc_update_apply haf]
+  rw [binLeftLoc_update_apply haf]
   norm_num
 
 lemma pairLeftIn_one (haf : 16 ≤ af) (V : Fin (16 + af + ag) → ℕ) :
-    pairLeftIn af ag haf V ⟨1, by omega⟩ = V (selfW af ag 1) := by
-  have h : leftSub af ag ⟨1, by omega⟩ = leftLoc af ag haf 1 := by
-    apply Fin.ext; simp [leftSub, leftLoc, shiftEmb_val]
+    pairLeftIn af ag haf V ⟨1, by omega⟩ = V (binSelf af ag 1) := by
+  have h : binLeftSub af ag ⟨1, by omega⟩ = binLeftLoc af ag haf 1 := by
+    apply Fin.ext; simp [binLeftSub, binLeftLoc, shiftEmb_val]
   simp only [pairLeftIn, h]
-  rw [leftLoc_update_apply haf]
+  rw [binLeftLoc_update_apply haf]
   norm_num
 
 lemma pairRightIn_zero (haf : 16 ≤ af) (hag : 16 ≤ ag)
     (Ff : (Fin af → ℕ) → Fin af → ℕ) (V : Fin (16 + af + ag) → ℕ) :
-    pairRightIn af ag haf hag Ff V ⟨0, by omega⟩ = V (selfW af ag 0) := by
-  have h : rightSub af ag ⟨0, by omega⟩ = rightLoc af ag hag 0 := by
-    apply Fin.ext; simp [rightSub, rightLoc, shiftEmb_val]
+    pairRightIn af ag haf hag Ff V ⟨0, by omega⟩ = V (binSelf af ag 0) := by
+  have h : binRightSub af ag ⟨0, by omega⟩ = binRightLoc af ag hag 0 := by
+    apply Fin.ext; simp [binRightSub, binRightLoc, shiftEmb_val]
   simp only [pairRightIn, h]
-  rw [rightLoc_update_apply hag]
+  rw [binRightLoc_update_apply hag]
   norm_num
 
 lemma pairRightIn_one (haf : 16 ≤ af) (hag : 16 ≤ ag)
     (Ff : (Fin af → ℕ) → Fin af → ℕ) (V : Fin (16 + af + ag) → ℕ) :
-    pairRightIn af ag haf hag Ff V ⟨1, by omega⟩ = V (selfW af ag 1) := by
-  have h : rightSub af ag ⟨1, by omega⟩ = rightLoc af ag hag 1 := by
-    apply Fin.ext; simp [rightSub, rightLoc, shiftEmb_val]
+    pairRightIn af ag haf hag Ff V ⟨1, by omega⟩ = V (binSelf af ag 1) := by
+  have h : binRightSub af ag ⟨1, by omega⟩ = binRightLoc af ag hag 1 := by
+    apply Fin.ext; simp [binRightSub, binRightLoc, shiftEmb_val]
   simp only [pairRightIn, h]
-  rw [rightLoc_update_apply hag]
+  rw [binRightLoc_update_apply hag]
   norm_num
 
 /-! ### Phase A's read-offs -/
 
-lemma pairPhaseAVec_selfW (haf : 16 ≤ af) (hag : 16 ≤ ag)
+lemma pairPhaseAVec_self (haf : 16 ≤ af) (hag : 16 ≤ ag)
     (Ff : (Fin af → ℕ) → Fin af → ℕ) (Fg : (Fin ag → ℕ) → Fin ag → ℕ)
     (V : Fin (16 + af + ag) → ℕ) (i : Fin 16) :
-    pairPhaseAVec af ag haf hag Ff Fg V (selfW af ag i) = V (selfW af ag i) := by
-  simp only [pairPhaseAVec, rightSub_win_selfW haf, leftSub_win_selfW,
-    selfW_leftLoc_upd haf, selfW_rightLoc_upd hag haf]
+    pairPhaseAVec af ag haf hag Ff Fg V (binSelf af ag i) = V (binSelf af ag i) := by
+  simp only [pairPhaseAVec, binRightSub_win_self haf, binLeftSub_win_self,
+    binSelf_leftLoc_upd haf, binSelf_rightLoc_upd hag haf]
 
 lemma pairPhaseAVec_leftLoc (haf : 16 ≤ af) (hag : 16 ≤ ag)
     (Ff : (Fin af → ℕ) → Fin af → ℕ) (Fg : (Fin ag → ℕ) → Fin ag → ℕ)
     (V : Fin (16 + af + ag) → ℕ) (j : Fin 16) :
-    pairPhaseAVec af ag haf hag Ff Fg V (leftLoc af ag haf j)
+    pairPhaseAVec af ag haf hag Ff Fg V (binLeftLoc af ag haf j)
       = Ff (pairLeftIn af ag haf V) ⟨(j : ℕ), by have := j.isLt; omega⟩ := by
-  simp only [pairPhaseAVec, rightSub_win_leftLoc haf, leftLoc_rightLoc_upd haf hag,
-    leftSub_win_leftLoc haf]
+  simp only [pairPhaseAVec, binRightSub_win_leftLoc haf, binLeftLoc_rightLoc_upd haf hag,
+    binLeftSub_win_leftLoc haf]
   rfl
 
 lemma pairPhaseAVec_rightLoc (haf : 16 ≤ af) (hag : 16 ≤ ag)
     (Ff : (Fin af → ℕ) → Fin af → ℕ) (Fg : (Fin ag → ℕ) → Fin ag → ℕ)
     (V : Fin (16 + af + ag) → ℕ) (j : Fin 16) :
-    pairPhaseAVec af ag haf hag Ff Fg V (rightLoc af ag hag j)
+    pairPhaseAVec af ag haf hag Ff Fg V (binRightLoc af ag hag j)
       = Fg (pairRightIn af ag haf hag Ff V) ⟨(j : ℕ), by have := j.isLt; omega⟩ := by
-  simp only [pairPhaseAVec, rightSub_win_rightLoc hag]
+  simp only [pairPhaseAVec, binRightSub_win_rightLoc hag]
   rfl
 
 /-! ### Phase B's read-offs -/
 
 lemma pairPhaseBVec_tag (haf : 16 ≤ af) (hag : 16 ≤ ag) (W : Fin (16 + af + ag) → ℕ) :
-    pairPhaseBVec af ag haf hag W (selfW af ag 2)
-      = (if W (selfW af ag 0) < W (selfW af ag 1) then 1 else 0)
-          * W (leftLoc af ag haf 2) * W (rightLoc af ag hag 2) := by
-  simp only [pairPhaseBVec, selfW_update_apply, leftLoc_selfW_upd haf,
-    rightLoc_selfW_upd hag haf, pairWin_leftLoc haf, pairWin_rightLoc hag haf,
-    pairWin_selfW_apply]
+    pairPhaseBVec af ag haf hag W (binSelf af ag 2)
+      = (if W (binSelf af ag 0) < W (binSelf af ag 1) then 1 else 0)
+          * W (binLeftLoc af ag haf 2) * W (binRightLoc af ag hag 2) := by
+  simp only [pairPhaseBVec, binSelf_update_apply, binLeftLoc_self_upd haf,
+    binRightLoc_self_upd hag haf, pairWin_leftLoc haf, pairWin_rightLoc hag haf,
+    pairWin_self_apply]
   norm_num
 
 lemma pairPhaseBVec_val (haf : 16 ≤ af) (hag : 16 ≤ ag) (W : Fin (16 + af + ag) → ℕ) :
-    pairPhaseBVec af ag haf hag W (selfW af ag 3)
-      = pairPhaseBVec af ag haf hag W (selfW af ag 2)
-          * Nat.pair (W (leftLoc af ag haf 3)) (W (rightLoc af ag hag 3)) := by
+    pairPhaseBVec af ag haf hag W (binSelf af ag 3)
+      = pairPhaseBVec af ag haf hag W (binSelf af ag 2)
+          * Nat.pair (W (binLeftLoc af ag haf 3)) (W (binRightLoc af ag hag 3)) := by
   rw [pairPhaseBVec_tag]
-  simp only [pairPhaseBVec, selfW_update_apply, leftLoc_selfW_upd haf,
-    rightLoc_selfW_upd hag haf, pairWin_leftLoc haf, pairWin_rightLoc hag haf,
-    pairWin_twelve, pairWin_selfW_apply, pairVals_apply, pairTrans_zero, pairTrans_one]
+  simp only [pairPhaseBVec, binSelf_update_apply, binLeftLoc_self_upd haf,
+    binRightLoc_self_upd hag haf, pairWin_leftLoc haf, pairWin_rightLoc hag haf,
+    pairWin_self_apply, pairVals_apply, pairTrans_zero, pairTrans_one]
   norm_num
 
 end PairSemantics
@@ -6335,84 +6261,84 @@ section CompSemantics
 variable {af ag : ℕ}
 
 lemma compRightIn_zero (hag : 16 ≤ ag) (V : Fin (16 + af + ag) → ℕ) :
-    compRightIn af ag hag V ⟨0, by omega⟩ = V (selfW af ag 0) := by
-  have h : rightSub af ag ⟨0, by omega⟩ = rightLoc af ag hag 0 := by
-    apply Fin.ext; simp [rightSub, rightLoc, shiftEmb_val]
+    compRightIn af ag hag V ⟨0, by omega⟩ = V (binSelf af ag 0) := by
+  have h : binRightSub af ag ⟨0, by omega⟩ = binRightLoc af ag hag 0 := by
+    apply Fin.ext; simp [binRightSub, binRightLoc, shiftEmb_val]
   simp only [compRightIn, h]
-  rw [rightLoc_update_apply hag]
+  rw [binRightLoc_update_apply hag]
   norm_num
 
 lemma compRightIn_one (hag : 16 ≤ ag) (V : Fin (16 + af + ag) → ℕ) :
-    compRightIn af ag hag V ⟨1, by omega⟩ = V (selfW af ag 1) := by
-  have h : rightSub af ag ⟨1, by omega⟩ = rightLoc af ag hag 1 := by
-    apply Fin.ext; simp [rightSub, rightLoc, shiftEmb_val]
+    compRightIn af ag hag V ⟨1, by omega⟩ = V (binSelf af ag 1) := by
+  have h : binRightSub af ag ⟨1, by omega⟩ = binRightLoc af ag hag 1 := by
+    apply Fin.ext; simp [binRightSub, binRightLoc, shiftEmb_val]
   simp only [compRightIn, h]
-  rw [rightLoc_update_apply hag]
+  rw [binRightLoc_update_apply hag]
   norm_num
 
 lemma compLeftIn_zero (haf : 16 ≤ af) (hag : 16 ≤ ag)
     (Fg : (Fin ag → ℕ) → Fin ag → ℕ) (V : Fin (16 + af + ag) → ℕ) :
     compLeftIn af ag haf hag Fg V ⟨0, by omega⟩
       = Fg (compRightIn af ag hag V) ⟨3, by omega⟩ := by
-  have h : leftSub af ag ⟨0, by omega⟩ = leftLoc af ag haf 0 := by
-    apply Fin.ext; simp [leftSub, leftLoc, shiftEmb_val]
+  have h : binLeftSub af ag ⟨0, by omega⟩ = binLeftLoc af ag haf 0 := by
+    apply Fin.ext; simp [binLeftSub, binLeftLoc, shiftEmb_val]
   simp only [compLeftIn, h]
-  rw [leftLoc_update_apply haf]
+  rw [binLeftLoc_update_apply haf]
   norm_num
-  rw [rightSub_win_rightLoc hag]
+  rw [binRightSub_win_rightLoc hag]
   congr 1
 
 lemma compLeftIn_one (haf : 16 ≤ af) (hag : 16 ≤ ag)
     (Fg : (Fin ag → ℕ) → Fin ag → ℕ) (V : Fin (16 + af + ag) → ℕ) :
-    compLeftIn af ag haf hag Fg V ⟨1, by omega⟩ = V (selfW af ag 1) := by
-  have h : leftSub af ag ⟨1, by omega⟩ = leftLoc af ag haf 1 := by
-    apply Fin.ext; simp [leftSub, leftLoc, shiftEmb_val]
+    compLeftIn af ag haf hag Fg V ⟨1, by omega⟩ = V (binSelf af ag 1) := by
+  have h : binLeftSub af ag ⟨1, by omega⟩ = binLeftLoc af ag haf 1 := by
+    apply Fin.ext; simp [binLeftSub, binLeftLoc, shiftEmb_val]
   simp only [compLeftIn, h]
-  rw [leftLoc_update_apply haf]
+  rw [binLeftLoc_update_apply haf]
   norm_num
 
 /-! ### Phase A's read-offs -/
 
-lemma compPhaseAVec_selfW (haf : 16 ≤ af) (hag : 16 ≤ ag)
+lemma compPhaseAVec_self (haf : 16 ≤ af) (hag : 16 ≤ ag)
     (Ff : (Fin af → ℕ) → Fin af → ℕ) (Fg : (Fin ag → ℕ) → Fin ag → ℕ)
     (V : Fin (16 + af + ag) → ℕ) (i : Fin 16) :
-    compPhaseAVec af ag haf hag Ff Fg V (selfW af ag i) = V (selfW af ag i) := by
-  simp only [compPhaseAVec, leftSub_win_selfW, rightSub_win_selfW haf,
-    selfW_leftLoc_upd haf, selfW_rightLoc_upd hag haf]
+    compPhaseAVec af ag haf hag Ff Fg V (binSelf af ag i) = V (binSelf af ag i) := by
+  simp only [compPhaseAVec, binLeftSub_win_self, binRightSub_win_self haf,
+    binSelf_leftLoc_upd haf, binSelf_rightLoc_upd hag haf]
 
 lemma compPhaseAVec_rightLoc (haf : 16 ≤ af) (hag : 16 ≤ ag)
     (Ff : (Fin af → ℕ) → Fin af → ℕ) (Fg : (Fin ag → ℕ) → Fin ag → ℕ)
     (V : Fin (16 + af + ag) → ℕ) (j : Fin 16) :
-    compPhaseAVec af ag haf hag Ff Fg V (rightLoc af ag hag j)
+    compPhaseAVec af ag haf hag Ff Fg V (binRightLoc af ag hag j)
       = Fg (compRightIn af ag hag V) ⟨(j : ℕ), by have := j.isLt; omega⟩ := by
-  simp only [compPhaseAVec, leftSub_win_rightLoc hag, rightLoc_leftLoc_upd haf hag,
-    rightSub_win_rightLoc hag]
+  simp only [compPhaseAVec, binLeftSub_win_rightLoc hag, binRightLoc_leftLoc_upd haf hag,
+    binRightSub_win_rightLoc hag]
   rfl
 
 lemma compPhaseAVec_leftLoc (haf : 16 ≤ af) (hag : 16 ≤ ag)
     (Ff : (Fin af → ℕ) → Fin af → ℕ) (Fg : (Fin ag → ℕ) → Fin ag → ℕ)
     (V : Fin (16 + af + ag) → ℕ) (j : Fin 16) :
-    compPhaseAVec af ag haf hag Ff Fg V (leftLoc af ag haf j)
+    compPhaseAVec af ag haf hag Ff Fg V (binLeftLoc af ag haf j)
       = Ff (compLeftIn af ag haf hag Fg V) ⟨(j : ℕ), by have := j.isLt; omega⟩ := by
-  simp only [compPhaseAVec, leftSub_win_leftLoc haf]
+  simp only [compPhaseAVec, binLeftSub_win_leftLoc haf]
   rfl
 
 /-! ### Phase B's read-offs -/
 
 lemma compPhaseBVec_tag (haf : 16 ≤ af) (hag : 16 ≤ ag) (W : Fin (16 + af + ag) → ℕ) :
-    compPhaseBVec af ag haf hag W (selfW af ag 2)
-      = (if W (selfW af ag 0) < W (selfW af ag 1) then 1 else 0)
-          * W (rightLoc af ag hag 2) * W (leftLoc af ag haf 2) := by
-  simp only [compPhaseBVec, selfW_update_apply, leftLoc_selfW_upd haf,
-    rightLoc_selfW_upd hag haf]
+    compPhaseBVec af ag haf hag W (binSelf af ag 2)
+      = (if W (binSelf af ag 0) < W (binSelf af ag 1) then 1 else 0)
+          * W (binRightLoc af ag hag 2) * W (binLeftLoc af ag haf 2) := by
+  simp only [compPhaseBVec, binSelf_update_apply, binLeftLoc_self_upd haf,
+    binRightLoc_self_upd hag haf]
   norm_num
 
 lemma compPhaseBVec_val (haf : 16 ≤ af) (hag : 16 ≤ ag) (W : Fin (16 + af + ag) → ℕ) :
-    compPhaseBVec af ag haf hag W (selfW af ag 3)
-      = compPhaseBVec af ag haf hag W (selfW af ag 2) * W (leftLoc af ag haf 3) := by
+    compPhaseBVec af ag haf hag W (binSelf af ag 3)
+      = compPhaseBVec af ag haf hag W (binSelf af ag 2) * W (binLeftLoc af ag haf 3) := by
   rw [compPhaseBVec_tag]
-  simp only [compPhaseBVec, selfW_update_apply, leftLoc_selfW_upd haf,
-    rightLoc_selfW_upd hag haf]
+  simp only [compPhaseBVec, binSelf_update_apply, binLeftLoc_self_upd haf,
+    binRightLoc_self_upd hag haf]
   norm_num
 
 end CompSemantics
@@ -6427,37 +6353,37 @@ lemma pairVals_encodes (haf : 16 ≤ af) (hag : 16 ≤ ag) (cf cg : Nat.Partrec.
     (Ff : (Fin af → ℕ) → Fin af → ℕ) (Fg : (Fin ag → ℕ) → Fin ag → ℕ)
     (hFf : ChildEncodes af haf cf Ff) (hFg : ChildEncodes ag hag cg Fg)
     (V : Fin (16 + af + ag) → ℕ) :
-    pairPhaseBVec af ag haf hag (pairPhaseAVec af ag haf hag Ff Fg V) (selfW af ag 2)
-        = resultTag (Nat.Partrec.Code.evaln (V (selfW af ag 1)) (cf.pair cg)
-            (V (selfW af ag 0))) ∧
-      pairPhaseBVec af ag haf hag (pairPhaseAVec af ag haf hag Ff Fg V) (selfW af ag 3)
-        = resultVal (Nat.Partrec.Code.evaln (V (selfW af ag 1)) (cf.pair cg)
-            (V (selfW af ag 0))) := by
+    pairPhaseBVec af ag haf hag (pairPhaseAVec af ag haf hag Ff Fg V) (binSelf af ag 2)
+        = resultTag (Nat.Partrec.Code.evaln (V (binSelf af ag 1)) (cf.pair cg)
+            (V (binSelf af ag 0))) ∧
+      pairPhaseBVec af ag haf hag (pairPhaseAVec af ag haf hag Ff Fg V) (binSelf af ag 3)
+        = resultVal (Nat.Partrec.Code.evaln (V (binSelf af ag 1)) (cf.pair cg)
+            (V (binSelf af ag 0))) := by
   obtain ⟨hft, hfv⟩ := hFf (pairLeftIn af ag haf V)
   obtain ⟨hgt, hgv⟩ := hFg (pairRightIn af ag haf hag Ff V)
   rw [pairLeftIn_zero, pairLeftIn_one] at hft hfv
   rw [pairRightIn_zero, pairRightIn_one] at hgt hgv
-  have rF2 : pairPhaseAVec af ag haf hag Ff Fg V (leftLoc af ag haf 2)
-      = resultTag (Nat.Partrec.Code.evaln (V (selfW af ag 1)) cf (V (selfW af ag 0))) := by
+  have rF2 : pairPhaseAVec af ag haf hag Ff Fg V (binLeftLoc af ag haf 2)
+      = resultTag (Nat.Partrec.Code.evaln (V (binSelf af ag 1)) cf (V (binSelf af ag 0))) := by
     rw [pairPhaseAVec_leftLoc]; exact hft
-  have rF3 : pairPhaseAVec af ag haf hag Ff Fg V (leftLoc af ag haf 3)
-      = resultVal (Nat.Partrec.Code.evaln (V (selfW af ag 1)) cf (V (selfW af ag 0))) := by
+  have rF3 : pairPhaseAVec af ag haf hag Ff Fg V (binLeftLoc af ag haf 3)
+      = resultVal (Nat.Partrec.Code.evaln (V (binSelf af ag 1)) cf (V (binSelf af ag 0))) := by
     rw [pairPhaseAVec_leftLoc]; exact hfv
-  have rG2 : pairPhaseAVec af ag haf hag Ff Fg V (rightLoc af ag hag 2)
-      = resultTag (Nat.Partrec.Code.evaln (V (selfW af ag 1)) cg (V (selfW af ag 0))) := by
+  have rG2 : pairPhaseAVec af ag haf hag Ff Fg V (binRightLoc af ag hag 2)
+      = resultTag (Nat.Partrec.Code.evaln (V (binSelf af ag 1)) cg (V (binSelf af ag 0))) := by
     rw [pairPhaseAVec_rightLoc]; exact hgt
-  have rG3 : pairPhaseAVec af ag haf hag Ff Fg V (rightLoc af ag hag 3)
-      = resultVal (Nat.Partrec.Code.evaln (V (selfW af ag 1)) cg (V (selfW af ag 0))) := by
+  have rG3 : pairPhaseAVec af ag haf hag Ff Fg V (binRightLoc af ag hag 3)
+      = resultVal (Nat.Partrec.Code.evaln (V (binSelf af ag 1)) cg (V (binSelf af ag 0))) := by
     rw [pairPhaseAVec_rightLoc]; exact hgv
-  obtain ⟨ht, hv⟩ := pair_encodes (V (selfW af ag 1)) (V (selfW af ag 0))
-    (resultTag (Nat.Partrec.Code.evaln (V (selfW af ag 1)) cf (V (selfW af ag 0))))
-    (resultVal (Nat.Partrec.Code.evaln (V (selfW af ag 1)) cf (V (selfW af ag 0))))
-    (resultTag (Nat.Partrec.Code.evaln (V (selfW af ag 1)) cg (V (selfW af ag 0))))
-    (resultVal (Nat.Partrec.Code.evaln (V (selfW af ag 1)) cg (V (selfW af ag 0))))
+  obtain ⟨ht, hv⟩ := pair_encodes (V (binSelf af ag 1)) (V (binSelf af ag 0))
+    (resultTag (Nat.Partrec.Code.evaln (V (binSelf af ag 1)) cf (V (binSelf af ag 0))))
+    (resultVal (Nat.Partrec.Code.evaln (V (binSelf af ag 1)) cf (V (binSelf af ag 0))))
+    (resultTag (Nat.Partrec.Code.evaln (V (binSelf af ag 1)) cg (V (binSelf af ag 0))))
+    (resultVal (Nat.Partrec.Code.evaln (V (binSelf af ag 1)) cg (V (binSelf af ag 0))))
     cf cg rfl rfl rfl rfl
   constructor
-  · rw [pairPhaseBVec_tag, pairPhaseAVec_selfW, pairPhaseAVec_selfW, rF2, rG2, ht]
-  · rw [pairPhaseBVec_val, pairPhaseBVec_tag, pairPhaseAVec_selfW, pairPhaseAVec_selfW,
+  · rw [pairPhaseBVec_tag, pairPhaseAVec_self, pairPhaseAVec_self, rF2, rG2, ht]
+  · rw [pairPhaseBVec_val, pairPhaseBVec_tag, pairPhaseAVec_self, pairPhaseAVec_self,
       rF2, rG2, rF3, rG3]
     exact hv
 
@@ -6466,40 +6392,40 @@ lemma compVals_encodes (haf : 16 ≤ af) (hag : 16 ≤ ag) (cf cg : Nat.Partrec.
     (Ff : (Fin af → ℕ) → Fin af → ℕ) (Fg : (Fin ag → ℕ) → Fin ag → ℕ)
     (hFf : ChildEncodes af haf cf Ff) (hFg : ChildEncodes ag hag cg Fg)
     (V : Fin (16 + af + ag) → ℕ) :
-    compPhaseBVec af ag haf hag (compPhaseAVec af ag haf hag Ff Fg V) (selfW af ag 2)
-        = resultTag (Nat.Partrec.Code.evaln (V (selfW af ag 1)) (cf.comp cg)
-            (V (selfW af ag 0))) ∧
-      compPhaseBVec af ag haf hag (compPhaseAVec af ag haf hag Ff Fg V) (selfW af ag 3)
-        = resultVal (Nat.Partrec.Code.evaln (V (selfW af ag 1)) (cf.comp cg)
-            (V (selfW af ag 0))) := by
+    compPhaseBVec af ag haf hag (compPhaseAVec af ag haf hag Ff Fg V) (binSelf af ag 2)
+        = resultTag (Nat.Partrec.Code.evaln (V (binSelf af ag 1)) (cf.comp cg)
+            (V (binSelf af ag 0))) ∧
+      compPhaseBVec af ag haf hag (compPhaseAVec af ag haf hag Ff Fg V) (binSelf af ag 3)
+        = resultVal (Nat.Partrec.Code.evaln (V (binSelf af ag 1)) (cf.comp cg)
+            (V (binSelf af ag 0))) := by
   obtain ⟨hgt, hgv⟩ := hFg (compRightIn af ag hag V)
   rw [compRightIn_zero, compRightIn_one] at hgt hgv
   obtain ⟨hft, hfv⟩ := hFf (compLeftIn af ag haf hag Fg V)
   rw [compLeftIn_zero, compLeftIn_one, hgv] at hft hfv
-  have rG2 : compPhaseAVec af ag haf hag Ff Fg V (rightLoc af ag hag 2)
-      = resultTag (Nat.Partrec.Code.evaln (V (selfW af ag 1)) cg (V (selfW af ag 0))) := by
+  have rG2 : compPhaseAVec af ag haf hag Ff Fg V (binRightLoc af ag hag 2)
+      = resultTag (Nat.Partrec.Code.evaln (V (binSelf af ag 1)) cg (V (binSelf af ag 0))) := by
     rw [compPhaseAVec_rightLoc]; exact hgt
-  have rF2 : compPhaseAVec af ag haf hag Ff Fg V (leftLoc af ag haf 2)
-      = resultTag (Nat.Partrec.Code.evaln (V (selfW af ag 1)) cf
-          (resultVal (Nat.Partrec.Code.evaln (V (selfW af ag 1)) cg
-            (V (selfW af ag 0))))) := by
+  have rF2 : compPhaseAVec af ag haf hag Ff Fg V (binLeftLoc af ag haf 2)
+      = resultTag (Nat.Partrec.Code.evaln (V (binSelf af ag 1)) cf
+          (resultVal (Nat.Partrec.Code.evaln (V (binSelf af ag 1)) cg
+            (V (binSelf af ag 0))))) := by
     rw [compPhaseAVec_leftLoc]; exact hft
-  have rF3 : compPhaseAVec af ag haf hag Ff Fg V (leftLoc af ag haf 3)
-      = resultVal (Nat.Partrec.Code.evaln (V (selfW af ag 1)) cf
-          (resultVal (Nat.Partrec.Code.evaln (V (selfW af ag 1)) cg
-            (V (selfW af ag 0))))) := by
+  have rF3 : compPhaseAVec af ag haf hag Ff Fg V (binLeftLoc af ag haf 3)
+      = resultVal (Nat.Partrec.Code.evaln (V (binSelf af ag 1)) cf
+          (resultVal (Nat.Partrec.Code.evaln (V (binSelf af ag 1)) cg
+            (V (binSelf af ag 0))))) := by
     rw [compPhaseAVec_leftLoc]; exact hfv
-  obtain ⟨ht, hv⟩ := comp_encodes (V (selfW af ag 1)) (V (selfW af ag 0))
-    (resultTag (Nat.Partrec.Code.evaln (V (selfW af ag 1)) cg (V (selfW af ag 0))))
-    (resultVal (Nat.Partrec.Code.evaln (V (selfW af ag 1)) cg (V (selfW af ag 0))))
-    (resultTag (Nat.Partrec.Code.evaln (V (selfW af ag 1)) cf
-      (resultVal (Nat.Partrec.Code.evaln (V (selfW af ag 1)) cg (V (selfW af ag 0))))))
-    (resultVal (Nat.Partrec.Code.evaln (V (selfW af ag 1)) cf
-      (resultVal (Nat.Partrec.Code.evaln (V (selfW af ag 1)) cg (V (selfW af ag 0))))))
+  obtain ⟨ht, hv⟩ := comp_encodes (V (binSelf af ag 1)) (V (binSelf af ag 0))
+    (resultTag (Nat.Partrec.Code.evaln (V (binSelf af ag 1)) cg (V (binSelf af ag 0))))
+    (resultVal (Nat.Partrec.Code.evaln (V (binSelf af ag 1)) cg (V (binSelf af ag 0))))
+    (resultTag (Nat.Partrec.Code.evaln (V (binSelf af ag 1)) cf
+      (resultVal (Nat.Partrec.Code.evaln (V (binSelf af ag 1)) cg (V (binSelf af ag 0))))))
+    (resultVal (Nat.Partrec.Code.evaln (V (binSelf af ag 1)) cf
+      (resultVal (Nat.Partrec.Code.evaln (V (binSelf af ag 1)) cg (V (binSelf af ag 0))))))
     cf cg rfl rfl rfl rfl
   constructor
-  · rw [compPhaseBVec_tag, compPhaseAVec_selfW, compPhaseAVec_selfW, rF2, rG2, ht]
-  · rw [compPhaseBVec_val, compPhaseBVec_tag, compPhaseAVec_selfW, compPhaseAVec_selfW,
+  · rw [compPhaseBVec_tag, compPhaseAVec_self, compPhaseAVec_self, rF2, rG2, ht]
+  · rw [compPhaseBVec_val, compPhaseBVec_tag, compPhaseAVec_self, compPhaseAVec_self,
       rF2, rG2, rF3]
     exact hv
 
@@ -6507,11 +6433,12 @@ end BinaryEncodes
 
 /-! ## The register vector a compiled node produces
 
-`codeVals c` mirrors `compileCodeAt c` exactly: one clause per constructor, each the
+`codeVals c` mirrors `compiledTM c` exactly: one clause per constructor, each the
 constructor's own phase vector with the children's `codeVals` substituted for the abstract
 child semantics the phase specifications are parametric in. For the two looping
-constructors the node's working block is thirty-two wide and the thirty-third register is
-the loop counter, so the clause writes the working block back through `precMain` / `rfMain`
+constructors the node's working block is thirty-two wide and the node's thirty-third
+register — laid out last, at the ambient index `precLoopIdx` / `rfLoopIdx` names — is the
+loop counter, so the clause writes the working block back through `precMain` / `rfMain`
 and sets the counter separately. -/
 
 /-- The node's own interface block, uniformly at offset `0`. -/
@@ -6527,7 +6454,7 @@ noncomputable def precBlockVals (af ag : ℕ) (haf : 16 ≤ af) (hag : 16 ≤ ag
     (writeWindow (precMain af ag) v
       (precVals af ag haf hag Ff Fg (fun k => v (precMain af ag k))))
     (precLoopIdx af ag)
-    (precSetupVals af ag haf hag Ff (fun k => v (precMain af ag k)) (precSelf af ag 7))
+    (precSetupVals af ag haf Ff (fun k => v (precMain af ag k)) (precSelf af ag 7))
 
 /-- The same for an `rfind'` node. -/
 noncomputable def rfBlockVals (af : ℕ) (haf : 16 ≤ af)
@@ -6535,7 +6462,7 @@ noncomputable def rfBlockVals (af : ℕ) (haf : 16 ≤ af)
   Function.update
     (writeWindow (rfMain af) v (rfindVals af haf Ff (fun k => v (rfMain af k))))
     (rfLoopIdx af)
-    (rfSetupVals af haf (fun k => v (rfMain af k)) (rfSelf af 1))
+    (rfSetupVals af (fun k => v (rfMain af k)) (rfSelf af 1))
 
 /-- A `prec` node's working block, read out of its thirty-three-wide vector. -/
 lemma precBlockVals_main {af ag : ℕ} (haf : 16 ≤ af) (hag : 16 ≤ ag)
@@ -6550,7 +6477,7 @@ lemma precBlockVals_loopIdx {af ag : ℕ} (haf : 16 ≤ af) (hag : 16 ≤ ag)
     (Ff : (Fin af → ℕ) → Fin af → ℕ) (Fg : (Fin ag → ℕ) → Fin ag → ℕ)
     (v : Fin (33 + af + ag) → ℕ) :
     precBlockVals af ag haf hag Ff Fg v (precLoopIdx af ag)
-      = precSetupVals af ag haf hag Ff (fun j => v (precMain af ag j))
+      = precSetupVals af ag haf Ff (fun j => v (precMain af ag j))
           (precSelf af ag 7) := by
   rw [precBlockVals, Function.update_self]
 
@@ -6574,7 +6501,7 @@ lemma rfBlockVals_main {af : ℕ} (haf : 16 ≤ af) (Ff : (Fin af → ℕ) → F
 lemma rfBlockVals_loopIdx {af : ℕ} (haf : 16 ≤ af) (Ff : (Fin af → ℕ) → Fin af → ℕ)
     (v : Fin (33 + af) → ℕ) :
     rfBlockVals af haf Ff v (rfLoopIdx af)
-      = rfSetupVals af haf (fun j => v (rfMain af j)) (rfSelf af 1) := by
+      = rfSetupVals af (fun j => v (rfMain af j)) (rfSelf af 1) := by
   rw [rfBlockVals, Function.update_self]
 
 /-- An `rfind'` node's own registers, read out of its thirty-three-wide vector. -/
@@ -6613,198 +6540,180 @@ noncomputable def codeVals : (c : Nat.Partrec.Code) → (Fin (codeRegs c) → �
 section PhaseBBound
 variable {af ag : ℕ}
 
+/-- `pair` Phase B keeps every register inside the bound. -/
 lemma pairPhaseBVec_lt (haf : 16 ≤ af) (hag : 16 ≤ ag) (W : Fin (16 + af + ag) → ℕ)
     (B : ℕ) (hB2 : 2 ≤ B) (hW : ∀ k, W k < B)
-    (hfit : Nat.pair (W (leftLoc af ag haf 3)) (W (rightLoc af ag hag 3)) < B)
-    (htagF : W (leftLoc af ag haf 2) ≤ 1) (htagG : W (rightLoc af ag hag 2) ≤ 1) :
+    (hfit : Nat.pair (W (binLeftLoc af ag haf 3)) (W (binRightLoc af ag hag 3)) < B)
+    (htagF : W (binLeftLoc af ag haf 2) ≤ 1) (htagG : W (binRightLoc af ag hag 2) ≤ 1) :
     ∀ k, pairPhaseBVec af ag haf hag W k < B := by
   have hB0 : 0 < B := by omega
   intro k
   simp only [pairPhaseBVec]
-  set W7 := Function.update W (selfW af ag 6) (W (leftLoc af ag haf 3)) with hW7
+  set W7 := Function.update W (binSelf af ag 6) (W (binLeftLoc af ag haf 3)) with hW7
   have b7 : ∀ k, W7 k < B := by
-    intro k; rw [hW7]; simp only [Function.update_apply]; split_ifs <;> exact hW _
-  set W8 := Function.update W7 (selfW af ag 7) (W7 (rightLoc af ag hag 3)) with hW8
+    rw [hW7]; exact update_lt hW (hW _)
+  set W8 := Function.update W7 (binSelf af ag 7) (W7 (binRightLoc af ag hag 3)) with hW8
   have b8 : ∀ k, W8 k < B := by
-    intro k; rw [hW8]; simp only [Function.update_apply]; split_ifs <;> exact b7 _
-  have s0 : W8 ((pairSlot.trans (selfW af ag)) 0) = W (leftLoc af ag haf 3) := by
-    rw [pairTrans_zero, hW8, selfW_update_apply, hW7, selfW_update_apply]; norm_num
-  have s1 : W8 ((pairSlot.trans (selfW af ag)) 1) = W (rightLoc af ag hag 3) := by
-    rw [pairTrans_one, hW8, selfW_update_apply]
+    rw [hW8]; exact update_lt b7 (b7 _)
+  have s0 : W8 ((pairSlot.trans (binSelf af ag)) 0) = W (binLeftLoc af ag haf 3) := by
+    rw [pairTrans_zero, hW8, binSelf_update_apply, hW7, binSelf_update_apply]; norm_num
+  have s1 : W8 ((pairSlot.trans (binSelf af ag)) 1) = W (binRightLoc af ag hag 3) := by
+    rw [pairTrans_one, hW8, binSelf_update_apply]
     norm_num
-    rw [hW7, rightLoc_selfW_upd hag haf]
-  set W9 := writeWindow (pairSlot.trans (selfW af ag)) W8
-      (pairVals (fun j => W8 ((pairSlot.trans (selfW af ag)) j))) with hW9
+    rw [hW7, binRightLoc_self_upd hag haf]
+  set W9 := writeWindow (pairSlot.trans (binSelf af ag)) W8
+      (pairVals (fun j => W8 ((pairSlot.trans (binSelf af ag)) j))) with hW9
   have b9 : ∀ k, W9 k < B := by
     intro k; rw [hW9]
     refine writeWindow_bounded _ _ _ B b8 (fun j => ?_) k
     refine pairVals_lt _ B hB2 (fun i => b8 _) ?_ j
     rw [s0, s1]; exact hfit
-  set W10 := Function.update W9 (selfW af ag 5)
-      (W9 (selfW af ag 1) - W9 (selfW af ag 0)) with hW10
+  set W10 := Function.update W9 (binSelf af ag 5)
+      (W9 (binSelf af ag 1) - W9 (binSelf af ag 0)) with hW10
   have b10 : ∀ k, W10 k < B := by
-    intro k; rw [hW10]; simp only [Function.update_apply]; split_ifs
-    · have := b9 (selfW af ag 1); omega
-    · exact b9 _
-  set W11 := Function.update W10 (selfW af ag 4)
-      (if W9 (selfW af ag 0) < W9 (selfW af ag 1) then 1 else 0) with hW11
+    rw [hW10]; exact update_lt b9 (by have := b9 (binSelf af ag 1); omega)
+  set W11 := Function.update W10 (binSelf af ag 4)
+      (if W9 (binSelf af ag 0) < W9 (binSelf af ag 1) then 1 else 0) with hW11
   have b11 : ∀ k, W11 k < B := by
     intro k; rw [hW11]; simp only [Function.update_apply]; split_ifs <;>
       first | omega | exact b10 _
-  have m11 : W11 (selfW af ag 4) ≤ 1 := by
+  have m11 : W11 (binSelf af ag 4) ≤ 1 := by
     rw [hW11, Function.update_self]; split_ifs <;> omega
-  have r11F : W11 (leftLoc af ag haf 2) = W (leftLoc af ag haf 2) := by
-    rw [hW11, leftLoc_selfW_upd haf, hW10, leftLoc_selfW_upd haf, hW9,
-      pairWin_leftLoc haf, hW8, leftLoc_selfW_upd haf, hW7, leftLoc_selfW_upd haf]
-  have r11G : W11 (rightLoc af ag hag 2) = W (rightLoc af ag hag 2) := by
-    rw [hW11, rightLoc_selfW_upd hag haf, hW10, rightLoc_selfW_upd hag haf, hW9,
-      pairWin_rightLoc hag haf, hW8, rightLoc_selfW_upd hag haf, hW7,
-      rightLoc_selfW_upd hag haf]
-  set W12 := Function.update W11 (selfW af ag 14) 0 with hW12
+  have r11F : W11 (binLeftLoc af ag haf 2) = W (binLeftLoc af ag haf 2) := by
+    rw [hW11, binLeftLoc_self_upd haf, hW10, binLeftLoc_self_upd haf, hW9,
+      pairWin_leftLoc haf, hW8, binLeftLoc_self_upd haf, hW7, binLeftLoc_self_upd haf]
+  have r11G : W11 (binRightLoc af ag hag 2) = W (binRightLoc af ag hag 2) := by
+    rw [hW11, binRightLoc_self_upd hag haf, hW10, binRightLoc_self_upd hag haf, hW9,
+      pairWin_rightLoc hag haf, hW8, binRightLoc_self_upd hag haf, hW7,
+      binRightLoc_self_upd hag haf]
+  set W12 := Function.update W11 (binSelf af ag 14) 0 with hW12
   have b12 : ∀ k, W12 k < B := by
-    intro k; rw [hW12]; simp only [Function.update_apply]; split_ifs
-    · omega
-    · exact b11 _
-  set W13 := Function.update W12 (selfW af ag 14)
-      (0 + W12 (selfW af ag 4) * W12 (leftLoc af ag haf 2)) with hW13
-  have m12_4 : W12 (selfW af ag 4) ≤ 1 := by
-    rw [hW12, selfW_update_apply]; norm_num; exact m11
-  have m12_F : W12 (leftLoc af ag haf 2) ≤ 1 := by
-    rw [hW12, leftLoc_selfW_upd haf, r11F]; exact htagF
-  have m13 : W13 (selfW af ag 14) ≤ 1 := by
+    rw [hW12]; exact update_lt b11 (by omega)
+  set W13 := Function.update W12 (binSelf af ag 14)
+      (0 + W12 (binSelf af ag 4) * W12 (binLeftLoc af ag haf 2)) with hW13
+  have m12_4 : W12 (binSelf af ag 4) ≤ 1 := by
+    rw [hW12, binSelf_update_apply]; norm_num; exact m11
+  have m12_F : W12 (binLeftLoc af ag haf 2) ≤ 1 := by
+    rw [hW12, binLeftLoc_self_upd haf, r11F]; exact htagF
+  have m13 : W13 (binSelf af ag 14) ≤ 1 := by
     rw [hW13, Function.update_self]
-    calc 0 + W12 (selfW af ag 4) * W12 (leftLoc af ag haf 2) ≤ 1 * 1 := by
+    calc 0 + W12 (binSelf af ag 4) * W12 (binLeftLoc af ag haf 2) ≤ 1 * 1 := by
           simpa using Nat.mul_le_mul m12_4 m12_F
       _ = 1 := by norm_num
   have b13 : ∀ k, W13 k < B := by
-    intro k; rw [hW13]; simp only [Function.update_apply]; split_ifs
-    · have h := m13; rw [hW13, Function.update_self] at h; omega
-    · exact b12 _
-  set W14 := Function.update W13 (selfW af ag 2) 0 with hW14
+    rw [hW13]; exact update_lt b12 (by have h := m13; rw [hW13, Function.update_self] at h; omega)
+  set W14 := Function.update W13 (binSelf af ag 2) 0 with hW14
   have b14 : ∀ k, W14 k < B := by
-    intro k; rw [hW14]; simp only [Function.update_apply]; split_ifs
-    · omega
-    · exact b13 _
-  have m14_14 : W14 (selfW af ag 14) ≤ 1 := by
-    rw [hW14, selfW_update_apply]; norm_num; exact m13
-  have m14_G : W14 (rightLoc af ag hag 2) ≤ 1 := by
-    rw [hW14, rightLoc_selfW_upd hag haf, hW13, rightLoc_selfW_upd hag haf, hW12,
-      rightLoc_selfW_upd hag haf, r11G]
+    rw [hW14]; exact update_lt b13 (by omega)
+  have m14_14 : W14 (binSelf af ag 14) ≤ 1 := by
+    rw [hW14, binSelf_update_apply]; norm_num; exact m13
+  have m14_G : W14 (binRightLoc af ag hag 2) ≤ 1 := by
+    rw [hW14, binRightLoc_self_upd hag haf, hW13, binRightLoc_self_upd hag haf, hW12,
+      binRightLoc_self_upd hag haf, r11G]
     exact htagG
-  set W15 := Function.update W14 (selfW af ag 2)
-      (0 + W14 (selfW af ag 14) * W14 (rightLoc af ag hag 2)) with hW15
-  have m15 : W15 (selfW af ag 2) ≤ 1 := by
+  set W15 := Function.update W14 (binSelf af ag 2)
+      (0 + W14 (binSelf af ag 14) * W14 (binRightLoc af ag hag 2)) with hW15
+  have m15 : W15 (binSelf af ag 2) ≤ 1 := by
     rw [hW15, Function.update_self]
-    calc 0 + W14 (selfW af ag 14) * W14 (rightLoc af ag hag 2) ≤ 1 * 1 := by
+    calc 0 + W14 (binSelf af ag 14) * W14 (binRightLoc af ag hag 2) ≤ 1 * 1 := by
           simpa using Nat.mul_le_mul m14_14 m14_G
       _ = 1 := by norm_num
   have b15 : ∀ k, W15 k < B := by
-    intro k; rw [hW15]; simp only [Function.update_apply]; split_ifs
-    · have h := m15; rw [hW15, Function.update_self] at h; omega
-    · exact b14 _
-  set W16 := Function.update W15 (selfW af ag 3) 0 with hW16
+    rw [hW15]; exact update_lt b14 (by have h := m15; rw [hW15, Function.update_self] at h; omega)
+  set W16 := Function.update W15 (binSelf af ag 3) 0 with hW16
   have b16 : ∀ k, W16 k < B := by
-    intro k; rw [hW16]; simp only [Function.update_apply]; split_ifs
-    · omega
-    · exact b15 _
-  have m16 : W16 (selfW af ag 2) ≤ 1 := by
-    rw [hW16, selfW_update_apply]; norm_num; exact m15
+    rw [hW16]; exact update_lt b15 (by omega)
+  have m16 : W16 (binSelf af ag 2) ≤ 1 := by
+    rw [hW16, binSelf_update_apply]; norm_num; exact m15
   simp only [Function.update_apply]
   split_ifs
-  · have hb := b16 (selfW af ag 12)
-    calc 0 + W16 (selfW af ag 2) * W16 (selfW af ag 12)
-        ≤ 1 * W16 (selfW af ag 12) := by
-          simpa using Nat.mul_le_mul m16 (le_refl (W16 (selfW af ag 12)))
+  · have hb := b16 (binSelf af ag 12)
+    calc 0 + W16 (binSelf af ag 2) * W16 (binSelf af ag 12)
+        ≤ 1 * W16 (binSelf af ag 12) := by
+          simpa using Nat.mul_le_mul m16 (le_refl (W16 (binSelf af ag 12)))
       _ < B := by omega
   · exact b16 _
 
+/-- `comp` Phase B keeps every register inside the bound. -/
 lemma compPhaseBVec_lt (haf : 16 ≤ af) (hag : 16 ≤ ag) (W : Fin (16 + af + ag) → ℕ)
     (B : ℕ) (hB2 : 2 ≤ B) (hW : ∀ k, W k < B)
-    (htagF : W (leftLoc af ag haf 2) ≤ 1) (htagG : W (rightLoc af ag hag 2) ≤ 1) :
+    (htagF : W (binLeftLoc af ag haf 2) ≤ 1) (htagG : W (binRightLoc af ag hag 2) ≤ 1) :
     ∀ k, compPhaseBVec af ag haf hag W k < B := by
   have hB0 : 0 < B := by omega
   intro k
   simp only [compPhaseBVec]
-  set W1 := Function.update W (selfW af ag 5)
-      (W (selfW af ag 1) - W (selfW af ag 0)) with hW1
+  set W1 := Function.update W (binSelf af ag 5)
+      (W (binSelf af ag 1) - W (binSelf af ag 0)) with hW1
   have b1 : ∀ k, W1 k < B := by
-    intro k; rw [hW1]; simp only [Function.update_apply]; split_ifs
-    · have := hW (selfW af ag 1); omega
-    · exact hW _
-  set W2 := Function.update W1 (selfW af ag 4)
-      (if W (selfW af ag 0) < W (selfW af ag 1) then 1 else 0) with hW2
+    rw [hW1]; exact update_lt hW (by have := hW (binSelf af ag 1); omega)
+  set W2 := Function.update W1 (binSelf af ag 4)
+      (if W (binSelf af ag 0) < W (binSelf af ag 1) then 1 else 0) with hW2
   have b2 : ∀ k, W2 k < B := by
     intro k; rw [hW2]; simp only [Function.update_apply]; split_ifs <;>
       first | omega | exact b1 _
-  have m2 : W2 (selfW af ag 4) ≤ 1 := by
+  have m2 : W2 (binSelf af ag 4) ≤ 1 := by
     rw [hW2, Function.update_self]; split_ifs <;> omega
-  set W3 := Function.update W2 (selfW af ag 14) 0 with hW3
+  set W3 := Function.update W2 (binSelf af ag 14) 0 with hW3
   have b3 : ∀ k, W3 k < B := by
-    intro k; rw [hW3]; simp only [Function.update_apply]; split_ifs
-    · omega
-    · exact b2 _
-  have m3_4 : W3 (selfW af ag 4) ≤ 1 := by
-    rw [hW3, selfW_update_apply]; norm_num; exact m2
-  have m3_G : W3 (rightLoc af ag hag 2) ≤ 1 := by
-    rw [hW3, rightLoc_selfW_upd hag haf, hW2, rightLoc_selfW_upd hag haf, hW1,
-      rightLoc_selfW_upd hag haf]
+    rw [hW3]; exact update_lt b2 (by omega)
+  have m3_4 : W3 (binSelf af ag 4) ≤ 1 := by
+    rw [hW3, binSelf_update_apply]; norm_num; exact m2
+  have m3_G : W3 (binRightLoc af ag hag 2) ≤ 1 := by
+    rw [hW3, binRightLoc_self_upd hag haf, hW2, binRightLoc_self_upd hag haf, hW1,
+      binRightLoc_self_upd hag haf]
     exact htagG
-  set W4 := Function.update W3 (selfW af ag 14)
-      (0 + W3 (selfW af ag 4) * W3 (rightLoc af ag hag 2)) with hW4
-  have m4 : W4 (selfW af ag 14) ≤ 1 := by
+  set W4 := Function.update W3 (binSelf af ag 14)
+      (0 + W3 (binSelf af ag 4) * W3 (binRightLoc af ag hag 2)) with hW4
+  have m4 : W4 (binSelf af ag 14) ≤ 1 := by
     rw [hW4, Function.update_self]
-    calc 0 + W3 (selfW af ag 4) * W3 (rightLoc af ag hag 2) ≤ 1 * 1 := by
+    calc 0 + W3 (binSelf af ag 4) * W3 (binRightLoc af ag hag 2) ≤ 1 * 1 := by
           simpa using Nat.mul_le_mul m3_4 m3_G
       _ = 1 := by norm_num
   have b4 : ∀ k, W4 k < B := by
-    intro k; rw [hW4]; simp only [Function.update_apply]; split_ifs
-    · have h := m4; rw [hW4, Function.update_self] at h; omega
-    · exact b3 _
-  set W5 := Function.update W4 (selfW af ag 2) 0 with hW5
+    rw [hW4]; exact update_lt b3 (by have h := m4; rw [hW4, Function.update_self] at h; omega)
+  set W5 := Function.update W4 (binSelf af ag 2) 0 with hW5
   have b5 : ∀ k, W5 k < B := by
-    intro k; rw [hW5]; simp only [Function.update_apply]; split_ifs
-    · omega
-    · exact b4 _
-  have m5_14 : W5 (selfW af ag 14) ≤ 1 := by
-    rw [hW5, selfW_update_apply]; norm_num; exact m4
-  have m5_F : W5 (leftLoc af ag haf 2) ≤ 1 := by
-    rw [hW5, leftLoc_selfW_upd haf, hW4, leftLoc_selfW_upd haf, hW3,
-      leftLoc_selfW_upd haf, hW2, leftLoc_selfW_upd haf, hW1, leftLoc_selfW_upd haf]
+    rw [hW5]; exact update_lt b4 (by omega)
+  have m5_14 : W5 (binSelf af ag 14) ≤ 1 := by
+    rw [hW5, binSelf_update_apply]; norm_num; exact m4
+  have m5_F : W5 (binLeftLoc af ag haf 2) ≤ 1 := by
+    rw [hW5, binLeftLoc_self_upd haf, hW4, binLeftLoc_self_upd haf, hW3,
+      binLeftLoc_self_upd haf, hW2, binLeftLoc_self_upd haf, hW1, binLeftLoc_self_upd haf]
     exact htagF
-  set W6 := Function.update W5 (selfW af ag 2)
-      (0 + W5 (selfW af ag 14) * W5 (leftLoc af ag haf 2)) with hW6
-  have m6 : W6 (selfW af ag 2) ≤ 1 := by
+  set W6 := Function.update W5 (binSelf af ag 2)
+      (0 + W5 (binSelf af ag 14) * W5 (binLeftLoc af ag haf 2)) with hW6
+  have m6 : W6 (binSelf af ag 2) ≤ 1 := by
     rw [hW6, Function.update_self]
-    calc 0 + W5 (selfW af ag 14) * W5 (leftLoc af ag haf 2) ≤ 1 * 1 := by
+    calc 0 + W5 (binSelf af ag 14) * W5 (binLeftLoc af ag haf 2) ≤ 1 * 1 := by
           simpa using Nat.mul_le_mul m5_14 m5_F
       _ = 1 := by norm_num
   have b6 : ∀ k, W6 k < B := by
-    intro k; rw [hW6]; simp only [Function.update_apply]; split_ifs
-    · have h := m6; rw [hW6, Function.update_self] at h; omega
-    · exact b5 _
-  set W7 := Function.update W6 (selfW af ag 3) 0 with hW7
+    rw [hW6]; exact update_lt b5 (by have h := m6; rw [hW6, Function.update_self] at h; omega)
+  set W7 := Function.update W6 (binSelf af ag 3) 0 with hW7
   have b7 : ∀ k, W7 k < B := by
-    intro k; rw [hW7]; simp only [Function.update_apply]; split_ifs
-    · omega
-    · exact b6 _
-  have m7 : W7 (selfW af ag 2) ≤ 1 := by
-    rw [hW7, selfW_update_apply]; norm_num; exact m6
+    rw [hW7]; exact update_lt b6 (by omega)
+  have m7 : W7 (binSelf af ag 2) ≤ 1 := by
+    rw [hW7, binSelf_update_apply]; norm_num; exact m6
   simp only [Function.update_apply]
   split_ifs
-  · have hb := b7 (leftLoc af ag haf 3)
-    calc 0 + W7 (selfW af ag 2) * W7 (leftLoc af ag haf 3)
-        ≤ 1 * W7 (leftLoc af ag haf 3) := by
-          simpa using Nat.mul_le_mul m7 (le_refl (W7 (leftLoc af ag haf 3)))
+  · have hb := b7 (binLeftLoc af ag haf 3)
+    calc 0 + W7 (binSelf af ag 2) * W7 (binLeftLoc af ag haf 3)
+        ≤ 1 * W7 (binLeftLoc af ag haf 3) := by
+          simpa using Nat.mul_le_mul m7 (le_refl (W7 (binLeftLoc af ag haf 3)))
       _ < B := by omega
   · exact b7 _
 
 end PhaseBBound
 
-/-! ### The two looping constructors' finish phases keep every register inside the bound -/
+/-! ### The two looping constructors' phases outside the body keep every register inside
+the bound
+
+Both finish phases, and `rfind'`'s setup: `rfSetupVals_lt` sits here rather than beside
+`precSetupVals_lt` because it is proved by the same `update_lt` chain these two are. -/
 
 section FinishBound
 
-lemma precFinishVals_lt {af ag : ℕ} (haf : 16 ≤ af) (hag : 16 ≤ ag)
+lemma precFinishVals_lt {af ag : ℕ}
     (W : Fin (32 + af + ag) → ℕ) (B : ℕ) (hB2 : 2 ≤ B) (hW : ∀ k, W k < B)
     (halive : W (precSelf af ag 10) ≤ 1) :
     ∀ k, precFinishVals af ag W k < B := by
@@ -6814,9 +6723,7 @@ lemma precFinishVals_lt {af ag : ℕ} (haf : 16 ≤ af) (hag : 16 ≤ ag)
   set W1 := Function.update W (precSelf af ag 5)
       (W (precSelf af ag 1) - W (precSelf af ag 0)) with hW1
   have b1 : ∀ k, W1 k < B := by
-    intro k; rw [hW1]; simp only [Function.update_apply]; split_ifs
-    · have := hW (precSelf af ag 1); omega
-    · exact hW _
+    rw [hW1]; exact update_lt hW (by have := hW (precSelf af ag 1); omega)
   set W2 := Function.update W1 (precSelf af ag 4)
       (if W (precSelf af ag 0) < W (precSelf af ag 1) then 1 else 0) with hW2
   have b2 : ∀ k, W2 k < B := by
@@ -6826,9 +6733,7 @@ lemma precFinishVals_lt {af ag : ℕ} (haf : 16 ≤ af) (hag : 16 ≤ ag)
     rw [hW2, Function.update_self]; split_ifs <;> omega
   set W3 := Function.update W2 (precSelf af ag 2) 0 with hW3
   have b3 : ∀ k, W3 k < B := by
-    intro k; rw [hW3]; simp only [Function.update_apply]; split_ifs
-    · omega
-    · exact b2 _
+    rw [hW3]; exact update_lt b2 (by omega)
   have m3_4 : W3 (precSelf af ag 4) ≤ 1 := by
     rw [hW3, precSelf_update_apply]; norm_num; exact m2
   have m3_10 : W3 (precSelf af ag 10) ≤ 1 := by
@@ -6844,14 +6749,10 @@ lemma precFinishVals_lt {af ag : ℕ} (haf : 16 ≤ af) (hag : 16 ≤ ag)
           simpa using Nat.mul_le_mul m3_4 m3_10
       _ = 1 := by norm_num
   have b4 : ∀ k, W4 k < B := by
-    intro k; rw [hW4]; simp only [Function.update_apply]; split_ifs
-    · have h := m4; rw [hW4, Function.update_self] at h; omega
-    · exact b3 _
+    rw [hW4]; exact update_lt b3 (by have h := m4; rw [hW4, Function.update_self] at h; omega)
   set W5 := Function.update W4 (precSelf af ag 3) 0 with hW5
   have b5 : ∀ k, W5 k < B := by
-    intro k; rw [hW5]; simp only [Function.update_apply]; split_ifs
-    · omega
-    · exact b4 _
+    rw [hW5]; exact update_lt b4 (by omega)
   have m5 : W5 (precSelf af ag 2) ≤ 1 := by
     rw [hW5, precSelf_update_apply]; norm_num; exact m4
   simp only [Function.update_apply]
@@ -6864,9 +6765,9 @@ lemma precFinishVals_lt {af ag : ℕ} (haf : 16 ≤ af) (hag : 16 ≤ ag)
   · exact b5 _
 
 /-- `rfind'`'s setup keeps every register inside the bound. It runs no child. -/
-lemma rfSetupVals_lt {af : ℕ} (haf : 16 ≤ af) (V : Fin (32 + af) → ℕ) (B : ℕ)
+lemma rfSetupVals_lt {af : ℕ} (V : Fin (32 + af) → ℕ) (B : ℕ)
     (hB2 : 2 ≤ B) (hV : ∀ k, V k < B) :
-    ∀ k, rfSetupVals af haf V k < B := by
+    ∀ k, rfSetupVals af V k < B := by
   have hB0 : 0 < B := by omega
   intro k
   simp only [rfSetupVals]
@@ -6881,28 +6782,22 @@ lemma rfSetupVals_lt {af : ℕ} (haf : 16 ≤ af) (V : Fin (32 + af) → ℕ) (B
     omega
   set U2 := Function.update U1 (rfSelf af 6) (U1 (rfSelf af 20)) with hU2
   have b2 : ∀ k, U2 k < B := by
-    intro k; rw [hU2]; simp only [Function.update_apply]; split_ifs <;> exact b1 _
+    rw [hU2]; exact update_lt b1 (b1 _)
   set U3 := Function.update U2 (rfSelf af 7) (U2 (rfSelf af 21)) with hU3
   have b3 : ∀ k, U3 k < B := by
-    intro k; rw [hU3]; simp only [Function.update_apply]; split_ifs <;> exact b2 _
+    rw [hU3]; exact update_lt b2 (b2 _)
   set U4 := Function.update U3 (rfSelf af 8) (U3 (rfSelf af 1)) with hU4
   have b4 : ∀ k, U4 k < B := by
-    intro k; rw [hU4]; simp only [Function.update_apply]; split_ifs <;> exact b3 _
+    rw [hU4]; exact update_lt b3 (b3 _)
   set U5 := Function.update U4 (rfSelf af 9) 1 with hU5
   have b5 : ∀ k, U5 k < B := by
-    intro k; rw [hU5]; simp only [Function.update_apply]; split_ifs
-    · omega
-    · exact b4 _
+    rw [hU5]; exact update_lt b4 (by omega)
   set U6 := Function.update U5 (rfSelf af 10) 0 with hU6
   have b6 : ∀ k, U6 k < B := by
-    intro k; rw [hU6]; simp only [Function.update_apply]; split_ifs
-    · omega
-    · exact b5 _
+    rw [hU6]; exact update_lt b5 (by omega)
   set U7 := Function.update U6 (rfSelf af 11) 0 with hU7
   have b7 : ∀ k, U7 k < B := by
-    intro k; rw [hU7]; simp only [Function.update_apply]; split_ifs
-    · omega
-    · exact b6 _
+    rw [hU7]; exact update_lt b6 (by omega)
   simp only [Function.update_apply]
   split_ifs
   · omega
@@ -6918,129 +6813,41 @@ end FinishBound
 
 /-! ## The compiler API
 
-`compileCodeAt c R` compiles `c` into the ambient register file named by `R`, whose arity
+`compiledTM c R` compiles `c` into the ambient register file named by `R`, whose arity
 `codeRegs c` is the node's own sixteen plus each child's whole subtree. Parent and every
 descendant inhabit the same `TM n`, differing only in which registers they name, so
-ordinary `seqTM` composes them with no lifting between arities.
-
-The result is an `Option`: `none` marks the two fuel-recursive constructors, which are not
-implemented yet. That is deliberate — a placeholder machine returning canonical `none`
-would typecheck and be silently *wrong* for those codes, which is exactly the kind of stub
-this repository's standards exist to catch. `none` here says "not compiled", never
-"compiles to failure". -/
+ordinary `seqTM` composes them with no lifting between arities. The recursion is total on
+`Code`: every constructor, the two fuel-recursive ones included, names an actual machine,
+so there is no failure value to propagate and no partiality to reason about downstream. -/
 
 /-- **The compiler.** Structural recursion on `Code`; parent and every descendant inhabit
-    the same ambient `TM n`, differing only in which registers they name. -/
-def compileCodeAt : (c : Nat.Partrec.Code) → Regs (codeRegs c) n → Option (TM n)
-  | .zero, R => some (compileZero R)
-  | .succ, R => some (compileSucc R)
-  | .left, R => some (compileProj R 0)
-  | .right, R => some (compileProj R 1)
-  | .pair cf cg, R => do
-      let Mf ← compileCodeAt cf ((leftSub (codeRegs cf) (codeRegs cg)).trans R)
-      let Mg ← compileCodeAt cg ((rightSub (codeRegs cf) (codeRegs cg)).trans R)
-      some (compilePairTM (codeRegs cf) (codeRegs cg)
-        (codeRegs_ge cf) (codeRegs_ge cg) R Mf Mg)
-  | .comp cf cg, R => do
-      let Mf ← compileCodeAt cf ((leftSub (codeRegs cf) (codeRegs cg)).trans R)
-      let Mg ← compileCodeAt cg ((rightSub (codeRegs cf) (codeRegs cg)).trans R)
-      some (compileCompTM (codeRegs cf) (codeRegs cg)
-        (codeRegs_ge cf) (codeRegs_ge cg) R Mf Mg)
-  | .prec cf cg, R => do
-      let Mf ← compileCodeAt cf
-        ((precLeftSub (codeRegs cf) (codeRegs cg)).trans
-          ((precMain (codeRegs cf) (codeRegs cg)).trans R))
-      let Mg ← compileCodeAt cg
-        ((precRightSub (codeRegs cf) (codeRegs cg)).trans
-          ((precMain (codeRegs cf) (codeRegs cg)).trans R))
-      some (precTM (codeRegs cf) (codeRegs cg) (codeRegs_ge cf) (codeRegs_ge cg)
-        ((precMain (codeRegs cf) (codeRegs cg)).trans R)
-        (R (precLoopIdx (codeRegs cf) (codeRegs cg))) Mf Mg)
-  | .rfind' cf, R => do
-      let Mf ← compileCodeAt cf
-        ((rfSub (codeRegs cf)).trans ((rfMain (codeRegs cf)).trans R))
-      some (rfindTM (codeRegs cf) (codeRegs_ge cf)
-        ((rfMain (codeRegs cf)).trans R) (R (rfLoopIdx (codeRegs cf))) Mf)
-
-lemma compileCodeAt_isSome_pair (cf cg : Nat.Partrec.Code)
-    (R : Regs (codeRegs (cf.pair cg)) n)
-    (hf : (compileCodeAt cf ((leftSub (codeRegs cf) (codeRegs cg)).trans R)).isSome)
-    (hg : (compileCodeAt cg ((rightSub (codeRegs cf) (codeRegs cg)).trans R)).isSome) :
-    (compileCodeAt (cf.pair cg) R).isSome := by
-  rw [compileCodeAt]
-  cases hF : compileCodeAt cf ((leftSub (codeRegs cf) (codeRegs cg)).trans R) with
-  | none => rw [hF] at hf; exact absurd hf (by simp)
-  | some Mf =>
-    cases hG : compileCodeAt cg ((rightSub (codeRegs cf) (codeRegs cg)).trans R) with
-    | none => rw [hG] at hg; exact absurd hg (by simp)
-    | some Mg => simp
-
-lemma compileCodeAt_isSome_comp (cf cg : Nat.Partrec.Code)
-    (R : Regs (codeRegs (cf.comp cg)) n)
-    (hf : (compileCodeAt cf ((leftSub (codeRegs cf) (codeRegs cg)).trans R)).isSome)
-    (hg : (compileCodeAt cg ((rightSub (codeRegs cf) (codeRegs cg)).trans R)).isSome) :
-    (compileCodeAt (cf.comp cg) R).isSome := by
-  rw [compileCodeAt]
-  cases hF : compileCodeAt cf ((leftSub (codeRegs cf) (codeRegs cg)).trans R) with
-  | none => rw [hF] at hf; exact absurd hf (by simp)
-  | some Mf =>
-    cases hG : compileCodeAt cg ((rightSub (codeRegs cf) (codeRegs cg)).trans R) with
-    | none => rw [hG] at hg; exact absurd hg (by simp)
-    | some Mg => simp
-
-lemma compileCodeAt_isSome_prec (cf cg : Nat.Partrec.Code)
-    (R : Regs (codeRegs (cf.prec cg)) n)
-    (hf : (compileCodeAt cf ((precLeftSub (codeRegs cf) (codeRegs cg)).trans
-      ((precMain (codeRegs cf) (codeRegs cg)).trans R))).isSome)
-    (hg : (compileCodeAt cg ((precRightSub (codeRegs cf) (codeRegs cg)).trans
-      ((precMain (codeRegs cf) (codeRegs cg)).trans R))).isSome) :
-    (compileCodeAt (cf.prec cg) R).isSome := by
-  rw [compileCodeAt]
-  cases hF : compileCodeAt cf ((precLeftSub (codeRegs cf) (codeRegs cg)).trans
-      ((precMain (codeRegs cf) (codeRegs cg)).trans R)) with
-  | none => rw [hF] at hf; exact absurd hf (by simp)
-  | some Mf =>
-    cases hG : compileCodeAt cg ((precRightSub (codeRegs cf) (codeRegs cg)).trans
-        ((precMain (codeRegs cf) (codeRegs cg)).trans R)) with
-    | none => rw [hG] at hg; exact absurd hg (by simp)
-    | some Mg => simp
-
-lemma compileCodeAt_isSome_rfind' (cf : Nat.Partrec.Code)
-    (R : Regs (codeRegs cf.rfind') n)
-    (hf : (compileCodeAt cf ((rfSub (codeRegs cf)).trans
-      ((rfMain (codeRegs cf)).trans R))).isSome) :
-    (compileCodeAt cf.rfind' R).isSome := by
-  rw [compileCodeAt]
-  cases hF : compileCodeAt cf ((rfSub (codeRegs cf)).trans
-      ((rfMain (codeRegs cf)).trans R)) with
-  | none => rw [hF] at hf; exact absurd hf (by simp)
-  | some Mf => simp
-
-/-- **The compiler is total.** Every `Nat.Partrec.Code` compiles into the register file
-    its `codeRegs` names — all eight constructors, `prec` and `rfind'` included. -/
-lemma compileCodeAt_isSome : ∀ (c : Nat.Partrec.Code) (R : Regs (codeRegs c) n),
-    (compileCodeAt c R).isSome
-  | .zero, _ => rfl
-  | .succ, _ => rfl
-  | .left, _ => rfl
-  | .right, _ => rfl
+    the same ambient `TM n`, differing only in which registers they name. This is the
+    machine the correctness and timing theorems talk about. -/
+def compiledTM : (c : Nat.Partrec.Code) → Regs (codeRegs c) n → TM n
+  | .zero, R => compileZero R
+  | .succ, R => compileSucc R
+  | .left, R => compileProj R 0
+  | .right, R => compileProj R 1
   | .pair cf cg, R =>
-      compileCodeAt_isSome_pair cf cg R (compileCodeAt_isSome cf _) (compileCodeAt_isSome cg _)
+      compilePairTM (codeRegs cf) (codeRegs cg) (codeRegs_ge cf) (codeRegs_ge cg) R
+        (compiledTM cf ((binLeftSub (codeRegs cf) (codeRegs cg)).trans R))
+        (compiledTM cg ((binRightSub (codeRegs cf) (codeRegs cg)).trans R))
   | .comp cf cg, R =>
-      compileCodeAt_isSome_comp cf cg R (compileCodeAt_isSome cf _) (compileCodeAt_isSome cg _)
+      compileCompTM (codeRegs cf) (codeRegs cg) (codeRegs_ge cf) (codeRegs_ge cg) R
+        (compiledTM cf ((binLeftSub (codeRegs cf) (codeRegs cg)).trans R))
+        (compiledTM cg ((binRightSub (codeRegs cf) (codeRegs cg)).trans R))
   | .prec cf cg, R =>
-      compileCodeAt_isSome_prec cf cg R (compileCodeAt_isSome cf _) (compileCodeAt_isSome cg _)
-  | .rfind' cf, R => compileCodeAt_isSome_rfind' cf R (compileCodeAt_isSome cf _)
-
-/-- **The compiled machine.** `compileCodeAt` is total, so every code names an actual
-    `TM n` in the register file `codeRegs c` describes. This is the machine the
-    correctness and timing theorems talk about. -/
-noncomputable def compiledTM (c : Nat.Partrec.Code) (R : Regs (codeRegs c) n) : TM n :=
-  (compileCodeAt c R).get (compileCodeAt_isSome c R)
-
-lemma compileCodeAt_eq_some (c : Nat.Partrec.Code) (R : Regs (codeRegs c) n) :
-    compileCodeAt c R = some (compiledTM c R) :=
-  (Option.some_get (compileCodeAt_isSome c R)).symm
+      precTM (codeRegs cf) (codeRegs cg) (codeRegs_ge cf) (codeRegs_ge cg)
+        ((precMain (codeRegs cf) (codeRegs cg)).trans R)
+        (R (precLoopIdx (codeRegs cf) (codeRegs cg)))
+        (compiledTM cf ((precLeftSub (codeRegs cf) (codeRegs cg)).trans
+          ((precMain (codeRegs cf) (codeRegs cg)).trans R)))
+        (compiledTM cg ((precRightSub (codeRegs cf) (codeRegs cg)).trans
+          ((precMain (codeRegs cf) (codeRegs cg)).trans R)))
+  | .rfind' cf, R =>
+      rfindTM (codeRegs cf) (codeRegs_ge cf)
+        ((rfMain (codeRegs cf)).trans R) (R (rfLoopIdx (codeRegs cf)))
+        (compiledTM cf ((rfSub (codeRegs cf)).trans ((rfMain (codeRegs cf)).trans R)))
 
 /-! The four compound constructors, unfolded: each names its children's compiled machines
 in the subtrees `codeRegs` reserved for them. The four base constructors need no lemma —
@@ -7049,20 +6856,16 @@ there `compiledTM` reduces to the machine itself. -/
 lemma compiledTM_pair (cf cg : Nat.Partrec.Code) (R : Regs (codeRegs (cf.pair cg)) n) :
     compiledTM (cf.pair cg) R
       = compilePairTM (codeRegs cf) (codeRegs cg) (codeRegs_ge cf) (codeRegs_ge cg) R
-          (compiledTM cf ((leftSub (codeRegs cf) (codeRegs cg)).trans R))
-          (compiledTM cg ((rightSub (codeRegs cf) (codeRegs cg)).trans R)) := by
-  refine Option.some_injective _ ((compileCodeAt_eq_some _ R).symm.trans ?_)
-  rw [compileCodeAt, compileCodeAt_eq_some cf, compileCodeAt_eq_some cg]
-  rfl
+          (compiledTM cf ((binLeftSub (codeRegs cf) (codeRegs cg)).trans R))
+          (compiledTM cg ((binRightSub (codeRegs cf) (codeRegs cg)).trans R)) := by
+  rw [compiledTM]
 
 lemma compiledTM_comp (cf cg : Nat.Partrec.Code) (R : Regs (codeRegs (cf.comp cg)) n) :
     compiledTM (cf.comp cg) R
       = compileCompTM (codeRegs cf) (codeRegs cg) (codeRegs_ge cf) (codeRegs_ge cg) R
-          (compiledTM cf ((leftSub (codeRegs cf) (codeRegs cg)).trans R))
-          (compiledTM cg ((rightSub (codeRegs cf) (codeRegs cg)).trans R)) := by
-  refine Option.some_injective _ ((compileCodeAt_eq_some _ R).symm.trans ?_)
-  rw [compileCodeAt, compileCodeAt_eq_some cf, compileCodeAt_eq_some cg]
-  rfl
+          (compiledTM cf ((binLeftSub (codeRegs cf) (codeRegs cg)).trans R))
+          (compiledTM cg ((binRightSub (codeRegs cf) (codeRegs cg)).trans R)) := by
+  rw [compiledTM]
 
 lemma compiledTM_prec (cf cg : Nat.Partrec.Code) (R : Regs (codeRegs (cf.prec cg)) n) :
     compiledTM (cf.prec cg) R
@@ -7073,9 +6876,7 @@ lemma compiledTM_prec (cf cg : Nat.Partrec.Code) (R : Regs (codeRegs (cf.prec cg
             ((precMain (codeRegs cf) (codeRegs cg)).trans R)))
           (compiledTM cg ((precRightSub (codeRegs cf) (codeRegs cg)).trans
             ((precMain (codeRegs cf) (codeRegs cg)).trans R))) := by
-  refine Option.some_injective _ ((compileCodeAt_eq_some _ R).symm.trans ?_)
-  rw [compileCodeAt, compileCodeAt_eq_some cf, compileCodeAt_eq_some cg]
-  rfl
+  rw [compiledTM]
 
 lemma compiledTM_rfind' (cf : Nat.Partrec.Code) (R : Regs (codeRegs cf.rfind') n) :
     compiledTM cf.rfind' R
@@ -7083,9 +6884,7 @@ lemma compiledTM_rfind' (cf : Nat.Partrec.Code) (R : Regs (codeRegs cf.rfind') n
           ((rfMain (codeRegs cf)).trans R) (R (rfLoopIdx (codeRegs cf)))
           (compiledTM cf ((rfSub (codeRegs cf)).trans
             ((rfMain (codeRegs cf)).trans R))) := by
-  refine Option.some_injective _ ((compileCodeAt_eq_some _ R).symm.trans ?_)
-  rw [compileCodeAt, compileCodeAt_eq_some cf]
-  rfl
+  rw [compiledTM]
 
 /-! ## The compiler is correct
 

@@ -40,15 +40,21 @@ constant-size `EF.var`, keeping the index-`n` expression polynomial; they are pr
 family. `sharedFeatureWeight` and `fractionalSharedFeatureWeight` are the two instances,
 and their `_denote`, `_rank_le` and `_polySeg` specifications follow from the generic
 ones — the last of them uniform emission as a `MachineSpliceStream`, the machine-metered
-write-out class, so nothing in this lane is fuel-metered except each trade count.
+write-out class. Everything the shared trader emits is machine-metered: the trade counts
+and the openness table `PolyActiveSchedule` are `UnaryRuler`s. The one fuel-metered item of
+this lane is the `check_poly` field of the two bounded maturity verifiers below — a schedule
+predicate, not emitted data — and `VerifiedMaturitySchedule.polyActive` is where it crosses
+into the machine class.
 
 `scaledFamilyTrader` likewise bundles a trader family at an arbitrary coefficient family,
 and `sharedBudgetedTrader` and `fractionalBudgetedTrader` are its two instances; the
-`_value`, `_magnitude`, `_netWorth` (the rectangular component view `LaunchGated` buys)
-and `_ec` specifications are proved once and transported.
-`allocationPrefix_not_bddAbove_of_frequently` and its fractional twin supply the recycling
-half: if every position eventually closes and launch sizes are frequently bounded away
-from zero, cumulative allocation is unbounded.
+`_value`, `_netWorth` (the rectangular component view `LaunchGated` buys) and `_ec`
+specifications are proved once and transported.
+`fractionalAllocationPrefix_not_bddAbove_of_frequently` supplies the recycling half: if
+every position eventually reaches zero occupancy and launch sizes are frequently bounded
+away from zero, cumulative allocation is unbounded. The Boolean form
+`allocationPrefix_not_bddAbove_of_frequently` is that argument read at indicator occupancy
+(`boolOccupancy`, `weight_eq_fractionalWeight`), not a second proof.
 
 ## Bounded verification
 
@@ -69,12 +75,11 @@ form, discharging the closing days, the semantic maturity schedule and the polyn
 openness table from a single checker. `noFractionalRepeatableReturn` is the
 continuous-occupancy analogue. Limits are stated with `ConvergesTo` (`dd:asymp`).
 
-Underneath those sits the positive construction they are proved from: `repeatableROI`
-assembles the shared budgeted trader and returns both halves at once — efficient
-computability and exploitation — from a *dense* occupancy hypothesis `∀ i, δ ≤ αᵢ`, and
-`repeatableROI_of_frequently` is the same conclusion from the sparse `∃ᶠ` occupancy the
-`lem:type3` contrapositives use. `repeatableROI` is the entry point for a client that owns
-a uniformly-occupied family and wants the trader rather than the impossibility statement.
+Underneath those sits the positive construction they are proved from:
+`repeatableROI_of_frequently` assembles the shared budgeted trader and returns both halves
+at once — efficient computability and exploitation — from the sparse `∃ᶠ` occupancy the
+`lem:type3` contrapositives use. It is also the entry point for a client that owns an
+occupied family and wants the trader rather than the impossibility statement.
 
 Four hypotheses go beyond the printed `lem:type3`, and are named at `noRepeatableROI`
 itself: the WLOG normalisation `αₖ ≤ 1`, the summable tolerance family, the explicit
@@ -359,11 +364,10 @@ lemma Strategy.valueRatAtFuel_sound
     q = T.valueRat (fun d φ => market.quote d (Encodable.encode φ)) w := by
   exact valueRatListAtFuel_sound market fuel n w T.trades h
 
+open Classical in
 /-- Exact rational `{0,1}` payout associated with a Boolean world. -/
 noncomputable def PCWorld.payoutRat (v : PCWorld) (φ : Sentence) : ℚ :=
-  by
-    classical
-    exact if v.Holds φ then 1 else 0
+  if v.Holds φ then 1 else 0
 
 lemma PCWorld.payout_eq_ratCast (v : PCWorld) (φ : Sentence) :
     v.payout φ = (v.payoutRat φ : ℝ) := by
@@ -737,10 +741,11 @@ namespace ROIBudget
 
 /-! ## Feature sums and the openness table -/
 
-/-- The openness table is efficiently available to the syntax emitter. Inputs are paired
-as `⟨k,i⟩`; output `1` means component `i` is active at budget stage `k`. -/
+/-- The openness table is efficiently available to the syntax emitter, as a `UnaryRuler`
+— the machine class the budget emitter actually consumes. Inputs are paired as `⟨k,i⟩`;
+output `1` means component `i` is active at budget stage `k`. -/
 def PolyActiveSchedule (active : ℕ → ℕ → Bool) : Prop :=
-  ∃ c : Nat.Partrec.Code, PolyFueled c (fun z => if active z.unpair.2 z.unpair.1 then 1 else 0)
+  UnaryRuler (fun z => if active z.unpair.2 z.unpair.1 then 1 else 0)
 
 /-- Sum a finite list of expressible features inside the feature DSL. -/
 def sumFeatures : List EF → EF :=
@@ -936,25 +941,15 @@ private lemma sharedOf_closed (body : ℕ → EF) (w : ℕ → ℝ) (V : History
 
 /-! ### Shared straight-line budget expression -/
 
-/-- The right-hand side defining `βₖ`, interpreted in an environment containing
-`[βₖ₋₁, …, β₀]`. -/
-def featureWeightBody (active : ℕ → ℕ → Bool) (α : ℕ → EF) (k : ℕ) : EF :=
-  EF.add (EF.const 1) (EF.mul (EF.const (-1))
-    (sumFeatures (List.ofFn (fun i : Fin k =>
-      if active i k then EF.mul (EF.var (k - 1 - i)) (α i) else EF.const 0))))
+/-! ### The shape shared by the two budget recurrences -/
 
-/-- Uniform variable-length emission of the recurrence bodies. This is the triangular
-`i < k` use of `MachineSpliceStream.concatVar`: each term conditionally emits either
-`var(k-1-i) * αᵢ` or zero, and the fold's postfix `add` tags form a second linear run. -/
-lemma featureWeightBody_polySeg (active : ℕ → ℕ → Bool) (α : ℕ → EF)
-    (hα : MachineSpliceStream (fun i => (α i).serialize))
-    (hactive : PolyActiveSchedule active) :
-    MachineSpliceStream (fun k => (featureWeightBody active α k).serialize) := by
-  obtain ⟨cactive, hactivePF⟩ := hactive
-  let term : ℕ → EF := fun z =>
-    if active z.unpair.2 z.unpair.1 then
-      EF.mul (EF.var (z.unpair.1 - 1 - z.unpair.2)) (α z.unpair.2)
-    else EF.const 0
+/-- The `var(k-1-i) · αᵢ` factor both budget recurrences build their terms from, at the
+paired index `z = ⟨k, i⟩`.  The earlier coefficient is reached through its `letE` binding,
+so the term stays constant-size in `k`. -/
+lemma priorWeightTerm_polySeg (α : ℕ → EF)
+    (hα : MachineSpliceStream (fun i => (α i).serialize)) :
+    MachineSpliceStream (fun z =>
+      (EF.mul (EF.var (z.unpair.1 - 1 - z.unpair.2)) (α z.unpair.2)).serialize) := by
   have idxPF := subc_polyFueled.comp
     ((predc_polyFueled.comp PolyFueled.left).pair PolyFueled.right)
   have idxPF' := idxPF.of_eq (f' := fun z => z.unpair.1 - 1 - z.unpair.2)
@@ -964,27 +959,23 @@ lemma featureWeightBody_polySeg (active : ℕ → ℕ → Bool) (α : ℕ → EF
     MachineSpliceStream.serialize_var (MachineDigits.ofUnaryRuler
       (f := fun z : ℕ => z.unpair.1 - 1 - z.unpair.2)
       (UnaryRuler.of_polyFueled idxPF'))
-  have hαright : MachineSpliceStream (fun z => (α z.unpair.2).serialize) :=
-    hα.comp (f := fun z : ℕ => z.unpair.2) (UnaryRuler.unpairSnd)
-  have hmul : MachineSpliceStream (fun z =>
-      (EF.mul (EF.var (z.unpair.1 - 1 - z.unpair.2)) (α z.unpair.2)).serialize) :=
-    MachineSpliceStream.serialize_mul hvar hαright
-  have hzero : MachineSpliceStream (fun _ => (EF.const 0).serialize) :=
-    MachineSpliceStream.serialize_const 0
-  have hterm : MachineSpliceStream (fun z => (term z).serialize) := by
-    have hchoose := MachineSpliceStream.ifZero hzero hmul
-      (t := fun z : ℕ => if active z.unpair.2 z.unpair.1 then 1 else 0)
-      (UnaryRuler.of_polyFueled hactivePF)
-    refine MachineSpliceStream.of_eq hchoose ?_
-    intro z
-    simp only [term]
-    by_cases h : active z.unpair.2 z.unpair.1 = true
-    · simp [h]
-    · have hf : active z.unpair.2 z.unpair.1 = false := Bool.eq_false_of_not_eq_true h
-      simp [hf]
+  exact MachineSpliceStream.serialize_mul hvar
+    (hα.comp (f := fun z : ℕ => z.unpair.2) UnaryRuler.unpairSnd)
+
+/-- Both budget recurrences have the body shape `1 - Σ_{i<k} term ⟨k,i⟩`: the triangular
+`i < k` use of `MachineSpliceStream.concatVar`, with the fold's postfix `add` tags forming a
+second linear run.  Uniform emission of the term family therefore gives uniform emission of
+the body. -/
+lemma weightBodyShape_polySeg (term : ℕ → EF)
+    (hterm : MachineSpliceStream (fun z => (term z).serialize)) :
+    MachineSpliceStream (fun k =>
+      (EF.add (EF.const 1) (EF.mul (EF.const (-1))
+        (sumFeatures (List.ofFn (fun i : Fin k => term (Nat.pair k i)))))).serialize) := by
   have hterms : MachineSpliceStream (fun k =>
       (List.range k).flatMap (fun i => (term (Nat.pair k i)).serialize)) :=
     MachineSpliceStream.concatVar hterm (cnt := fun k : ℕ => k) UnaryRuler.id
+  have hzero : MachineSpliceStream (fun _ => (EF.const 0).serialize) :=
+    MachineSpliceStream.serialize_const 0
   have haddTags : MachineSpliceStream (fun k => List.replicate k 2) :=
     MachineSpliceStream.repeatTag 2 (by norm_num) (cnt := fun k : ℕ => k) UnaryRuler.id
   have hsumRaw := (hterms.append hzero).append haddTags
@@ -998,13 +989,38 @@ lemma featureWeightBody_polySeg (active : ℕ → ℕ → Bool) (α : ℕ → EF
     rw [← List.map_coe_finRange_eq_range]
     rw [List.flatMap_map]
     simp only [List.ofFn_eq_map, List.flatMap_map]
-  have hone : MachineSpliceStream (fun _ => (EF.const 1).serialize) :=
-    MachineSpliceStream.serialize_const 1
-  have hnegone : MachineSpliceStream (fun _ => (EF.const (-1)).serialize) :=
-    MachineSpliceStream.serialize_const (-1)
-  have hbody := MachineSpliceStream.serialize_add hone
-    (MachineSpliceStream.serialize_mul hnegone hsum)
-  refine MachineSpliceStream.of_eq hbody ?_
+  exact MachineSpliceStream.serialize_add (MachineSpliceStream.serialize_const 1)
+    (MachineSpliceStream.serialize_mul (MachineSpliceStream.serialize_const (-1)) hsum)
+
+/-- The right-hand side defining `βₖ`, interpreted in an environment containing
+`[βₖ₋₁, …, β₀]`. -/
+def featureWeightBody (active : ℕ → ℕ → Bool) (α : ℕ → EF) (k : ℕ) : EF :=
+  EF.add (EF.const 1) (EF.mul (EF.const (-1))
+    (sumFeatures (List.ofFn (fun i : Fin k =>
+      if active i k then EF.mul (EF.var (k - 1 - i)) (α i) else EF.const 0))))
+
+/-- Uniform variable-length emission of the recurrence bodies: each term conditionally
+emits either `var(k-1-i) * αᵢ` or zero, and `weightBodyShape_polySeg` closes the body. -/
+lemma featureWeightBody_polySeg (active : ℕ → ℕ → Bool) (α : ℕ → EF)
+    (hα : MachineSpliceStream (fun i => (α i).serialize))
+    (hactive : PolyActiveSchedule active) :
+    MachineSpliceStream (fun k => (featureWeightBody active α k).serialize) := by
+  let term : ℕ → EF := fun z =>
+    if active z.unpair.2 z.unpair.1 then
+      EF.mul (EF.var (z.unpair.1 - 1 - z.unpair.2)) (α z.unpair.2)
+    else EF.const 0
+  have hterm : MachineSpliceStream (fun z => (term z).serialize) := by
+    have hchoose := MachineSpliceStream.ifZero
+      (MachineSpliceStream.serialize_const 0) (priorWeightTerm_polySeg α hα)
+      (t := fun z : ℕ => if active z.unpair.2 z.unpair.1 then 1 else 0) hactive
+    refine MachineSpliceStream.of_eq hchoose ?_
+    intro z
+    simp only [term]
+    by_cases h : active z.unpair.2 z.unpair.1 = true
+    · simp [h]
+    · have hf : active z.unpair.2 z.unpair.1 = false := Bool.eq_false_of_not_eq_true h
+      simp [hf]
+  refine MachineSpliceStream.of_eq (weightBodyShape_polySeg term hterm) ?_
   intro k
   simp only [featureWeightBody, term]
   congr 4
@@ -1012,27 +1028,10 @@ lemma featureWeightBody_polySeg (active : ℕ → ℕ → Bool) (α : ℕ → EF
   funext i
   simp
 
-/-- Bind `count` consecutive budget variables starting at `k`, then return the last one.
-Each earlier `β` is represented once and referenced by a constant-size `EF.var`. -/
-def sharedWeights (active : ℕ → ℕ → Bool) (α : ℕ → EF) (k : ℕ) : ℕ → EF :=
-  letChain (featureWeightBody active α) k
-
-/-- Polynomial-sharing version of the day-`n` budget coefficient. Definitionally
-`sharedOf (featureWeightBody active α) n`; it is spelled through `sharedWeights` because
-downstream emission proofs unfold it to a chain and then rewrite with
-`sharedWeights_serialize`. -/
+/-- The day-`n` budget coefficient, as the shared straight-line chain of the
+`featureWeightBody` recurrence. -/
 def sharedFeatureWeight (active : ℕ → ℕ → Bool) (α : ℕ → EF) (n : ℕ) : EF :=
-  sharedWeights active α 0 (n + 1)
-
-/-- The postfix stream of a shared chain consists of its consecutive binding bodies,
-the terminal reference to the newest binding, and one `letE` tag per binding. -/
-lemma sharedWeights_serialize (active : ℕ → ℕ → Bool) (α : ℕ → EF)
-    (k count : ℕ) :
-    (sharedWeights active α k count).serialize =
-      (List.range' k count).flatMap
-          (fun j => (featureWeightBody active α j).serialize) ++
-        (EF.var 0).serialize ++ List.replicate count 8 :=
-  letChain_serialize _ k count
+  sharedOf (featureWeightBody active α) n
 
 /-- Uniform polynomial-time emission of the complete day-`n` shared budget coefficient.
 This is the representation-level companion to `sharedFeatureWeight_denote` and
@@ -1179,15 +1178,6 @@ lemma scaledFamilyTrader_value (Ts : ℕ → Trader) (β : ℕ → EF)
   simp only [List.map_ofFn, List.sum_ofFn, Function.comp_apply]
   exact Finset.sum_congr rfl (fun i _ => Strategy.scaleBy_value _ _ _ _ _)
 
-/-- Day-`n` magnitude is the finite `|β|`-weighted sum of component magnitudes. -/
-lemma scaledFamilyTrader_magnitude (Ts : ℕ → Trader) (β : ℕ → EF)
-    (hβ : ∀ i, (β i).rank ≤ i) (V : History) (n : ℕ) :
-    ((scaledFamilyTrader Ts β hβ).strat n).magnitude V =
-      ∑ i : Fin (n + 1), |(β i).denote V| * ((Ts i).strat n).magnitude V := by
-  rw [scaledFamilyTrader, Strategy.join_magnitude]
-  simp only [List.map_ofFn, List.sum_ofFn, Function.comp_apply]
-  exact Finset.sum_congr rfl (fun i _ => Strategy.scaleBy_magnitude _ _ _ _)
-
 /-- Net worth of the bundle is the finite `β`-weighted sum of component net worths.
 `LaunchGated` — components trade nothing before their launch day — is what turns the
 triangular daily bundle into this rectangular component view. -/
@@ -1241,28 +1231,6 @@ lemma sharedBudgetedTrader_ec (Ts : ℕ → Trader)
     EfficientlyComputable (sharedBudgetedTrader Ts active α hαrank) :=
   MachineSpliceStream.ec _
     (sharedBudgetedTrader_polySeg Ts active α hαrank hαseg hactive hTs)
-
-lemma sharedBudgetedTrader_value (Ts : ℕ → Trader) (active : ℕ → ℕ → Bool)
-    (α : ℕ → EF) (hα : ∀ i, (α i).rank ≤ i)
-    (hαc : ∀ i ρ V, (α i).denoteWith ρ V = (α i).denote V)
-    (V : History) (w : Valuation) (n : ℕ) :
-    ((sharedBudgetedTrader Ts active α hα).strat n).value V w =
-      ∑ i : Fin (n + 1), weight active (fun k => (α k).denote V) i *
-        ((Ts i).strat n).value V w := by
-  rw [sharedBudgetedTrader, scaledFamilyTrader_value]
-  exact Finset.sum_congr rfl
-    (fun i _ => by rw [sharedFeatureWeight_denote active α hαc])
-
-lemma sharedBudgetedTrader_magnitude (Ts : ℕ → Trader) (active : ℕ → ℕ → Bool)
-    (α : ℕ → EF) (hα : ∀ i, (α i).rank ≤ i)
-    (hαc : ∀ i ρ V, (α i).denoteWith ρ V = (α i).denote V)
-    (V : History) (n : ℕ) :
-    ((sharedBudgetedTrader Ts active α hα).strat n).magnitude V =
-      ∑ i : Fin (n + 1), |weight active (fun k => (α k).denote V) i| *
-        ((Ts i).strat n).magnitude V := by
-  rw [sharedBudgetedTrader, scaledFamilyTrader_magnitude]
-  exact Finset.sum_congr rfl
-    (fun i _ => by rw [sharedFeatureWeight_denote active α hαc])
 
 /-- Net worth of the shared sum is the finite weighted sum of component net worths. -/
 lemma sharedBudgetedTrader_netWorth (Ts : ℕ → Trader)
@@ -1537,29 +1505,15 @@ def fractionalWeightBody (occupancy : ℕ → ℕ → EF) (α : ℕ → EF) (k :
     (sumFeatures (List.ofFn (fun i : Fin k =>
       EF.mul (EF.mul (EF.var (k - 1 - i)) (α i)) (occupancy i k)))))
 
-/-- Shared straight-line chain for consecutive fractional launch weights. -/
-def fractionalSharedWeights (occupancy : ℕ → ℕ → EF) (α : ℕ → EF)
-    (k : ℕ) : ℕ → EF :=
-  letChain (fractionalWeightBody occupancy α) k
-
-/-- Polynomial-sharing feature for the day-`n` fractional budget coefficient. Spelled
-through `fractionalSharedWeights` for the same reason as `sharedFeatureWeight`. -/
+/-- The day-`n` fractional budget coefficient, as the shared straight-line chain of the
+`fractionalWeightBody` recurrence. -/
 def fractionalSharedFeatureWeight (occupancy : ℕ → ℕ → EF)
     (α : ℕ → EF) (n : ℕ) : EF :=
-  fractionalSharedWeights occupancy α 0 (n + 1)
+  sharedOf (fractionalWeightBody occupancy α) n
 
-/-- The postfix stream of a fractional chain, in the same shape as
-`sharedWeights_serialize`. -/
-lemma fractionalSharedWeights_serialize (occupancy : ℕ → ℕ → EF)
-    (α : ℕ → EF) (k count : ℕ) :
-    (fractionalSharedWeights occupancy α k count).serialize =
-      (List.range' k count).flatMap
-          (fun j => (fractionalWeightBody occupancy α j).serialize) ++
-        (EF.var 0).serialize ++ List.replicate count 8 :=
-  letChain_serialize _ k count
-
-/-- Uniform segment emitter for the fractional recurrence bodies. The occupancy stream is
-indexed by `⟨day, component⟩`. -/
+/-- Uniform segment emitter for the fractional recurrence bodies: each term is the shared
+`var(k-1-i) * αᵢ` factor times the occupancy, and `weightBodyShape_polySeg` closes the body.
+The occupancy stream is indexed by `⟨day, component⟩`. -/
 lemma fractionalWeightBody_polySeg (occupancy : ℕ → ℕ → EF)
     (α : ℕ → EF) (hα : MachineSpliceStream (fun i => (α i).serialize))
     (hocc : MachineSpliceStream (fun z =>
@@ -1568,44 +1522,9 @@ lemma fractionalWeightBody_polySeg (occupancy : ℕ → ℕ → EF)
   let term : ℕ → EF := fun z =>
     EF.mul (EF.mul (EF.var (z.unpair.1 - 1 - z.unpair.2)) (α z.unpair.2))
       (occupancy z.unpair.2 z.unpair.1)
-  have idxPF := subc_polyFueled.comp
-    ((predc_polyFueled.comp PolyFueled.left).pair PolyFueled.right)
-  have idxPF' := idxPF.of_eq (f' := fun z => z.unpair.1 - 1 - z.unpair.2)
-    (fun z => by simp [Nat.pred_eq_sub_one])
-  have hvar : MachineSpliceStream
-      (fun z => (EF.var (z.unpair.1 - 1 - z.unpair.2)).serialize) :=
-    MachineSpliceStream.serialize_var (MachineDigits.ofUnaryRuler
-      (f := fun z : ℕ => z.unpair.1 - 1 - z.unpair.2)
-      (UnaryRuler.of_polyFueled idxPF'))
-  have hαright : MachineSpliceStream (fun z => (α z.unpair.2).serialize) :=
-    hα.comp (f := fun z : ℕ => z.unpair.2) (UnaryRuler.unpairSnd)
   have hterm : MachineSpliceStream (fun z => (term z).serialize) :=
-    MachineSpliceStream.serialize_mul (MachineSpliceStream.serialize_mul hvar hαright) hocc
-  have hterms : MachineSpliceStream (fun k =>
-      (List.range k).flatMap (fun i => (term (Nat.pair k i)).serialize)) :=
-    MachineSpliceStream.concatVar hterm (cnt := fun k : ℕ => k) UnaryRuler.id
-  have hzero : MachineSpliceStream (fun _ => (EF.const 0).serialize) :=
-    MachineSpliceStream.serialize_const 0
-  have haddTags : MachineSpliceStream (fun k => List.replicate k 2) :=
-    MachineSpliceStream.repeatTag 2 (by norm_num) (cnt := fun k : ℕ => k) UnaryRuler.id
-  have hsumRaw := (hterms.append hzero).append haddTags
-  have hsum : MachineSpliceStream (fun k =>
-      (sumFeatures (List.ofFn (fun i : Fin k => term (Nat.pair k i)))).serialize) := by
-    refine MachineSpliceStream.of_eq hsumRaw ?_
-    intro k
-    rw [serialize_sumFeatures]
-    simp only [List.length_ofFn]
-    congr 2
-    rw [← List.map_coe_finRange_eq_range]
-    rw [List.flatMap_map]
-    simp only [List.ofFn_eq_map, List.flatMap_map]
-  have hone : MachineSpliceStream (fun _ => (EF.const 1).serialize) :=
-    MachineSpliceStream.serialize_const 1
-  have hnegone : MachineSpliceStream (fun _ => (EF.const (-1)).serialize) :=
-    MachineSpliceStream.serialize_const (-1)
-  have hbody := MachineSpliceStream.serialize_add hone
-    (MachineSpliceStream.serialize_mul hnegone hsum)
-  refine MachineSpliceStream.of_eq hbody ?_
+    MachineSpliceStream.serialize_mul (priorWeightTerm_polySeg α hα) hocc
+  refine MachineSpliceStream.of_eq (weightBodyShape_polySeg term hterm) ?_
   intro k
   simp only [fractionalWeightBody, term]
   congr 4
@@ -1730,22 +1649,6 @@ lemma fractionalBudgetedTrader_ec (Ts : ℕ → Trader)
   MachineSpliceStream.ec _
     (fractionalBudgetedTrader_polySeg Ts occupancy α hαrank hoccRank
       hαseg hoccSeg hTs)
-
-lemma fractionalBudgetedTrader_value (Ts : ℕ → Trader)
-    (occupancy : ℕ → ℕ → EF) (α : ℕ → EF)
-    (hαrank : ∀ i, (α i).rank ≤ i)
-    (hoccRank : ∀ i n, i ≤ n → (occupancy i n).rank ≤ n)
-    (hαc : ∀ i ρ V, (α i).denoteWith ρ V = (α i).denote V)
-    (hoccc : ∀ i n ρ V, (occupancy i n).denoteWith ρ V = (occupancy i n).denote V)
-    (V : History) (w : Valuation) (n : ℕ) :
-    ((fractionalBudgetedTrader Ts occupancy α hαrank hoccRank).strat n).value V w =
-      ∑ i : Fin (n + 1),
-        fractionalWeight (fun j d => (occupancy j d).denote V)
-            (fun j => (α j).denote V) i *
-          ((Ts i).strat n).value V w := by
-  rw [fractionalBudgetedTrader, scaledFamilyTrader_value]
-  exact Finset.sum_congr rfl (fun i _ => by
-    rw [fractionalSharedFeatureWeight_denote occupancy α hαc hoccc])
 
 lemma fractionalBudgetedTrader_netWorth (Ts : ℕ → Trader)
     (occupancy : ℕ → ℕ → EF) (α : ℕ → EF)
@@ -2095,10 +1998,54 @@ lemma activeAllocation_le_one (active : ℕ → ℕ → Bool) (α : ℕ → ℝ)
     exact le_trans (le_add_of_nonneg_right
       (allocation_nonneg active α hclose hα0 hα1 n)) hbudget
 
+/-! ### The Boolean budget as a fractional one
+
+A Boolean schedule is a `{0,1}`-valued occupancy, and at that occupancy the Boolean budget
+*is* the fractional budget of §"The adaptive budget: continuous occupancy".  The recycling
+argument is therefore proved once, fractionally, and read off here. -/
+
+/-- The Boolean schedule read as a `{0,1}`-valued capital occupancy. -/
+noncomputable def boolOccupancy (active : ℕ → ℕ → Bool) (i n : ℕ) : ℝ :=
+  if active i n then 1 else 0
+
+/-- A closing Boolean schedule is a decreasing occupancy. -/
+lemma decreasingOccupancy_boolOccupancy {active : ℕ → ℕ → Bool}
+    (hclose : ClosingSchedule active) : DecreasingOccupancy (boolOccupancy active) where
+  nonneg i n := by unfold boolOccupancy; split <;> norm_num
+  le_one i n := by unfold boolOccupancy; split <;> norm_num
+  antitone i n := by
+    unfold boolOccupancy
+    by_cases h : active i (n + 1) = true
+    · rw [if_pos h, if_pos (hclose i n h)]
+    · rw [if_neg h]; split <;> norm_num
+
+/-- The Boolean launch weight is the fractional one at indicator occupancy. -/
+lemma weight_eq_fractionalWeight (active : ℕ → ℕ → Bool) (α : ℕ → ℝ) (n : ℕ) :
+    weight active α n = fractionalWeight (boolOccupancy active) α n := by
+  induction n using Nat.strong_induction_on with
+  | _ n ih =>
+      rw [weight_eq, fractionalWeight_eq, outstanding, fractionalOutstanding]
+      congr 1
+      refine Finset.sum_congr rfl (fun i _ => ?_)
+      rw [← ih i i.isLt]
+      unfold boolOccupancy
+      by_cases h : active (i : ℕ) n = true
+      · rw [if_pos h, if_pos h]; ring
+      · rw [if_neg h, if_neg h]; ring
+
+/-- Hence the Boolean allocation prefix is the fractional one. -/
+lemma allocationPrefix_eq_fractional (active : ℕ → ℕ → Bool) (α : ℕ → ℝ) :
+    allocationPrefix active α = fractionalAllocationPrefix (boolOccupancy active) α := by
+  funext n
+  refine Finset.sum_congr rfl (fun i _ => ?_)
+  rw [allocation, fractionalAllocation, weight_eq_fractionalWeight]
+
 /-- If every component eventually closes and component magnitudes are frequently bounded
 away from zero, the unit budget is recycled infinitely often: cumulative allocation is not
 bounded above. This is the sparse-opportunity form needed by the paper's repeatable-ROI
-lemma; components with zero magnitude on non-opportunity days are harmless. -/
+lemma; components with zero magnitude on non-opportunity days are harmless.  It is the
+fractional recycling argument read at indicator occupancy: a component that has closed
+occupies nothing. -/
 lemma allocationPrefix_not_bddAbove_of_frequently
     (close : ℕ → ℕ) (active : ℕ → ℕ → Bool)
     (hclosing : ClosingSchedule active)
@@ -2106,95 +2053,12 @@ lemma allocationPrefix_not_bddAbove_of_frequently
     (hα0 : ∀ i, 0 ≤ α i) (hα1 : ∀ i, α i ≤ 1)
     {δ : ℝ} (hδ : 0 < δ) (hδα : ∃ᶠ i in Filter.atTop, δ ≤ α i) :
     ¬ BddAbove (Set.range (allocationPrefix active α)) := by
-  have ha0 : ∀ i, 0 ≤ allocation active α i :=
-    fun i => allocation_nonneg active α hclosing hα0 hα1 i
-  intro hbdd
-  obtain ⟨B, hB⟩ := hbdd
-  have hsumRange : ∀ n, (∑ i ∈ Finset.range n, allocation active α i) ≤ B := by
-    intro n
-    cases n with
-    | zero =>
-        have hbase := hB (show allocationPrefix active α 0 ∈
-          Set.range (allocationPrefix active α) from ⟨0, rfl⟩)
-        have hbase0 : 0 ≤ allocationPrefix active α 0 :=
-          Finset.sum_nonneg (fun i _ => ha0 i)
-        simp only [Finset.sum_range_zero]
-        linarith
-    | succ n =>
-        have hn := hB (show allocationPrefix active α n ∈
-          Set.range (allocationPrefix active α) from ⟨n, rfl⟩)
-        rw [allocationPrefix, Fin.sum_univ_eq_sum_range] at hn
-        exact hn
-  have haSum : Summable (allocation active α) :=
-    summable_of_sum_range_le ha0 hsumRange
-  let r : ℝ := min (1 / 2 : ℝ) (δ / 2)
-  have hr : 0 < r := lt_min (by norm_num) (half_pos hδ)
-  obtain ⟨K, htail⟩ := summable_tail_Ico_lt ha0 haSum hr
-  let N := K + ∑ i ∈ Finset.range K, close i
-  have hKN : K ≤ N := by simp [N]
-  obtain ⟨J, hNJ, hαJ⟩ := (Filter.frequently_atTop.mp hδα) N
-  have hKJ : K ≤ J := hKN.trans hNJ
-  have hcloseBefore : ∀ i < K, close i ≤ N := by
-    intro i hi
-    have himem : i ∈ Finset.range K := Finset.mem_range.mpr hi
-    have hile : close i ≤ ∑ j ∈ Finset.range K, close j :=
-      Finset.single_le_sum (fun j _ => Nat.zero_le (close j)) himem
-    dsimp [N]
-    omega
-  have hout : outstanding active α (weight active α) J < r := by
-    have houtLe : outstanding active α (weight active α) J ≤
-        ∑ i ∈ Finset.Ico K J, allocation active α i := by
-      rw [outstanding]
-      calc
-        (∑ i : Fin J,
-            if active i J then weight active α i * α i else 0) ≤
-            ∑ i : Fin J,
-              if K ≤ i then allocation active α i else 0 := by
-          apply Finset.sum_le_sum
-          intro i hi
-          by_cases hop : active i J = true
-          · have hKi : K ≤ i := by
-              by_contra hnot
-              have hiK : i < K := Nat.lt_of_not_ge hnot
-              have hci := hcloseBefore i hiK
-              have hf := hclosed i J (hci.trans hNJ)
-              rw [hf] at hop
-              contradiction
-            simp [hop, hKi, allocation]
-          · have hfalse := Bool.eq_false_of_not_eq_true hop
-            simp [hfalse]
-            split
-            · exact ha0 i
-            · exact le_rfl
-        _ = ∑ i ∈ Finset.Ico K J, allocation active α i := by
-          rw [Fin.sum_univ_eq_sum_range (fun i : ℕ =>
-            if K ≤ i then allocation active α i else 0)]
-          rw [← Finset.sum_filter]
-          congr 1
-          ext i
-          simp [Finset.mem_Ico]
-          omega
-    exact lt_of_le_of_lt houtLe (htail J hKJ)
-  have hβhalf : (1 / 2 : ℝ) < weight active α J := by
-    rw [weight_eq]
-    have hrhalf : r ≤ (1 / 2 : ℝ) := min_le_left _ _
-    linarith
-  have haJlower : δ / 2 < allocation active α J := by
-    dsimp [allocation]
-    calc
-      δ / 2 = (1 / 2 : ℝ) * δ := by ring
-      _ < weight active α J * δ :=
-        mul_lt_mul_of_pos_right hβhalf hδ
-      _ ≤ weight active α J * α J :=
-        mul_le_mul_of_nonneg_left hαJ
-          (le_trans (by norm_num : (0 : ℝ) ≤ 1 / 2) (le_of_lt hβhalf))
-  have htailNext := htail (J + 1) (by omega)
-  have haJtail : allocation active α J ≤
-      ∑ i ∈ Finset.Ico K (J + 1), allocation active α i := by
-    apply Finset.single_le_sum (fun i _ => ha0 i)
-    simp [Finset.mem_Ico, hKJ]
-  have hrδ : r ≤ δ / 2 := min_le_right _ _
-  linarith
+  rw [allocationPrefix_eq_fractional]
+  exact fractionalAllocationPrefix_not_bddAbove_of_frequently (boolOccupancy active) α
+    (decreasingOccupancy_boolOccupancy hclosing)
+    (fun i => Or.inr ⟨close i, fun n hn => by
+      simp [boolOccupancy, hclosed i n hn]⟩)
+    hα0 hα1 hδ hδα
 
 /-- Uniformly positive magnitudes are the immediate special case of sparse recycling. -/
 lemma allocationPrefix_not_bddAbove (close : ℕ → ℕ) (active : ℕ → ℕ → Bool)
@@ -2215,15 +2079,6 @@ def activeUntil (close : ℕ → ℕ) (i n : ℕ) : Bool := decide (n < close i)
 lemma activeUntil_closing (close : ℕ → ℕ) : ClosingSchedule (activeUntil close) := by
   intro i n h
   simp [activeUntil] at h ⊢
-  omega
-
-/-- Every component of an `activeUntil` schedule does eventually close. The companion to
-`activeUntil_closing`: together they say the schedule is a closing one whose positions all
-terminate, which is what the recycling argument needs of any schedule a client builds. -/
-lemma activeUntil_eventually_closed (close : ℕ → ℕ) (i : ℕ) :
-    ∃ N, ∀ n, N ≤ n → activeUntil close i n = false := by
-  refine ⟨close i, fun n hn => ?_⟩
-  simp [activeUntil]
   omega
 
 /-- After a maturity day, at most an `η` fraction of the component's total magnitude
@@ -2400,7 +2255,7 @@ lemma VerifiedMaturitySchedule.polyActive
     PolyActiveSchedule (activeUntil h.close) := by
   obtain ⟨c, hc⟩ := polyFueled_boundedNone h.check h.check_poly
   have hswap := hc.comp (PolyFueled.right.pair PolyFueled.left)
-  refine ⟨_, hswap.of_eq (fun z => ?_)⟩
+  refine UnaryRuler.of_polyFueled (hswap.of_eq (fun z => ?_))
   simp only [Nat.unpair_pair]
   rw [h.boundedNone_eq_activeUntil]
 
@@ -2610,32 +2465,6 @@ lemma sharedBudgetedTrader_exploits_of_frequently
     (activeUntil_closing close) (fun i n hn => by
       simp [activeUntil]
       omega) (fun i => (α i).denote V) hα0 hα1 hδ hδα
-
-/-- Full repeatable-ROI conclusion: the shared budget trader is both efficiently computable
-and exploiting. -/
-lemma repeatableROI
-    (Ts : ℕ → Trader) (V : History) (DP : DeductiveProcess)
-    (ε : ℝ) (hε : 0 < ε) (η : ℕ → ℝ) (close : ℕ → ℕ)
-    (α : ℕ → EF) (hαrank : ∀ i, (α i).rank ≤ i)
-    (hαseg : MachineSpliceStream (fun i => (α i).serialize))
-    (hαc : ∀ i ρ W, (α i).denoteWith ρ W = (α i).denote W)
-    (hmag : ∀ i, (α i).denote V = (Ts i).magnitude V)
-    (hα0 : ∀ i, 0 ≤ (α i).denote V) (hα1 : ∀ i, (α i).denote V ≤ 1)
-    {δ : ℝ} (hδ : 0 < δ) (hδα : ∀ i, δ ≤ (α i).denote V)
-    (hP : ∀ d φ, 0 ≤ V d φ ∧ V d φ ≤ 1)
-    (hTs : PolyTradeEmulatable Ts)
-    (hactive : PolyActiveSchedule (activeUntil close))
-    (hroi : ∀ i, HasROI (Ts i) V DP ε)
-    (hη0 : ∀ i, 0 ≤ η i) (hηsum : Summable η)
-    (hmature : MaturitySchedule Ts V DP ε η close)
-    (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
-    EfficientlyComputable
-        (sharedBudgetedTrader Ts (activeUntil close) α hαrank) ∧
-      (sharedBudgetedTrader Ts (activeUntil close) α hαrank).Exploits V DP := by
-  constructor
-  · exact sharedBudgetedTrader_ec Ts (activeUntil close) α hαrank hαseg hactive hTs
-  · exact sharedBudgetedTrader_exploits Ts V DP ε hε η close α hαrank hαc hmag
-      hα0 hα1 hδ hδα hP hTs.launchGated hroi hη0 hηsum hmature hworld
 
 /-- Sparse form of the full repeatable-ROI construction. -/
 lemma repeatableROI_of_frequently

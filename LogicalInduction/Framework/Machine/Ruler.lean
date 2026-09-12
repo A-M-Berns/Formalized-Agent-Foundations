@@ -14,9 +14,8 @@ names that predicate and builds its closure calculus.
 
 ## Why a class of its own
 
-`Framework/Machine/WriteOutMachine.lean` and `Framework/Machine/SpliceMachine.lean` carry the
-six machine readings of an emitted *stream* (`MachineTokenStream`, `MachineSpliceStream`,
-`MachineSentenceCodes`, …).  A count is not a stream: it is a number that *reindexes* one,
+`Framework/Machine/WriteOutMachine.lean` declares the six machine readings of an emitted
+*stream* (`MachineTokenStream`, `MachineSpliceStream`, `MachineSentenceCodes`, …).  A count is not a stream: it is a number that *reindexes* one,
 and the two-role rule says it therefore gets its own reading.  Where a count is read as a
 *value* written into a stream rather than as a reindexer, the reading is
 `MachineDigits`, and `MachineDigits.ofUnaryRuler` is the bridge.
@@ -50,7 +49,7 @@ segment ruler; it is never compounded inside the loop.  That is what
 
 namespace LogicalInduction
 
-open Complexity Complexity.Cobham LogicalInduction.TokenFold LogicalInduction.FPFold
+open Complexity.Cobham
 
 /-- **A unary ruler for `f`**: some polynomial-time machine, handed the unary numeral for
 `n`, writes out exactly `f n` marks.

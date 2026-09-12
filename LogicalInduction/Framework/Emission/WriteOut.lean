@@ -273,25 +273,18 @@ lemma ifZero {φ ψ : ℕ → Sentence} (hφ : BigSentenceCodes φ) (hψ : BigSe
   · simpa [hz] using hpb z
 
 /-- Conjunction of two written-out sentence streams: the fixed `⋏` tag in front of the
-two blocks, which the prefix parser consumes in order.  The parse argument is
-`RpnSentenceCodes.and`'s verbatim; only the stream certificate changes. -/
+two blocks, which the prefix parser consumes in order.  The parse step is
+`parseRpn_and_blocks`; only the stream certificate distinguishes this from
+`RpnSentenceCodes.and`. -/
 lemma and {φ ψ : ℕ → Sentence} (hφ : BigSentenceCodes φ) (hψ : BigSentenceCodes ψ) :
     BigSentenceCodes (fun z => φ z ⋏ ψ z) := by
   obtain ⟨a, ha, hpa⟩ := hφ
   obtain ⟨b, hb, hpb⟩ := hψ
   have h3 : BigTokenStream (fun _ : ℕ => [3]) :=
     BigTokenStream.ofPolySegStream (PolySegStream.ofTokenStream (PolyTokenStream.const 3))
-  refine ⟨fun z => 3 :: (a z ++ b z),
-    ((h3.append ha).append hb).of_eq (fun z => by simp), fun z => ?_⟩
-  have hlen : (3 :: (a z ++ b z)).length = (a z).length + (b z).length + 1 := by
-    simp
-  rw [hlen, parseRpn_cons]
-  rw [if_neg (by norm_num), if_neg (by norm_num), if_neg (by norm_num), if_pos rfl]
-  rw [parseRpn_block_head (hpa z) (b z) (by omega)]
-  simp only [Option.bind_some]
-  rw [parseRpn_mono (b z) (show (b z).length ≤ (a z).length + (b z).length by omega)
-    (hpb z)]
-  rfl
+  exact ⟨fun z => 3 :: (a z ++ b z),
+    ((h3.append ha).append hb).of_eq (fun z => by simp),
+    fun z => parseRpn_and_blocks (hpa z) (hpb z)⟩
 
 /-- Negation of a written-out sentence stream: the fixed `🡒` tag in front of the block and
 a constant `⊥` block, which the prefix parser consumes in order.  Foundation spells `∼φ`
@@ -559,43 +552,13 @@ lemma ofPriceFree {A : ℕ → EF} (h : BigTokenStream (fun z => (A z).serialize
 end BigSpliceStream
 
 /-- Write-out mirror of `RpnSentenceCodes.modDispatch`: a `k`-way dispatch on `z % k`
-between finitely many written-out sentence families.  Same induction as the value-bounded
-version, with `BigSentenceCodes.ifZero` doing the branching. -/
+between finitely many written-out sentence families, at the shared induction
+`modDispatch_of_closure` (`Framework/Emission/RpnSplice.lean`). -/
 lemma BigSentenceCodes.modDispatch {k : ℕ} (hk : 0 < k) {φ : ℕ → ℕ → Sentence}
     (hφ : ∀ j < k, BigSentenceCodes (φ j)) :
-    BigSentenceCodes (fun z => φ (z.unpair.2 % k) z.unpair.1) := by
-  obtain ⟨cdm, hdm⟩ := divmodc_polyFueled k hk
-  obtain ⟨cadd, hadd⟩ := addc_polyFueled
-  have hrem : PolyFueled _ (fun z : ℕ => z.unpair.2 % k) :=
-    (PolyFueled.right.comp (hdm.comp PolyFueled.right)).of_eq (fun z => by
-      simp)
-  have hleft := PolyFueled.left
-  have H : ∀ m, m ≤ k → BigSentenceCodes (fun z =>
-      if z.unpair.2 % k < m then φ (z.unpair.2 % k) z.unpair.1
-      else φ 0 z.unpair.1) := by
-    intro m
-    induction m with
-    | zero =>
-        intro _
-        exact ((hφ 0 hk).comp hleft).of_eq (fun z => by simp)
-    | succ m ih =>
-        intro hm
-        have hmk : m < k := hm
-        have htest : PolyFueled _ (fun z : ℕ =>
-            (z.unpair.2 % k - m) + (m - z.unpair.2 % k)) :=
-          (hadd.comp ((subc_polyFueled.comp (hrem.pair (PolyFueled.const m))).pair
-            (subc_polyFueled.comp ((PolyFueled.const m).pair hrem)))).of_eq
-            (fun z => by simp)
-        refine (BigSentenceCodes.ifZero ((hφ m hmk).comp hleft)
-          (ih (le_of_lt hm)) htest).of_eq (fun z => ?_)
-        by_cases heq : z.unpair.2 % k = m
-        · rw [if_pos (by omega), if_pos (by omega), heq]
-        · rw [if_neg (by omega)]
-          by_cases hlt : z.unpair.2 % k < m + 1
-          · rw [if_pos hlt, if_pos (by omega)]
-          · rw [if_neg hlt, if_neg (by omega)]
-  exact (H k le_rfl).of_eq (fun z => by
-    rw [if_pos (Nat.mod_lt z.unpair.2 hk)])
+    BigSentenceCodes (fun z => φ (z.unpair.2 % k) z.unpair.1) :=
+  modDispatch_of_closure (C := BigSentenceCodes) (fun h he => h.of_eq he)
+    (fun h hf => h.comp hf) (fun hφ' hψ ht => hφ'.ifZero hψ ht) hk hφ
 
 /-- **The write-out realization theorem**: a trader whose per-day trade serialization is
 written-out spliceable is efficiently computable.  The mirror of `RpnSpliceStream.ec`,
@@ -667,13 +630,13 @@ paper's `δ n = 2⁻ⁿ`.  No price-freeness hypothesis on the coefficients is n
 `BigSpliceStream` already records how each coefficient block contracts. -/
 lemma PolyFueledTrader.ofTradeBlocksBig (Tr : Trader)
     (count : ℕ → ℕ) (f : ℕ → EF) (φ : ℕ → Sentence)
-    (hcount : ∃ c, PolyFueled c count)
+    {ccount : Nat.Partrec.Code} (hcount : PolyFueled ccount count)
     (hf : BigSpliceStream fun z => (f z).serialize)
     (hφ : BigSentenceCodes φ)
     (hTr : ∀ n, (Tr.strat n).trades =
       (List.range (count n)).map fun j => (f (Nat.pair n j), φ (Nat.pair n j))) :
     PolyFueledTrader Tr := by
-  obtain ⟨ccount, hcountF⟩ := hcount
+  have hcountF := hcount
   have hslot : BigSpliceStream (fun z => [6, Encodable.encode (φ z)]) :=
     (BigSpliceStream.tradeSlot hφ PolyFueled.id).of_eq (fun _ => rfl)
   refine BigSpliceStream.ec Tr

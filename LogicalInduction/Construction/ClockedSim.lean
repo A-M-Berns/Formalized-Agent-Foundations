@@ -50,7 +50,7 @@ generic in the description and the clock, and lives here rather than in the pinn
 `complexitylib` fork. `reachesIn_output_startInvariant` and `reachesIn_output_head_le` are
 generic facts about an arbitrary `Complexity.TM`. The pinned `complexitylib` fork proves the
 second of them (`Complexity.TM.UTMBody.reachesIn_output_head_le`), but only inside the
-`UTM/Internal/SimLoop.lean` closure, which this file does not import; the first has no
+`UTM/Internal/Sim.lean` closure, which this file does not import; the first has no
 upstream counterpart.
 
 **Not a paper node.** Nothing here renders anything in arXiv:1609.03543; declarations are
@@ -199,9 +199,7 @@ lemma simTM_step_run (d : TMDesc) (c c' : Cfg 1 (d.toTM).Q)
   funext i
   fin_cases i
   · simp [simWork]
-  · simp only [simWork_one, if_neg (by decide : ¬((1 : Fin 4) = 0)),
-      if_pos (rfl : (1 : Fin 4) = 1)]
-    exact writeAndMove_readBack clk (by rw [hclk]; simp) Dir3.right
+  · exact writeAndMove_readBack clk (by rw [hclk]; simp) Dir3.right
   · show s2.writeAndMove (readBackWrite s2.read).toΓ (idleDir s2.read) = s2
     exact transitionTape_eq_self hs2
   · show s3.writeAndMove (readBackWrite s3.read).toΓ (idleDir s3.read) = s3
@@ -223,8 +221,7 @@ lemma simTM_step_pre (d : TMDesc) (inp w0 clk s2 s3 out : Tape)
   rw [TM.step]
   simp only [simTM]
   rw [if_neg (by simp : (Sum.inr 0 : SimQ (d.toTM).Q) ≠ Sum.inr 3)]
-  simp only [simδ, Fin.val_zero, reduceIte, Option.some.injEq, Cfg.mk.injEq, true_and,
-    and_true]
+  simp only [simδ, Fin.val_zero, reduceIte, Option.some.injEq, Cfg.mk.injEq, true_and]
   refine ⟨by rw [moveLeftDir, if_neg hi], ?_, by
     rw [writeAndMove_readBack out hout, moveLeftDir, if_neg hout]⟩
   funext i
@@ -586,7 +583,7 @@ lemma simTM_hoareTime (d : TMDesc) (x : List Bool) (V : ℕ) (s2 s3 : Tape)
         have h2 : outT.head ≤ cV.output.head + 1 := by
           rw [houtT, transitionTape]
           exact Tape.head_writeAndMove_le _ _ _
-        simp only [Cfg.init, Tape.init_head] at h1
+        simp only [Tape.init_head] at h1
         omega
       have hrew := simTM_rewind d (clkTape V (0 + V)) s2 s3
         (clkTape_read_ne_start V (0 + V)) hs2 hs3 outT.cells hns outT.head

@@ -38,14 +38,6 @@ undecidable.
 
 All six structures are `#assert_fields`-frozen and are inhabited over the constructed
 inductor in `Construction/Quotation/Packages.lean`.
-**The criterion binder below is `def:lic` at the paper's own quantifier.**  Every result here that consumes an
-exploiting trader takes `[IsLogicalInductor P DP]`, and the trader is certified at `EfficientlyComputable`:
-it is assembled from `AffineCombination.PolySequence`'s machine-metered emission fields
-through `PolySequence.buyBelowTrader_ec` (`Properties/AffineCoherence.lean`), which has no
-fuel-class form: the bridge `BigSpliceStream.toMachine` runs fuel to machine, and no map
-back is proved or claimed.  The
-calibration is stated at `def:ec` in `Framework/Affine.lean`, and the `_unconditional`
-endpoints discharge the criterion through `LIA_is_logical_inductor`.
 
 -/
 
@@ -184,21 +176,6 @@ structure IntrospectionIntervalQuote (P : History) (DP : DeductiveProcess)
     (ctsInd (δ n) (a n : ℝ) (P n (φ n)) +
       ctsInd (δ n) (P n (φ n)) (b n : ℝ)) *
       P n (quote n))
-
-/-- Repackage the structure's `lower_feature`/`lower_generated` pair as the `PGenerableRat`
-interface (`def:ece`) a `thm:ref` client needs; the fields alone do not present it. -/
-lemma IntrospectionIntervalQuote.lower_pgenerable
-    {P : History} {DP : DeductiveProcess} {φ : ℕ → Sentence}
-    {a b δ : ℕ → ℚ} (q : IntrospectionIntervalQuote P DP φ a b δ) :
-    PGenerableRat P a :=
-  ⟨q.lower_feature, q.lower_generated⟩
-
-/-- The upper-bound counterpart of `IntrospectionIntervalQuote.lower_pgenerable`. -/
-lemma IntrospectionIntervalQuote.upper_pgenerable
-    {P : History} {DP : DeductiveProcess} {φ : ℕ → Sentence}
-    {a b δ : ℕ → ℚ} (q : IntrospectionIntervalQuote P DP φ a b δ) :
-    PGenerableRat P b :=
-  ⟨q.upper_feature, q.upper_generated⟩
 
 /-- **Introspection** (`thm:ref`): there is a positive *rational* error sequence tending
 to zero which controls both the shrunken-interval belief and expanded-interval disbelief

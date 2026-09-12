@@ -57,14 +57,6 @@ Each of the four theorems is stated against one bundled certificate —
 `Construction/Quotation/Packages.lean`.  `thm:ccee`'s vanishing product slack is
 carried explicitly as `ConditionalExpectationQuote.slack` (`dd:mesh`).  Those four
 structures and the three portfolio structures are `#assert_fields`-frozen.
-**The criterion binder below is `def:lic` at the paper's own quantifier.**  Every result here that consumes an
-exploiting trader takes `[IsLogicalInductor P DP]`, and the trader is certified at `EfficientlyComputable`:
-it is assembled from `AffineCombination.PolySequence`'s machine-metered emission fields
-through `PolySequence.buyBelowTrader_ec` (`Properties/AffineCoherence.lean`), which has no
-fuel-class form: the bridge `BigSpliceStream.toMachine` runs fuel to machine, and no map
-back is proved or claimed.  The
-calibration is stated at `def:ec` in `Framework/Affine.lean`, and the `_unconditional`
-endpoints discharge the criterion through `LIA_is_logical_inductor`.
 
 -/
 
@@ -273,18 +265,6 @@ deadline has not fallen, else `f k + 1`. -/
 def deadlineRun (f : DeferralFunction) (n k : ℕ) : ℕ :=
   if f k ≤ n then f k + 1 else 0
 
-/-- A lookup that has fired returns exactly `f k`. -/
-lemma deadlineRun_eq (f : DeferralFunction) {n k : ℕ} (h : 0 < deadlineRun f n k) :
-    deadlineRun f n k = f.f k + 1 := by
-  simp only [deadlineRun] at h ⊢
-  split_ifs at h ⊢ <;> omega
-
-/-- A lookup that has fired is unchanged on a later day. -/
-lemma deadlineRun_mono (f : DeferralFunction) {n m k : ℕ} (hm : n ≤ m)
-    (h : 0 < deadlineRun f n k) : deadlineRun f m k = deadlineRun f n k := by
-  simp only [deadlineRun] at h ⊢
-  split_ifs at h ⊢ <;> omega
-
 /-- The normalized lookup is machine-metered.  `f k ≥ 1`, so the lookup is `0` exactly when
 the deadline has not fallen, and the sentinel is one `ifZero` on the lookup itself. -/
 lemma unaryRuler_deadlineRun (f : DeferralFunction) :
@@ -467,30 +447,6 @@ back out, returning the quoted gap itself.
 
 namespace AffineQuotePortfolio
 
-private lemma price_le_futureHigh {P : History} {gap : ℕ → ℝ}
-    (q : AffineQuotePortfolio P gap) {n m : ℕ}
-    (hnm : n ≤ m) :
-    (q.family n).price P m ≤ affineFutureHigh q.family P n := by
-  obtain ⟨B, _, hB⟩ := q.bounded
-  apply le_csSup
-  · refine ⟨B, ?_⟩
-    rintro x ⟨j, rfl⟩
-    exact (le_abs_self _).trans (hB n (n + j))
-  · refine ⟨m - n, ?_⟩
-    simpa using congrArg (fun k => (q.family n).price P k) (Nat.add_sub_of_le hnm)
-
-private lemma futureLow_le_price {P : History} {gap : ℕ → ℝ}
-    (q : AffineQuotePortfolio P gap) {n m : ℕ}
-    (hnm : n ≤ m) :
-    affineFutureLow q.family P n ≤ (q.family n).price P m := by
-  obtain ⟨B, _, hB⟩ := q.bounded
-  apply csInf_le
-  · refine ⟨-B, ?_⟩
-    rintro x ⟨j, rfl⟩
-    linarith [neg_abs_le ((q.family n).price P (n + j)), hB n (n + j)]
-  · refine ⟨m - n, ?_⟩
-    simpa using congrArg (fun k => (q.family n).price P k) (Nat.add_sub_of_le hnm)
-
 /-- Reusable `thm:affpolymax` transport: if a fixed polynomial affine portfolio is
 asymptotically worth zero when repriced on its deferred day, then its diagonal price is
 already asymptotically zero. -/
@@ -507,7 +463,8 @@ lemma preemptive_asympEq_zero {P : History} {gap : ℕ → ℝ}
     have hnear := asympEq_iff_eventuallyWithin.1 hfuture (ε / 4) (by linarith)
     have hfutureLow : ∀ᶠ n in atTop, affineFutureLow q.family P n < ε / 2 := by
       filter_upwards [hnear] with n hn
-      have hlo := q.futureLow_le_price (f.lt n).le
+      have hlo := AffineCombination.BoundedAffinePrices.futureLow_le_price
+        q.bounded (f.lt n).le
       simp only [sub_zero] at hn
       have hupper := (abs_le.mp hn).2
       linarith
@@ -519,7 +476,8 @@ lemma preemptive_asympEq_zero {P : History} {gap : ℕ → ℝ}
     have hnear := asympEq_iff_eventuallyWithin.1 hfuture (ε / 4) (by linarith)
     have hfutureHigh : ∀ᶠ n in atTop, -ε / 2 < affineFutureHigh q.family P n := by
       filter_upwards [hnear] with n hn
-      have hhi := q.price_le_futureHigh (f.lt n).le
+      have hhi := AffineCombination.BoundedAffinePrices.price_le_futureHigh
+        q.bounded (f.lt n).le
       simp only [sub_zero] at hn
       have hlower := (abs_le.mp hn).1
       linarith
@@ -565,7 +523,8 @@ lemma preemptive_asympGE_zero {P : History} {gap : ℕ → ℝ}
   have hgaps := q.poly.noPreemptiveGaps P DP q.magnitude_le_one hcons
   have hfutureHigh : ∀ᶠ n in atTop, -ε / 2 < affineFutureHigh q.family P n := by
     filter_upwards [hfuture (ε / 4) (by linarith)] with n hn
-    have hhi := q.price_le_futureHigh (f.lt n).le
+    have hhi := AffineCombination.BoundedAffinePrices.price_le_futureHigh
+        q.bounded (f.lt n).le
     linarith
   have hnot := hgaps.underpriced (-ε) (-ε / 2) (by linarith) hfutureHigh
   rw [Filter.not_frequently] at hnot

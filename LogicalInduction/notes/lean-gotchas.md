@@ -33,6 +33,31 @@ the settled design decisions and the correspondence table, and points here for p
   including inside an identifier like `digitAt` or a path like `DigitBits.lean`, and rejects
   shell loops and variable assignments outright. Split such commands, or drive them from a
   script file.
+- **`lake env lean <file>` IS the right instrument for a `maxHeartbeats` sweep**, and it is
+  twenty times cheaper than a gate. It elaborates the file with the same options against the
+  existing oleans, so a heartbeat timeout shows up in one to three minutes per file with no
+  rebuild — and the usual stale-olean objection does not apply, because a heartbeat budget is
+  a property of the file's own elaboration. Method: strip every bump, probe each touched file,
+  restore what times out, probe again (a timed-out declaration makes its dependents fail with
+  `unknown constant` before they burn their own budget, so pass one under-reports). Measured
+  here: **41 of 53** bumps outside `Construction/Brouwer.lean` were cargo, including all eight
+  in `TraderMachine.lean` and nineteen of the twenty in `Descriptions.lean`. Do not keep a
+  bump because its siblings have one — heartbeats are deterministic and a single module probe
+  settles it.
+- **`nohup cmd > log 2>&1 &` inside a backgrounded shell call reports completion
+  IMMEDIATELY** (the shell forks and exits 0) while the build is still running, so the log you
+  then read is truncated and the "errors" in it are phantoms. Use the plain command and let
+  the harness background it. Two apparent build failures in one session were this artifact.
+- **Full-gate calibration is set by machine contention, not by file count.** A full
+  `lake build LogicalInduction APITests AxiomAudit` with `Framework/Criterion.lean` touched —
+  all LogicalInduction modules rebuilt, ~3750 jobs — is **under ten minutes** on a quiet
+  machine. The same gate measured 50-70 minutes, and once ~2 hours, with another agent
+  competing for the same cores. Check the machine before quoting a number; the spread is a
+  factor of six. The slowest single modules are `Construction/Descriptions` (160 s),
+  `SemanticExtension/LanguageCopy` (85 s), `SemanticExtension/Product` (69 s),
+  `Framework/Theory/DerivationSize` (59 s), `Construction/LIACompiler` (55 s),
+  `Conditioning/FramePass` (54 s), `Framework/Machine/EvalnCompiler` (48 s). Prefer twenty
+  single-module probes to one gate.
 - **`#print axioms` is not a gate and never was.** It prints to the build log; nothing fails
   on it. The `#assert_axioms_clean` blocks in `AxiomAudit.lean` are the only axiom gate, and
   they reach a declaration only by naming it or through an asserted declaration's proof term
@@ -45,6 +70,37 @@ the settled design decisions and the correspondence table, and points here for p
   field or definition of that name fails to parse with `unexpected token 'stacks'`,
   reported at the *following* line. Recognize the class: a parse error naming a token you
   took for an ordinary identifier, in a file that parses fine without Mathlib imported.
+- **`open Classical in` and `omit [Inst] in` are COMMAND prefixes and go ABOVE the
+  docstring**, not between the docstring and the declaration (`unexpected token 'omit';
+  expected 'lemma'`), and `open Classical in` does not work as a *term* prefix inside a
+  definition body at all: `noncomputable def f := open Classical in if p then 1 else 0` does
+  not elaborate. The `unusedSectionVars` linter reports one `omit` at a time, so fixing a file
+  full of them is an iteration, not a pass.
+- **`cases hs : e with` SUBSTITUTES `e` in the goal, not only in the context.** When
+  extracting a case-split helper whose conclusion mentions `e` (`codedStep d c = none ∧ …`),
+  the branch's goal has already become `none = none` and is discharged by `rfl`, not by `hs`.
+  The caller still gets `hs`, because the lemma's statement was fixed before the `cases`.
+- **`PrimrecRel p` unfolds to `PrimrecPred fun q => p q.1 q.2`, and `PrimrecPred` is an
+  EXISTENTIAL** (`∃ (_ : DecidablePred p), Primrec fun a => decide (p a)`). So `.to_comp` on
+  one fails with `Exists.to_comp`, and a `Computable`/`Primrec` consumer needs a Bool-valued
+  companion: `obtain ⟨_, h⟩ := isPrefix_prim; exact h.of_eq fun p => by simp` — the `simp`
+  bridges the existentially bound `Decidable` instance to the ambient one.
+- **Mathlib has `Primrec.list_map` but NO `Computable.list_map`.** To certify
+  `Computable fun n => (List.range (n+1)).map ψ` from `Computable ψ`, build the reversed list
+  by `Computable.nat_rec` and transport across `List.reverse` with a two-line induction;
+  `prefixProcess_computable` (`Construction/DeductiveDovetail.lean`) is the worked instance.
+- **`simpa [...] using (lemma args)` can fail with a MEMBERSHIP INSTANCE mismatch**
+  (`Finset.adjunctiveSet.toMembership` vs `SetLike.instMembership`) even though both sides are
+  `φ ∈ (s : Finset Sentence)`: `simp` normalizes the goal's instance and the supplied term's
+  differently. Pin the term first — `have h : φ ∈ DP.D e := lemma _ …; simpa [...] using h` —
+  so the expected type fixes the instance before `simp` runs.
+- **An `if (b : Bool)` and an `if (p : Prop)` with `decide p = b` are NOT definitionally equal
+  goals.** After replacing a Boolean test by its Prop, a `| zero => rfl` leaf in a
+  `Nat.rec`-vs-definition proof has to become `by_cases h : p <;> simp [theDef, h]`.
+- **A `private abbrev`, not a `private def`, for the claim a long induction carries.** The
+  anonymous-constructor notation `⟨_, _⟩` and `refine ⟨?_, ?_⟩` whnf the expected type at
+  *reducible* transparency, which does not unfold a plain `def`; `abbrev` is reducible and the
+  lifted leaf proofs then read exactly as they did inline.
 - **`#assert_fields` compares field *names* only**, despite its wording. A boundary
   structure's field *type* can change under a green freeze. Read it as a rename guard, not
   a premise-smuggling guard.
@@ -208,6 +264,39 @@ the settled design decisions and the correspondence table, and points here for p
 
 ## Auditing names
 
+- **A reference-count script over Lean must match the LAST dotted component and must admit
+  subscripts.** Indexing declarations by the name as written (`lemma PCWorld.foo`) while
+  tokenizing uses with a dot-free regex means a dotted declaration is never matched — 36 live
+  declarations once read as dead, one of them used seven times in a single file. And an
+  identifier class of `[A-Za-z0-9_']` splits `holds_imp₂` into `holds_imp`, so its uses never
+  match its declaration. Key the index on `name.split('.')[-1]` and add the subscript and
+  Greek ranges to the identifier class.
+- **A declaration-span deleter must not end the span at the next declaration's HEAD line.**
+  The next declaration's docstring, its `open … in` / `set_option … in` prefix commands and
+  any `/-! … -/` section marker all sit between the two heads, so `[decl, next_decl)` swallows
+  them; `end` / `end <Namespace>` lines lying in the gap go too. Run a namespace/section
+  balance check over every edited file before building. The same heuristic is outright unsafe
+  on machine-generated Lean (`Construction/Brouwer.lean`: proof lines starting at column 0,
+  comments written `/- … -/` rather than `/-- … -/`), where it silently removed six live
+  declarations.
+- **A word-boundary rename is safe for the DEFINITIONS and unsafe for the LEMMA NAMES built on
+  them.** Python's `\b` treats `_` as a word character, so `\bselfW\b` never matches inside
+  `selfW_ne_leftLoc` and a naive pass leaves dozens of lemma names spelling the old window.
+  Rename the compound identifiers first (longest first, exact), then the bare names; ~780
+  sites across two files went green on the first probe that way.
+- **Grep is not evidence of deadness in a file whose proofs are `grind` / `aesop` /
+  `simp_all`.** Those pick lemmas out of the *environment*, so a lemma can be load-bearing
+  with zero textual references. In `Construction/Brouwer.lean`, deleting seven
+  textually-unreferenced lemmas produced eleven errors (two `whnf` heartbeat timeouts, three
+  `grind` failures, one elaboration failure). Delete one and build the single module (17 s
+  there) rather than trusting the grep.
+- **An import a file uses only TRANSITIVELY is invisible to "does this file name anything from
+  that module".** `Construction/Conditioning/Compiler.lean` named nothing from its sibling
+  `Presentation.lean` but reached `AffineCombination.sentenceAffine_bounded`
+  (`Properties/TimelyLearning.lean`) through it. When dropping an import, build the module.
+  Likewise check which way an import edge actually runs before hoisting: `Source.lean` imports
+  `Product.lean`, so the surviving copy of a duplicate had to go further upstream than
+  "hoist to `Source.lean`" suggested.
 - **`rg -r` is the *replace* flag, not recursive.** `rg -rn "foo"` rewrites every match to
   `n` in the displayed output, which once made `EfficientPrefixPatch.preserves_ec` display
   as a dangling name. Use `rg -n --fixed-strings` when auditing declaration names.

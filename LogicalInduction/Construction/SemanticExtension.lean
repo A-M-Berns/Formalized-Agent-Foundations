@@ -13,7 +13,7 @@ Six of this directory's seven modules exist for one endpoint:
 `lic_no_expected_net_update_conditional_exact_canonical`,
 the generalized `thm:ccee` (tex:2068) — Closing the Loop for conditional expectations, stated
 at zero slack over an *arbitrary* threshold-only source `X : ℕ → LUV` carrying only
-`LUV.RpnThresholdCodeSeq X`.  That input class is wider than the literal-`PaperLUVSeq`
+`LUV.MachineThresholdCodeSeq X`.  That input class is wider than the literal-`PaperLUVSeq`
 rendering `Construction/Quotation/ExactCCEE.lean` prices on the paper's own market
 `liaHistory (paperDP T)`, and reaching it is the whole reason for the machinery below.  What
 it costs is pricing on a different, fixed enlarged language; both renderings stand, and
@@ -35,16 +35,15 @@ is the gate structure that makes it sound anyway.
   quotation atom it aliases, and the shared base process
   `theoremQuoteBaseDP T = (theoremDP T).union semanticQuoteDP`.
 * `Product` — the exact product closure on tag `1`, the second obstruction (a universal
-  product closure and the universal quote interpreter have no joint model), and the two
-  factor-ownership gates that answer it: the decidable tag test for certified sources and
-  the executable prefix gate for quotation factors.
+  product closure and the universal quote interpreter have no joint model), and the
+  executable prefix gate that admits a quotation factor.
 * `Source` — the tag-`0` certificate boundary (`RationalCutAt`, `SourceCutCertificate`,
   `CertifiedSourceLUVSeq`), the object-level checker that recognizes such a package without
   inspecting Lean proofs, and the fixed universal interpreter for what an admitted emitter
   writes.
 * `LanguageCopy` — the fixed renaming of the pre-extension vocabulary that answers the
   ownership obstruction, the certificate-free entailment gate over it, and the compiler that
-  admits a caller's existing RPN threshold certificate.
+  admits a caller's existing `LUV.MachineThresholdCodeSeq` certificate.
 * `Registry` — the registry-guarded exact product: a process that dovetails over product jobs
   and checker fuel and activates a clause only after *both* named factors pass the fixed
   coherent-cut registry on the finite prefix that job needs.
@@ -53,13 +52,13 @@ is the gate structure that makes it sound anyway.
 
 Two modules render paper nodes: `Endpoints`, whose `thm:ccee` declarations carry the endpoint
 and the market data it is stated over, and `Prime`, where the representation-boundary result
-`no_nonvacuous_worldValued_presented_of_rpn` carries `thm:ccee` as well — it is what fixes
+`no_nonvacuous_worldValued_presented_of_machine` carries `thm:ccee` as well — it is what fixes
 what a presented source may be allowed to mean.  The other five render none.
 
 **`Prime` is interface, not machinery.**  `LogicalInduction/API.lean` advertises five of its
 declarations as the §4.8 presented-LUV vocabulary — `PresentedLUVSeq`, `PresentedLUVSeq.gt_eq`,
 `semanticHandleLUVSeq`, `semanticHandleLUVSeq_machineThresholdCodeSeq` and
-`no_nonvacuous_worldValued_presented_of_rpn` — and `APITests/LogicalInduction.lean` exercises
+`no_nonvacuous_worldValued_presented_of_machine` — and `APITests/LogicalInduction.lean` exercises
 all five.  The implementation this directory means, which may be renamed or restructured, is
 the remaining five modules: `Quote`, `Product`, `Source`, `LanguageCopy` and `Registry`.
 -/

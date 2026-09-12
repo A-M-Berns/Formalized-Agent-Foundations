@@ -1,4 +1,5 @@
-import LogicalInduction.Construction.Conditioning.Presentation
+import LogicalInduction.Properties.Conditioning
+import LogicalInduction.Properties.TimelyLearning
 import LogicalInduction.Framework.Emission.FreezeTransducer
 import LogicalInduction.Construction.Primcodable
 import LogicalInduction.Construction.Freeze.Prefix
@@ -73,16 +74,8 @@ The operational-witness constructors and the criterion-level `thm:scon` endpoint
 `Construction/Conditioning/Endpoints.lean` (namespace `ConditioningCompile`);
 `Construction/Conditioning/PricePass.lean` and `Construction/Conditioning/FramePass.lean`
 (namespace `RpnConditioning`) certify the same translation in the token-metered model, and
-import this module for the raw-combinator algebra, the day-guard flag and guard honesty.
-This file carries the economic and floor content they all consume.
-**The criterion binder below is `def:lic` at the paper's own quantifier.**  Every result here that consumes an
-exploiting trader takes `[IsLogicalInductor P DP]`, and the trader is certified at `EfficientlyComputable`:
-it is assembled from `AffineCombination.PolySequence`'s machine-metered emission fields
-through `PolySequence.buyBelowTrader_ec` (`Properties/AffineCoherence.lean`), which has no
-fuel-class form: the bridge `BigSpliceStream.toMachine` runs fuel to machine, and no map
-back is proved or claimed.  The
-calibration is stated at `def:ec` in `Framework/Affine.lean`, and the `_unconditional`
-endpoints discharge the criterion through `LIA_is_logical_inductor`.
+import this module for the raw-combinator algebra and guard honesty.  This file carries the
+economic and floor content they all consume.
 
 -/
 
@@ -91,6 +84,8 @@ namespace LogicalInduction
 namespace ConditioningCompile
 
 open Filter
+open Nat.Partrec (Code)
+open Nat.Partrec.Code
 
 -- `Primrec`/`PolyFueled` elaboration over the deep product types below unfolds `Nat.sqrt`'s
 -- well-founded definition during `whnf` and loops; local irreducibility stops that.
@@ -573,6 +568,80 @@ lemma _root_.LogicalInduction.UnRpnContractsTo.lowerSafeRecipTok {a a' : List �
   (UnRpnContractsTo.constTok _).mulTok
     (((UnRpnContractsTo.constTok _).mulTok ha).safeRecipTok)
 
+/-! ### The raw-combinator `PolyTokenStream` algebra
+
+Every raw expression combinator maps poly token streams to poly token streams; the
+frame emitters (token-level and symbol-level alike) are assembled from these. -/
+
+namespace PolyTokenStream
+
+lemma rawConst {c : Code} {k : ℕ → ℕ} (hk : PolyFueled c k) :
+    PolyTokenStream (fun z => rawConstTokens (k z)) :=
+  (PolyTokenStream.const 1).append (PolyTokenStream.polyTok hk)
+
+lemma rawPrice {cs cd : Code} {scode dayF : ℕ → ℕ}
+    (hs : PolyFueled cs scode) (hd : PolyFueled cd dayF) :
+    PolyTokenStream (fun z => rawPriceTokens (scode z) (dayF z)) :=
+  ((PolyTokenStream.const 0).append (PolyTokenStream.polyTok hs)).append
+    (PolyTokenStream.polyTok hd)
+
+lemma rawConstQ (q : ℚ) :
+    PolyTokenStream (fun _ : ℕ => rawConstTokens (Encodable.encode q)) :=
+  (PolyTokenStream.const 1).append (PolyTokenStream.const _)
+
+lemma rawMul {a b : ℕ → List ℕ} (ha : PolyTokenStream a) (hb : PolyTokenStream b) :
+    PolyTokenStream (fun z => rawMulTokens (a z) (b z)) :=
+  (ha.append hb).append (PolyTokenStream.const 3)
+
+lemma rawAdd {a b : ℕ → List ℕ} (ha : PolyTokenStream a) (hb : PolyTokenStream b) :
+    PolyTokenStream (fun z => rawAddTokens (a z) (b z)) :=
+  (ha.append hb).append (PolyTokenStream.const 2)
+
+lemma rawMax {a b : ℕ → List ℕ} (ha : PolyTokenStream a) (hb : PolyTokenStream b) :
+    PolyTokenStream (fun z => rawMaxTokens (a z) (b z)) :=
+  (ha.append hb).append (PolyTokenStream.const 4)
+
+lemma rawSafeRecip {a : ℕ → List ℕ} (ha : PolyTokenStream a) :
+    PolyTokenStream (fun z => rawSafeRecipTokens (a z)) :=
+  ha.append (PolyTokenStream.const 5)
+
+/-- `min`, derived from `max` by negating both arguments and the result. -/
+lemma rawMin {a b : ℕ → List ℕ} (ha : PolyTokenStream a) (hb : PolyTokenStream b) :
+    PolyTokenStream (fun z => rawMinTokens (a z) (b z)) :=
+  rawMul (rawConstQ (-1)) (rawMax (rawMul (rawConstQ (-1)) ha)
+    (rawMul (rawConstQ (-1)) hb))
+
+lemma rawClip01 {a : ℕ → List ℕ} (ha : PolyTokenStream a) :
+    PolyTokenStream (fun z => rawClip01Tokens (a z)) :=
+  rawMax (rawConstQ 0) (rawMin (rawConstQ 1) ha)
+
+lemma rawAbs {a : ℕ → List ℕ} (ha : PolyTokenStream a) :
+    PolyTokenStream (fun z => rawAbsTokens (a z)) :=
+  rawMax ha (rawMul (rawConstQ (-1)) ha)
+
+/-- The reciprocal with clamp floor `ε`, obtained by rescaling `safeRecip` by `1 / ε` on
+both sides. -/
+lemma rawLowerSafeRecip {a : ℕ → List ℕ} (ha : PolyTokenStream a) (ε : ℚ) :
+    PolyTokenStream (fun z => rawLowerSafeRecipTokens (a z) ε) :=
+  rawMul (rawConstQ (1 / ε)) (rawSafeRecip (rawMul (rawConstQ (1 / ε)) ha))
+
+/-- The `letE` variable slot `i` as a (constant) poly token stream. -/
+lemma varTok (i : ℕ) : PolyTokenStream (fun _ : ℕ => ([7, i] : List ℕ)) :=
+  (PolyTokenStream.const 7).append (PolyTokenStream.const i)
+
+/-- The conditioning gate over the two `letE` variables, with poly budget codes. -/
+lemma rawGate {cb ci : Code} {bc ibc : ℕ → ℕ}
+    (hbc : PolyFueled cb bc) (hibc : PolyFueled ci ibc) :
+    PolyTokenStream (fun z => rawConditioningGateTokens [7, 0]
+      (rawAbsTokens [7, 1]) (bc z) (ibc z)) :=
+  rawClip01 (rawMul
+    (rawAdd (rawAdd (rawConstQ 1)
+      (rawMul (rawConst hbc) (rawSafeRecip (rawAbs (varTok 1)))))
+      (rawMul (rawConstQ (-1)) (varTok 0)))
+    (rawMul (rawConst hibc) (rawMax (rawConstQ 1) (rawAbs (varTok 1)))))
+
+end PolyTokenStream
+
 /-- Serialized `EF.conditionalRatioEF`: the price of `φ ⋏ ψ` times the `ε`-floored
 reciprocal of the price of `ψ`, all on day `day`. -/
 def rawConditioningRatioTokens (sentenceCode conditionCode day : ℕ)
@@ -597,10 +666,8 @@ This is `secondFrameBody` in token form. -/
 def rawLocallyGatedSecondBodyTokens
     (sentenceCode conditionCode day budgetCode inverseBudgetCode : ℕ)
     (ε : ℚ) : List ℕ :=
-  let _beta := rawLocallyGatedBetaBodyTokens
-    sentenceCode conditionCode day budgetCode inverseBudgetCode ε
-  -- The second leg reuses the β leg's leading ratio binding, but negates the product of
-  -- the gated bound with the bound ratio.
+  -- The same leading ratio binding as the β leg, closing instead over the negated
+  -- product of the gated bound with the bound ratio.
   let ratioValue := rawConditioningRatioTokens sentenceCode conditionCode day ε
   let boundRatio := [7, 0]
   let bound := [7, 1]
@@ -634,7 +701,7 @@ def rawConditionalPriceTokens (phiCode psiCode day : ℕ) (ε : ℚ) : List ℕ 
 /-- One source-token segment of the parser-transparent price rewrite. -/
 def conditionPriceTokenSegment (tokenFn : ℕ → ℕ) (ψCode : ℕ → ℕ)
     (ε : ℚ) (z : ℕ) : List ℕ :=
-  let control := PrefixPatchCompile.freezeControlNat tokenFn z
+  let control := freezeControlNat tokenFn z
   let mode := control.unpair.1
   let pending := control.unpair.2
   let token := tokenFn z
@@ -664,38 +731,6 @@ def conditionPriceTokenRun (ψCode : ℕ → ℕ) (ε : ℚ) :
         (EF.freezeTokenNext state token) tokens
       (rest.1, conditionPriceTokenEmit ψCode ε state token ++ rest.2)
 
-private lemma conditionPriceTokenRun_append (ψCode : ℕ → ℕ) (ε : ℚ)
-    (state : EF.FreezeTokenState) (xs ys : List ℕ) :
-    conditionPriceTokenRun ψCode ε state (xs ++ ys) =
-      let first := conditionPriceTokenRun ψCode ε state xs
-      let second := conditionPriceTokenRun ψCode ε first.1 ys
-      (second.1, first.2 ++ second.2) := by
-  induction xs generalizing state with
-  | nil => rfl
-  | cons token tokens ih =>
-      simp only [List.cons_append, conditionPriceTokenRun]
-      rw [ih]
-      simp [List.append_assoc]
-
-lemma conditionPriceTokenRun_range (tokenFn : ℕ → ℕ) (ψCode : ℕ → ℕ)
-    (ε : ℚ) (n count : ℕ) :
-    conditionPriceTokenRun ψCode ε (0, 0)
-        ((List.range count).map fun j => tokenFn (Nat.pair n j)) =
-      (EF.freezeTokenControlAt tokenFn n count,
-        (List.range count).flatMap fun j =>
-          conditionPriceTokenSegment tokenFn ψCode ε (Nat.pair n j)) := by
-  induction count with
-  | zero => rfl
-  | succ count ih =>
-      rw [List.range_succ, List.map_append, conditionPriceTokenRun_append, ih]
-      simp [conditionPriceTokenRun, conditionPriceTokenSegment,
-        conditionPriceTokenEmit, PrefixPatchCompile.freezeControlNat,
-        EF.freezeTokenControlAt]
-      by_cases hm0 : (EF.freezeTokenControlAt tokenFn n count).1 = 0 <;>
-        by_cases hm1 : (EF.freezeTokenControlAt tokenFn n count).1 = 1 <;>
-        by_cases hm2 : (EF.freezeTokenControlAt tokenFn n count).1 = 2 <;>
-        simp [hm0, hm1, hm2]
-
 private lemma streamReadFrom_rawConditionalPriceSuffix
     {phiCode : ℕ} {φ ψ : Sentence}
     (hφ : Encodable.decode (α := Sentence) phiCode = some φ)
@@ -713,273 +748,6 @@ private lemma streamReadFrom_rawConditionalPriceSuffix
     Encodable.encodek, EF.retainedConditionPrices, EF.conditionalPriceEF,
     EF.conditionalRatioEF, EF.lowerSafeRecip, efMin]
 
-/-- The parser state the rewrite produces: control unchanged, every stacked and traded
-feature carrying `EF.retainedConditionPrices` in place of its prices. -/
-private def retainedConditionStreamState (ψ : ℕ → Sentence) (ε : ℚ) :
-    EF.StreamState → EF.StreamState
-  | (control, stack, trades) =>
-      (control, stack.map fun e => e.retainedConditionPrices ψ ε,
-        trades.map fun trade => (trade.1.retainedConditionPrices ψ ε, trade.2))
-
--- One `simp` per parser mode and per stack shape: nine token tags times the stack cases
--- exceeds the default heartbeat budget.
-set_option maxHeartbeats 800000 in
-private lemma streamReadFrom_conditionPriceTokenEmit
-    (ψ : ℕ → Sentence) (ε : ℚ)
-    (control : EF.FreezeTokenState) (state : EF.StreamState) (token : ℕ)
-    (hmatch : control.Matches state) :
-    EF.streamReadFrom
-        (conditionPriceTokenEmit (fun day => Encodable.encode (ψ day)) ε control token)
-        (some (retainedConditionStreamState ψ ε state)) =
-      (EF.streamStep (some state) token).map (retainedConditionStreamState ψ ε) ∧
-    ∀ next, EF.streamStep (some state) token = some next →
-      (EF.freezeTokenNext control token).Matches next := by
-  rcases state with ⟨⟨mode, pending⟩, ⟨stack, trades⟩⟩
-  simp only [EF.FreezeTokenState.Matches] at hmatch ⊢
-  rcases hmatch with ⟨hmode, hpending⟩
-  rcases control with ⟨controlMode, code⟩
-  simp only at hmode
-  subst controlMode
-  cases mode with
-  | zero =>
-      by_cases h0 : token = 0
-      · subst token
-        simp [conditionPriceTokenEmit, EF.freezeTokenNext,
-          retainedConditionStreamState, EF.streamReadFrom, EF.streamStep]
-      by_cases h1 : token = 1
-      · subst token
-        simp [conditionPriceTokenEmit, EF.freezeTokenNext,
-          retainedConditionStreamState, EF.streamReadFrom, EF.streamStep]
-      by_cases h2 : token = 2
-      · subst token
-        cases stack with
-        | nil => simp [conditionPriceTokenEmit, EF.freezeTokenNext,
-            retainedConditionStreamState, EF.streamReadFrom, EF.streamStep]
-        | cons a stack =>
-          cases stack with
-          | nil => simp [conditionPriceTokenEmit, EF.freezeTokenNext,
-              retainedConditionStreamState, EF.streamReadFrom, EF.streamStep]
-          | cons b stack => simp [conditionPriceTokenEmit, EF.freezeTokenNext,
-              retainedConditionStreamState, EF.streamReadFrom, EF.streamStep,
-              EF.retainedConditionPrices]
-      by_cases h3 : token = 3
-      · subst token
-        cases stack with
-        | nil => simp [conditionPriceTokenEmit, EF.freezeTokenNext,
-            retainedConditionStreamState, EF.streamReadFrom, EF.streamStep]
-        | cons a stack =>
-          cases stack with
-          | nil => simp [conditionPriceTokenEmit, EF.freezeTokenNext,
-              retainedConditionStreamState, EF.streamReadFrom, EF.streamStep]
-          | cons b stack => simp [conditionPriceTokenEmit, EF.freezeTokenNext,
-              retainedConditionStreamState, EF.streamReadFrom, EF.streamStep,
-              EF.retainedConditionPrices]
-      by_cases h4 : token = 4
-      · subst token
-        cases stack with
-        | nil => simp [conditionPriceTokenEmit, EF.freezeTokenNext,
-            retainedConditionStreamState, EF.streamReadFrom, EF.streamStep]
-        | cons a stack =>
-          cases stack with
-          | nil => simp [conditionPriceTokenEmit, EF.freezeTokenNext,
-              retainedConditionStreamState, EF.streamReadFrom, EF.streamStep]
-          | cons b stack => simp [conditionPriceTokenEmit, EF.freezeTokenNext,
-              retainedConditionStreamState, EF.streamReadFrom, EF.streamStep,
-              EF.retainedConditionPrices]
-      by_cases h5 : token = 5
-      · subst token
-        cases stack <;> simp [conditionPriceTokenEmit, EF.freezeTokenNext,
-          retainedConditionStreamState, EF.streamReadFrom, EF.streamStep,
-          EF.retainedConditionPrices]
-      by_cases h6 : token = 6
-      · subst token
-        simp [conditionPriceTokenEmit, EF.freezeTokenNext,
-          retainedConditionStreamState, EF.streamReadFrom, EF.streamStep]
-      by_cases h7 : token = 7
-      · subst token
-        simp [conditionPriceTokenEmit, EF.freezeTokenNext,
-          retainedConditionStreamState, EF.streamReadFrom, EF.streamStep]
-      by_cases h8 : token = 8
-      · subst token
-        cases stack with
-        | nil => simp [conditionPriceTokenEmit, EF.freezeTokenNext,
-            retainedConditionStreamState, EF.streamReadFrom, EF.streamStep]
-        | cons a stack =>
-          cases stack with
-          | nil => simp [conditionPriceTokenEmit, EF.freezeTokenNext,
-              retainedConditionStreamState, EF.streamReadFrom, EF.streamStep]
-          | cons b stack => simp [conditionPriceTokenEmit, EF.freezeTokenNext,
-              retainedConditionStreamState, EF.streamReadFrom, EF.streamStep,
-              EF.retainedConditionPrices]
-      · simp [conditionPriceTokenEmit, EF.freezeTokenNext,
-          retainedConditionStreamState, EF.streamReadFrom, EF.streamStep,
-          h0, h1, h2, h3, h4, h5, h6, h7, h8]
-  | succ mode =>
-      cases mode with
-      | zero =>
-          cases hdecode : Encodable.decode (α := Sentence) token <;>
-            simp [conditionPriceTokenEmit, EF.freezeTokenNext,
-              retainedConditionStreamState, EF.streamReadFrom, EF.streamStep, hdecode]
-      | succ mode =>
-          cases mode with
-          | zero =>
-              obtain ⟨φ, hpendingEq, hdecode⟩ := hpending rfl
-              subst pending
-              constructor
-              · rw [show conditionPriceTokenEmit
-                    (fun day => Encodable.encode (ψ day)) ε (2, code) token =
-                    [token] ++ (rawConditionalPriceTokens code
-                      (Encodable.encode (ψ token)) token ε ++ [8]) by
-                    simp [conditionPriceTokenEmit]]
-                rw [EF.streamReadFrom_append]
-                have hday : EF.streamReadFrom [token]
-                    (some (retainedConditionStreamState ψ ε
-                      ((2, some φ), (stack, trades)))) =
-                    some ((0, none),
-                      (EF.price φ token ::
-                          stack.map (fun e => e.retainedConditionPrices ψ ε),
-                        trades.map fun trade =>
-                          (trade.1.retainedConditionPrices ψ ε, trade.2))) := by
-                  simp [retainedConditionStreamState, EF.streamReadFrom,
-                    EF.streamStep]
-                rw [hday, streamReadFrom_rawConditionalPriceSuffix hdecode]
-                rfl
-              · intro next hnext
-                simp [EF.streamStep] at hnext
-                subst next
-                simp [EF.freezeTokenNext]
-          | succ mode =>
-              cases mode with
-              | zero =>
-                  cases hdecode : Encodable.decode (α := ℚ) token <;>
-                    simp [conditionPriceTokenEmit, EF.freezeTokenNext,
-                      retainedConditionStreamState, EF.streamReadFrom, EF.streamStep,
-                      hdecode, EF.retainedConditionPrices]
-              | succ mode =>
-                  cases mode with
-                  | zero =>
-                      cases stack with
-                      | nil => simp [conditionPriceTokenEmit, EF.freezeTokenNext,
-                          retainedConditionStreamState, EF.streamReadFrom, EF.streamStep]
-                      | cons e stack =>
-                        cases hdecode : Encodable.decode (α := Sentence) token <;>
-                          simp [conditionPriceTokenEmit, EF.freezeTokenNext,
-                            retainedConditionStreamState, EF.streamReadFrom,
-                            EF.streamStep, hdecode]
-                  | succ mode =>
-                      cases mode with
-                      | zero => simp [conditionPriceTokenEmit, EF.freezeTokenNext,
-                          retainedConditionStreamState, EF.streamReadFrom, EF.streamStep,
-                          EF.retainedConditionPrices]
-                      | succ mode => simp [conditionPriceTokenEmit, EF.freezeTokenNext,
-                          retainedConditionStreamState, EF.streamReadFrom, EF.streamStep]
-
-private lemma streamReadFrom_conditionPriceTokenRun
-    (ψ : ℕ → Sentence) (ε : ℚ)
-    (control : EF.FreezeTokenState) (state : EF.StreamState) (tokens : List ℕ)
-    (hmatch : control.Matches state) :
-    let run := conditionPriceTokenRun
-      (fun day => Encodable.encode (ψ day)) ε control tokens
-    EF.streamReadFrom run.2 (some (retainedConditionStreamState ψ ε state)) =
-        (EF.streamReadFrom tokens (some state)).map
-          (retainedConditionStreamState ψ ε) ∧
-      ∀ next, EF.streamReadFrom tokens (some state) = some next →
-        run.1.Matches next := by
-  induction tokens generalizing control state with
-  | nil => simp [conditionPriceTokenRun, EF.streamReadFrom, hmatch]
-  | cons token tokens ih =>
-      simp only [conditionPriceTokenRun]
-      have hstep := streamReadFrom_conditionPriceTokenEmit ψ ε control state token hmatch
-      rcases hstep with ⟨hstep, hnext⟩
-      cases hs : EF.streamStep (some state) token with
-      | none =>
-          constructor
-          · rw [EF.streamReadFrom_append, hstep, hs]
-            simp only [Option.map_none]
-            rw [EF.streamReadFrom_none]
-            change none = (EF.streamReadFrom tokens
-              (EF.streamStep (some state) token)).map
-                (retainedConditionStreamState ψ ε)
-            rw [hs, EF.streamReadFrom_none]
-            rfl
-          · intro final hfinal
-            change EF.streamReadFrom tokens (EF.streamStep (some state) token) =
-              some final at hfinal
-            rw [hs, EF.streamReadFrom_none] at hfinal
-            contradiction
-      | some next =>
-          have hmatches := hnext next hs
-          have hrest := ih (EF.freezeTokenNext control token) next hmatches
-          simp only at hrest
-          rcases hrest with ⟨hrest, hfinal⟩
-          constructor
-          · rw [EF.streamReadFrom_append, hstep, hs]
-            simp only [Option.map_some]
-            rw [hrest]
-            simp [EF.streamReadFrom, hs]
-          · intro final hfinalSource
-            apply hfinal final
-            simpa [EF.streamReadFrom, hs] using hfinalSource
-
-private lemma deserializeTrades_conditionPriceTokenRun
-    (ψ : ℕ → Sentence) (ε : ℚ) (tokens : List ℕ) :
-    let run := conditionPriceTokenRun
-      (fun day => Encodable.encode (ψ day)) ε (0, 0) tokens
-    deserializeTrades run.2 =
-      (deserializeTrades tokens).map fun trades =>
-        trades.map fun trade =>
-          (trade.1.retainedConditionPrices ψ ε, trade.2) := by
-  have hrun := (streamReadFrom_conditionPriceTokenRun ψ ε
-    (0, 0) EF.streamInitial tokens EF.freezeToken_initial_matches).1
-  simp only at hrun ⊢
-  have hinitial : retainedConditionStreamState ψ ε EF.streamInitial =
-      EF.streamInitial := rfl
-  rw [hinitial] at hrun
-  unfold deserializeTrades
-  rw [hrun]
-  cases hread : EF.streamReadFrom tokens (some EF.streamInitial) with
-  | none => rfl
-  | some state =>
-      rcases state with ⟨⟨mode, pending⟩, ⟨stack, trades⟩⟩
-      cases mode <;> cases pending <;> cases stack <;>
-        simp [retainedConditionStreamState]
-
-lemma strategyOfTokens_conditionPriceTokenRun_trades
-    (ψ : ℕ → Sentence) (ε : ℚ) (day : ℕ) (tokens : List ℕ) :
-    (strategyOfTokens day
-      (conditionPriceTokenRun (fun d => Encodable.encode (ψ d)) ε
-        (0, 0) tokens).2).trades =
-      (strategyOfTokens day tokens).trades.map fun trade =>
-        (trade.1.retainedConditionPrices ψ ε, trade.2) := by
-  have hdecode := deserializeTrades_conditionPriceTokenRun ψ ε tokens
-  unfold strategyOfTokens
-  simp only at hdecode
-  rw [hdecode]
-  cases hs : deserializeTrades tokens with
-  | none => simp
-  | some trades =>
-      simp only [Option.map_some]
-      have hrank :
-          (∀ trade ∈ trades.map (fun trade =>
-              (trade.1.retainedConditionPrices ψ ε, trade.2)),
-              trade.1.rank ≤ day) ↔
-            ∀ trade ∈ trades, trade.1.rank ≤ day := by
-        constructor
-        · intro h trade hmem
-          simpa using h (trade.1.retainedConditionPrices ψ ε, trade.2)
-            (List.mem_map_of_mem hmem)
-        · intro h trade hmem
-          simp only [List.mem_map] at hmem
-          obtain ⟨source, hsource, rfl⟩ := hmem
-          simpa using h source hsource
-      by_cases hvalid : ∀ trade ∈ trades, trade.1.rank ≤ day
-      · rw [dif_pos (hrank.mpr hvalid), dif_pos hvalid]
-      · have hinvalid : ¬∀ trade ∈ trades.map (fun trade =>
-            (trade.1.retainedConditionPrices ψ ε, trade.2)),
-            trade.1.rank ≤ day := fun h => hvalid (hrank.mp h)
-        rw [dif_neg hinvalid, dif_neg hvalid]
-        rfl
-
 /-! ### Price rewrite with exact finite zero-denominator exceptions -/
 
 /-- One source-token segment of the prefix-safe rewrite.  A completed price leaf dated on
@@ -988,7 +756,7 @@ conditional-price body. -/
 def zeroAwareConditionPriceTokenSegment
     (zeroDays : Finset ℕ) (tokenFn : ℕ → ℕ) (ψCode : ℕ → ℕ)
     (ε : ℚ) (z : ℕ) : List ℕ :=
-  let control := PrefixPatchCompile.freezeControlNat tokenFn z
+  let control := freezeControlNat tokenFn z
   let mode := control.unpair.1
   let pending := control.unpair.2
   let token := tokenFn z
@@ -1054,7 +822,7 @@ lemma zeroAwareConditionPriceTokenRun_range
       simp [zeroAwareConditionPriceTokenRun,
         zeroAwareConditionPriceTokenSegment,
         zeroAwareConditionPriceTokenEmit,
-        PrefixPatchCompile.freezeControlNat, EF.freezeTokenControlAt]
+        freezeControlNat, EF.freezeTokenControlAt]
       by_cases hm0 : (EF.freezeTokenControlAt tokenFn n count).1 = 0 <;>
         by_cases hm1 : (EF.freezeTokenControlAt tokenFn n count).1 = 1 <;>
         by_cases hm2 : (EF.freezeTokenControlAt tokenFn n count).1 = 2 <;>
@@ -1098,9 +866,6 @@ private def retainedConditionExceptZeroStreamState
         trades.map fun trade =>
           (trade.1.retainedConditionPricesExceptZero zeroDays ψ ε, trade.2))
 
--- Same mode-by-tag-by-stack case split as the unguarded emitter, with the extra zero-day
--- branch on top; the default heartbeat budget does not cover it.
-set_option maxHeartbeats 800000 in
 private lemma streamReadFrom_zeroAwareConditionPriceTokenEmit
     (zeroDays : Finset ℕ) (ψ : ℕ → Sentence) (ε : ℚ)
     (control : EF.FreezeTokenState) (state : EF.StreamState) (token : ℕ)
@@ -1432,6 +1197,56 @@ lemma strategyOfTokens_zeroAwareConditionPriceTokenRun_trades
         rw [dif_neg hinvalid, dif_neg hvalid]
         rfl
 
+/-! ### The plain rewrite as the empty-exception case
+
+`zeroDays = ∅` switches every exception branch off, so the plain price rewrite *is* the
+zero-aware one at the empty set and inherits its parser theory whole.  Only the three
+definitions are stated separately, because the digit-model emitters below name them. -/
+
+lemma conditionPriceTokenEmit_eq_zeroAware (ψCode : ℕ → ℕ) (ε : ℚ)
+    (state : EF.FreezeTokenState) (token : ℕ) :
+    conditionPriceTokenEmit ψCode ε state token =
+      zeroAwareConditionPriceTokenEmit ∅ ψCode ε state token := by
+  simp [conditionPriceTokenEmit, zeroAwareConditionPriceTokenEmit]
+
+lemma conditionPriceTokenSegment_eq_zeroAware (tokenFn ψCode : ℕ → ℕ) (ε : ℚ) (z : ℕ) :
+    conditionPriceTokenSegment tokenFn ψCode ε z =
+      zeroAwareConditionPriceTokenSegment ∅ tokenFn ψCode ε z := by
+  simp [conditionPriceTokenSegment, zeroAwareConditionPriceTokenSegment]
+
+lemma conditionPriceTokenRun_eq_zeroAware (ψCode : ℕ → ℕ) (ε : ℚ) :
+    ∀ (state : EF.FreezeTokenState) (tokens : List ℕ),
+      conditionPriceTokenRun ψCode ε state tokens =
+        zeroAwareConditionPriceTokenRun ∅ ψCode ε state tokens
+  | _, [] => rfl
+  | state, token :: tokens => by
+      simp only [conditionPriceTokenRun, zeroAwareConditionPriceTokenRun,
+        conditionPriceTokenRun_eq_zeroAware ψCode ε _ tokens,
+        conditionPriceTokenEmit_eq_zeroAware]
+
+lemma conditionPriceTokenRun_range (tokenFn : ℕ → ℕ) (ψCode : ℕ → ℕ)
+    (ε : ℚ) (n count : ℕ) :
+    conditionPriceTokenRun ψCode ε (0, 0)
+        ((List.range count).map fun j => tokenFn (Nat.pair n j)) =
+      (EF.freezeTokenControlAt tokenFn n count,
+        (List.range count).flatMap fun j =>
+          conditionPriceTokenSegment tokenFn ψCode ε (Nat.pair n j)) := by
+  rw [conditionPriceTokenRun_eq_zeroAware, zeroAwareConditionPriceTokenRun_range]
+  simp only [conditionPriceTokenSegment_eq_zeroAware]
+
+/-- **The price-pass strategy-level equality**: the rewritten stream decodes to the source
+strategy with every trade's coefficient carrying `EF.retainedConditionPrices`. -/
+lemma strategyOfTokens_conditionPriceTokenRun_trades
+    (ψ : ℕ → Sentence) (ε : ℚ) (day : ℕ) (tokens : List ℕ) :
+    (strategyOfTokens day
+      (conditionPriceTokenRun (fun d => Encodable.encode (ψ d)) ε
+        (0, 0) tokens).2).trades =
+      (strategyOfTokens day tokens).trades.map fun trade =>
+        (trade.1.retainedConditionPrices ψ ε, trade.2) := by
+  rw [conditionPriceTokenRun_eq_zeroAware,
+    strategyOfTokens_zeroAwareConditionPriceTokenRun_trades]
+  simp only [EF.retainedConditionPricesExceptZero_empty]
+
 /-! ## Two parser-transparent trade-frame passes -/
 
 /-- Denominator of the per-trade conditioning budget: `(day+1)(day+2)·count`. -/
@@ -1473,34 +1288,38 @@ lemma frameInverseBudgetCode_exact (day count : ℕ) :
     simp [frameInverseBudgetCode, frameBudget, hzero,
       encode_rat_natCast]
 
-lemma frameBudgetCodes_polyFueled
+private lemma frameBudgetDenominator_polyFueled
     {day count : ℕ → ℕ} {cd cc : Nat.Partrec.Code}
     (hday : PolyFueled cd day) (hcount : PolyFueled cc count) :
-    (∃ c, PolyFueled c (fun z => frameBudgetCode (day z) (count z))) ∧
-      ∃ c, PolyFueled c (fun z => frameInverseBudgetCode (day z) (count z)) := by
-  obtain ⟨cadd, hadd⟩ := addc_polyFueled
+    ∃ c, PolyFueled c (fun z => frameBudgetDenominator (day z) (count z)) := by
   obtain ⟨cmul, hmul⟩ := mul_polyFueled
   have hday1 := hday.succ_comp
   have hday2 := hday1.succ_comp
-  have hden : PolyFueled _ (fun z => frameBudgetDenominator (day z) (count z)) :=
-    (hmul.comp ((hmul.comp (hday1.pair hday2)).pair hcount)).of_eq fun z => by
-      simp [frameBudgetDenominator]
-  have hbudgetPositive : PolyFueled _ (fun z =>
-      Nat.pair 2 (frameBudgetDenominator (day z) (count z))) :=
-    (PolyFueled.const 2).pair hden
+  exact ⟨_, (hmul.comp ((hmul.comp (hday1.pair hday2)).pair hcount)).of_eq fun z => by
+    simp [frameBudgetDenominator]⟩
+
+lemma frameBudgetCode_polyFueled
+    {day count : ℕ → ℕ} {cd cc : Nat.Partrec.Code}
+    (hday : PolyFueled cd day) (hcount : PolyFueled cc count) :
+    ∃ c, PolyFueled c (fun z => frameBudgetCode (day z) (count z)) := by
+  obtain ⟨cden, hden⟩ := frameBudgetDenominator_polyFueled hday hcount
+  obtain ⟨cb, hb⟩ := polyFueled_ifZero hcount
+    (PolyFueled.const (Encodable.encode (0 : ℚ))) ((PolyFueled.const 2).pair hden)
+  exact ⟨cb, hb.of_eq fun z => by simp [frameBudgetCode]⟩
+
+lemma frameInverseBudgetCode_polyFueled
+    {day count : ℕ → ℕ} {cd cc : Nat.Partrec.Code}
+    (hday : PolyFueled cd day) (hcount : PolyFueled cc count) :
+    ∃ c, PolyFueled c (fun z => frameInverseBudgetCode (day z) (count z)) := by
+  obtain ⟨cmul, hmul⟩ := mul_polyFueled
+  obtain ⟨cden, hden⟩ := frameBudgetDenominator_polyFueled hday hcount
   have htwice : PolyFueled _ (fun z =>
       2 * frameBudgetDenominator (day z) (count z)) :=
     (hmul.comp ((PolyFueled.const 2).pair hden)).of_eq fun z => by
       simp only [Nat.unpair_pair]
-  have hinversePositive : PolyFueled _ (fun z =>
-      Nat.pair (2 * frameBudgetDenominator (day z) (count z)) 1) :=
-    htwice.pair (PolyFueled.const 1)
-  obtain ⟨cb, hb⟩ := PrefixPatchCompile.polyFueled_ifZero hcount
-    (PolyFueled.const (Encodable.encode (0 : ℚ))) hbudgetPositive
-  obtain ⟨ci, hi⟩ := PrefixPatchCompile.polyFueled_ifZero hcount
-    (PolyFueled.const (Encodable.encode (0 : ℚ))) hinversePositive
-  exact ⟨⟨cb, hb.of_eq fun z => by simp [frameBudgetCode]⟩,
-    ⟨ci, hi.of_eq fun z => by simp [frameInverseBudgetCode]⟩⟩
+  obtain ⟨ci, hi⟩ := polyFueled_ifZero hcount
+    (PolyFueled.const (Encodable.encode (0 : ℚ))) (htwice.pair (PolyFueled.const 1))
+  exact ⟨ci, hi.of_eq fun z => by simp [frameInverseBudgetCode]⟩
 
 lemma frameBudget_eq (day count : ℕ) (hcount : 0 < count) :
     frameBudget day count =
@@ -1632,9 +1451,6 @@ private lemma streamRead_rawConditioningRatio_none {sentenceCode : ℕ} {ψ : Se
   apply streamRead_append_none
   exact streamRead_rawPrice_none (conjunctionCode_decode_none hdecode) day stack trades
 
--- The β body is a deep `++` nest over the raw combinators; associating it for the rewrite
--- exceeds the default heartbeat budget.
-set_option maxHeartbeats 800000 in
 private lemma streamRead_rawFirstBody_none {sentenceCode : ℕ} {ψ : Sentence}
     (hdecode : Encodable.decode (α := Sentence) sentenceCode = none)
     (day : ℕ) (ε q : ℚ) (stack : List EF) (trades : List (EF × Sentence)) :
@@ -1647,8 +1463,6 @@ private lemma streamRead_rawFirstBody_none {sentenceCode : ℕ} {ψ : Sentence}
     streamRead_rawConditioningRatio_none hdecode, EF.streamReadFrom_none,
     EF.streamReadFrom_none]
 
--- As for the β body: a deep `++` nest whose reassociation exceeds the default budget.
-set_option maxHeartbeats 800000 in
 private lemma streamRead_rawSecondBody_none {sentenceCode : ℕ} {ψ : Sentence}
     (hdecode : Encodable.decode (α := Sentence) sentenceCode = none)
     (day : ℕ) (ε q : ℚ) (stack : List EF) (trades : List (EF × Sentence)) :
@@ -1661,9 +1475,6 @@ private lemma streamRead_rawSecondBody_none {sentenceCode : ℕ} {ψ : Sentence}
     streamRead_rawConditioningRatio_none hdecode, EF.streamReadFrom_none,
     EF.streamReadFrom_none]
 
--- The decodable branch simps the whole frame body — every raw combinator unfolded at once
--- against the streaming parser — which does not fit the default budget.
-set_option maxHeartbeats 800000 in
 private lemma streamRead_rawFrame_empty (second : Bool) (sentenceCode : ℕ)
     (ψ : Sentence) (day : ℕ) (ε q : ℚ) (trades : List (EF × Sentence)) :
     EF.streamReadFrom
@@ -1728,9 +1539,6 @@ private def frameStreamState (second : Bool) (ψ : Sentence) (ε q : ℚ) (day :
           if mode = 4 ∨ mode = 0 then none else pending),
         stack, trades.map (frameLeg second ψ ε q day))
 
--- The largest case split in the file: every parser mode against every token tag, and the
--- mode-4 branch additionally unfolds a full frame body.  Needs a large heartbeat budget.
-set_option maxHeartbeats 3000000 in
 private lemma streamReadFrom_conditioningFrameTokenEmit
     (second : Bool) (ψ : Sentence) (ε q : ℚ) (day : ℕ)
     (control : EF.FreezeTokenState) (state : EF.StreamState) (token : ℕ)
@@ -2175,29 +1983,6 @@ private lemma deserializeTrades_append_of_some (left right : List ℕ)
   rw [streamReadFrom_prependStreamTrades first right EF.streamInitial, hright]
   rfl
 
-/-- Membership in a fixed finite set is polynomial for every polynomial natural-valued
-input.  The generated program is a fixed nest of equality tests, one per set element.  It is a
-generic certificate fact rather than a conditioning one; its consumers are the zero-day
-certificates in `Construction/Conditioning/FramePass.lean` and in this module's digit-model half. -/
-lemma finsetMembership_polyFueled
-    {cf : Nat.Partrec.Code} {f : ℕ → ℕ}
-    (hf : PolyFueled cf f) (s : Finset ℕ) :
-    ∃ c, PolyFueled c (fun z => if f z ∈ s then 1 else 0) := by
-  classical
-  induction s using Finset.induction with
-  | empty =>
-      exact ⟨_, (PolyFueled.const 0).of_eq fun z => by simp⟩
-  | @insert a s ha ih =>
-      obtain ⟨ceq, heq⟩ := polyFueled_eqConst hf a
-      obtain ⟨cmem, hmem⟩ := ih
-      obtain ⟨cout, hout⟩ :=
-        PrefixPatchCompile.polyFueled_ifZero
-          heq hmem (PolyFueled.const 1)
-      refine ⟨cout, hout.of_eq fun z => ?_⟩
-      by_cases hfa : f z = a
-      · simp [hfa]
-      · simp [hfa, Finset.mem_insert]
-
 /-- The long segment emitted at a completed trade frame is a fixed-width polynomial token
 stream in its five varying numeric fields. -/
 private lemma rawConditioningFrameTokens_poly
@@ -2220,67 +2005,22 @@ private lemma rawConditioningFrameTokens_poly
     (haddNat.comp
       (((PolyFueled.const 3).pair (hsentence.pair hcondition)).pair
         (PolyFueled.const 1))).of_eq fun z => by simp [conjunctionCode]
-  have hconst (code : ℕ → ℕ) {c : Nat.Partrec.Code}
-      (hcode : PolyFueled c code) :
-      PolyTokenStream (fun z => rawConstTokens (code z)) :=
-    (PolyTokenStream.const 1).append (PolyTokenStream.polyTok hcode)
-  have hconstQ (q : ℚ) : PolyTokenStream (fun _ : ℕ =>
-      rawConstTokens (Encodable.encode q)) :=
-    hconst (fun _ => Encodable.encode q) (PolyFueled.const _)
-  have hprice (scode d : ℕ → ℕ) {cscode cd' : Nat.Partrec.Code}
-      (hscode : PolyFueled cscode scode) (hd : PolyFueled cd' d) :
-      PolyTokenStream (fun z => rawPriceTokens (scode z) (d z)) :=
-    ((PolyTokenStream.const 0).append (PolyTokenStream.polyTok hscode)).append
-      (PolyTokenStream.polyTok hd)
-  have hadd {a b : ℕ → List ℕ} (ha : PolyTokenStream a) (hb : PolyTokenStream b) :
-      PolyTokenStream (fun z => rawAddTokens (a z) (b z)) :=
-    (ha.append hb).append (PolyTokenStream.const 2)
-  have hmul {a b : ℕ → List ℕ} (ha : PolyTokenStream a) (hb : PolyTokenStream b) :
-      PolyTokenStream (fun z => rawMulTokens (a z) (b z)) :=
-    (ha.append hb).append (PolyTokenStream.const 3)
-  have hmax {a b : ℕ → List ℕ} (ha : PolyTokenStream a) (hb : PolyTokenStream b) :
-      PolyTokenStream (fun z => rawMaxTokens (a z) (b z)) :=
-    (ha.append hb).append (PolyTokenStream.const 4)
-  have hsafe {a : ℕ → List ℕ} (ha : PolyTokenStream a) :
-      PolyTokenStream (fun z => rawSafeRecipTokens (a z)) :=
-    ha.append (PolyTokenStream.const 5)
-  have hmin {a b : ℕ → List ℕ} (ha : PolyTokenStream a) (hb : PolyTokenStream b) :
-      PolyTokenStream (fun z => rawMinTokens (a z) (b z)) :=
-    hmul (hconstQ (-1))
-      (hmax (hmul (hconstQ (-1)) ha) (hmul (hconstQ (-1)) hb))
-  have habs {a : ℕ → List ℕ} (ha : PolyTokenStream a) :
-      PolyTokenStream (fun z => rawAbsTokens (a z)) :=
-    hmax ha (hmul (hconstQ (-1)) ha)
-  have hclip {a : ℕ → List ℕ} (ha : PolyTokenStream a) :
-      PolyTokenStream (fun z => rawClip01Tokens (a z)) :=
-    hmax (hconstQ 0) (hmin (hconstQ 1) ha)
-  let ratio : ℕ → List ℕ := fun z => rawConditioningRatioTokens
-    (sentence z) (condition z) (day z) ε
-  have hratio : PolyTokenStream ratio := by
-    have hnum := hprice (fun z => conjunctionCode (sentence z) (condition z)) day
-      hconj hday
-    have hden := hprice condition day hcondition hday
-    exact hmul hnum
-      (hmul (hconstQ (1 / ε)) (hsafe (hmul (hconstQ (1 / ε)) hden)))
-  let boundRatio : ℕ → List ℕ := fun _ => [7, 0]
-  let bound : ℕ → List ℕ := fun _ => [7, 1]
-  have hboundRatio : PolyTokenStream boundRatio :=
-    (PolyTokenStream.const 7).append (PolyTokenStream.const 0)
-  have hbound : PolyTokenStream bound :=
-    (PolyTokenStream.const 7).append (PolyTokenStream.const 1)
-  let gate : ℕ → List ℕ := fun z => rawConditioningGateTokens
-    (boundRatio z) (rawAbsTokens (bound z)) (budget z) (inverse z)
-  have hgate : PolyTokenStream gate := by
-    let magnitude : ℕ → List ℕ := fun z => rawAbsTokens (bound z)
-    have hmagnitude : PolyTokenStream magnitude := habs hbound
-    have hmaxMag := hmax (hconstQ 1) hmagnitude
-    have htolerance := hmul (hconst budget hbudget) (hsafe hmagnitude)
-    have hshift := hadd (hadd (hconstQ 1) htolerance)
-      (hmul (hconstQ (-1)) hboundRatio)
-    exact hclip (hmul hshift (hmul (hconst inverse hinverse) hmaxMag))
-  let betaCore : ℕ → List ℕ := fun z =>
-    rawMinTokens (bound z) (rawMulTokens (bound z) (gate z))
-  have hbetaCore : PolyTokenStream betaCore := hmin hbound (hmul hbound hgate)
+  have hboundRatio : PolyTokenStream (fun _ : ℕ => ([7, 0] : List ℕ)) :=
+    PolyTokenStream.varTok 0
+  have hbound : PolyTokenStream (fun _ : ℕ => ([7, 1] : List ℕ)) :=
+    PolyTokenStream.varTok 1
+  have hgate : PolyTokenStream (fun z => rawConditioningGateTokens [7, 0]
+      (rawAbsTokens [7, 1]) (budget z) (inverse z)) :=
+    PolyTokenStream.rawGate hbudget hinverse
+  have hratio : PolyTokenStream (fun z =>
+      rawConditioningRatioTokens (sentence z) (condition z) (day z) ε) :=
+    PolyTokenStream.rawMul (PolyTokenStream.rawPrice hconj hday)
+      (PolyTokenStream.rawLowerSafeRecip (PolyTokenStream.rawPrice hcondition hday) ε)
+  have hbetaCore : PolyTokenStream (fun z =>
+      rawMinTokens [7, 1] (rawMulTokens [7, 1]
+        (rawConditioningGateTokens [7, 0] (rawAbsTokens [7, 1])
+          (budget z) (inverse z)))) :=
+    PolyTokenStream.rawMin hbound (PolyTokenStream.rawMul hbound hgate)
   have hfirstBody : PolyTokenStream (fun z =>
       rawLocallyGatedBetaBodyTokens (sentence z) (condition z) (day z)
         (budget z) (inverse z) ε) :=
@@ -2288,8 +2028,8 @@ private lemma rawConditioningFrameTokens_poly
   have hsecondBody : PolyTokenStream (fun z =>
       rawLocallyGatedSecondBodyTokens (sentence z) (condition z) (day z)
         (budget z) (inverse z) ε) :=
-    (hratio.append
-      (hmul (hconstQ (-1)) (hmul hbetaCore hboundRatio))).append
+    (hratio.append (PolyTokenStream.rawMul (PolyTokenStream.rawConstQ (-1))
+      (PolyTokenStream.rawMul hbetaCore hboundRatio))).append
         (PolyTokenStream.const 8)
   have hfirst := ((hfirstBody.append (PolyTokenStream.const 8)).append
       (PolyTokenStream.const 6)).append (PolyTokenStream.polyTok hconj)
@@ -2312,7 +2052,7 @@ private lemma rawConditioningFrameTokens_poly
 def conditioningFrameTokenSegment (second : Bool) (tokenFn : ℕ → ℕ)
     (ψCode day budgetCode inverseBudgetCode : ℕ) (ε : ℚ)
     (z : ℕ) : List ℕ :=
-  let control := PrefixPatchCompile.freezeControlNat tokenFn z
+  let control := freezeControlNat tokenFn z
   conditioningFrameTokenEmit second ψCode day ε budgetCode inverseBudgetCode
     (control.unpair.1, control.unpair.2) (tokenFn z)
 
@@ -2331,7 +2071,39 @@ lemma conditioningFrameTokenRun_range (second : Bool) (tokenFn : ℕ → ℕ)
       rw [List.range_succ, List.map_append,
         conditioningFrameTokenRun_append, ih]
       simp [conditioningFrameTokenRun, conditioningFrameTokenSegment,
-        PrefixPatchCompile.freezeControlNat, EF.freezeTokenControlAt]
+        freezeControlNat, EF.freezeTokenControlAt]
+/-! ## The run-level `Matches` transport
+
+`EF.streamReadFrom_freezeTokenRun` (FinitePerturbations) proves, bundled with its
+emission equations, that the freeze control tracks the parser state along every
+successful run.  Instantiating its quote data trivially extracts the pure transport. -/
+
+lemma freezeTokenRun_fst (quoteCode : ℕ → ℕ → ℕ) (cutoff : ℕ)
+    (st : EF.FreezeTokenState) (ts : List ℕ) :
+    (EF.freezeTokenRun quoteCode cutoff st ts).1 = ts.foldl EF.freezeTokenNext st := by
+  induction ts generalizing st with
+  | nil => rfl
+  | cons t rest ih => simp only [EF.freezeTokenRun, List.foldl_cons]; exact ih _
+
+/-- The freeze control matches the parser state after any successful run. -/
+lemma matches_streamReadFrom (ts : List ℕ) (control : EF.FreezeTokenState)
+    (state next : EF.StreamState) (hmatch : control.Matches state)
+    (hread : EF.streamReadFrom ts (some state) = some next) :
+    (ts.foldl EF.freezeTokenNext control).Matches next := by
+  have h := (EF.streamReadFrom_freezeTokenRun (fun _ _ => (0 : ℚ))
+    (fun _ _ => Encodable.encode (0 : ℚ)) 0 (fun _ _ _ _ => rfl)
+    control state ts hmatch).2 next hread
+  rwa [freezeTokenRun_fst] at h
+
+/-- Step-level form of the same transport: one token advances both the freeze control and
+the parser state, and the match survives. -/
+lemma matches_streamStep {control : EF.FreezeTokenState} {state next : EF.StreamState}
+    {token : ℕ} (hmatch : control.Matches state)
+    (hstep : EF.streamStep (some state) token = some next) :
+    (EF.freezeTokenNext control token).Matches next :=
+  matches_streamReadFrom [token] control state next hmatch
+    (by simpa [EF.streamReadFrom] using hstep)
+
 /-! ### Trade-frame scan -/
 
 /-- Before source index `j`, record the first token after the preceding trade frame and the
@@ -2341,7 +2113,7 @@ def tradeScanAt (tokenFn : ℕ → ℕ) (n : ℕ) : ℕ → ℕ × ℕ
   | 0 => (0, 0)
   | j + 1 =>
       let previous := tradeScanAt tokenFn n j
-      let mode := (PrefixPatchCompile.freezeControlNat tokenFn (Nat.pair n j)).unpair.1
+      let mode := (freezeControlNat tokenFn (Nat.pair n j)).unpair.1
       if mode = 4 then (j + 1, previous.2 + 1) else previous
 
 /-- `tradeScanAt` on a packed `⟨n, j⟩` argument, its two components paired. -/
@@ -2389,9 +2161,7 @@ private lemma tradeScanAt_count_eq_of_read (tokenFn : ℕ → ℕ) (n j : ℕ)
               some state := by
             simpa [EF.streamReadFrom] using hread
           rcases ih previous hprev with ⟨hcount, hmatches⟩
-          have hnext := (streamReadFrom_conditionPriceTokenEmit
-            (fun _ => ⊤) 1 (EF.freezeTokenControlAt tokenFn n j) previous
-              (tokenFn (Nat.pair n j)) hmatches).2 state hstep
+          have hnext := matches_streamStep hmatches hstep
           have hlength := streamStep_trades_length previous state
             (tokenFn (Nat.pair n j)) hstep
           constructor
@@ -2400,8 +2170,8 @@ private lemma tradeScanAt_count_eq_of_read (tokenFn : ℕ → ℕ) (n j : ℕ)
             have hmode : (EF.freezeTokenControlAt tokenFn n j).1 =
                 previous.1.1 := hmatches.1
             by_cases hm : (EF.freezeTokenControlAt tokenFn n j).1 = 4
-            · simp [PrefixPatchCompile.freezeControlNat, hm, ← hmode]
-            · simp [PrefixPatchCompile.freezeControlNat, hm, ← hmode, hcount]
+            · simp [freezeControlNat, hm, ← hmode]
+            · simp [freezeControlNat, hm, ← hmode, hcount]
           · simpa only [EF.freezeTokenControlAt] using hnext
 
 lemma frameTradeCount_eq_length_of_read
@@ -2437,7 +2207,7 @@ def parserDepthScanAt (tokenFn : ℕ → ℕ) (n : ℕ) : ℕ → ℕ
   | 0 => 0
   | j + 1 =>
       parserDepthNext
-        (PrefixPatchCompile.freezeControlNat tokenFn (Nat.pair n j)).unpair.1
+        (freezeControlNat tokenFn (Nat.pair n j)).unpair.1
         (tokenFn (Nat.pair n j)) (parserDepthScanAt tokenFn n j)
 
 /-- `parserDepthScanAt` on a packed `⟨n, j⟩` argument. -/
@@ -2448,7 +2218,7 @@ def parserDepthScanNat (tokenFn : ℕ → ℕ) (z : ℕ) : ℕ :=
 may produce false positives, which are harmless because `none` is absorbing; a successful
 real parse agrees exactly with this shallow scan. -/
 def parserStructurallyAccepts (tokenFn lenFn : ℕ → ℕ) (n : ℕ) : ℕ :=
-  if (PrefixPatchCompile.freezeControlNat tokenFn
+  if (freezeControlNat tokenFn
       (Nat.pair n (lenFn n))).unpair.1 = 0 then
     if parserDepthScanNat tokenFn (Nat.pair n (lenFn n)) = 0 then 1 else 0
   else 0
@@ -2488,7 +2258,7 @@ private lemma parserDepthScanAt_eq_of_read (tokenFn : ℕ → ℕ) (n j : ℕ)
             simpa [EF.streamReadFrom] using hread
           rw [parserDepthScanAt, ih previous hprev]
           have hmode := (tradeScanAt_count_eq_of_read tokenFn n j previous hprev).2.1
-          simp only [PrefixPatchCompile.freezeControlNat, Nat.unpair_pair]
+          simp only [freezeControlNat, Nat.unpair_pair]
           rw [hmode]
           exact (streamStep_stack_length previous state
             (tokenFn (Nat.pair n j)) hstep).symm
@@ -2504,7 +2274,7 @@ private lemma parserStructurallyAccepts_eq_one_of_read
   have hdepth := parserDepthScanAt_eq_of_read tokenFn n (lenFn n)
     ((0, none), ([], trades)) hread
   simp [parserStructurallyAccepts, parserDepthScanNat,
-    PrefixPatchCompile.freezeControlNat, hmatches, hdepth]
+    freezeControlNat, hmatches, hdepth]
 
 private lemma parserStructurallyAccepts_eq_one_iff_of_read
     (tokenFn lenFn : ℕ → ℕ) (n : ℕ) (state : EF.StreamState)
@@ -2518,7 +2288,7 @@ private lemma parserStructurallyAccepts_eq_one_iff_of_read
   rw [show parserStructurallyAccepts tokenFn lenFn n =
       if state.1.1 = 0 then if state.2.1.length = 0 then 1 else 0 else 0 by
     simp [parserStructurallyAccepts, parserDepthScanNat,
-      PrefixPatchCompile.freezeControlNat, hmatches, hdepth]]
+      freezeControlNat, hmatches, hdepth]]
   by_cases hm : state.1.1 = 0 <;> by_cases hs : state.2.1 = [] <;>
     simp [hm, hs, List.length_eq_zero_iff]
 
@@ -2556,7 +2326,7 @@ private lemma tradeScanNat_polyFueled {tokenFn : ℕ → ℕ} {ct : Nat.Partrec.
     (htoken : PolyFueled ct tokenFn) :
     ∃ c, PolyFueled c (tradeScanNat tokenFn) := by
   obtain ⟨ccontrol, hcontrol⟩ :=
-    PrefixPatchCompile.freezeControlNat_polyFueled htoken
+    freezeControlNat_polyFueled htoken
   have hn : PolyFueled Nat.Partrec.Code.left (fun z => z.unpair.1) :=
     PolyFueled.left
   have hj : PolyFueled (Nat.Partrec.Code.left.comp Nat.Partrec.Code.right)
@@ -2574,7 +2344,7 @@ private lemma tradeScanNat_polyFueled {tokenFn : ℕ → ℕ} {ct : Nat.Partrec.
       Nat.pair (z.unpair.2.unpair.1 + 1)
         ((z.unpair.2.unpair.2).unpair.2 + 1)) :=
     hj.succ_comp.pair hcount.succ_comp
-  obtain ⟨cstep, hstep⟩ := PrefixPatchCompile.polyFueled_ifZero
+  obtain ⟨cstep, hstep⟩ := polyFueled_ifZero
     hmode4 hprevious hnext
   have hstate : IsPolyBounded (fun z => tradeScanNat tokenFn z) := by
     have hmajor : IsPolyBounded (fun z => Nat.pair z z) :=
@@ -2598,7 +2368,7 @@ private lemma tradeScanNat_polyFueled {tokenFn : ℕ → ℕ} {ct : Nat.Partrec.
   · simp [tradeScanNat, tradeScanAt]
   · simp only [tradeScanNat, Nat.unpair_pair, tradeScanAt]
     by_cases hm :
-        (PrefixPatchCompile.freezeControlNat tokenFn (Nat.pair n j)).unpair.1 = 4
+        (freezeControlNat tokenFn (Nat.pair n j)).unpair.1 = 4
     · simp [hm]
     · simp [hm]
   · rw [Nat.pair_unpair]
@@ -2607,7 +2377,7 @@ private lemma parserDepthScanNat_polyFueled {tokenFn : ℕ → ℕ} {ct : Nat.Pa
     (htoken : PolyFueled ct tokenFn) :
     ∃ c, PolyFueled c (parserDepthScanNat tokenFn) := by
   obtain ⟨ccontrol, hcontrol⟩ :=
-    PrefixPatchCompile.freezeControlNat_polyFueled htoken
+    freezeControlNat_polyFueled htoken
   have hn : PolyFueled Nat.Partrec.Code.left (fun z => z.unpair.1) :=
     PolyFueled.left
   have hj : PolyFueled (Nat.Partrec.Code.left.comp Nat.Partrec.Code.right)
@@ -2626,28 +2396,28 @@ private lemma parserDepthScanNat_polyFueled {tokenFn : ℕ → ℕ} {ct : Nat.Pa
   obtain ⟨ct3, ht3⟩ := polyFueled_eqConst htokenAt 3
   obtain ⟨ct4, ht4⟩ := polyFueled_eqConst htokenAt 4
   obtain ⟨ct8, ht8⟩ := polyFueled_eqConst htokenAt 8
-  obtain ⟨cout8, hout8⟩ := PrefixPatchCompile.polyFueled_ifZero
+  obtain ⟨cout8, hout8⟩ := polyFueled_ifZero
     ht8 hprevious hpred
-  obtain ⟨cout4, hout4⟩ := PrefixPatchCompile.polyFueled_ifZero
+  obtain ⟨cout4, hout4⟩ := polyFueled_ifZero
     ht4 hout8 hpred
-  obtain ⟨cout3, hout3⟩ := PrefixPatchCompile.polyFueled_ifZero
+  obtain ⟨cout3, hout3⟩ := polyFueled_ifZero
     ht3 hout4 hpred
-  obtain ⟨ctoken, htokenBranch⟩ := PrefixPatchCompile.polyFueled_ifZero
+  obtain ⟨ctoken, htokenBranch⟩ := polyFueled_ifZero
     ht2 hout3 hpred
   obtain ⟨cm0, hm0⟩ := polyFueled_eqConst hmode 0
   obtain ⟨cm2, hm2⟩ := polyFueled_eqConst hmode 2
   obtain ⟨cm3, hm3⟩ := polyFueled_eqConst hmode 3
   obtain ⟨cm4, hm4⟩ := polyFueled_eqConst hmode 4
   obtain ⟨cm5, hm5⟩ := polyFueled_eqConst hmode 5
-  obtain ⟨cout5, hout5⟩ := PrefixPatchCompile.polyFueled_ifZero
+  obtain ⟨cout5, hout5⟩ := polyFueled_ifZero
     hm5 hprevious hsucc
-  obtain ⟨coutMode4, houtMode4⟩ := PrefixPatchCompile.polyFueled_ifZero
+  obtain ⟨coutMode4, houtMode4⟩ := polyFueled_ifZero
     hm4 hout5 hpred
-  obtain ⟨coutMode3, houtMode3⟩ := PrefixPatchCompile.polyFueled_ifZero
+  obtain ⟨coutMode3, houtMode3⟩ := polyFueled_ifZero
     hm3 houtMode4 hsucc
-  obtain ⟨coutMode2, houtMode2⟩ := PrefixPatchCompile.polyFueled_ifZero
+  obtain ⟨coutMode2, houtMode2⟩ := polyFueled_ifZero
     hm2 houtMode3 hsucc
-  obtain ⟨cstep, hstep⟩ := PrefixPatchCompile.polyFueled_ifZero
+  obtain ⟨cstep, hstep⟩ := polyFueled_ifZero
     hm0 houtMode2 htokenBranch
   have hstate : IsPolyBounded (parserDepthScanNat tokenFn) := by
     exact (IsPolyBounded.linear 0).of_le fun z => by
@@ -2663,15 +2433,15 @@ private lemma parserDepthScanNat_polyFueled {tokenFn : ℕ → ℕ} {ct : Nat.Pa
   · simp only [parserDepthScanNat, Nat.unpair_pair, parserDepthScanAt]
     unfold parserDepthNext
     by_cases hm0' :
-        (PrefixPatchCompile.freezeControlNat tokenFn (Nat.pair n j)).unpair.1 = 0 <;>
+        (freezeControlNat tokenFn (Nat.pair n j)).unpair.1 = 0 <;>
       by_cases hm2' :
-        (PrefixPatchCompile.freezeControlNat tokenFn (Nat.pair n j)).unpair.1 = 2 <;>
+        (freezeControlNat tokenFn (Nat.pair n j)).unpair.1 = 2 <;>
       by_cases hm3' :
-        (PrefixPatchCompile.freezeControlNat tokenFn (Nat.pair n j)).unpair.1 = 3 <;>
+        (freezeControlNat tokenFn (Nat.pair n j)).unpair.1 = 3 <;>
       by_cases hm4' :
-        (PrefixPatchCompile.freezeControlNat tokenFn (Nat.pair n j)).unpair.1 = 4 <;>
+        (freezeControlNat tokenFn (Nat.pair n j)).unpair.1 = 4 <;>
       by_cases hm5' :
-        (PrefixPatchCompile.freezeControlNat tokenFn (Nat.pair n j)).unpair.1 = 5 <;>
+        (freezeControlNat tokenFn (Nat.pair n j)).unpair.1 = 5 <;>
       by_cases ht2' : tokenFn (Nat.pair n j) = 2 <;>
       by_cases ht3' : tokenFn (Nat.pair n j) = 3 <;>
       by_cases ht4' : tokenFn (Nat.pair n j) = 4 <;>
@@ -2684,7 +2454,7 @@ private lemma parserStructurallyAccepts_polyFueled
     (htoken : PolyFueled ct tokenFn) (hlen : PolyFueled cl lenFn) :
     ∃ c, PolyFueled c (parserStructurallyAccepts tokenFn lenFn) := by
   obtain ⟨ccontrol, hcontrol⟩ :=
-    PrefixPatchCompile.freezeControlNat_polyFueled htoken
+    freezeControlNat_polyFueled htoken
   obtain ⟨cdepth, hdepth⟩ := parserDepthScanNat_polyFueled htoken
   have hfinalIndex := PolyFueled.id.pair hlen
   have hmode := PolyFueled.left.comp (hcontrol.comp hfinalIndex)
@@ -2693,7 +2463,7 @@ private lemma parserStructurallyAccepts_polyFueled
   obtain ⟨cdepth0, hdepth0⟩ := polyFueled_eqConst hfinalDepth 0
   obtain ⟨cmul, hmul⟩ := mul_polyFueled
   exact ⟨_, (hmul.comp (hmode0.pair hdepth0)).of_eq fun n => by
-    by_cases hm : (PrefixPatchCompile.freezeControlNat tokenFn
+    by_cases hm : (freezeControlNat tokenFn
         (Nat.pair n (lenFn n))).unpair.1 = 0 <;>
       by_cases hd : parserDepthScanNat tokenFn (Nat.pair n (lenFn n)) = 0 <;>
       simp [parserStructurallyAccepts, hm, hd]⟩
@@ -2781,7 +2551,6 @@ lemma deserializeTrades_safeSeparatedFrameTokenOutput
     (Encodable.encode q) (Encodable.encode q⁻¹) tokens
   have hfirst := deserializeTrades_conditioningFrameTokenRun false ψ ε q day tokens
   have hsecond := deserializeTrades_conditioningFrameTokenRun true ψ ε q day tokens
-  try simp only at hfirst hsecond
   cases hsource : deserializeTrades tokens with
   | some trades =>
       have hready := streamReadFrom_eq_ready_of_deserializeTrades_eq_some
@@ -2860,14 +2629,16 @@ lemma frameLeg_retained_eq_locallyGatedFirstLeg
     frameLeg false (ψ day) ε (Strategy.localConditioningBudget τ count) day
         (p.1.retainedConditionPrices ψ ε, p.2) =
       Strategy.locallyGatedFirstLeg ψ ε day τ count p := by
-  simp [frameLeg, firstFrameBody, Strategy.locallyGatedFirstLeg]
+  simp [frameLeg, firstFrameBody, Strategy.locallyGatedFirstLeg,
+    Strategy.gatedFirstLegOf]
 
 lemma frameLeg_retained_eq_locallyGatedSecondLeg
     (ψ : ℕ → Sentence) (ε τ : ℚ) (day count : ℕ) (p : EF × Sentence) :
     frameLeg true (ψ day) ε (Strategy.localConditioningBudget τ count) day
         (p.1.retainedConditionPrices ψ ε, p.2) =
       Strategy.locallyGatedSecondLeg ψ ε day τ count p := by
-  simp [frameLeg, secondFrameBody, Strategy.locallyGatedSecondLeg]
+  simp [frameLeg, secondFrameBody, Strategy.locallyGatedSecondLeg,
+    Strategy.gatedSecondLegOf]
 
 lemma frameLeg_exceptZero_eq_locallyGatedFirstLeg
     (zeroDays : Finset ℕ) (ψ : ℕ → Sentence)
@@ -2877,7 +2648,7 @@ lemma frameLeg_exceptZero_eq_locallyGatedFirstLeg
       Strategy.exceptZeroLocallyGatedFirstLeg
         zeroDays ψ ε day τ count p := by
   simp [frameLeg, firstFrameBody,
-    Strategy.exceptZeroLocallyGatedFirstLeg]
+    Strategy.exceptZeroLocallyGatedFirstLeg, Strategy.gatedFirstLegOf]
 
 lemma frameLeg_exceptZero_eq_locallyGatedSecondLeg
     (zeroDays : Finset ℕ) (ψ : ℕ → Sentence)
@@ -2887,7 +2658,7 @@ lemma frameLeg_exceptZero_eq_locallyGatedSecondLeg
       Strategy.exceptZeroLocallyGatedSecondLeg
         zeroDays ψ ε day τ count p := by
   simp [frameLeg, secondFrameBody,
-    Strategy.exceptZeroLocallyGatedSecondLeg]
+    Strategy.exceptZeroLocallyGatedSecondLeg, Strategy.gatedSecondLegOf]
 
 private lemma conditioningFrameTokenOutput_polySegStream
     {source : ℕ → List ℕ} {tokenFn lenFn : ℕ → ℕ}
@@ -2908,11 +2679,11 @@ private lemma conditioningFrameTokenOutput_polySegStream
   have hcount : PolyFueled _ count :=
     (PolyFueled.right.comp hscanTotal).of_eq fun n => by
       simp [count, frameTradeCount]
-  rcases frameBudgetCodes_polyFueled PolyFueled.id hcount with
-    ⟨⟨cb, hb⟩, ⟨ci, hi⟩⟩
-  let control : ℕ → ℕ := PrefixPatchCompile.freezeControlNat tokenFn
+  obtain ⟨cb, hb⟩ := frameBudgetCode_polyFueled PolyFueled.id hcount
+  obtain ⟨ci, hi⟩ := frameInverseBudgetCode_polyFueled PolyFueled.id hcount
+  let control : ℕ → ℕ := freezeControlNat tokenFn
   obtain ⟨ccontrol, hcontrol⟩ :=
-    PrefixPatchCompile.freezeControlNat_polyFueled htoken
+    freezeControlNat_polyFueled htoken
   let mode : ℕ → ℕ := fun z => (control z).unpair.1
   have hmode : PolyFueled _ mode := PolyFueled.left.comp hcontrol
   let condition : ℕ → ℕ := fun z => Encodable.encode (ψ z.unpair.1)
@@ -2983,13 +2754,10 @@ private lemma conditioningFrameTokenOutput_polySegStream
   refine hout.of_eq fun n => ?_
   have hsourceEq : source n =
       (List.range (lenFn n)).map (fun j => tokenFn (Nat.pair n j)) := by
-    apply List.ext_getElem
-    · simp [hslen n]
-    · intro i hleft hright
-      rw [List.getElem_map]
-      simp only [List.getElem_range]
-      rw [hget n i (by simpa [hslen n] using hleft)]
-      exact (List.getD_eq_getElem (l := source n) (d := 0) hleft).symm
+    conv_lhs => rw [list_eq_rangeMap_getD (source n)]
+    rw [hslen n]
+    exact List.map_congr_left fun j hj =>
+      (hget n j (List.mem_range.mp hj)).symm
   rw [hsourceEq]
   have hrun := conditioningFrameTokenRun_range second tokenFn
     (Encodable.encode (ψ n)) n (frameBudgetCode n (count n))
@@ -2998,7 +2766,7 @@ private lemma conditioningFrameTokenOutput_polySegStream
   simp only [count] at hrun ⊢
   rw [hrun]
   simp [conditioningFrameTokenSegment, condition, day, budget, inverse, count,
-    finalControl, control, PrefixPatchCompile.freezeControlNat]
+    finalControl, control, freezeControlNat]
 
 /-- The guarded concatenation of both conditioning legs is a polynomial segment stream. -/
 lemma safeSeparatedFrameTokenOutput_polySegStream
@@ -3237,30 +3005,6 @@ noncomputable def eventualConditioningFloorOfJointConsistency
   (eventualConditioningFloor_nonempty_of_jointConsistency
     P DP market ψ hψ hjoint).some
 
-/-! ## Endpoint location
-
-The operational-witness constructors and the criterion-level `thm:scon` endpoints are in
-`Construction/Conditioning/Endpoints.lean` (namespace `ConditioningCompile`);
-`Construction/Conditioning/PricePass.lean` and `Construction/Conditioning/FramePass.lean`
-(namespace `RpnConditioning`) prove the token-metered (`PolyFueledTrader`) translation
-certificates they require.  This file carries the economic and floor content both consume. -/
-
-end ConditioningCompile
-
-end LogicalInduction
-
-namespace LogicalInduction
-
-namespace ConditioningCompile
-
-open Nat.Partrec (Code)
-open Nat.Partrec.Code
-
--- `Primrec`/`PolyFueled` elaboration over the deep paired inputs below unfolds `Nat.sqrt`'s
--- well-founded definition during `whnf` (via `unpair`) and loops; local irreducibility stops
--- that.
-attribute [local irreducible] Nat.sqrt
-
 /-! ## Mode-automaton correspondence
 
 `freezeMode4` (DigitArith) is the mode component of `EF.freezeTokenNext`; the pending
@@ -3305,29 +3049,6 @@ lemma foldl_freezeTokenNext_snoc_mode2 (ts : List ℕ) (t : ℕ)
       split_ifs at h <;> simp_all
   | 1 => rfl
   | (_ + 2) => exact absurd h (by simp [EF.freezeTokenNext])
-
-/-! ## The run-level `Matches` transport
-
-`EF.streamReadFrom_freezeTokenRun` (FinitePerturbations) proves, bundled with its
-emission equations, that the freeze control tracks the parser state along every
-successful run.  Instantiating its quote data trivially extracts the pure transport. -/
-
-lemma freezeTokenRun_fst (quoteCode : ℕ → ℕ → ℕ) (cutoff : ℕ)
-    (st : EF.FreezeTokenState) (ts : List ℕ) :
-    (EF.freezeTokenRun quoteCode cutoff st ts).1 = ts.foldl EF.freezeTokenNext st := by
-  induction ts generalizing st with
-  | nil => rfl
-  | cons t rest ih => simp only [EF.freezeTokenRun, List.foldl_cons]; exact ih _
-
-/-- The freeze control matches the parser state after any successful run. -/
-lemma matches_streamReadFrom (ts : List ℕ) (control : EF.FreezeTokenState)
-    (state next : EF.StreamState) (hmatch : control.Matches state)
-    (hread : EF.streamReadFrom ts (some state) = some next) :
-    (ts.foldl EF.freezeTokenNext control).Matches next := by
-  have h := (EF.streamReadFrom_freezeTokenRun (fun _ _ => (0 : ℚ))
-    (fun _ _ => Encodable.encode (0 : ℚ)) 0 (fun _ _ _ _ => rfl)
-    control state ts hmatch).2 next hread
-  rwa [freezeTokenRun_fst] at h
 
 /-! ## Guard honesty
 
@@ -3641,7 +3362,7 @@ lemma vpre_eq_take {ts : List ℕ} {tf : ℕ → ℕ} {n : ℕ}
 
 /-- The guard flag is poly-fueled over any digit `PolySegStream` (input `⟨n, j⟩`):
 the mode comes from the freeze scan and the day comparison from the bounded clamp. -/
-lemma PolySegStream.bigDayFlagScan {s : ℕ → List ℕ} (h : PolySegStream s) :
+lemma _root_.LogicalInduction.PolySegStream.bigDayFlagScan {s : ℕ → List ℕ} (h : PolySegStream s) :
     ∃ c, PolyFueled c (fun z =>
       bigDayFlagAt (fun w => (undigitize (s w.unpair.1)).getD w.unpair.2 0)
         z.unpair.1 z.unpair.2) := by
@@ -3720,9 +3441,9 @@ lemma conditionPriceTokenSegment_eq (tf ψCode : ℕ → ℕ) (ε : ℚ) (n j : 
         [tf (Nat.pair n j)] ++ rawConditionalPriceTokens (tf (Nat.pair n (j - 1)))
           (ψCode (tf (Nat.pair n j))) (tf (Nat.pair n j)) ε ++ [8]
       else [tf (Nat.pair n j)] := by
-  have hfst : (PrefixPatchCompile.freezeControlNat tf (Nat.pair n j)).unpair.1 =
+  have hfst : (freezeControlNat tf (Nat.pair n j)).unpair.1 =
       freezeMode4 (vpre tf n j) := by
-    rw [PrefixPatchCompile.freezeControlNat]
+    rw [freezeControlNat]
     simp only [Nat.unpair_pair]
     exact freezeTokenControlAt_fst tf n j
   by_cases hm : freezeMode4 (vpre tf n j) = 2
@@ -3733,7 +3454,7 @@ lemma conditionPriceTokenSegment_eq (tf ψCode : ℕ → ℕ) (ε : ℚ) (n j : 
         have hctrl := freezeTokenControlAt_mode2 tf n j (by
           have := freezeTokenControlAt_fst tf n (j + 1)
           omega)
-        simp only [conditionPriceTokenSegment, PrefixPatchCompile.freezeControlNat,
+        simp only [conditionPriceTokenSegment, freezeControlNat,
           Nat.unpair_pair]
         rw [hctrl]
         norm_num
@@ -3759,13 +3480,6 @@ lemma longSegment_tokens (P ψc D : ℕ) (ε : ℚ) :
           0, ψc, D, 3, 5, 3, 3, 3, 4, 3, 8] := by
   simp [rawConditionalPriceTokens, rawMinTokens, rawMulTokens, rawMaxTokens,
     rawSafeRecipTokens, rawConstTokens, rawPriceTokens, rawLowerSafeRecipTokens]
-
-@[simp] lemma digitize_append (xs ys : List ℕ) :
-    digitize (xs ++ ys) = digitize xs ++ digitize ys := by
-  simp [digitize]
-
-@[simp] lemma digitize_singleton (t : ℕ) : digitize [t] = tokenBlock t := by
-  simp [digitize]
 
 /-! ## The guarded rewrite (specification) -/
 
@@ -3842,7 +3556,7 @@ lemma guardedConditionRun_polySegStream {s : ℕ → List ℕ} (h : PolySegStrea
   obtain ⟨cc, hcnt⟩ := hcount
   obtain ⟨cm, hmode⟩ := h.freezeModeScan
   obtain ⟨cd, hclamp⟩ := h.dayClampTokens
-  obtain ⟨cf, hflag⟩ := PolySegStream.bigDayFlagScan h
+  obtain ⟨cf, hflag⟩ := h.bigDayFlagScan
   obtain ⟨cψc, hψPoly⟩ := hψ
   obtain ⟨cad, had⟩ := addc_polyFueled
   -- Pending-code digit access (position `j - 1`).
@@ -3888,12 +3602,9 @@ lemma guardedConditionRun_polySegStream {s : ℕ → List ℕ} (h : PolySegStrea
   · rw [if_pos hflagn, guardedConditionTokens, if_pos (hguardIff.mp hflagn)]
     have hts : undigitize (s n) =
         (List.range (undigitize (s n)).length).map fun j => tf (Nat.pair n j) := by
-      apply List.ext_getElem
-      · simp
-      · intro i h1 h2
-        simp only [List.getElem_map, List.getElem_range]
-        rw [hget i (by simpa using h2)]
-        exact (List.getD_eq_getElem (undigitize (s n)) 0 (by simpa using h2)).symm
+      conv_lhs => rw [list_eq_rangeMap_getD (undigitize (s n))]
+      exact List.map_congr_left fun j hj =>
+        (hget j (List.mem_range.mp hj)).symm
     have hrun : (conditionPriceTokenRun (fun day => Encodable.encode (ψ day)) ε
         (0, 0) (undigitize (s n))).2 =
         (List.range (undigitize (s n)).length).flatMap fun j =>
@@ -3935,14 +3646,14 @@ are tag tests (`≤ 8`), so they factor through the digit clamp exactly like the
 freeze-mode scan. -/
 
 lemma freezeControlNat_fst (tf : ℕ → ℕ) (n j : ℕ) :
-    (PrefixPatchCompile.freezeControlNat tf (Nat.pair n j)).unpair.1 =
+    (freezeControlNat tf (Nat.pair n j)).unpair.1 =
       freezeMode4 (vpre tf n j) := by
-  rw [PrefixPatchCompile.freezeControlNat]
+  rw [freezeControlNat]
   simp only [Nat.unpair_pair]
   exact freezeTokenControlAt_fst tf n j
 
 /-- The completed-trade count is poly-fueled over any digit `PolySegStream`. -/
-lemma PolySegStream.tradeCountScan {s : ℕ → List ℕ} (h : PolySegStream s) :
+lemma _root_.LogicalInduction.PolySegStream.tradeCountScan {s : ℕ → List ℕ} (h : PolySegStream s) :
     ∃ c, PolyFueled c (fun z =>
       (tradeScanAt (fun w => (undigitize (s w.unpair.1)).getD w.unpair.2 0)
         z.unpair.1 z.unpair.2).2) := by
@@ -3978,7 +3689,7 @@ lemma parserDepthNext_clamp (m t d : ℕ) :
     split_ifs <;> omega
 
 /-- The shallow parser-depth scan is poly-fueled over any digit `PolySegStream`. -/
-lemma PolySegStream.depthScan {s : ℕ → List ℕ} (h : PolySegStream s) :
+lemma _root_.LogicalInduction.PolySegStream.depthScan {s : ℕ → List ℕ} (h : PolySegStream s) :
     ∃ c, PolyFueled c (fun z =>
       parserDepthScanAt (fun w => (undigitize (s w.unpair.1)).getD w.unpair.2 0)
         z.unpair.1 z.unpair.2) := by
@@ -4034,13 +3745,13 @@ lemma PolySegStream.depthScan {s : ℕ → List ℕ} (h : PolySegStream s) :
 
 /-- The structural-acceptance test is poly-fueled over any digit `PolySegStream`
 (with its own undigitized token count as the length function). -/
-lemma PolySegStream.acceptsScan {s : ℕ → List ℕ} (h : PolySegStream s) :
+lemma _root_.LogicalInduction.PolySegStream.acceptsScan {s : ℕ → List ℕ} (h : PolySegStream s) :
     ∃ c, PolyFueled c (fun n => parserStructurallyAccepts
       (fun w => (undigitize (s w.unpair.1)).getD w.unpair.2 0)
       (fun m => (undigitize (s m)).length) n) := by
   obtain ⟨⟨cc, hcnt⟩, -⟩ := h.undigitizeTokens
   obtain ⟨cm, hmode⟩ := h.freezeModeScan
-  obtain ⟨cdp, hdepth⟩ := PolySegStream.depthScan h
+  obtain ⟨cdp, hdepth⟩ := h.depthScan
   have hend := PolyFueled.id.pair hcnt
   have hmodeEnd := hmode.comp hend
   have hdepthEnd := hdepth.comp hend
@@ -4058,78 +3769,6 @@ The frame pass emits, at each trade-sentence position (`mode = 4`, token = the t
 sentence code `φc`, possibly huge), a fixed template whose only huge tokens are `φc`'s
 conjunction shell `conjunctionCode φc ψc` — once inside the ratio, and (first leg only)
 once as the frame sentence.  Everything between is a poly token list. -/
-
-lemma _root_.LogicalInduction.PolyTokenStream.of_eq {s s' : ℕ → List ℕ}
-    (h : PolyTokenStream s) (he : ∀ n, s n = s' n) : PolyTokenStream s' := by
-  rwa [funext he] at h
-
-/-! ### The raw-combinator `PolyTokenStream` algebra
-
-Every raw expression combinator maps poly token streams to poly token streams; the
-frame emitters (token-level and symbol-level alike) are assembled from these. -/
-
-namespace PolyTokenStream
-
-lemma rawConst {c : Code} {k : ℕ → ℕ} (hk : PolyFueled c k) :
-    PolyTokenStream (fun z => rawConstTokens (k z)) :=
-  (PolyTokenStream.const 1).append (PolyTokenStream.polyTok hk)
-
-lemma rawConstQ (q : ℚ) :
-    PolyTokenStream (fun _ : ℕ => rawConstTokens (Encodable.encode q)) :=
-  (PolyTokenStream.const 1).append (PolyTokenStream.const _)
-
-lemma rawMul {a b : ℕ → List ℕ} (ha : PolyTokenStream a) (hb : PolyTokenStream b) :
-    PolyTokenStream (fun z => rawMulTokens (a z) (b z)) :=
-  (ha.append hb).append (PolyTokenStream.const 3)
-
-lemma rawAdd {a b : ℕ → List ℕ} (ha : PolyTokenStream a) (hb : PolyTokenStream b) :
-    PolyTokenStream (fun z => rawAddTokens (a z) (b z)) :=
-  (ha.append hb).append (PolyTokenStream.const 2)
-
-lemma rawMax {a b : ℕ → List ℕ} (ha : PolyTokenStream a) (hb : PolyTokenStream b) :
-    PolyTokenStream (fun z => rawMaxTokens (a z) (b z)) :=
-  (ha.append hb).append (PolyTokenStream.const 4)
-
-lemma rawSafeRecip {a : ℕ → List ℕ} (ha : PolyTokenStream a) :
-    PolyTokenStream (fun z => rawSafeRecipTokens (a z)) :=
-  ha.append (PolyTokenStream.const 5)
-
-/-- `min`, derived from `max` by negating both arguments and the result. -/
-lemma rawMin {a b : ℕ → List ℕ} (ha : PolyTokenStream a) (hb : PolyTokenStream b) :
-    PolyTokenStream (fun z => rawMinTokens (a z) (b z)) :=
-  rawMul (rawConstQ (-1)) (rawMax (rawMul (rawConstQ (-1)) ha)
-    (rawMul (rawConstQ (-1)) hb))
-
-lemma rawClip01 {a : ℕ → List ℕ} (ha : PolyTokenStream a) :
-    PolyTokenStream (fun z => rawClip01Tokens (a z)) :=
-  rawMax (rawConstQ 0) (rawMin (rawConstQ 1) ha)
-
-lemma rawAbs {a : ℕ → List ℕ} (ha : PolyTokenStream a) :
-    PolyTokenStream (fun z => rawAbsTokens (a z)) :=
-  rawMax ha (rawMul (rawConstQ (-1)) ha)
-
-/-- The reciprocal with clamp floor `ε`, obtained by rescaling `safeRecip` by `1 / ε` on
-both sides. -/
-lemma rawLowerSafeRecip {a : ℕ → List ℕ} (ha : PolyTokenStream a) (ε : ℚ) :
-    PolyTokenStream (fun z => rawLowerSafeRecipTokens (a z) ε) :=
-  rawMul (rawConstQ (1 / ε)) (rawSafeRecip (rawMul (rawConstQ (1 / ε)) ha))
-
-/-- The `letE` variable slot `i` as a (constant) poly token stream. -/
-lemma varTok (i : ℕ) : PolyTokenStream (fun _ : ℕ => ([7, i] : List ℕ)) :=
-  (PolyTokenStream.const 7).append (PolyTokenStream.const i)
-
-/-- The conditioning gate over the two `letE` variables, with poly budget codes. -/
-lemma rawGate {cb ci : Code} {bc ibc : ℕ → ℕ}
-    (hbc : PolyFueled cb bc) (hibc : PolyFueled ci ibc) :
-    PolyTokenStream (fun z => rawConditioningGateTokens [7, 0]
-      (rawAbsTokens [7, 1]) (bc z) (ibc z)) :=
-  rawClip01 (rawMul
-    (rawAdd (rawAdd (rawConstQ 1)
-      (rawMul (rawConst hbc) (rawSafeRecip (rawAbs (varTok 1)))))
-      (rawMul (rawConstQ (-1)) (varTok 0)))
-    (rawMul (rawConst hibc) (rawMax (rawConstQ 1) (rawAbs (varTok 1)))))
-
-end PolyTokenStream
 
 /-- The all-poly middle of the first (β) frame leg emission. -/
 def frameMidBeta (ψc day bc ibc : ℕ) (ε : ℚ) : List ℕ :=
@@ -4214,9 +3853,9 @@ lemma conditioningFrameTokenSegment_eq (second : Bool) (tf : ℕ → ℕ)
           rawLocallyGatedBetaBodyTokens (tf z) ψc day bc ibc ε ++
             [8, 6, conjunctionCode (tf z) ψc])
       else [tf z] := by
-  have hfst : (PrefixPatchCompile.freezeControlNat tf z).unpair.1 =
+  have hfst : (freezeControlNat tf z).unpair.1 =
       freezeMode4 (vpre tf z.unpair.1 z.unpair.2) := by
-    rw [PrefixPatchCompile.freezeControlNat]
+    rw [freezeControlNat]
     simp only [Nat.unpair_pair]
     exact freezeTokenControlAt_fst tf z.unpair.1 z.unpair.2
   simp only [conditioningFrameTokenSegment, conditioningFrameTokenEmit, hfst]
@@ -4329,15 +3968,6 @@ lemma frameLegEmit_polySegStream (second : Bool) {src : ℕ → List ℕ}
           simp [digitize, List.append_assoc]
         · rw [if_neg (by omega), if_neg hm4, digitize_singleton]
 
-/-- Any list is the range-map of its own `getD` view. -/
-lemma list_eq_rangeMap_getD (l : List ℕ) :
-    l = (List.range l.length).map fun j => l.getD j 0 := by
-  apply List.ext_getElem
-  · simp
-  · intro i h1 h2
-    simp only [List.getElem_map, List.getElem_range]
-    exact (List.getD_eq_getElem l 0 (by simpa using h2)).symm
-
 /-- The digitized full frame-leg output (segments plus end-of-stream flush) over any
 digit `PolySegStream`. -/
 lemma frameLegOutput_polySegStream (second : Bool) {src : ℕ → List ℕ}
@@ -4415,18 +4045,18 @@ lemma safeSeparatedFrameDigitOutput_polySegStream {src : ℕ → List ℕ}
           (fun w => (undigitize (src w.unpair.1)).getD w.unpair.2 0)
           (fun m => (undigitize (src m)).length) n)) n (undigitize (src n)))) := by
   obtain ⟨cψc, hψPoly⟩ := hψ
-  obtain ⟨ctcnt, htcnt⟩ := PolySegStream.tradeCountScan hsrc
+  obtain ⟨ctcnt, htcnt⟩ := hsrc.tradeCountScan
   obtain ⟨⟨cc, hcnt⟩, -⟩ := hsrc.undigitizeTokens
   have hcountF : PolyFueled _ (fun n => frameTradeCount
       (fun w => (undigitize (src w.unpair.1)).getD w.unpair.2 0)
       (fun m => (undigitize (src m)).length) n) :=
     (htcnt.comp (PolyFueled.id.pair hcnt)).of_eq fun n => by
       simp only [Nat.unpair_pair, frameTradeCount, tradeScanNat]
-  obtain ⟨⟨cb, hbF⟩, ⟨ci, hiF⟩⟩ :=
-    frameBudgetCodes_polyFueled PolyFueled.id hcountF
+  obtain ⟨cb, hbF⟩ := frameBudgetCode_polyFueled PolyFueled.id hcountF
+  obtain ⟨ci, hiF⟩ := frameInverseBudgetCode_polyFueled PolyFueled.id hcountF
   have hfirst := frameLegOutput_polySegStream false hsrc hψPoly hbF hiF ε
   have hsecond := frameLegOutput_polySegStream true hsrc hψPoly hbF hiF ε
-  obtain ⟨caccept, haccept⟩ := PolySegStream.acceptsScan hsrc
+  obtain ⟨caccept, haccept⟩ := hsrc.acceptsScan
   refine (hfirst.ifZero (hfirst.append hsecond) haccept).of_eq fun n => ?_
   simp only [safeSeparatedFrameTokenOutput]
   rw [frameBudgetCode_exact, frameInverseBudgetCode_exact]
@@ -4435,6 +4065,61 @@ lemma safeSeparatedFrameDigitOutput_polySegStream {src : ℕ → List ℕ}
       (fun m => (undigitize (src m)).length) n = 0
   · rw [if_pos hacc, if_pos hacc]
   · rw [if_neg hacc, if_neg hacc, digitize_append]
+
+/-- The frame join of an empty priced stream is empty. -/
+private lemma safeSeparatedFrameTokenOutput_nil (tfP lenP : ℕ → ℕ) (ψn : Sentence)
+    (ε q : ℚ) (n : ℕ) :
+    safeSeparatedFrameTokenOutput tfP lenP ψn ε q n [] = [] := by
+  simp [safeSeparatedFrameTokenOutput, conditioningFrameTokenOutput,
+    conditioningFrameTokenRun]
+
+/-- The digit-model assembly shared by both class-preservation endpoints: once the priced
+stream's trades are the source trades under a coefficient map `g`, the frame join decodes
+to the two `frameLeg` maps of those trades, at the budget the source's own trade count
+sets.  The two endpoints below differ only in `g` and in the contract they recognize. -/
+private lemma strategyOfTokens_framedTokenOutput_trades
+    (tfP lenP : ℕ → ℕ) (ψn : Sentence) (ε : ℚ) (n : ℕ) (ts : List ℕ)
+    (hts : ts = (List.range (lenP n)).map fun i => tfP (Nat.pair n i))
+    (g : EF → EF) (L : List (EF × Sentence))
+    (hprice : (strategyOfTokens n ts).trades =
+      L.map fun trade => (g trade.1, trade.2)) :
+    (strategyOfTokens n
+        (safeSeparatedFrameTokenOutput tfP lenP ψn ε
+          (frameBudget n (frameTradeCount tfP lenP n)) n ts)).trades =
+      L.map (fun p => frameLeg false ψn ε
+          (Strategy.localConditioningBudget (conditioningBudget n) L.length) n
+          (g p.1, p.2)) ++
+        L.map (fun p => frameLeg true ψn ε
+          (Strategy.localConditioningBudget (conditioningBudget n) L.length) n
+          (g p.1, p.2)) := by
+  rw [strategyOfTokens_safeSeparatedFrameTokenOutput_trades tfP lenP ψn ε
+    (frameBudget n (frameTradeCount tfP lenP n)) n ts hts]
+  by_cases hempty : L = []
+  · rw [hprice, hempty]
+    simp
+  · have hpricedNe : (strategyOfTokens n ts).trades ≠ [] := by
+      rw [hprice]
+      simpa using hempty
+    have hdecodePriced :=
+      deserializeTrades_eq_some_of_strategyOfTokens_trades_ne_nil n ts hpricedNe
+    have hreadyPriced := streamReadFrom_eq_ready_of_deserializeTrades_eq_some
+      ts (strategyOfTokens n ts).trades hdecodePriced
+    have hreadyPricedTokens :
+        EF.streamReadFrom ((List.range (lenP n)).map fun i => tfP (Nat.pair n i))
+            (some EF.streamInitial) =
+          some ((0, none), ([], (strategyOfTokens n ts).trades)) := by
+      rw [← hts]
+      exact hreadyPriced
+    have hcount : frameTradeCount tfP lenP n = L.length := by
+      calc
+        frameTradeCount tfP lenP n = (strategyOfTokens n ts).trades.length :=
+          frameTradeCount_eq_length_of_read tfP lenP n
+            ((0, none), ([], (strategyOfTokens n ts).trades)) hreadyPricedTokens
+        _ = L.length := by rw [hprice, List.length_map]
+    have hpos : 0 < L.length := List.length_pos_iff.mpr hempty
+    rw [hprice, hcount, frameBudget_eq n L.length hpos]
+    simp only [List.map_map]
+    rfl
 
 /-- The conditioning translation preserves digit-metered efficient computability, via the
 guarded digit compiler: price days are materialized by clamp, the conjunction shells are
@@ -4447,9 +4132,9 @@ lemma conditionedTranslation_preserves_ecDigit
     EfficientlyComputableDigit (T.conditionedTranslation ψ ε) := by
   obtain ⟨lengthCode, tokenCode, a, k, hcert⟩ := hT
   let source : ℕ → List ℕ := fun n =>
-    clockedTokens lengthCode tokenCode (PrefixPatchCompile.ecClock a k n) n
+    clockedTokens lengthCode tokenCode (ClockedEmission.ecClock a k n) n
   have hsource : PolySegStream source :=
-    PrefixPatchCompile.clockedTokens_polySegStream lengthCode tokenCode a k
+    ClockedEmission.clockedTokens_polySegStream lengthCode tokenCode a k
   let priced : ℕ → List ℕ := fun n =>
     digitize (guardedConditionTokens (fun d => Encodable.encode (ψ d)) ε n
       (undigitize (source n)))
@@ -4487,66 +4172,19 @@ lemma conditionedTranslation_preserves_ecDigit
       show (undigitize (priced n)).getD j 0 =
         (undigitize (priced (Nat.pair n j).unpair.1)).getD (Nat.pair n j).unpair.2 0
       simp only [Nat.unpair_pair]
-    have hframes := strategyOfTokens_safeSeparatedFrameTokenOutput_trades
-      tfP lenP (ψ n) ε (frameBudget n (frameTradeCount tfP lenP n)) n
-      (undigitize (priced n)) hpricedEq
     have hprice := strategyOfTokens_conditionPriceTokenRun_trades ψ ε n
       (undigitize (source n))
     rw [← hpricedTok] at hprice
     rw [congrArg Strategy.trades horig] at hprice
     refine Strategy.ext ?_
-    rw [hframes]
-    by_cases hempty : (T.strat n).trades = []
-    · rw [hprice, hempty]
-      simp [Trader.conditionedTranslation,
-        Strategy.separatedLocallyGatedConditionalContract]
-      exact hempty
-    · have hpricedNe : (strategyOfTokens n (undigitize (priced n))).trades ≠ [] := by
-        rw [hprice]
-        simpa using hempty
-      have hdecodePriced :=
-        deserializeTrades_eq_some_of_strategyOfTokens_trades_ne_nil
-          n (undigitize (priced n)) hpricedNe
-      have hreadyPriced := streamReadFrom_eq_ready_of_deserializeTrades_eq_some
-        (undigitize (priced n)) (strategyOfTokens n (undigitize (priced n))).trades
-        hdecodePriced
-      have hreadyPricedTokens :
-          EF.streamReadFrom
-              ((List.range (lenP n)).map fun i => tfP (Nat.pair n i))
-              (some EF.streamInitial) =
-            some ((0, none),
-              ([], (strategyOfTokens n (undigitize (priced n))).trades)) := by
-        rw [← hpricedEq]
-        exact hreadyPriced
-      have hcount : frameTradeCount tfP lenP n = (T.strat n).trades.length := by
-        calc
-          frameTradeCount tfP lenP n =
-              (strategyOfTokens n (undigitize (priced n))).trades.length :=
-            frameTradeCount_eq_length_of_read tfP lenP n
-              ((0, none), ([], (strategyOfTokens n (undigitize (priced n))).trades))
-              hreadyPricedTokens
-          _ = (T.strat n).trades.length := by rw [hprice, List.length_map]
-      have hpos : 0 < (T.strat n).trades.length :=
-        List.length_pos_iff.mpr hempty
-      rw [hprice, hcount, frameBudget_eq n (T.strat n).trades.length hpos]
-      simp only [List.map_map]
-      change
-        ((T.strat n).trades.map fun p =>
-          frameLeg false (ψ n) ε
-            (Strategy.localConditioningBudget (conditioningBudget n)
-              (T.strat n).trades.length) n
-            (p.1.retainedConditionPrices ψ ε, p.2)) ++
-          ((T.strat n).trades.map fun p =>
-            frameLeg true (ψ n) ε
-              (Strategy.localConditioningBudget (conditioningBudget n)
-                (T.strat n).trades.length) n
-              (p.1.retainedConditionPrices ψ ε, p.2)) =
-          ((T.conditionedTranslation ψ ε).strat n).trades
-      simp only [frameLeg_retained_eq_locallyGatedFirstLeg,
-        frameLeg_retained_eq_locallyGatedSecondLeg]
-      rfl
+    rw [strategyOfTokens_framedTokenOutput_trades tfP lenP (ψ n) ε n
+      (undigitize (priced n)) hpricedEq
+      (fun e : EF => e.retainedConditionPrices ψ ε) (T.strat n).trades hprice]
+    simp only [frameLeg_retained_eq_locallyGatedFirstLeg,
+      frameLeg_retained_eq_locallyGatedSecondLeg]
+    rfl
   · -- Guarded path: an oversized price-day token empties both sides.
-    push_neg at hguard
+    push Not at hguard
     obtain ⟨j, hj, hm, hday⟩ := hguard
     have hTempty : (T.strat n).trades = [] := by
       rw [← horig]
@@ -4557,22 +4195,9 @@ lemma conditionedTranslation_preserves_ecDigit
       rw [undigitize_digitize, guardedConditionTokens,
         if_neg (fun hall => absurd (hall j hj hm) (by omega))]
     rw [hpricedNil]
-    have hframedNil : safeSeparatedFrameTokenOutput tfP lenP (ψ n) ε
-        (frameBudget n (frameTradeCount tfP lenP n)) n [] = [] := by
-      simp [safeSeparatedFrameTokenOutput, conditioningFrameTokenOutput,
-        conditioningFrameTokenRun]
-    rw [hframedNil]
+    rw [safeSeparatedFrameTokenOutput_nil]
     refine Strategy.ext ?_
-    have hnil : (strategyOfTokens n ([] : List ℕ)).trades = [] := by
-      have : deserializeTrades ([] : List ℕ) = some [] := rfl
-      unfold strategyOfTokens
-      split
-      · rfl
-      · next trades hdecode =>
-          rw [this] at hdecode
-          obtain rfl := Option.some.inj hdecode
-          simp
-    rw [hnil]
+    rw [strategyOfTokens_nil_trades]
     show ([] : List (EF × Sentence)) =
       ((T.strat n).separatedLocallyGatedConditionalContract ψ ε
         (conditioningBudget n)).trades
@@ -4591,7 +4216,7 @@ lemma zeroAwareConditionPriceTokenSegment_eq (zeroDays : Finset ℕ)
           rawConditionalPriceTokens (tf (Nat.pair n (j - 1)))
             (ψCode (tf (Nat.pair n j))) (tf (Nat.pair n j)) ε ++ [8])
       else [tf (Nat.pair n j)] := by
-  have hfst : (PrefixPatchCompile.freezeControlNat tf (Nat.pair n j)).unpair.1 =
+  have hfst : (freezeControlNat tf (Nat.pair n j)).unpair.1 =
       freezeMode4 (vpre tf n j) := freezeControlNat_fst tf n j
   by_cases hm : freezeMode4 (vpre tf n j) = 2
   · rw [if_pos hm]
@@ -4602,7 +4227,7 @@ lemma zeroAwareConditionPriceTokenSegment_eq (zeroDays : Finset ℕ)
           have := freezeTokenControlAt_fst tf n (j + 1)
           omega)
         simp only [zeroAwareConditionPriceTokenSegment,
-          PrefixPatchCompile.freezeControlNat, Nat.unpair_pair]
+          freezeControlNat, Nat.unpair_pair]
         rw [hctrl]
         norm_num
   · rw [if_neg hm]
@@ -4635,7 +4260,7 @@ lemma guardedZeroAwareConditionRun_polySegStream (zeroDays : Finset ℕ)
   obtain ⟨cc, hcnt⟩ := hcount
   obtain ⟨cm, hmode⟩ := h.freezeModeScan
   obtain ⟨cd, hclamp⟩ := h.dayClampTokens
-  obtain ⟨cf, hflag⟩ := PolySegStream.bigDayFlagScan h
+  obtain ⟨cf, hflag⟩ := h.bigDayFlagScan
   obtain ⟨cψc, hψPoly⟩ := hψ
   obtain ⟨cad, had⟩ := addc_polyFueled
   have hreidx : PolyFueled _ (fun z => Nat.pair z.unpair.1 (z.unpair.2 - 1)) :=
@@ -4744,9 +4369,9 @@ lemma eventualConditionedTranslation_preserves_ecDigit
     EfficientlyComputableDigit (T.eventualConditionedTranslation F) := by
   obtain ⟨lengthCode, tokenCode, a, k, hcert⟩ := hT
   let source : ℕ → List ℕ := fun n =>
-    clockedTokens lengthCode tokenCode (PrefixPatchCompile.ecClock a k n) n
+    clockedTokens lengthCode tokenCode (ClockedEmission.ecClock a k n) n
   have hsource : PolySegStream source :=
-    PrefixPatchCompile.clockedTokens_polySegStream lengthCode tokenCode a k
+    ClockedEmission.clockedTokens_polySegStream lengthCode tokenCode a k
   let priced : ℕ → List ℕ := fun n =>
     digitize (guardedZeroAwareConditionTokens F.zeroDays
       (fun d => Encodable.encode (ψ d)) F.epsilon n (undigitize (source n)))
@@ -4811,67 +4436,19 @@ lemma eventualConditionedTranslation_preserves_ecDigit
           (undigitize (priced (Nat.pair n j).unpair.1)).getD
             (Nat.pair n j).unpair.2 0
         simp only [Nat.unpair_pair]
-      have hframes := strategyOfTokens_safeSeparatedFrameTokenOutput_trades
-        tfP lenP (ψ n) F.epsilon (frameBudget n (frameTradeCount tfP lenP n)) n
-        (undigitize (priced n)) hpricedEq
       have hprice := strategyOfTokens_zeroAwareConditionPriceTokenRun_trades
         F.zeroDays ψ F.epsilon n (undigitize (source n))
       rw [← hpricedTok] at hprice
       rw [congrArg Strategy.trades horig] at hprice
       refine Strategy.ext ?_
-      rw [hframes, htarget]
-      by_cases hempty : (T.strat n).trades = []
-      · rw [hprice, hempty]
-        simp [Strategy.separatedExceptZeroConditionalContract]
-        exact hempty
-      · have hpricedNe : (strategyOfTokens n (undigitize (priced n))).trades ≠ [] := by
-          rw [hprice]
-          simpa using hempty
-        have hdecodePriced :=
-          deserializeTrades_eq_some_of_strategyOfTokens_trades_ne_nil
-            n (undigitize (priced n)) hpricedNe
-        have hreadyPriced := streamReadFrom_eq_ready_of_deserializeTrades_eq_some
-          (undigitize (priced n)) (strategyOfTokens n (undigitize (priced n))).trades
-          hdecodePriced
-        have hreadyPricedTokens :
-            EF.streamReadFrom
-                ((List.range (lenP n)).map fun i => tfP (Nat.pair n i))
-                (some EF.streamInitial) =
-              some ((0, none),
-                ([], (strategyOfTokens n (undigitize (priced n))).trades)) := by
-          rw [← hpricedEq]
-          exact hreadyPriced
-        have hcount : frameTradeCount tfP lenP n = (T.strat n).trades.length := by
-          calc
-            frameTradeCount tfP lenP n =
-                (strategyOfTokens n (undigitize (priced n))).trades.length :=
-              frameTradeCount_eq_length_of_read tfP lenP n
-                ((0, none), ([], (strategyOfTokens n (undigitize (priced n))).trades))
-                hreadyPricedTokens
-            _ = (T.strat n).trades.length := by rw [hprice, List.length_map]
-        have hpos : 0 < (T.strat n).trades.length :=
-          List.length_pos_iff.mpr hempty
-        rw [hprice, hcount, frameBudget_eq n (T.strat n).trades.length hpos]
-        simp only [List.map_map]
-        change
-          ((T.strat n).trades.map fun p =>
-            frameLeg false (ψ n) F.epsilon
-              (Strategy.localConditioningBudget (conditioningBudget n)
-                (T.strat n).trades.length) n
-              (p.1.retainedConditionPricesExceptZero F.zeroDays ψ F.epsilon,
-                p.2)) ++
-            ((T.strat n).trades.map fun p =>
-              frameLeg true (ψ n) F.epsilon
-                (Strategy.localConditioningBudget (conditioningBudget n)
-                  (T.strat n).trades.length) n
-                (p.1.retainedConditionPricesExceptZero F.zeroDays ψ F.epsilon,
-                  p.2)) =
-            ((T.strat n).separatedExceptZeroConditionalContract
-              F.zeroDays ψ F.epsilon (conditioningBudget n)).trades
-        simp only [frameLeg_exceptZero_eq_locallyGatedFirstLeg,
-          frameLeg_exceptZero_eq_locallyGatedSecondLeg]
-        rfl
-    · push_neg at hguard
+      rw [strategyOfTokens_framedTokenOutput_trades tfP lenP (ψ n) F.epsilon n
+        (undigitize (priced n)) hpricedEq
+        (fun e : EF => e.retainedConditionPricesExceptZero F.zeroDays ψ F.epsilon)
+        (T.strat n).trades hprice, htarget]
+      simp only [frameLeg_exceptZero_eq_locallyGatedFirstLeg,
+        frameLeg_exceptZero_eq_locallyGatedSecondLeg]
+      rfl
+    · push Not at hguard
       obtain ⟨j, hj, hm, hday⟩ := hguard
       have hTempty : (T.strat n).trades = [] := by
         rw [← horig]
@@ -4882,22 +4459,9 @@ lemma eventualConditionedTranslation_preserves_ecDigit
         rw [undigitize_digitize, guardedZeroAwareConditionTokens,
           if_neg (fun hall => absurd (hall j hj hm) (by omega))]
       rw [hpricedNil]
-      have hframedNil : safeSeparatedFrameTokenOutput tfP lenP (ψ n) F.epsilon
-          (frameBudget n (frameTradeCount tfP lenP n)) n [] = [] := by
-        simp [safeSeparatedFrameTokenOutput, conditioningFrameTokenOutput,
-          conditioningFrameTokenRun]
-      rw [hframedNil]
+      rw [safeSeparatedFrameTokenOutput_nil]
       refine Strategy.ext ?_
-      have hnil : (strategyOfTokens n ([] : List ℕ)).trades = [] := by
-        have hdec : deserializeTrades ([] : List ℕ) = some [] := rfl
-        unfold strategyOfTokens
-        split
-        · rfl
-        · next trades hdecode =>
-            rw [hdec] at hdecode
-            obtain rfl := Option.some.inj hdecode
-            simp
-      rw [hnil, htarget]
+      rw [strategyOfTokens_nil_trades, htarget]
       show ([] : List (EF × Sentence)) =
         ((T.strat n).separatedExceptZeroConditionalContract
           F.zeroDays ψ F.epsilon (conditioningBudget n)).trades

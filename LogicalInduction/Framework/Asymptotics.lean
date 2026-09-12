@@ -67,6 +67,8 @@ abbrev ConvergesTo (f : ℕ → ℝ) (x : ℝ) : Prop :=
 
 /-! ## The ε-characterization -/
 
+/-- `≈ₙ` unfolded: asymptotic equality is exactly "eventually within `ε`" for every
+positive `ε` (`dd:asymp`).  This is the finite-stage reading the property proofs use. -/
 lemma asympEq_iff_eventuallyWithin {f g : ℕ → ℝ} :
     f ≈ₙ g ↔ ∀ ε > 0, EventuallyWithin ε f g := by
   unfold AsympEq
@@ -86,17 +88,20 @@ lemma asympEq_iff_eventuallyWithin {f g : ℕ → ℝ} :
 
 /-! ## `≈ₙ` is an equivalence -/
 
+/-- `≈ₙ` is reflexive. -/
 @[refl]
 lemma AsympEq.refl (f : ℕ → ℝ) : f ≈ₙ f := by
   show Tendsto (fun n => f n - f n) atTop (𝓝 0)
   simp [sub_self]
 
+/-- `≈ₙ` is symmetric. -/
 @[symm]
 lemma AsympEq.symm {f g : ℕ → ℝ} (h : f ≈ₙ g) : g ≈ₙ f := by
   have h' : Tendsto (fun n => f n - g n) atTop (𝓝 0) := h
   show Tendsto (fun n => g n - f n) atTop (𝓝 0)
   simpa [neg_sub] using h'.neg
 
+/-- `≈ₙ` is transitive: the two vanishing differences add. -/
 @[trans]
 lemma AsympEq.trans {f g h : ℕ → ℝ} (hfg : f ≈ₙ g) (hgh : g ≈ₙ h) : f ≈ₙ h := by
   have h₁ : Tendsto (fun n => f n - g n) atTop (𝓝 0) := hfg
@@ -106,12 +111,14 @@ lemma AsympEq.trans {f g h : ℕ → ℝ} (hfg : f ≈ₙ g) (hgh : g ≈ₙ h) 
 
 /-! ## One-sided bounds and their transitivity -/
 
+/-- Asymptotic equality is in particular an asymptotic upper bound. -/
 lemma AsympEq.asympLE {f g : ℕ → ℝ} (h : f ≈ₙ g) : f ≲ₙ g := by
   intro ε hε
   filter_upwards [asympEq_iff_eventuallyWithin.1 h ε hε] with n hn
   have := (abs_sub_le_iff.1 hn).1
   linarith
 
+/-- Asymptotic equality is in particular an asymptotic lower bound. -/
 lemma AsympEq.asympGE {f g : ℕ → ℝ} (h : f ≈ₙ g) : f ≳ₙ g :=
   h.symm.asympLE
 
@@ -130,6 +137,8 @@ lemma AsympLE.trans_asympEq {f g h : ℕ → ℝ} (h₁ : f ≲ₙ g) (h₂ : g 
 lemma AsympEq.trans_asympLE {f g h : ℕ → ℝ} (h₁ : f ≈ₙ g) (h₂ : g ≲ₙ h) : f ≲ₙ h :=
   h₁.asympLE.trans h₂
 
+/-- Antisymmetry: two-sided asymptotic bounds are asymptotic equality.  This is how a
+property proof assembles `≈ₙ` out of the two one-sided arguments it can run separately. -/
 lemma asympEq_iff_asympLE_asympGE {f g : ℕ → ℝ} :
     f ≈ₙ g ↔ f ≲ₙ g ∧ f ≳ₙ g := by
   refine ⟨fun h => ⟨h.asympLE, h.asympGE⟩, fun ⟨h₁, h₂⟩ => ?_⟩
@@ -176,7 +185,7 @@ lemma AsympLE.add {f₁ g₁ f₂ g₂ : ℕ → ℝ} (h₁ : f₁ ≲ₙ g₁) 
 lemma AsympEq.finsetSum {J : Type*} [Fintype J] {f g : J → ℕ → ℝ}
     (h : ∀ j, f j ≈ₙ g j) : (fun n => ∑ j, f j n) ≈ₙ (fun n => ∑ j, g j n) := by
   have key : Tendsto (fun n => ∑ j, (f j n - g j n)) atTop (𝓝 (∑ _j : J, (0 : ℝ))) :=
-    tendsto_finset_sum _ (fun j _ => h j)
+    tendsto_finsetSum _ (fun j _ => h j)
   simpa [AsympEq, Finset.sum_sub_distrib] using key
 
 /-! ## Convergence as `≈ₙ` against a constant -/

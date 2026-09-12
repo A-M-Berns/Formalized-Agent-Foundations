@@ -8,7 +8,11 @@ A prefix-free finite set of binary codewords has total Kraft weight `∑ 2^{-|w|
 This is the budget the Occam risk allocation of `thm:ob` spends, and the mathematical
 core of the concrete prefix machine that backs it
 (`Construction/NonDogmatism/PrefixMachine.lean`); the rest of that construction is Lean
-plumbing. Mathlib carries no Kraft inequality, so it is proved here, from Mathlib alone.
+plumbing. Mathlib's `InformationTheory.kraft_mcmillan_inequality` proves the same bound for
+*uniquely decodable* codes; the prefix-free form below is not a literal instance of it,
+because Mathlib carries no prefix-free-implies-uniquely-decodable bridge and the
+prefix-freeness this development has is exactly what the machine construction produces. So
+the binary prefix-free case is proved here, from Mathlib alone.
 
 Proof: the counting argument. Let `L` be the maximum codeword length. A codeword `w` of
 length `ℓ` is the common prefix of exactly `2^(L-ℓ)` binary strings of length `L`;

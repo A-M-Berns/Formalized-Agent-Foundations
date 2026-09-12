@@ -4,14 +4,14 @@ import LogicalInduction.Construction.Freeze.Compiler
 # Structured spelling patterns: the pattern characterization with no side condition
 
 Renders `app:ifp` (tex:6018): the unconditional spelling characterization the corrected
-finite-perturbation freeze recognizer rests on.  `RpnFreeze` handles the legacy grammar, and
-the full grammar `parseRpn` under `NoReserved`; this module removes that condition by
-listing the structured alternatives.
+finite-perturbation freeze recognizer rests on.
 
-The residual hypothesis there is exactly the structured paper-prime leaf: at a reserved atom
+A spelling list whose alternatives are *single tokens* would need `NoReserved`, and the
+obstruction is exactly the structured paper-prime leaf: at a reserved atom
 `atom (Nat.pair 5 _)` the full grammar admits a whole extra family of spellings — the
-`[1, 0, …]` blocks — and `RpnFreeze.patterns`, whose alternatives are *single tokens*, cannot
-name them, because a structured block's unary length field makes it a variable-width segment.
+`[1, 0, …]` blocks — which a token-granular pattern cannot name, because a structured
+block's unary length field makes it a variable-width segment.  This module removes the
+condition by working at *segment* granularity and listing the structured alternatives.
 
 * `StructBlock pol fc` is the token language of one structured paper-prime block,
 
@@ -55,7 +55,7 @@ dispatch prefix `[1, 0]`, the polarity, the unary length field `1^|p|` closed by
 payload `p` itself, and the reserved terminator `19`. -/
 def StructBlock (pol fc : ℕ) (b : List ℕ) : Prop :=
   ∃ p : List ℕ, b = [1, 0, pol] ++ List.replicate p.length 1 ++ 0 :: p ++ [19] ∧
-    pol ≤ 1 ∧ parseStructuredArithmeticFormula p.length 0 p = some (fc, [])
+    pol ≤ 1 ∧ parseStructuredArithmeticFormula p.length p = some (fc, [])
 
 /-- The unary length field reads back exactly what it spells.
 
@@ -112,7 +112,7 @@ lemma parseStructuredPaperPrime_inv {payload : List ℕ} {φ : Sentence} {rest :
   simp only [Option.bind_some] at h
   split at h <;> try contradiction
   rename_i hlen
-  rcases hp : parseStructuredArithmeticFormula n 0 (payload2.take n) with _ | ⟨code, r⟩
+  rcases hp : parseStructuredArithmeticFormula n (payload2.take n) with _ | ⟨code, r⟩
   · simp [hp] at h
   rw [hp] at h
   rcases r with _ | ⟨x, xs⟩
@@ -298,11 +298,14 @@ def PatSeg.MatchesSeg : PatSeg → List ℕ → Prop
 @[simp] lemma PatSeg.matchesSeg_struct (pol fc : ℕ) (b : List ℕ) :
     (PatSeg.struct pol fc).MatchesSeg b ↔ StructBlock pol fc b := Iff.rfl
 
-/-- A run matches a pattern when it splits into segment matches, in order. -/
-def SegMatch (p : List PatSeg) (b : List ℕ) : Prop :=
-  ∃ bs : List (List ℕ), List.Forall₂ PatSeg.MatchesSeg p bs ∧ b = bs.flatten
+/-- A run matches a pattern under a per-segment relation when it splits, in order, into
+segment matches.  `SegMatch` and `SegMatchRelaxed` are its two instances, so the two split
+laws below are proved once. -/
+def SegMatchWith (M : PatSeg → List ℕ → Prop) (p : List PatSeg) (b : List ℕ) : Prop :=
+  ∃ bs : List (List ℕ), List.Forall₂ M p bs ∧ b = bs.flatten
 
-lemma segMatch_nil (b : List ℕ) : SegMatch [] b ↔ b = [] := by
+lemma segMatchWith_nil (M : PatSeg → List ℕ → Prop) (b : List ℕ) :
+    SegMatchWith M [] b ↔ b = [] := by
   constructor
   · rintro ⟨bs, hf, rfl⟩
     rw [List.forall₂_nil_left_iff.mp hf]
@@ -310,14 +313,27 @@ lemma segMatch_nil (b : List ℕ) : SegMatch [] b ↔ b = [] := by
   · rintro rfl
     exact ⟨[], List.Forall₂.nil, rfl⟩
 
-lemma segMatch_cons_left_iff {σ : PatSeg} {p : List PatSeg} {b : List ℕ} :
-    SegMatch (σ :: p) b ↔ ∃ b₁ b₂, σ.MatchesSeg b₁ ∧ SegMatch p b₂ ∧ b = b₁ ++ b₂ := by
+lemma segMatchWith_cons_left_iff {M : PatSeg → List ℕ → Prop} {σ : PatSeg}
+    {p : List PatSeg} {b : List ℕ} :
+    SegMatchWith M (σ :: p) b ↔
+      ∃ b₁ b₂, M σ b₁ ∧ SegMatchWith M p b₂ ∧ b = b₁ ++ b₂ := by
   constructor
   · rintro ⟨bs, hf, rfl⟩
     obtain ⟨b₁, bs', h₁, hrest, rfl⟩ := List.forall₂_cons_left_iff.mp hf
     exact ⟨b₁, bs'.flatten, h₁, ⟨bs', hrest, rfl⟩, by simp⟩
   · rintro ⟨b₁, b₂, h₁, ⟨bs, hf, rfl⟩, rfl⟩
     exact ⟨b₁ :: bs, List.Forall₂.cons h₁ hf, by simp⟩
+
+/-- A run matches a pattern when it splits into segment matches, in order. -/
+def SegMatch (p : List PatSeg) (b : List ℕ) : Prop :=
+  SegMatchWith PatSeg.MatchesSeg p b
+
+lemma segMatch_nil (b : List ℕ) : SegMatch [] b ↔ b = [] :=
+  segMatchWith_nil _ b
+
+lemma segMatch_cons_left_iff {σ : PatSeg} {p : List PatSeg} {b : List ℕ} :
+    SegMatch (σ :: p) b ↔ ∃ b₁ b₂, σ.MatchesSeg b₁ ∧ SegMatch p b₂ ∧ b = b₁ ++ b₂ :=
+  segMatchWith_cons_left_iff
 
 lemma segMatch_cons {σ : PatSeg} {p : List PatSeg} {b₁ b₂ : List ℕ}
     (h₁ : σ.MatchesSeg b₁) (h₂ : SegMatch p b₂) : SegMatch (σ :: p) (b₁ ++ b₂) :=
@@ -364,7 +380,7 @@ enforce it.  `19 ∉ p` is what makes the block self-delimiting: the terminator 
 def StructBlockRelaxed (pol fc : ℕ) (b : List ℕ) : Prop :=
   ∃ (L : ℕ) (p : List ℕ),
     b = [1, 0, pol] ++ List.replicate L 1 ++ 0 :: p ++ [19] ∧ pol ≤ 1 ∧
-      parseStructuredArithmeticFormula p.length 0 p = some (fc, []) ∧ 19 ∉ p
+      parseStructuredArithmeticFormula p.length p = some (fc, []) ∧ 19 ∉ p
 
 /-- What a single pattern segment demands once the length identification is dropped. -/
 def PatSeg.MatchesRelaxed : PatSeg → List ℕ → Prop
@@ -375,7 +391,7 @@ def PatSeg.MatchesRelaxed : PatSeg → List ℕ → Prop
 /-- A run matches a pattern relaxedly when it splits, in order, into relaxed segment
 matches. -/
 def SegMatchRelaxed (p : List PatSeg) (b : List ℕ) : Prop :=
-  ∃ bs : List (List ℕ), List.Forall₂ PatSeg.MatchesRelaxed p bs ∧ b = bs.flatten
+  SegMatchWith PatSeg.MatchesRelaxed p b
 
 /-- The structured alternatives available at an atom.  They exist exactly at the reserved
 shape `atom (Nat.pair 5 (Nat.pair pol fc))` with `pol ≤ 1`, which is the only sentence a
@@ -386,7 +402,7 @@ def structAlts (a : ℕ) : List (List PatSeg) :=
 
 /-- The complete spelling patterns of a target under the **full** grammar `parseRpn`.
 
-This mirrors `RpnFreeze.patterns` and adds, at each atom, the structured alternatives. -/
+Token-granular spellings, with the structured alternatives added at each atom. -/
 def segPatterns : Sentence → List (List PatSeg)
   | ⊥ => [[.lit 0], [.lit 1, .hole ⊥]]
   | .atom a =>
@@ -641,7 +657,7 @@ lemma segPatterns_complete : ∀ (ψ : Sentence), ∀ b : List ℕ,
 
 A run denotes `ψ` under the full grammar `parseRpn` exactly when it matches one of `ψ`'s
 finitely many segment patterns — for *every* `ψ`: `⊥` subformulas and reserved atoms
-included.  `RpnFreeze.parseRpn_iff_patMatch` is the `NoReserved` form.
+included.
 
 Proof kind: `C` composition.  Provenance: (a) `segPatterns_sound`,
 `segPatterns_complete`.

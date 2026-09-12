@@ -211,18 +211,6 @@ def cost : EF → ℕ
   | var _       => 1
   | letE x body => x.cost + body.cost + 1
 
-/-- Rank = the latest day the feature inspects (`def:valfeature`); `EF_n` = rank ≤ `n`.
-`const` inspects nothing (rank `0`); a binary node takes the `max` of its children. -/
-def rankWith : EF → List ℕ → ℕ
-  | price _ n,   _ => n
-  | const _,     _ => 0
-  | add a b,     ρ => Nat.max (a.rankWith ρ) (b.rankWith ρ)
-  | mul a b,     ρ => Nat.max (a.rankWith ρ) (b.rankWith ρ)
-  | max a b,     ρ => Nat.max (a.rankWith ρ) (b.rankWith ρ)
-  | safeRecip a, ρ => a.rankWith ρ
-  | var i,       ρ => ρ.getD i 0
-  | letE x body, ρ => body.rankWith (x.rankWith ρ :: ρ)
-
 /-- `def:valfeature`.  The latest day the feature inspects; a `const` and a free `var`
 inspect nothing.  This is what `EFn` grades the feature algebra by. -/
 def rank : EF → ℕ
@@ -343,9 +331,6 @@ abbrev EFn (n : ℕ) : Subring (History → ℝ) := ExpressibleRankLE n
 /-- The required `CommRing EF_n` instance (`def:tf`), inherited from the ambient function
 ring via the subring structure. -/
 example (n : ℕ) : CommRing (EFn n) := inferInstance
-
-/-- Every feature's denotation lives in the ring graded by its own rank. -/
-lemma denote_mem_EFn (e : EF) : e.denote ∈ EFn e.rank := ⟨e, le_rfl, rfl⟩
 
 /-- The rank grading is monotone, so a rank-`n` strategy may be built from lower-rank
 pieces. -/
@@ -776,20 +761,20 @@ def ConsistentWith (v : PCWorld) (D : Finset Sentence) : Prop :=
 
 A p.c. world evaluates compound sentences by Boolean algebra (Foundation's `val`), so its
 `{0,1}` payouts compose the way a coherent probability must.  These are the connective
-laws every §4 property family and every `Construction/` deductive process reads.  They are
-deliberately not `@[simp]` here: `Construction/Paper/ComputationDP.lean` marks
-`holds_atom` and `holds_neg` `simp` for the deductive-process lane, which is where atom and
-negation normalisation is wanted. -/
+laws every §4 property family and every `Construction/` deductive process reads.
+`holds_atom` and `holds_neg` are `@[simp]`: atom and negation normalisation is what every
+deductive-process lane wants, and the remaining connective laws are left to explicit
+rewriting because each of them splits the goal. -/
 
 /-- A world holds an atom exactly when its valuation does. -/
-lemma holds_atom (v : PCWorld) (m : ℕ) :
+@[simp] lemma holds_atom (v : PCWorld) (m : ℕ) :
     v.Holds (LO.Propositional.Formula.atom m) ↔ v m := Iff.rfl
 
 /-- Every world holds `⊤` (Foundation: `⊤ = ⊥ 🡒 ⊥`). -/
 lemma holds_top (v : PCWorld) : v.Holds (⊤ : Sentence) := fun h => h
 
 /-- `∼χ`-worlds falsify `χ` (Foundation: `∼χ = χ 🡒 ⊥`). -/
-lemma holds_neg (v : PCWorld) (χ : Sentence) : v.Holds (∼χ) ↔ ¬ v.Holds χ := by
+@[simp] lemma holds_neg (v : PCWorld) (χ : Sentence) : v.Holds (∼χ) ↔ ¬ v.Holds χ := by
   simp [PCWorld.Holds, LO.Propositional.Formula.Boolean.val]
 
 /-- A world holds a disjunction exactly when it holds one of the disjuncts. -/
@@ -1134,13 +1119,6 @@ lemma MarketComputation.evaln_eq_quote
     (h : out ∈ Nat.Partrec.Code.evaln fuel c.code z) :
     out = Encodable.encode (c.quote z.unpair.1 z.unpair.2) := by
   exact Part.mem_unique (Nat.Partrec.Code.evaln_sound h) (c.code_spec z)
-
-/-- Decoded rational form of `MarketComputation.evaln_eq_quote`. -/
-lemma MarketComputation.evaln_quote_eq
-    {P : History} (c : MarketComputation P) {z fuel : ℕ} {q : ℚ}
-    (h : Encodable.encode q ∈ Nat.Partrec.Code.evaln fuel c.code z) :
-    q = c.quote z.unpair.1 z.unpair.2 := by
-  exact Encodable.encode_injective (c.evaln_eq_quote h)
 
 /-- Every exact rational market quote eventually appears at some finite clock. -/
 lemma MarketComputation.exists_evaln_quote
@@ -1494,6 +1472,34 @@ Paper node: `def:exploitation` -/
 def Exploits (Tr : Trader) (V : History) (DP : DeductiveProcess) : Prop :=
   BddBelow (Tr.plausibleAssessments V DP) ∧ ¬ BddAbove (Tr.plausibleAssessments V DP)
 
+/-- **Uniform bounded net-worth error preserves exploitation.**  If `Tr` exploits `P` and
+`Tr'`'s net worth against `P'` stays within a constant `C` of `Tr`'s against `P` on every
+day and every consistent world, then `Tr'` exploits `P'`.  This is the abstract
+finite-prefix accounting step every finite-perturbation closure theorem runs through
+(`Properties/FinitePerturbations.lean`). -/
+lemma Exploits.of_boundedDifference
+    {Tr Tr' : Trader} {P P' : History} {DP : DeductiveProcess}
+    (h : Tr.Exploits P DP) (C : ℝ)
+    (hdiff : ∀ n v, v.ConsistentWith (DP.D n) →
+      |Tr.netWorth P v n - Tr'.netWorth P' v n| ≤ C) :
+    Tr'.Exploits P' DP := by
+  rcases h with ⟨⟨L, hL⟩, hnotAbove⟩
+  refine ⟨⟨L - C, ?_⟩, ?_⟩
+  · rintro x ⟨n, v, hv, rfl⟩
+    have hbase := hL ⟨n, v, hv, rfl⟩
+    have herr := hdiff n v hv
+    rw [abs_le] at herr
+    linarith
+  · intro hUpper
+    apply hnotAbove
+    rcases hUpper with ⟨U, hU⟩
+    refine ⟨U + C, ?_⟩
+    rintro x ⟨n, v, hv, rfl⟩
+    have hpatched := hU ⟨n, v, hv, rfl⟩
+    have herr := hdiff n v hv
+    rw [abs_le] at herr
+    linarith
+
 end Trader
 
 /-! ## `def:ec`, `def:lic` — Efficient computability and the Logical Induction Criterion -/
@@ -1570,6 +1576,18 @@ def strategyOfTokens (n : ℕ) (tokens : List ℕ) : Strategy n :=
   | some trades =>
       if h : ∀ trade ∈ trades, trade.1.rank ≤ n then ⟨trades, h⟩ else ⟨[], by simp⟩
 
+/-- The empty stream decodes to the empty validated strategy. -/
+lemma strategyOfTokens_nil_trades (n : ℕ) :
+    (strategyOfTokens n ([] : List ℕ)).trades = [] := by
+  have hdec : deserializeTrades ([] : List ℕ) = some [] := rfl
+  unfold strategyOfTokens
+  split
+  · rfl
+  · next trades hdecode =>
+      rw [hdec] at hdecode
+      obtain rfl := Option.some.inj hdecode
+      simp
+
 /-- The total trader denoted by two programs and a day-dependent clock. -/
 def clockedTraderTok (lengthCode tokenCode : Nat.Partrec.Code) (clock : ℕ → ℕ) : Trader where
   strat n := strategyOfTokens n (clockedTokens lengthCode tokenCode (clock n) n)
@@ -1619,6 +1637,13 @@ def tokenBlock (t : ℕ) : List ℕ := natDigits4 t ++ [4]
 
 /-- The digit stream of a token stream. -/
 def digitize (ts : List ℕ) : List ℕ := ts.flatMap tokenBlock
+
+@[simp] lemma digitize_append (xs ys : List ℕ) :
+    digitize (xs ++ ys) = digitize xs ++ digitize ys := by
+  simp [digitize]
+
+@[simp] lemma digitize_singleton (t : ℕ) : digitize [t] = tokenBlock t := by
+  simp [digitize]
 
 lemma digitize_flatMap (l : List ℕ) (f : ℕ → List ℕ) :
     digitize (l.flatMap f) = l.flatMap fun x => digitize (f x) := by
@@ -1738,17 +1763,17 @@ inside contraction.  In particular, the emitted stream never contains that code 
 token. -/
 
 /-- The code of the two-element argument vector `![a, b]`, as a cons list. -/
-public def arithmeticVec2Code (a b : ℕ) : ℕ :=
+def arithmeticVec2Code (a b : ℕ) : ℕ :=
   Nat.pair a (Nat.pair b 0 + 1) + 1
 
 /-- The code of a function-symbol term: symbol `symbol` of arity `arity` applied to the
 argument vector coded by `args`. -/
-public def arithmeticFuncCode (arity symbol args : ℕ) : ℕ :=
+def arithmeticFuncCode (arity symbol args : ℕ) : ℕ :=
   Nat.pair 2 (Nat.pair arity (Nat.pair symbol args)) + 1
 
 /-- The code of a binary atomic formula: `rel` when `negative` is `false` and `nrel` when
 it is `true`, since Foundation's `Semiformula` is in negation-normal form. -/
-public def arithmeticRelCode (negative : Bool) (symbol a b : ℕ) : ℕ :=
+def arithmeticRelCode (negative : Bool) (symbol a b : ℕ) : ℕ :=
   Nat.pair (if negative then 1 else 0)
     (Nat.pair 2 (Nat.pair symbol (arithmeticVec2Code a b))) + 1
 
@@ -1762,7 +1787,7 @@ without those connectives ever being emitted as codes.
 
 *Proof kind:* `Def`.  Its correctness against Foundation's `∼` is
 `negFormulaCode_spec`. -/
-public def negFormulaCode (n : ℕ) : ℕ :=
+def negFormulaCode (n : ℕ) : ℕ :=
   match n with
   | 0 => 0
   | e + 1 =>
@@ -1796,7 +1821,7 @@ token stream. -/
 mutual
   /-- Parse a natural number written in the small-token binary encoding (tags `0`--`2`),
   returning its value and the remaining tokens. -/
-  public def parseStructuredNat : ℕ → List ℕ → Option (ℕ × List ℕ)
+  def parseStructuredNat : ℕ → List ℕ → Option (ℕ × List ℕ)
     | 0, _ => none
     | _ + 1, [] => none
     | fuel + 1, t :: rest =>
@@ -1808,13 +1833,11 @@ mutual
         else none
 
   /-- Parse an arithmetic term (tags `3`--`8`), returning its Foundation term code and the
-  remaining tokens.  The `depth` slot is fixed at `0` throughout and carries no
-  information; it is retained because it appears in the statement of the lemma corpus in
-  `Framework/Emission/RpnSentence.lean`. -/
-  public def parseStructuredArithmeticTerm : ℕ → ℕ → List ℕ → Option (ℕ × List ℕ)
-    | 0, _, _ => none
-    | _ + 1, _, [] => none
-    | fuel + 1, depth, t :: rest =>
+  remaining tokens. -/
+  def parseStructuredArithmeticTerm : ℕ → List ℕ → Option (ℕ × List ℕ)
+    | 0, _ => none
+    | _ + 1, [] => none
+    | fuel + 1, t :: rest =>
         if t = 3 then
           (parseStructuredNat fuel rest).map fun p =>
             (Nat.pair 0 p.1 + 1, p.2)
@@ -1823,45 +1846,43 @@ mutual
         else if t = 5 then some (arithmeticFuncCode 0 0 0, rest)
         else if t = 6 then some (arithmeticFuncCode 0 1 0, rest)
         else if t = 7 ∨ t = 8 then
-          (parseStructuredArithmeticTerm fuel 0 rest).bind fun p =>
-            (parseStructuredArithmeticTerm fuel 0 p.2).map fun q =>
+          (parseStructuredArithmeticTerm fuel rest).bind fun p =>
+            (parseStructuredArithmeticTerm fuel p.2).map fun q =>
               (arithmeticFuncCode 2 (if t = 7 then 0 else 1)
                 (arithmeticVec2Code p.1 q.1), q.2)
         else none
 
   /-- Parse an arithmetic formula (tags `9`--`18`, plus `20`--`22` for the paper's `¬`,
   `⟹`, `⟺`, contracted into negation-normal form here), returning its Foundation formula
-  code and the remaining tokens.  The `depth` slot is fixed at `0` throughout and carries
-  no information; it is retained because it appears in the statement of the lemma corpus in
-  `Framework/Emission/RpnSentence.lean`. -/
-  public def parseStructuredArithmeticFormula : ℕ → ℕ → List ℕ → Option (ℕ × List ℕ)
-    | 0, _, _ => none
-    | _ + 1, _, [] => none
-    | fuel + 1, depth, t :: rest =>
+  code and the remaining tokens. -/
+  def parseStructuredArithmeticFormula : ℕ → List ℕ → Option (ℕ × List ℕ)
+    | 0, _ => none
+    | _ + 1, [] => none
+    | fuel + 1, t :: rest =>
         if t = 9 then some (Nat.pair 2 0 + 1, rest)
         else if t = 10 then some (Nat.pair 3 0 + 1, rest)
         else if t = 11 ∨ t = 12 ∨ t = 13 ∨ t = 14 then
-          (parseStructuredArithmeticTerm fuel 0 rest).bind fun p =>
-            (parseStructuredArithmeticTerm fuel 0 p.2).map fun q =>
+          (parseStructuredArithmeticTerm fuel rest).bind fun p =>
+            (parseStructuredArithmeticTerm fuel p.2).map fun q =>
               (arithmeticRelCode (t = 12 ∨ t = 14) (if t = 11 ∨ t = 12 then 0 else 1)
                 p.1 q.1, q.2)
         else if t = 15 ∨ t = 16 then
-          (parseStructuredArithmeticFormula fuel 0 rest).bind fun p =>
-            (parseStructuredArithmeticFormula fuel 0 p.2).map fun q =>
+          (parseStructuredArithmeticFormula fuel rest).bind fun p =>
+            (parseStructuredArithmeticFormula fuel p.2).map fun q =>
               (Nat.pair (if t = 15 then 4 else 5) (Nat.pair p.1 q.1) + 1, q.2)
         else if t = 17 ∨ t = 18 then
-          (parseStructuredArithmeticFormula fuel 0 rest).map fun p =>
+          (parseStructuredArithmeticFormula fuel rest).map fun p =>
             (Nat.pair (if t = 17 then 6 else 7) p.1 + 1, p.2)
         else if t = 20 then
-          (parseStructuredArithmeticFormula fuel 0 rest).map fun p =>
+          (parseStructuredArithmeticFormula fuel rest).map fun p =>
             (negFormulaCode p.1, p.2)
         else if t = 21 then
-          (parseStructuredArithmeticFormula fuel 0 rest).bind fun p =>
-            (parseStructuredArithmeticFormula fuel 0 p.2).map fun q =>
+          (parseStructuredArithmeticFormula fuel rest).bind fun p =>
+            (parseStructuredArithmeticFormula fuel p.2).map fun q =>
               (Nat.pair 5 (Nat.pair (negFormulaCode p.1) q.1) + 1, q.2)
         else if t = 22 then
-          (parseStructuredArithmeticFormula fuel 0 rest).bind fun p =>
-            (parseStructuredArithmeticFormula fuel 0 p.2).map fun q =>
+          (parseStructuredArithmeticFormula fuel rest).bind fun p =>
+            (parseStructuredArithmeticFormula fuel p.2).map fun q =>
               (Nat.pair 4
                 (Nat.pair (Nat.pair 5 (Nat.pair (negFormulaCode p.1) q.1) + 1)
                   (Nat.pair 5 (Nat.pair (negFormulaCode q.1) p.1) + 1)) + 1, q.2)
@@ -1885,7 +1906,7 @@ def parseStructuredPaperPrime : List ℕ → Option (Sentence × List ℕ)
       if polarity ≤ 1 then
         (readStructuredLength framed).bind fun p =>
           if p.1 ≤ p.2.length then
-            match parseStructuredArithmeticFormula p.1 0 (p.2.take p.1) with
+            match parseStructuredArithmeticFormula p.1 (p.2.take p.1) with
             | some (formulaCode, []) =>
                 if List.getD p.2 p.1 0 = 19 then
                   some (Formula.atom (Nat.pair 5 (Nat.pair polarity formulaCode)),
@@ -1902,7 +1923,7 @@ def parseStructuredPaperPrimeC : List ℕ → Option (ℕ × List ℕ)
       if polarity ≤ 1 then
         (readStructuredLength framed).bind fun p =>
           if p.1 ≤ p.2.length then
-            match parseStructuredArithmeticFormula p.1 0 (p.2.take p.1) with
+            match parseStructuredArithmeticFormula p.1 (p.2.take p.1) with
             | some (formulaCode, []) =>
                 if List.getD p.2 p.1 0 = 19 then
                   some (Nat.pair 1 (Nat.pair 5 (Nat.pair polarity formulaCode)) + 1,
@@ -1912,28 +1933,6 @@ def parseStructuredPaperPrimeC : List ℕ → Option (ℕ × List ℕ)
           else none
       else none
   | [] => none
-
-/-- The unstructured RPN grammar: sentence blocks without the `[1, 0]` escape.
-`Construction/Freeze/Compiler.lean` states the freeze recognizer against it
-(`parseRpnLegacy_iff_patMatch`, `parseRpn_imp_parseRpnLegacy`). -/
-def parseRpnLegacy : ℕ → List ℕ → Option (Sentence × List ℕ)
-  | 0, _ => none
-  | _ + 1, [] => none
-  | fuel + 1, t :: rest =>
-      if t = 0 then some (Formula.falsum, rest)
-      else if t = 1 then
-        rest.head?.bind fun c =>
-          (Encodable.decode (α := Sentence) c).map fun φ => (φ, rest.tail)
-      else if t = 2 then
-        (parseRpnLegacy fuel rest).bind fun p =>
-          (parseRpnLegacy fuel p.2).bind fun q => some (Formula.imp p.1 q.1, q.2)
-      else if t = 3 then
-        (parseRpnLegacy fuel rest).bind fun p =>
-          (parseRpnLegacy fuel p.2).bind fun q => some (Formula.and p.1 q.1, q.2)
-      else if t = 4 then
-        (parseRpnLegacy fuel rest).bind fun p =>
-          (parseRpnLegacy fuel p.2).bind fun q => some (Formula.or p.1 q.1, q.2)
-      else some (Formula.atom (t - 5), rest)
 
 /-- `parseRpn fuel ts` reads one sentence block from the front of `ts`, returning the
 parsed sentence and the unread suffix.  Any `fuel ≥ ts.length` is enough. -/
@@ -2029,6 +2028,20 @@ and the digit layer's `List ℕ`. -/
 def unaryDay (n : ℕ) : List Bool := List.replicate n true
 
 @[simp] lemma length_unaryDay (n : ℕ) : (unaryDay n).length = n := by simp [unaryDay]
+
+lemma unaryDay_injective : Function.Injective unaryDay :=
+  List.replicate_left_injective true
+
+/-- A unary word is the image of `k` under `unaryDay` exactly when `k` is in the set. -/
+lemma mem_image_unaryDay (S : Finset ℕ) (k : ℕ) :
+    List.replicate k true ∈ S.image unaryDay ↔ k ∈ S := by
+  rw [Finset.mem_image]
+  constructor
+  · rintro ⟨d, hd, he⟩
+    have hdk : d = k := unaryDay_injective (by rw [he]; rfl)
+    exact hdk ▸ hd
+  · intro hk
+    exact ⟨k, hk, rfl⟩
 
 /-- `Bool` as `0`/`1`. -/
 def b2n (b : Bool) : ℕ := if b then 1 else 0

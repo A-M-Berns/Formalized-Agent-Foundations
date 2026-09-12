@@ -17,8 +17,13 @@ The public leaf framing is
   `[1, 0, polarity] ++ replicate payload.length 1 ++ [0] ++ payload ++ [19]`.
 
 Sentence code `0` is the dispatch selector for the structured leaf, so the ordinary
-two-token sentence escape `[1, code]` for `code ≠ 0` is untouched and the two grammars
-agree off code `0` (`parseRpn_of_legacy`).  The unary payload length keeps every framing
+two-token sentence escape `[1, code]` for `code ≠ 0` is untouched.  What makes the framing
+safe is proved at the full grammar: a successful structured parse consumes exactly one
+block and denotes exactly the reserved tag-`5` atom that block spells
+(`StructPat.parseStructuredPaperPrime_inv`), and the segment characterization
+`StructPat.parseRpn_iff_segMatch` holds for every target with no side condition, so a
+structured leaf is matched as one segment like every other block.  The unary payload
+length keeps every framing
 token bounded, the payload is the arithmetic alphabet `0..18`, and the reserved terminator
 `19` — which the alphabet never contains — closes the block, so a scanner finds the
 boundary without replaying the Foundation decoder.  Gödel codes are built by parser
@@ -26,8 +31,8 @@ contraction and never emitted.
 
 Objects defined here: the encoders `encodeStructuredNat`, `encodeArithmeticTermSymbols`
 and `encodeArithmeticFormulaSymbols` over the complete Foundation arithmetic syntax, with
-exact suffix-preserving round trips and the matching decoders
-`parseArithmeticTermSymbols` / `parseArithmeticFormulaSymbols`; the payload-generic leaf
+exact suffix-preserving round trips against `parseStructuredArithmeticTerm` /
+`parseStructuredArithmeticFormula`; the payload-generic leaf
 block `structuredLeafBlock` and its normal-form instance `structuredPaperPrimeBlock`,
 contracting to the public tag-`5` atom `paperPrimeSentence`; the normal-form-metered class
 `PolyArithmeticFormulaSeq`; and the compact numeral `binNumeral` with its symbol list
@@ -147,11 +152,11 @@ lemma parseStructuredNat_encode (n : ℕ) (tail : List ℕ) {fuel : ℕ}
 /-- The term encoder is inverted exactly by the numeric parser, leaving the unread
 suffix, provided the fuel covers the encoded run. -/
 lemma parseStructuredArithmeticTerm_encode
-    {k : ℕ} (t : ArithmeticSemiterm ℕ k) (tail : List ℕ) {fuel depth : ℕ}
+    {k : ℕ} (t : ArithmeticSemiterm ℕ k) (tail : List ℕ) {fuel : ℕ}
     (hfuel : (encodeArithmeticTermSymbols t).length ≤ fuel) :
-    parseStructuredArithmeticTerm fuel depth
+    parseStructuredArithmeticTerm fuel
       (encodeArithmeticTermSymbols t ++ tail) = some (Encodable.encode t, tail) := by
-  induction t generalizing fuel tail depth with
+  induction t generalizing fuel tail with
   | bvar x =>
       cases fuel with
       | zero => simp [encodeArithmeticTermSymbols] at hfuel
@@ -160,7 +165,7 @@ lemma parseStructuredArithmeticTerm_encode
             parseStructuredArithmeticTerm]
           rw [parseStructuredNat_encode x tail (by
             simpa [encodeArithmeticTermSymbols] using hfuel)]
-          simp [x.isLt, LO.FirstOrder.Semiterm.encode_eq_toNat,
+          simp [LO.FirstOrder.Semiterm.encode_eq_toNat,
             LO.FirstOrder.Semiterm.toNat]
   | fvar x =>
       cases fuel with
@@ -207,11 +212,11 @@ lemma parseStructuredArithmeticTerm_encode
 /-- The formula encoder is inverted exactly by the numeric parser, leaving the unread
 suffix, provided the fuel covers the encoded run. -/
 lemma parseStructuredArithmeticFormula_encode
-    {k : ℕ} (φ : ArithmeticSemiformula ℕ k) (tail : List ℕ) {fuel depth : ℕ}
+    {k : ℕ} (φ : ArithmeticSemiformula ℕ k) (tail : List ℕ) {fuel : ℕ}
     (hfuel : (encodeArithmeticFormulaSymbols φ).length ≤ fuel) :
-    parseStructuredArithmeticFormula fuel depth
+    parseStructuredArithmeticFormula fuel
       (encodeArithmeticFormulaSymbols φ ++ tail) = some (Encodable.encode φ, tail) := by
-  induction φ generalizing fuel tail depth with
+  induction φ generalizing fuel tail with
   | verum => cases fuel <;> simp [encodeArithmeticFormulaSymbols,
       parseStructuredArithmeticFormula, LO.FirstOrder.Semiformula.encode_eq_toNat,
       LO.FirstOrder.Semiformula.toNat] at hfuel ⊢
@@ -279,38 +284,6 @@ lemma parseStructuredArithmeticFormula_encode
           rw [ih tail (by simpa [encodeArithmeticFormulaSymbols] using hfuel)]
           rfl
 
-/-- Decode one arithmetic term from a symbol stream.  This and
-`parseArithmeticFormulaSymbols` are the client-facing inverses of the two encoders: they
-return the Foundation object and the unread suffix, rather than a raw code. -/
-def parseArithmeticTermSymbols (k : ℕ) (symbols : List ℕ) :
-    Option (ArithmeticSemiterm ℕ k × List ℕ) :=
-  (parseStructuredArithmeticTerm symbols.length k symbols).bind fun p =>
-    (Encodable.decode (α := ArithmeticSemiterm ℕ k) p.1).map fun t => (t, p.2)
-
-/-- Decode one arithmetic formula from a symbol stream. -/
-def parseArithmeticFormulaSymbols (k : ℕ) (symbols : List ℕ) :
-    Option (ArithmeticSemiformula ℕ k × List ℕ) :=
-  (parseStructuredArithmeticFormula symbols.length k symbols).bind fun p =>
-    (Encodable.decode (α := ArithmeticSemiformula ℕ k) p.1).map fun φ => (φ, p.2)
-
-/-- **The term round trip at the client interface**: `parseArithmeticTermSymbols` inverts
-`encodeArithmeticTermSymbols` back to a `Semiterm`, not to a raw code. -/
-lemma parseArithmeticTermSymbols_encode {k : ℕ} (t : ArithmeticSemiterm ℕ k)
-    (tail : List ℕ) :
-    parseArithmeticTermSymbols k (encodeArithmeticTermSymbols t ++ tail) =
-      some (t, tail) := by
-  rw [parseArithmeticTermSymbols, parseStructuredArithmeticTerm_encode t tail (by simp)]
-  simp [Encodable.encodek]
-
-/-- **The formula round trip at the client interface**: `parseArithmeticFormulaSymbols`
-inverts `encodeArithmeticFormulaSymbols` back to a `Semiformula`, not to a raw code. -/
-lemma parseArithmeticFormulaSymbols_encode {k : ℕ} (φ : ArithmeticSemiformula ℕ k)
-    (tail : List ℕ) :
-    parseArithmeticFormulaSymbols k (encodeArithmeticFormulaSymbols φ ++ tail) =
-      some (φ, tail) := by
-  rw [parseArithmeticFormulaSymbols, parseStructuredArithmeticFormula_encode φ tail (by simp)]
-  simp [Encodable.encodek]
-
 /-! ## The structured paper-prime leaf
 
 One arithmetic proposition as a single atomic RPN block: the `[1, 0]` dispatch prefix, the
@@ -346,7 +319,7 @@ lemma readStructuredLength_replicate (n : ℕ) (tail : List ℕ) :
 parses to as a complete run. -/
 private lemma parseStructuredPaperPrime_leaf {positive : Bool} {payload : List ℕ}
     {φ : ArithmeticProposition}
-    (hpayload : parseStructuredArithmeticFormula payload.length 0 payload =
+    (hpayload : parseStructuredArithmeticFormula payload.length payload =
       some (Encodable.encode φ, []))
     (tail : List ℕ) :
     parseStructuredPaperPrime
@@ -354,15 +327,14 @@ private lemma parseStructuredPaperPrime_leaf {positive : Bool} {payload : List �
         (List.replicate payload.length 1 ++ (0 :: (payload ++ 19 :: tail)))) =
       some (paperPrimeSentence positive φ, tail) := by
   rw [parseStructuredPaperPrime.eq_def]
-  simp only [List.cons_append]
+  simp only []
   have hbool : Encodable.encode positive ≤ 1 := by cases positive <;> simp
   rw [if_pos hbool]
   rw [readStructuredLength_replicate]
   simp only [Option.bind_some, List.length_append]
   rw [if_pos (by omega), List.take_left]
   rw [hpayload]
-  simp only [List.getD_append_right _ _ _ _ le_rfl, Nat.sub_self, List.getD_cons_zero,
-    if_pos rfl]
+  simp only [List.getD_append_right _ _ _ _ le_rfl, Nat.sub_self, List.getD_cons_zero]
   rw [List.drop_append]
   simp
   simp [paperPrimeSentence, paperPrimeCode, paperPrimeTag]
@@ -371,7 +343,7 @@ private lemma parseStructuredPaperPrime_leaf {positive : Bool} {payload : List �
 arithmetic-formula run contracts to that formula's tag-`5` atom, leaving the suffix. -/
 lemma parseRpn_structuredLeafBlock {positive : Bool} {payload : List ℕ}
     {φ : ArithmeticProposition}
-    (hpayload : parseStructuredArithmeticFormula payload.length 0 payload =
+    (hpayload : parseStructuredArithmeticFormula payload.length payload =
       some (Encodable.encode φ, []))
     (tail : List ℕ) {fuel : ℕ} (hfuel : 1 ≤ fuel) :
     parseRpn fuel (structuredLeafBlock positive payload ++ tail) =
@@ -395,7 +367,7 @@ lemma parseRpn_structuredPaperPrimeBlock (positive : Bool) (φ : ArithmeticPropo
     parseRpn fuel (structuredPaperPrimeBlock positive φ ++ tail) =
       some (paperPrimeSentence positive φ, tail) :=
   parseRpn_structuredLeafBlock
-    (by simpa using parseStructuredArithmeticFormula_encode (depth := 0) φ [] le_rfl)
+    (by simpa using parseStructuredArithmeticFormula_encode φ [] le_rfl)
     tail hfuel
 
 /-! ## The normal-form-metered family class
@@ -464,7 +436,7 @@ lemma structuredLeafBlock_machineTokenStream (positive : Bool) {payload : ℕ �
         (MachineTokenStream.append (MachineTokenStream.const [0])
           (MachineTokenStream.append h (MachineTokenStream.const [19])))))
     (fun n => ?_)
-  simp [structuredLeafBlock, List.append_assoc]
+  simp [structuredLeafBlock]
 
 /-- A normal-form-metered family's symbol runs are machine-metered.  The write-out bridge
 at `PolyArithmeticFormulaSeq`, which is a `PolySegStream` of symbol runs. -/
@@ -685,13 +657,6 @@ lemma structuredPaperPrimeBlock_span (positive : Bool) (φ : ArithmeticPropositi
     have := encodeArithmeticFormulaSymbols_lt φ x hx; omega
 
 open Nat.Partrec (Code)
-
-/-- Every fixed token list is a segment stream. -/
-lemma PolySegStream.constList : ∀ c : List ℕ, PolySegStream (fun _ : ℕ => c)
-  | [] => PolySegStream.ofTokenStream PolyTokenStream.nil
-  | t :: c =>
-      ((PolySegStream.ofTokenStream (PolyTokenStream.const t)).append
-        (PolySegStream.constList c)).of_eq fun _ => rfl
 
 /-! ## Foundation's unary numeral
 
@@ -1020,20 +985,6 @@ lemma binNumeral_val {M : Type*} [ORingStructure M] [M↓[ℒₒᵣ] ⊧* 𝗣�
       rw [hcast]
       try ring
 
-/-- **The compact numeral in the standard model.**  The `M = ℕ` instance of
-`binNumeral_val`. -/
-lemma binNumeral_val_nat (v : ℕ) : (binNumeral v).val (![] : Fin 0 → ℕ) = v := by
-  simpa using binNumeral_val (M := ℕ) v
-
-/-- **Distinct values get distinct names.**  Immediate from `binNumeral_val_nat`: the
-standard-model value of `binNumeral v` recovers `v`.  This is the separation fact a client
-needs to tell apart claim sentences that differ only by the value they name. -/
-lemma binNumeral_injective : Function.Injective binNumeral := by
-  intro a b hab
-  have ha := binNumeral_val_nat a
-  rw [hab, binNumeral_val_nat b] at ha
-  exact ha.symm
-
 /-! ## Emitting a compact numeral from write-out digits -/
 
 /-- **The compact numeral is emittable from write-out digit access.**  If the values `v n`
@@ -1139,14 +1090,6 @@ own emptiness test (`TokenFold.ifEqLen_mem_FP` at `0`). `canonDigits` names that
 /-- The digit run the compact numeral writes: the value's canonical base-four digits,
 except that `0` still occupies one digit.  Its length is `binNumeralLen`. -/
 private def canonDigits (v : ℕ) : List ℕ := if v = 0 then [0] else natDigits4 v
-
-private lemma canonDigits_lt (v : ℕ) : ∀ d ∈ canonDigits v, d < 4 := by
-  unfold canonDigits
-  split
-  · intro d hd
-    simp only [List.mem_singleton] at hd
-    omega
-  · exact natDigits4_lt v
 
 private lemma canonDigits_zero : canonDigits 0 = [0] := rfl
 
@@ -1314,6 +1257,9 @@ lemma machineTokenStream_binNumeralEnc_id :
     MachineTokenStream (fun n => binNumeralEnc n) :=
   machineTokenStream_binNumeralEnc (MachineDigits.ofUnaryRuler UnaryRuler.id)
 
+/-- The day-indexed compact numeral is **not** a constant sequence: its digit run grows
+with the day.  Paired with `machineTokenStream_binNumeralEnc_id`, this is what rules out a
+degenerate reading of that witness. -/
 lemma binNumeralEnc_nonconstant (c : List ℕ) : (fun n => binNumeralEnc n) ≠ fun _ => c := by
   intro h
   have h0 : binNumeralEnc 0 = c := congrFun h 0

@@ -1,5 +1,6 @@
 import LogicalInduction.Construction.MarketMaker
 import LogicalInduction.Construction.Primcodable
+import LogicalInduction.Construction.DeductiveDovetail
 import LogicalInduction.Construction.Descriptions
 import LogicalInduction.Construction.ClockedSim
 import LogicalInduction.Construction.MachineTraderEnumeration
@@ -62,7 +63,12 @@ logical induction criterion at the paper's own quantifier.
   parsers.  Eight modules across the `Conditioning/`, `Freeze/`, `Knowledge/`,
   `NonDogmatism/`, `Quotation/` and `Statistics/` lanes import it directly for those codes,
   as does `LIACompiler` itself; `scripts/check_li_rollcall.py` recomputes that count from the
-  import lines.
+  import lines.  `DeductiveDovetail` sits beside `Primcodable` and is not about §5 either: it
+  is the one construction of a `DeductiveProcess` the lanes share — the stage-list layer
+  (`encode_stage_prim_of_list`, `ComputableDeductiveProcess.ofEncodePrim`), the dovetail of a
+  semi-decider (`dovetailProcess` with `dovetailProcess_computable`) and the prefix process
+  (`prefixProcess`, `thm:scon`'s own).  It needs `Primcodable Sentence`, which is why it is
+  here rather than in `Framework/`.
 * `thm:lia` → `LIA_is_logical_inductor` — discharges `def:lic` at the paper's own
   quantifier, which is also what the §4 property tail consumes.
 * `thm:li` → `exists_logical_inductor`, with

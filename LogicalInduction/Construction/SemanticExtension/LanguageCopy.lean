@@ -26,10 +26,10 @@ identifying a renamed atom with its original.
 * Disjointness: `eventAtom_atomCodes_ne_oldLanguageTag` and `theoremDP_oldLanguageFresh` show
   the established theorem/event vocabulary never uses tag `6`.
 * `liftSentenceCode` is the executable numeric counterpart, proved primitive recursive by
-  course-of-values recursion, giving `liftDPComputation` and `liftDP_computable`.
-* `liftLUV_holds_downward_of_valued` and `liftLUV_downward_eventually_stageEntails` derive the
-  rational downward-cut law that exact mesh multiplication needs from the paper-facing
-  valuedness premise alone, with no caller-supplied cut certificate.
+  course-of-values recursion, giving `liftDPComputation`.
+* `liftLUV_holds_downward_of_valued` derives the rational downward-cut law that exact mesh
+  multiplication needs from the paper-facing valuedness premise alone, with no
+  caller-supplied cut certificate.
 
 "Old language" here names the pre-extension propositional vocabulary.
 
@@ -88,6 +88,7 @@ product factor, and thence `lic_no_expected_net_update_conditional_exact_canonic
 
 namespace LogicalInduction
 
+section
 open LO LO.Propositional LO.FirstOrder LO.FirstOrder.Arithmetic
 
 /-! ## The fixed renaming -/
@@ -204,17 +205,13 @@ lemma eventAtom_atomCodes_ne_oldLanguageTag (e : ℕ) :
 lemma theoremDP_oldLanguageFresh (T : ArithmeticTheory) [T.Δ₁] [𝗣𝗔⁻ ⪯ T]
     (k : ℕ) (phi : Sentence) (hphi : phi ∈ (theoremDP T).D k) :
     ∀ a ∈ sentenceAtomCodes phi, a.unpair.1 ≠ oldLanguageTag := by
-  simp only [theoremDP, theoremStage, Finset.mem_image, Finset.mem_filter,
-    Finset.mem_range] at hphi
+  simp only [theoremDP, dovetailProcess_D, mem_dovetailStage] at hphi
   obtain ⟨e, _, rfl⟩ := hphi
   exact eventAtom_atomCodes_ne_oldLanguageTag e
 
 /-! ## Executable syntax lift -/
 
 private def publicBotCode : ℕ := Encodable.encode (⊥ : Sentence)
-
-private lemma encode_sentence_eq_toNat (phi : Sentence) :
-    Encodable.encode phi = LO.Propositional.Formula.toNat phi := rfl
 
 /-- Numeric implementation of `liftSentence`.  Invalid codes receive the harmless
 sentence `⊥`; the fixed process only calls this on certified sentence codes. -/
@@ -363,9 +360,9 @@ private lemma liftFinset_primrec :
     Primrec.list_map stageSort_prim
       (liftSentence_primrec.comp Primrec₂.right)
   have hcanonical : Primrec fun D : Finset Sentence =>
-      ((sentenceDedup ((stageSort D).map liftSentence)).insertionSort
+      ((List.dedup ((stageSort D).map liftSentence)).insertionSort
         sentenceCodeLE) :=
-    sentenceInsertionSort_prim.comp (sentenceDedup_prim.comp hlist)
+    sentenceInsertionSort_prim.comp (dedup_prim.comp hlist)
   exact (Primrec.encode.comp hcanonical).of_eq fun D => by
     rw [← encode_toFinset_eq]
     congr 1
@@ -392,16 +389,7 @@ noncomputable def liftDPComputation {DP : DeductiveProcess}
   rw [hcode]
   exact Part.mem_some _
 
-/-- Computability of the fixed old-language copy: the renamed copy of a named computable
-process is computable.  A general fact about `liftDP` rather than a step of any one
-construction, so it has no consumer in the repository. -/
-lemma liftDP_computable {DP : DeductiveProcess}
-    (base : DeductiveProcessComputation DP) :
-    ComputableDeductiveProcess (liftDP DP) :=
-  (liftDPComputation base).toComputable
-
 /-! ## Cut laws derived from the paper-facing valuedness premise -/
-
 /-- Valuedness alone entails every rational downward-cut law needed by exact mesh
 multiplication. -/
 lemma liftLUV_holds_downward_of_valued {DP : DeductiveProcess} {X : LUV}
@@ -420,28 +408,7 @@ lemma liftLUV_holds_downward_of_valued {DP : DeductiveProcess} {X : LUV}
   · have hxs : x < (s : ℝ) := lt_of_le_of_lt (le_of_not_gt hrx) (by exact_mod_cast hrs)
     exact ((hxlift.2.2 s).2 hxs hs).elim
 
-/-- The semantic downward law is eventually accepted by the executable checker, with no
-caller-supplied cut certificate.  The stage-level form of
-`liftLUV_holds_downward_of_valued`, stated for a registry that checks entailment at a stage;
-no consumer in the repository takes this form. -/
-lemma liftLUV_downward_eventually_stageEntails {DP : DeductiveProcess} {X : LUV}
-    (source_valued : ∀ v : PCWorld,
-      v.ConsistentWithTheory DP → ∃ x, v.ValuesAt X x)
-    {r s : ℚ} (hrs : r < s) :
-    ∃ k, stageEntails ((liftDP DP).D k)
-      ((liftLUV X).gt s 🡒 (liftLUV X).gt r) = true := by
-  apply DeductiveProcess.stageEntails_complete_of_semantic
-  intro v hv
-  exact liftLUV_holds_downward_of_valued source_valued hv hrs
-
-end LogicalInduction
-
-namespace LogicalInduction
-
-open LO LO.Propositional
-
 /-! ## The bounded entailment check -/
-
 /-- One bounded certificate-free source-law check.  The packed witness contains emitter
 fuel, base-program fuel, and base stage index. -/
 def entailedSourceLawEvidenceAt {DP : DeductiveProcess}
@@ -478,6 +445,8 @@ private lemma entailedSourceOptions_prim : Primrec entailedSourceOptions := by
       rcases p with ⟨olaw, oD⟩
       cases olaw <;> cases oD <;> rfl
 
+-- The bounded stage search runs over a three-deep product of pair codes; the default
+-- `whnf` budget is short for it.
 set_option maxHeartbeats 4000000 in
 lemma entailedSourceLawEvidenceAt_prim {DP : DeductiveProcess}
     (base : DeductiveProcessComputation DP) :
@@ -618,6 +587,8 @@ def entailedSourcePrefixValidAtFuel {DP : DeductiveProcess}
 
 attribute [local irreducible] entailedSourceLawSeen
 
+-- Two nested bounded searches over a five-deep product type; the default `whnf` budget is
+-- short for it.
 set_option maxHeartbeats 8000000 in
 lemma entailedSourceDownwardPrefixValidAtFuel_prim {DP : DeductiveProcess}
     (base : DeductiveProcessComputation DP) :
@@ -683,7 +654,6 @@ lemma entailedSourceThresholdPrefixValidAtFuel_prim {DP : DeductiveProcess}
   have hdown := entailedSourceDownwardPrefixValidAtFuel_prim base
   exact ((Primrec.dom_bool₂ (· && ·)).comp hfresh hdown).of_eq fun _ => rfl
 
-set_option maxHeartbeats 2000000 in
 lemma entailedSourcePrefixValidAtFuel_prim {DP : DeductiveProcess}
     (base : DeductiveProcessComputation DP) :
     Primrec fun p : (ℕ × ℕ) × ℕ =>
@@ -710,19 +680,6 @@ lemma entailedSourcePrefixValidAtFuel_prim {DP : DeductiveProcess}
   exact listRangeAll_prim hlimit hinner
 
 /-! ## Prefix accessors and clock monotonicity -/
-
-/-- Prefix validity exposes freshness for every admitted source query: the accessor for the
-freshness conjunct, paired with `entailedSourcePrefixValidAtFuel_downward` below. -/
-lemma entailedSourcePrefixValidAtFuel_fresh {DP : DeductiveProcess}
-    (base : DeductiveProcessComputation DP) {schema limit fuel n z : ℕ}
-    (hvalid : entailedSourcePrefixValidAtFuel base schema limit fuel = true)
-    (hn : n ≤ limit) (hz : z ≤ limit) :
-    semanticSourceFreshSeen schema n z fuel = true := by
-  rw [entailedSourcePrefixValidAtFuel, List.all_eq_true] at hvalid
-  have h := List.all_eq_true.mp (hvalid n (by simp [hn])) z (by simp [hz])
-  rw [entailedSourceThresholdPrefixValidAtFuel] at h
-  simp only [Bool.and_eq_true] at h
-  exact h.1
 
 lemma entailedSourcePrefixValidAtFuel_downward {DP : DeductiveProcess}
     (base : DeductiveProcessComputation DP) {schema limit fuel n zr zs : ℕ}
@@ -830,10 +787,9 @@ lemma entailedSourcePrefix_eventually_of_threshold
   rw [entailedSourcePrefixValidAtFuel, List.all_eq_true]
   exact List.all_eq_true.mp hfuel
 
-end LogicalInduction
+end
 
-namespace LogicalInduction
-
+section
 open LO LO.Propositional
 
 -- Both registry predicates are `List.range` dovetails.
@@ -910,11 +866,11 @@ private lemma liftedMachineSourceOutput_computable {X : ℕ → LUV}
     (hX : LUV.MachineThresholdCodeSeq X) : Computable (liftedMachineSourceOutput X) := by
   let sourceOutput : ℕ → ℕ := fun m => Encodable.encode ((X m.unpair.1).gt
     ((m.unpair.2.unpair.2 : ℚ) / (m.unpair.2.unpair.1 : ℚ)))
-  have hpart : Partrec fun m => (rpnThresholdSourceCode hX).eval m :=
+  have hpart : Partrec fun m => (machineThresholdSourceCode hX).eval m :=
     Nat.Partrec.Code.eval_part.comp
-      (Computable.const (rpnThresholdSourceCode hX)) Computable.id
+      (Computable.const (machineThresholdSourceCode hX)) Computable.id
   have hsource : Computable sourceOutput :=
-    hpart.of_eq fun m => Part.eq_some_iff.mpr (rpnThresholdSourceCode_spec hX m)
+    hpart.of_eq fun m => Part.eq_some_iff.mpr (machineThresholdSourceCode_spec hX m)
   have hr : Primrec fun input : ℕ => decodedQuotationRat input.unpair.2 :=
     decodedQuotationRat_prim.comp (Primrec.snd.comp Primrec.unpair)
   have hneg : Computable fun input : ℕ => decide
@@ -962,7 +918,7 @@ lemma liftedMachineSourceCode_spec {X : ℕ → LUV}
 harmless placeholder: entailment-gated admission never executes a source certificate. -/
 noncomputable def liftedMachineSourceSchema {X : ℕ → LUV}
     (hX : LUV.MachineThresholdCodeSeq X) : ℕ :=
-  semanticEmitterSchema (Nat.pair (Encodable.encode (liftedMachineSourceCode hX)) 0)
+  semanticSourceSchema (Nat.pair (Encodable.encode (liftedMachineSourceCode hX)) 0)
 
 /-- The derived schema carries the source tag `0`. -/
 @[simp] lemma liftedMachineSourceSchema_source {X : ℕ → LUV}
@@ -973,7 +929,7 @@ noncomputable def liftedMachineSourceSchema {X : ℕ → LUV}
 @[simp] lemma liftedMachineSourceSchema_emitterCode {X : ℕ → LUV}
     (hX : LUV.MachineThresholdCodeSeq X) :
     semanticSourceEmitterCode (liftedMachineSourceSchema hX) = liftedMachineSourceCode hX := by
-  simp [semanticSourceEmitterCode, liftedMachineSourceSchema, semanticEmitterSchema,
+  simp [semanticSourceEmitterCode, liftedMachineSourceSchema, semanticSourceSchema,
     semanticSourceSchema]
 
 /-- Every derived source sentence is separated from the semantic extension namespace. -/
@@ -986,7 +942,7 @@ lemma liftedMachineSourceSentence_fresh (X : ℕ → LUV) (n : ℕ) (r : ℚ) :
     rw [liftedMachineSourceSentence, if_neg hr, sentenceAtomCodes_liftSentence] at ha
     obtain ⟨b, _, rfl⟩ := Finset.mem_image.mp ha
     have haold : (oldAtom b).unpair.1 = oldLanguageTag := by simp [oldAtom]
-    simpa [haold, oldLanguageTag, semanticPrimeTag]
+    simp [haold, oldLanguageTag, semanticPrimeTag]
 
 /-! ## Reflection through the universal interpreter -/
 
@@ -1008,20 +964,6 @@ lemma liftedMachineSource_reflected {X : ℕ → LUV} (hX : LUV.MachineThreshold
         some (Encodable.encode (liftedMachineSourceSentence X n r)) from heval]
     simp
   · exact liftedMachineSourceSentence_fresh X n r
-
-/-- Emission is monotone in the interpreter's fuel. -/
-lemma semanticSourceSentenceAtFuel_mono {schema input fuel fuel' : ℕ}
-    (hff : fuel ≤ fuel') {phi : Sentence}
-    (h : semanticSourceSentenceAtFuel schema input fuel = some phi) :
-    semanticSourceSentenceAtFuel schema input fuel' = some phi := by
-  unfold semanticSourceSentenceAtFuel at h ⊢
-  cases he : Nat.Partrec.Code.evaln fuel (semanticSourceEmitterCode schema) input with
-  | none => simp [he] at h
-  | some out =>
-      have he' := Nat.Partrec.Code.evaln_mono hff (Option.mem_def.mpr he)
-      rw [show Nat.Partrec.Code.evaln fuel' (semanticSourceEmitterCode schema) input =
-        some out from he']
-      simpa [he] using h
 
 /-- Enough fuel eventually emits the represented sentence at any one query. -/
 lemma liftedMachineSourceSentenceAtFuel_eventually {X : ℕ → LUV}
@@ -1095,25 +1037,6 @@ lemma liftedMachineSourceLawSeen_eventually {DP Base : DeductiveProcess}
       (liftLUV_holds_downward_of_valued
         (X := X n) (source_valued n) (base_lifted v hv) hrs)
 
-private lemma liftedListAll_eventually_of_mono {l : List ℕ}
-    {test : ℕ → ℕ → Bool}
-    (hmono : ∀ x {fuel fuel'}, fuel ≤ fuel' → test x fuel = true →
-      test x fuel' = true)
-    (heventual : ∀ x ∈ l, ∃ fuel, test x fuel = true) :
-    ∃ fuel, l.all (fun x => test x fuel) = true := by
-  induction l with
-  | nil => exact ⟨0, rfl⟩
-  | cons x xs ih =>
-      obtain ⟨fx, hfx⟩ := heventual x (by simp)
-      obtain ⟨fs, hfs⟩ := ih (fun y hy => heventual y (by simp [hy]))
-      refine ⟨max fx fs, ?_⟩
-      rw [List.all_cons, Bool.and_eq_true]
-      exact ⟨hmono x (Nat.le_max_left _ _) hfx, by
-        rw [List.all_eq_true] at hfs ⊢
-        intro y hy
-        exact hmono y (Nat.le_max_right _ _) (hfs y hy)⟩
-
-set_option maxHeartbeats 8000000 in
 /-- **Prefix validity**: every finite registry prefix is eventually validated, which is
 what the registry gate consumes to admit the lifted source as a certified factor. -/
 lemma liftedMachineSourcePrefix_eventually_valid {DP Base : DeductiveProcess}
@@ -1151,7 +1074,7 @@ lemma liftedMachineSourcePrefix_eventually_valid {DP Base : DeductiveProcess}
           source_valued base_lifted n hrs
         exact ⟨fuel, by simpa [test, hrs] using h⟩
       · exact ⟨0, by simp [test, hrs]⟩
-    obtain ⟨fdown, hdown⟩ := liftedListAll_eventually_of_mono
+    obtain ⟨fdown, hdown⟩ := listAll_eventually_of_mono
       htestMono htestEventually
     let fuel := max ffresh fdown
     refine ⟨fuel, ?_⟩
@@ -1169,5 +1092,7 @@ lemma liftedMachineSourcePrefix_eventually_valid {DP Base : DeductiveProcess}
     exact htestMono zs (Nat.le_max_right _ _) (hdown zs hzs)
   exact entailedSourcePrefix_eventually_of_threshold base
     (liftedMachineSourceSchema hX) limit thresholdEventually
+
+end
 
 end LogicalInduction

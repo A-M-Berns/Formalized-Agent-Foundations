@@ -1,5 +1,4 @@
 import LogicalInduction.Construction.MarketMaker
-import LogicalInduction.Construction.MachineTraderEnumeration
 import LogicalInduction.Framework.ROI
 
 /-!
@@ -18,7 +17,7 @@ This module renders §5's Budgeter: the defining case split of `eq:budgeter`
 * `BudgeterAt` — the day action of `eq:budgeter`: zero if the raw trader has already
   reached `-b` in some plausible world on some earlier day, and otherwise the day-`n` trade
   scaled by the infimum of the world-specific caps.  `Budgeter` is the `AdaptiveTrader` it
-  induces over `MarketMaker`'s rational history format, `BudgeterFromComputation` the same
+  induces over `MarketMaker`'s rational history format, and the same
   over a named deductive-process program, and `budgetedTrader` the ordinary trader obtained
   by running the day action against a fixed rational quote table.
 * `priorBudgetBreach` — the bankruptcy test, and `lossCap` / `budgetWorldScale` /
@@ -66,8 +65,6 @@ downstream depends on the erased presentation being the definition.
 -/
 
 namespace LogicalInduction
-
-open Classical
 
 /-! ## Propositional atoms and Boolean evaluation
 
@@ -224,6 +221,7 @@ lemma exists_mem_finiteAtomAssignments_agrees (A : Finset ℕ) (bits : A → Boo
     rw [List.getElem_idxOf hidx]
     simp [a.2]
 
+open Classical in
 /-- Restrict an arbitrary p.c. world to a finite Boolean assignment. -/
 noncomputable def restrictedAssignment (A : Finset ℕ) (v : PCWorld) : A → Bool :=
   fun a => decide (v a.1)
@@ -234,20 +232,24 @@ lemma restrictedAssignment_mem (A : Finset ℕ) (v : PCWorld) :
     exists_mem_finiteAtomAssignments_agrees A (restrictedAssignment A v)
   simpa [heq] using hbits
 
+open Classical in
 lemma finiteAtomTable_restricted (A : Finset ℕ) (v : PCWorld) {a : ℕ}
     (ha : a ∈ A) :
     finiteAtomTable A (restrictedAssignment A v) a = decide (v a) := by
   simp [finiteAtomTable, restrictedAssignment, ha]
 
+open Classical in
 /-- Deciding a world atomwise and reading the result back as a world is the identity. -/
 lemma boolPCWorld_decide (v : PCWorld) : boolPCWorld (fun a => decide (v a)) = v := by
   funext a
   simp [boolPCWorld]
 
+open Classical in
 lemma sentenceBool_decide_world (v : PCWorld) (φ : Sentence) :
     sentenceBool (fun a => decide (v a)) φ = true ↔ v.Holds φ := by
   rw [sentenceBool_eq_true_iff, boolPCWorld_decide]
 
+open Classical in
 lemma sentenceBool_restricted_world (A : Finset ℕ) (v : PCWorld) (φ : Sentence)
     (hφ : φ.atoms ⊆ A) :
     sentenceBool (finiteAtomTable A (restrictedAssignment A v)) φ = true ↔ v.Holds φ := by
@@ -892,8 +894,7 @@ lemma budgetScaleFeature_rank_le (DP : DeductiveProcess) (Tr : Trader) (b : ℕ)
   exact budgetWorldScale_rank_le Tr b Q _
 
 lemma budgetScaleFeature_denote_pos (DP : DeductiveProcess) (Tr : Trader) (b : ℕ)
-    (P : History) (Q : ℕ → Sentence → ℚ)
-    (_hQ : ∀ day φ, P day φ = (Q day φ : ℝ)) (n : ℕ) :
+    (P : History) (Q : ℕ → Sentence → ℚ) (n : ℕ) :
     0 < (budgetScaleFeature DP Tr b Q n).denote P := by
   unfold budgetScaleFeature
   apply EF.listMin_denote_pos
@@ -907,8 +908,7 @@ lemma budgetScaleFeature_denote_pos (DP : DeductiveProcess) (Tr : Trader) (b : �
 characterisation completed by `budgetScaleFeature_denote_pos`: the infimum of the world
 clauses is itself a reduction factor in `(0, 1]`. -/
 lemma budgetScaleFeature_denote_le_one (DP : DeductiveProcess) (Tr : Trader) (b : ℕ)
-    (P : History) (Q : ℕ → Sentence → ℚ)
-    (_hQ : ∀ day φ, P day φ = (Q day φ : ℝ)) (n : ℕ) :
+    (P : History) (Q : ℕ → Sentence → ℚ) (n : ℕ) :
     (budgetScaleFeature DP Tr b Q n).denote P ≤ 1 := by
   unfold budgetScaleFeature
   exact EF.listMin_denote_le_one _ P
@@ -969,18 +969,6 @@ lemma budgetScaleFeature_denote_eq_one_of_safe_prefix
   rw [budgetWorldScale_denote Tr b P Q]
   apply lossCap_eq_one_of_ratio_le
   exact (div_le_one hprior).mpr hloss.le
-
-/-- If the raw trader has stayed strictly within budget through day `n`, every
-world-specific cap and therefore their finite infimum evaluates to one. -/
-lemma budgetScaleFeature_denote_eq_one_of_safe
-    (DP : DeductiveProcess) (Tr : Trader) (b : ℕ) (hb : 0 < b)
-    (P : History) (Q : ℕ → Sentence → ℚ)
-    (hQ : ∀ day φ, P day φ = (Q day φ : ℝ)) (n : ℕ)
-    (hsafe : ∀ m ≤ n, ∀ v : PCWorld, v.ConsistentWith (DP.D m) →
-      -(b : ℝ) < Tr.netWorth P v m) :
-    (budgetScaleFeature DP Tr b Q n).denote P = 1 :=
-  budgetScaleFeature_denote_eq_one_of_safe_prefix DP Tr b hb P Q n
-    (fun day _ φ => hQ day φ) hsafe
 
 /-! ## `eq:budgeter` — the day action -/
 
@@ -1363,7 +1351,7 @@ lemma BudgeterAt_value_ge_neg_available
         have hs := hsafe m (by omega) v hvm
         change 0 < (b : ℝ) + Tr.netWorth P v m
         linarith
-  have hαpos := budgetScaleFeature_denote_pos DP Tr b P Q hQ n
+  have hαpos := budgetScaleFeature_denote_pos DP Tr b P Q n
   have hαcap := budgetScaleFeature_denote_le_lossCap DP Tr b P Q hQ n v hv
   have hcap := lossCap_floor
     (available := (b : ℝ) + Tr.priorNetWorth P v n)
@@ -1505,19 +1493,5 @@ structure AdaptiveTrader where
 /-- Executable adaptive Budgeter over MarketMaker's concrete rational history format. -/
 def Budgeter (DP : DeductiveProcess) (Tr : Trader) (b : ℕ) : AdaptiveTrader where
   action n past := BudgeterAt DP Tr b (rationalHistory past) n
-
-/-- Operational Budgeter built from a named deductive-process program.  All finite theory
-queries pass through `stageSearchUpTo` at its certified stopping clock rather than through
-an unexplained oracle for `DP.D`. -/
-noncomputable def BudgeterFromComputation {DP : DeductiveProcess}
-    (process : DeductiveProcessComputation DP) (Tr : Trader) (b : ℕ) : AdaptiveTrader :=
-  Budgeter process.computedProcess Tr b
-
-/-- The operational process-backed Budgeter is exactly the semantic Budgeter. -/
-lemma BudgeterFromComputation_eq {DP : DeductiveProcess}
-    (process : DeductiveProcessComputation DP) (Tr : Trader) (b : ℕ) :
-    BudgeterFromComputation process Tr b = Budgeter DP Tr b := by
-  unfold BudgeterFromComputation
-  rw [process.computedProcess_eq]
 
 end LogicalInduction

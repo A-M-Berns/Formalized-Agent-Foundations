@@ -39,14 +39,6 @@ coherence for `φ` and `∼φ`, derived from the exclusive–exhaustive law rath
 a valuation identity. It lands here beside the law it is read off, and is consumed by
 `Properties/LimitCoherence.lean` (the Gaifman clauses) and `Properties/OccamBounds.lean` (the
 upper half of `thm:ob`).
-**The criterion binder below is `def:lic` at the paper's own quantifier.**  Every result here that consumes an
-exploiting trader takes `[IsLogicalInductor P DP]`, and the trader is certified at `EfficientlyComputable`:
-it is assembled from `AffineCombination.PolySequence`'s machine-metered emission fields
-through `PolySequence.buyBelowTrader_ec` (`Properties/AffineCoherence.lean`), which has no
-fuel-class form: the bridge `BigSpliceStream.toMachine` runs fuel to machine, and no map
-back is proved or claimed.  The
-calibration is stated at `def:ec` in `Framework/Affine.lean`, and the `_unconditional`
-endpoints discharge the criterion through `LIA_is_logical_inductor`.
 
 -/
 
@@ -112,7 +104,7 @@ lemma buySignal_mul_nonneg (G : ℝ) {ε : ℚ} (hε : 0 < ε) :
     0 ≤ max 0 (G + (-(ε:ℝ)/2)) * G := by
   by_cases h : G + (-(ε:ℝ)/2) ≤ 0
   · rw [max_eq_left h]; simp
-  · push_neg at h
+  · push Not at h
     have hεr : (0:ℝ) < (ε:ℝ) := by exact_mod_cast hε
     exact mul_nonneg (le_max_left _ _) (by nlinarith [h, hεr])
 
@@ -476,4 +468,5 @@ theorem lic_limitingBelief_add_neg
   have hone : ConvergesTo (fun n ↦ P n φ + P n (∼φ)) 1 :=
     convergesTo_iff_asympEq_const.mpr hlex
   exact tendsto_nhds_unique hsum hone
+
 end LogicalInduction

@@ -111,17 +111,8 @@ lemma RpnSentenceCodes.and {φ ψ : ℕ → Sentence}
   obtain ⟨b, hb, hpb⟩ := hψ
   have h3 : PolySegStream (fun _ : ℕ => [3]) :=
     PolySegStream.ofTokenStream (PolyTokenStream.const 3)
-  refine ⟨fun z => 3 :: (a z ++ b z), ((h3.append ha).append hb).of_eq (fun z => by simp),
-    fun z => ?_⟩
-  have hlen : (3 :: (a z ++ b z)).length = (a z).length + (b z).length + 1 := by
-    simp
-  rw [hlen, parseRpn_cons]
-  rw [if_neg (by norm_num), if_neg (by norm_num), if_neg (by norm_num), if_pos rfl]
-  rw [parseRpn_block_head (hpa z) (b z) (by omega)]
-  simp only [Option.bind_some]
-  rw [parseRpn_mono (b z) (show (b z).length ≤ (a z).length + (b z).length by omega)
-    (hpb z)]
-  rfl
+  exact ⟨fun z => 3 :: (a z ++ b z), ((h3.append ha).append hb).of_eq (fun z => by simp),
+    fun z => parseRpn_and_blocks (hpa z) (hpb z)⟩
 
 /-- Disjunction of two sentence-block streams: the fixed `⋎` tag in front of the two
 blocks, which the prefix parser consumes in order. -/
@@ -376,26 +367,36 @@ section
 -- loops in `whnf` (see `Construction/Freeze/Compiler.lean`).
 attribute [local irreducible] Nat.sqrt
 
-/-- Finite mod-`k` dispatch of sentence-block streams: the paper's fixed-`k` family
+/-- **Finite mod-`k` dispatch of sentence-block streams**: the paper's fixed-`k` family
 forms (`thm:lex`) quantify over `k` independent 𝓔𝓒 sequences read through
-`z ↦ φ (z.unpair.2 % k) z.unpair.1`. -/
-lemma RpnSentenceCodes.modDispatch {k : ℕ} (hk : 0 < k) {φ : ℕ → ℕ → Sentence}
-    (hφ : ∀ j < k, RpnSentenceCodes (φ j)) :
-    RpnSentenceCodes (fun z => φ (z.unpair.2 % k) z.unpair.1) := by
+`z ↦ φ (z.unpair.2 % k) z.unpair.1`.  The induction walks the residues below `k`, branching
+on `z.unpair.2 % k = m` at each step, and uses only three closure operations of the
+sentence-block class — transport along a pointwise equality, reindexing along a poly-fueled
+map, and two-way dispatch along a poly-fueled test — so it is stated once here and read at
+both `RpnSentenceCodes` and `BigSentenceCodes` (`Framework/Emission/WriteOut.lean`). -/
+lemma modDispatch_of_closure {C : (ℕ → Sentence) → Prop}
+    (hof_eq : ∀ {φ ψ : ℕ → Sentence}, C φ → (∀ z, φ z = ψ z) → C ψ)
+    (hcomp : ∀ {φ : ℕ → Sentence} {c : Nat.Partrec.Code} {f : ℕ → ℕ},
+      C φ → PolyFueled c f → C (fun z => φ (f z)))
+    (hifZero : ∀ {φ ψ : ℕ → Sentence} {c : Nat.Partrec.Code} {t : ℕ → ℕ},
+      C φ → C ψ → PolyFueled c t → C (fun z => if t z = 0 then φ z else ψ z))
+    {k : ℕ} (hk : 0 < k) {φ : ℕ → ℕ → Sentence}
+    (hφ : ∀ j < k, C (φ j)) :
+    C (fun z => φ (z.unpair.2 % k) z.unpair.1) := by
   obtain ⟨cdm, hdm⟩ := divmodc_polyFueled k hk
   obtain ⟨cadd, hadd⟩ := addc_polyFueled
   have hrem : PolyFueled _ (fun z : ℕ => z.unpair.2 % k) :=
     (PolyFueled.right.comp (hdm.comp PolyFueled.right)).of_eq (fun z => by
       simp)
   have hleft := PolyFueled.left
-  have H : ∀ m, m ≤ k → RpnSentenceCodes (fun z =>
+  have H : ∀ m, m ≤ k → C (fun z =>
       if z.unpair.2 % k < m then φ (z.unpair.2 % k) z.unpair.1
       else φ 0 z.unpair.1) := by
     intro m
     induction m with
     | zero =>
         intro _
-        exact ((hφ 0 hk).comp hleft).of_eq (fun z => by simp)
+        exact hof_eq (hcomp (hφ 0 hk) hleft) (fun z => by simp)
     | succ m ih =>
         intro hm
         have hmk : m < k := hm
@@ -404,16 +405,23 @@ lemma RpnSentenceCodes.modDispatch {k : ℕ} (hk : 0 < k) {φ : ℕ → ℕ → 
           (hadd.comp ((subc_polyFueled.comp (hrem.pair (PolyFueled.const m))).pair
             (subc_polyFueled.comp ((PolyFueled.const m).pair hrem)))).of_eq
             (fun z => by simp)
-        refine (RpnSentenceCodes.ifZero ((hφ m hmk).comp hleft)
-          (ih (le_of_lt hm)) htest).of_eq (fun z => ?_)
+        refine hof_eq
+          (hifZero (hcomp (hφ m hmk) hleft) (ih (le_of_lt hm)) htest) (fun z => ?_)
         by_cases heq : z.unpair.2 % k = m
         · rw [if_pos (by omega), if_pos (by omega), heq]
         · rw [if_neg (by omega)]
           by_cases hlt : z.unpair.2 % k < m + 1
           · rw [if_pos hlt, if_pos (by omega)]
           · rw [if_neg hlt, if_neg (by omega)]
-  exact (H k le_rfl).of_eq (fun z => by
+  exact hof_eq (H k le_rfl) (fun z => by
     rw [if_pos (Nat.mod_lt z.unpair.2 hk)])
+
+/-- Finite mod-`k` dispatch at the value-bounded sentence class. -/
+lemma RpnSentenceCodes.modDispatch {k : ℕ} (hk : 0 < k) {φ : ℕ → ℕ → Sentence}
+    (hφ : ∀ j < k, RpnSentenceCodes (φ j)) :
+    RpnSentenceCodes (fun z => φ (z.unpair.2 % k) z.unpair.1) :=
+  modDispatch_of_closure (C := RpnSentenceCodes) (fun h he => h.of_eq he)
+    (fun h hf => h.comp hf) (fun hφ' hψ ht => hφ'.ifZero hψ ht) hk hφ
 
 end
 

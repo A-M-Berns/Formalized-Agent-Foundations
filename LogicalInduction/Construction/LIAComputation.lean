@@ -349,20 +349,6 @@ lemma liaPrefixAtFuel_def {DP : DeductiveProcess}
       (processStagePrefixAtFuel process fuel n).bind fun stages =>
         liaPrefixFromStagesAtFuel (decodedStageTable stages) fuel n := rfl
 
-/-- Raising the fuel keeps a successful end-to-end run successful, with the same answer —
-the monotonicity rung of the three-lemma shape for `liaPrefixAtFuel`. -/
-lemma liaPrefixAtFuel_mono_success {DP : DeductiveProcess}
-    (process : DeductiveProcessComputation DP) (n : ℕ)
-    {fuel fuel' : ℕ} {states : List RationalBeliefState}
-    (hff : fuel ≤ fuel') (h : liaPrefixAtFuel process fuel n = some states) :
-    liaPrefixAtFuel process fuel' n = some states := by
-  rw [liaPrefixAtFuel_def] at h ⊢
-  rw [Option.bind_eq_some_iff] at h
-  obtain ⟨stages, hstages, hstates⟩ := h
-  rw [processStagePrefixAtFuel_mono_success process n hff hstages]
-  exact liaPrefixFromStagesAtFuel_mono_success
-    (decodedStageTable stages) n hff hstates
-
 lemma liaPrefixAtFuel_sound {DP : DeductiveProcess}
     (process : DeductiveProcessComputation DP) (fuel n : ℕ)
     {states : List RationalBeliefState}
@@ -504,18 +490,6 @@ lemma exists_liaEncodedQuoteAtFuel {DP : DeductiveProcess}
   cases hdecode : Encodable.decode (α := Sentence) sentenceCode with
   | none => simp [liaEncodedQuote, hdecode]
   | some phi => simp [liaEncodedQuote, liaQuote, hdecode]
-
-/-- Certified stopping clock for the bounded exact quote evaluator. -/
-noncomputable def liaEncodedQuoteClock {DP : DeductiveProcess}
-    (process : DeductiveProcessComputation DP) (day sentenceCode : ℕ) : ℕ :=
-  Nat.find (exists_liaEncodedQuoteAtFuel process day sentenceCode)
-
-lemma liaEncodedQuote_clock {DP : DeductiveProcess}
-    (process : DeductiveProcessComputation DP) (day sentenceCode : ℕ) :
-    liaEncodedQuoteAtFuel process
-      (liaEncodedQuoteClock process day sentenceCode) day sentenceCode =
-        some (liaEncodedQuote DP day sentenceCode) :=
-  Nat.find_spec (exists_liaEncodedQuoteAtFuel process day sentenceCode)
 
 /-- Natural-coded bounded evaluator in the argument order used by `Partrec.rfindOpt`.
 The paired input is `(day,sentenceCode)` and the search variable is fuel. -/

@@ -1,8 +1,8 @@
 import Mathlib.Tactic.Cases
 import Mathlib.Analysis.InnerProductSpace.PiL2
 import Mathlib.Data.Int.Star
-import Mathlib.Data.Real.CompleteField
-import Mathlib.Data.Real.StarOrdered
+import Mathlib.Algebra.Order.Archimedean.Real.Hom
+import Mathlib.Algebra.Order.Star.Real
 import Mathlib.Algebra.Order.Ring.Star
 import Mathlib.Topology.Algebra.Module.Cardinality
 
@@ -201,7 +201,7 @@ lemma halfDoors_card_modEq {n : ℕ} {m : ℤ}
   -- For a cell `pσ = (P,σ)`, let `D pσ := (univ.filter (fun k0 => (univ.erase k0).image (fun k => l (cellVert P σ k)) = univ.erase (Fin.last n)))`, the door-index set. Because `halfDoors` is the filter of the product `cellFin ×ˢ univ` by a predicate depending on `(cell, k0)`, its cardinality is the sum over cells in `cellFin` of `(D pσ).card`:
   have h_card : (halfDoors n m l).card = ∑ pσ ∈ cellFin n m, (Finset.univ.filter (fun k0 => (Finset.univ.erase k0).image (fun k => l (cellVert pσ.1 pσ.2 k)) = Finset.univ.erase (Fin.last n))).card := by
     rw [ halfDoors, Finset.card_filter ];
-    erw [ Finset.sum_product ] ; aesop;
+    rw [ Finset.sum_product ] ; aesop;
   -- By `doorIdx_card_odd_iff`, `(D pσ).card % 2 = 1` iff `IsFull l P σ`, else `0`.
   have h_parity : ∀ pσ ∈ cellFin n m, (Finset.univ.filter (fun k0 => (Finset.univ.erase k0).image (fun k => l (cellVert pσ.1 pσ.2 k)) = Finset.univ.erase (Fin.last n))).card % 2 = if IsFull l pσ.1 pσ.2 then 1 else 0 := by
     intro pσ hpσ
@@ -320,8 +320,8 @@ lemma cellVert_pivot_zero {n : ℕ} (P : Fin (n+2) → ℤ) (σ : Equiv.Perm (Fi
   unfold cellVert; simp +decide [ Finset.sum_ite ] ;
   rw [ show ( Finset.filter ( fun x => x ≤ k ) Finset.univ : Finset ( Fin ( n + 1 ) ) ) = Finset.image ( fun x : Fin ( n + 1 ) => x + 1 ) ( Finset.filter ( fun x => x < k ) Finset.univ ) ∪ { 0 } from ?_, Finset.card_filter, Finset.card_filter, Finset.card_filter, Finset.card_filter ];
   · rw [ Finset.sum_union, Finset.sum_union ] <;> norm_num;
-    · rw [ Finset.preimage ] ; simp +decide [ Finset.filter_singleton ] ; ring;
-      split_ifs <;> simp_all +decide [ Finset.filter_image ] ; ring;
+    · rw [ Finset.preimage ] ; simp +decide [ Finset.filter_singleton ] ; ring_nf;
+      split_ifs <;> simp_all +decide [ Finset.filter_image ] ; ring_nf;
       · grind;
       · rw [ show ( Finset.filter ( fun x => x + -1 < k ) Finset.univ : Finset ( Fin ( n + 1 ) ) ) = Finset.image ( fun x : Fin ( n + 1 ) => x + 1 ) ( Finset.filter ( fun x => x < k ) Finset.univ ) from ?_, Finset.card_filter, Finset.card_filter, Finset.card_filter, Finset.card_filter ];
         · rw [ Finset.sum_image, Finset.sum_image ] <;> norm_num ; ring;
@@ -348,7 +348,7 @@ lemma cellVert_pivot_last {n : ℕ} (P : Fin (n+2) → ℤ) (σ : Equiv.Perm (Fi
     cellVert (fun i => P i - edgeVec (σ (Fin.last n)) i) ((finRotate (n+1)).symm.trans σ) k.succ
       = cellVert P σ k.castSucc := by
   ext j; simp [cellVert, edgeVec];
-  rw [ Finset.sum_eq_add_sum_sdiff_singleton_of_mem ( Finset.mem_univ 0 ) ] ; simp +decide [ Finset.sum_ite ] ; ring;
+  rw [ Finset.sum_eq_add_sum_sdiff_singleton_of_mem ( Finset.mem_univ 0 ) ] ; simp +decide [ Finset.sum_ite ] ; ring_nf;
   rw [ show ( Finset.filter ( fun x => x ≤ k ) ( Finset.univ \ { 0 } ) : Finset ( Fin ( n + 1 ) ) ) = Finset.image ( fun x : Fin ( n + 1 ) => x + 1 ) ( Finset.filter ( fun x => x < k ) Finset.univ ) from ?_, Finset.card_filter, Finset.card_filter ];
   · rw [ Finset.sum_image, Finset.sum_image ] <;> norm_num [ Fin.ext_iff ];
     rw [ show ( -1 : Fin ( n + 1 ) ) = Fin.last n from by { exact Fin.ext ( by norm_num ) } ] ; ring;
@@ -380,9 +380,7 @@ lemma pivot_facet {n : ℕ} (P : Fin (n+2) → ℤ) (σ : Equiv.Perm (Fin (n+1))
     apply cellVert_swap_eq;
     rw [ Fin.lt_def, Fin.lt_def ] at * ; norm_num at * ; omega
 
-/-
-The pivot strictly changes the half-door.
--/
+/-- The pivot strictly changes the half-door. -/
 lemma pivot_ne {n : ℕ} (P : Fin (n+2) → ℤ) (σ : Equiv.Perm (Fin (n+1))) (k0 : Fin (n+2)) :
     pivot P σ k0 ≠ ((P, σ), k0) := by
   by_contra h;
@@ -453,14 +451,6 @@ lemma liftPerm_zero {n : ℕ} (s : Equiv.Perm (Fin n)) : liftPerm s 0 = Fin.last
   unfold liftPerm;
   simp +decide [ finSuccEquiv, finSuccEquiv' ]
 
-/-
-`liftPerm` sends `j.succ` to `(s j).castSucc`.
--/
-lemma liftPerm_succ {n : ℕ} (s : Equiv.Perm (Fin n)) (j : Fin n) :
-    liftPerm s j.succ = (s j).castSucc := by
-  unfold liftPerm;
-  simp +decide [ finSuccEquiv, finSuccEquiv' ]
-
 /--
 The on-face vertices of the lifted cell project to the vertices of the face cell.
 -/
@@ -468,7 +458,7 @@ lemma cellVert_lift {n : ℕ} (Pb : Fin (n+1) → ℤ) (s : Equiv.Perm (Fin n))
     (k i : Fin (n+1)) :
     cellVert (liftBase Pb) (liftPerm s) k.succ i.castSucc = cellVert Pb s k i := by
   unfold cellVert liftBase liftPerm;
-  rw [ Fin.sum_univ_succ ] ; simp +decide [ Fin.snoc, edgeVec ] ; ring;
+  rw [ Fin.sum_univ_succ ] ; simp +decide [ Fin.snoc, edgeVec ] ; ring_nf;
   grind +qlia
 
 /--
@@ -486,10 +476,8 @@ lemma cellVert_lift_snoc {n : ℕ} (Pb : Fin (n+1) → ℤ) (s : Equiv.Perm (Fin
   · convert cellVert_lift Pb s k _ using 1;
     exact if_pos ( Nat.le_of_lt_succ ( Fin.is_lt _ ) )
 
-/-
-A valid face cell has its last-coordinate base `≥ 1` (its bottom vertex on that
-coordinate is `Pb (Fin.last n) - 1 ≥ 0`).
--/
+/-- A valid face cell has its last-coordinate base `≥ 1` (its bottom vertex on that
+coordinate is `Pb (Fin.last n) - 1 ≥ 0`). -/
 lemma face_last_ge {n : ℕ} {m : ℤ} {Pb : Fin (n+1) → ℤ} {s : Equiv.Perm (Fin n)}
     (hm : 1 ≤ m) (hv : ValidCell m Pb s) : 1 ≤ Pb (Fin.last n) := by
   -- By definition of `ValidCell`, we know that `cellVert Pb s (Fin.last n) (Fin.last n) ≥ 0`.
@@ -517,15 +505,6 @@ lemma liftCell_valid {n : ℕ} {m : ℤ} {Pb : Fin (n+1) → ℤ} {s : Equiv.Per
       intro i; cases i using Fin.lastCases <;> simp +decide [ * ] ;
       exact hv k |>.1 _, by
       rw [ Fin.sum_univ_castSucc ] ; simp +decide [ hv k |>.2 ] ⟩ ;
-
-/-
-The base point recovered from a lifted cell is the original face base.
--/
-lemma liftBase_proj {n : ℕ} (Pb : Fin (n+1) → ℤ) (s : Equiv.Perm (Fin n)) (i : Fin (n+1)) :
-    cellVert (liftBase Pb) (liftPerm s) 1 i.castSucc = Pb i := by
-  convert cellVert_lift Pb s 0 i using 1;
-  · unfold cellVert; aesop;
-  · unfold cellVert; simp +decide [ Finset.sum_ite ] ;
 
 /--
 The label of an on-face point lifts to the face label via `castSucc`.
@@ -685,8 +664,8 @@ lemma cellVert_swap_pivot_vertex {n : ℕ} (P : Fin (n+2) → ℤ) (σ : Equiv.P
   unfold cellVert edgeVec;
   simp +decide [ Finset.sum_ite, Equiv.swap_apply_def ];
   rw [ show ( Finset.filter ( fun x => x.castSucc < k0 ) Finset.univ : Finset ( Fin ( n + 1 ) ) ) = Finset.filter ( fun x => x.castSucc < k0 ∧ x ≠ a ∧ x ≠ b ) Finset.univ ∪ { a } from ?_, Finset.filter_union ];
-  · rw [ Finset.filter_union, Finset.filter_singleton ] ; simp +decide [ Finset.filter_singleton ] ; ring;
-    split_ifs <;> simp_all +decide [ Finset.filter_insert ] <;> try ring;
+  · rw [ Finset.filter_union, Finset.filter_singleton ] ; simp +decide [ Finset.filter_singleton ] ; ring_nf;
+    split_ifs <;> simp_all +decide [ Finset.filter_insert ] <;> try ring_nf;
     all_goals congr! 3;
     all_goals first
       | exact congrArg Finset.card
@@ -1253,30 +1232,6 @@ def euclSimplex (n : ℕ) : Set (EuclideanSpace ℝ (Fin n)) :=
 def cornerSimplex (d : ℕ) : Set (EuclideanSpace ℝ (Fin d)) :=
   {x | (∀ i, 0 ≤ x i) ∧ ∑ i, x i ≤ 1}
 
-/-
-The standard simplex is closed.
--/
-lemma euclSimplex_isClosed (n : ℕ) : IsClosed (euclSimplex n) := by
-  unfold euclSimplex;
-  simp +decide only [setOf_and, setOf_forall];
-  refine' IsClosed.inter ( isClosed_iInter fun i => isClosed_le continuous_const <| _ ) ( isClosed_eq _ _ ); all_goals fun_prop
-
-/-
-The standard simplex is compact.
--/
-lemma euclSimplex_isCompact (n : ℕ) : IsCompact (euclSimplex n) := by
-  refine' Metric.isCompact_iff_isClosed_bounded.mpr ⟨ euclSimplex_isClosed n, _ ⟩;
-  refine' isBounded_iff_forall_norm_le.mpr ⟨ 1, _ ⟩;
-  simp +decide [ EuclideanSpace.norm_eq, euclSimplex ];
-  exact fun x hx₁ hx₂ => hx₂ ▸ Finset.sum_le_sum fun i _ => pow_le_of_le_one ( hx₁ i ) ( hx₂ ▸ Finset.single_le_sum ( fun a _ => hx₁ a ) ( Finset.mem_univ i ) ) ( by norm_num )
-
-/-
-The standard simplex is nonempty (for `n ≥ 1`).
--/
-lemma euclSimplex_nonempty {n : ℕ} (hn : 0 < n) : (euclSimplex n).Nonempty := by
-  refine' ⟨ EuclideanSpace.single ⟨ 0, hn ⟩ 1, _, _ ⟩ <;> norm_num;
-  exact fun i => by split_ifs <;> norm_num;
-
 /--
 If every continuous self-map (as a `ContinuousOn`/`MapsTo` pair) of `s` has a fixed
 point, then `s` has the fixed point property.
@@ -1346,8 +1301,8 @@ lemma cornerSimplex_hasFPP (d : ℕ) : HasFPP (cornerSimplex d) := by
   generalize_proofs at *;
   fapply Homeomorph.mk;
   refine' ⟨ fun a => ⟨ phi a, by
-    exact? ⟩, fun b => ⟨ psi b, by
-    exact? ⟩, fun a => _, fun b => _ ⟩
+    expose_names; exact mem_preimage.mp (pf_1 a) ⟩, fun b => ⟨ psi b, by
+    expose_names; exact mem_preimage.mp (pf_2 b) ⟩, fun a => _, fun b => _ ⟩
   all_goals generalize_proofs at *;
   · ext i; simp [phi, psi];
     refine' Fin.lastCases _ _ i <;> simp +decide [ Fin.snoc ];

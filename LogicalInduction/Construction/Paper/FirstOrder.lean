@@ -39,9 +39,8 @@ public sentence `⊥`, and correctness is claimed only on genuine arithmetic sen
 (`paperPrimeDecomposeCode_spec`).
 
 * Numeric constructors: `paperPrimeAtomCodeRaw` builds a tag-`5` paper-prime atom
-  (`paperPrimeTag`); `paperPublicNegCode` / `AndCode` / `OrCode` / `ImpCode` build the
-  propositional layer; `paperFirstOrderImpCode` renders first-order implication as
-  `not-left or right` in Foundation's NNF syntax (`dd:nnf`).
+  (`paperPrimeTag`); `paperPublicNegCode` / `AndCode` / `OrCode` build the propositional
+  layer the decomposer recurses through.
 * `paperFirstOrderNegCode` is the raw course-of-values implementation of Foundation's typed
   negation, specified by `paperFirstOrderNegCode_spec`.
 * Only the two Boolean first-order constructors recurse.  Prime polarity is stored in the
@@ -83,16 +82,19 @@ def paperPrimeCode (positive : Bool) (φ : ArithmeticProposition) : ℕ :=
 def paperPrimeSentence (positive : Bool) (φ : ArithmeticProposition) : Sentence :=
   Formula.atom (paperPrimeCode positive φ)
 
+/-- A paper-prime atom code carries the paper-prime tag in its first component. -/
 @[simp] lemma paperPrimeCode_unpair_tag (positive : Bool) (φ : ArithmeticProposition) :
     (paperPrimeCode positive φ).unpair.1 = paperPrimeTag := by
   simp [paperPrimeCode]
 
+/-- Distinct polarity/proposition pairs get distinct atom codes. -/
 lemma paperPrimeCode_injective :
     Function.Injective (fun p : Bool × ArithmeticProposition => paperPrimeCode p.1 p.2) := by
   rintro ⟨b, φ⟩ ⟨c, ψ⟩ h
   simp only [paperPrimeCode, Nat.pair_eq_pair] at h
   exact Prod.ext (Encodable.encode_inj.mp h.2.1) (Encodable.encode_inj.mp h.2.2)
 
+/-- Distinct polarity/proposition pairs get distinct atoms. -/
 lemma paperPrimeSentence_injective :
     Function.Injective (fun p : Bool × ArithmeticProposition => paperPrimeSentence p.1 p.2) := by
   rintro ⟨b, φ⟩ ⟨c, ψ⟩ h
@@ -116,22 +118,29 @@ def paperPrimeDecompose : ArithmeticProposition → Sentence
   | .exs φ => paperPrimeSentence true (.exs φ)
   | .all φ => ∼paperPrimeSentence true (.exs (∼φ))
 
+/-- The decomposition of `⊤` is the public `⊤`. -/
 @[simp] lemma paperPrimeDecompose_verum :
     paperPrimeDecompose (Semiformula.verum : ArithmeticProposition) = (⊤ : Sentence) := by
   simp [paperPrimeDecompose]
 
+/-- The decomposition of `⊥` is the public `⊥`. -/
 @[simp] lemma paperPrimeDecompose_falsum :
     paperPrimeDecompose (Semiformula.falsum : ArithmeticProposition) = (⊥ : Sentence) := by
   simp [paperPrimeDecompose]
 
+/-- The decomposition commutes with conjunction. -/
 @[simp] lemma paperPrimeDecompose_and (φ ψ : ArithmeticProposition) :
     paperPrimeDecompose (.and φ ψ) = paperPrimeDecompose φ ⋏ paperPrimeDecompose ψ := by
   simp [paperPrimeDecompose]
 
+/-- The decomposition commutes with disjunction. -/
 @[simp] lemma paperPrimeDecompose_or (φ ψ : ArithmeticProposition) :
     paperPrimeDecompose (.or φ ψ) = paperPrimeDecompose φ ⋎ paperPrimeDecompose ψ := by
   simp [paperPrimeDecompose]
 
+/-- The decomposition commutes with negation *semantically*: a world holds `∼φ`'s
+decomposition exactly when it fails `φ`'s.  This is what makes the prime atoms behave like
+literals in every world, not just in models. -/
 lemma PCWorld.holds_paperPrimeDecompose_neg (v : PCWorld)
     (φ : ArithmeticProposition) :
     v.Holds (paperPrimeDecompose (∼φ)) ↔
@@ -169,6 +178,7 @@ lemma PCWorld.holds_paperPrimeDecompose_neg (v : PCWorld)
         PCWorld.holds_neg]
       tauto
 
+/-- The same for implication, through `∼φ ⋎ ψ`. -/
 lemma PCWorld.holds_paperPrimeDecompose_imp (v : PCWorld)
     (φ ψ : ArithmeticProposition) :
     v.Holds (paperPrimeDecompose (φ 🡒 ψ)) ↔
@@ -179,6 +189,7 @@ lemma PCWorld.holds_paperPrimeDecompose_imp (v : PCWorld)
     PCWorld.holds_paperPrimeDecompose_neg]
   tauto
 
+/-- A paper-prime atom mentions exactly its own code. -/
 @[simp] lemma sentenceAtomCodes_paperPrimeSentence (positive : Bool) (φ : ArithmeticProposition) :
     sentenceAtomCodes (paperPrimeSentence positive φ) = {paperPrimeCode positive φ} := rfl
 
@@ -214,6 +225,8 @@ noncomputable def paperPrimeWorld (M : Type*) [Nonempty M] [Structure ℒₒᵣ 
   fun a => ∃ (positive : Bool) (φ : ArithmeticProposition),
     a = paperPrimeCode positive φ ∧ if positive then φ.Evalf f else ¬φ.Evalf f
 
+/-- The model's prime world believes a positive prime exactly when the model satisfies the
+proposition, and a negative prime exactly when it does not. -/
 @[simp] lemma paperPrimeWorld_paperPrimeCode (M : Type*) [Nonempty M] [Structure ℒₒᵣ M]
     (f : ℕ → M) (positive : Bool) (φ : ArithmeticProposition) :
     paperPrimeWorld M f (paperPrimeCode positive φ) ↔
@@ -299,18 +312,6 @@ def paperPublicAndCode (left right : ℕ) : ℕ :=
 def paperPublicOrCode (left right : ℕ) : ℕ :=
   Nat.pair 4 (Nat.pair left right) + 1
 
-/-- Numeric propositional implication. -/
-def paperPublicImpCode (left right : ℕ) : ℕ :=
-  Nat.pair 2 (Nat.pair left right) + 1
-
-@[simp] lemma paperPublicImpCode_spec (φ ψ : Sentence) :
-    paperPublicImpCode (Encodable.encode φ) (Encodable.encode ψ) =
-      Encodable.encode (φ 🡒 ψ) := rfl
-
-lemma paperPublicImpCode_prim : Primrec₂ paperPublicImpCode := by
-  exact (Primrec.succ.comp (Primrec₂.natPair.comp (Primrec.const 2)
-    (Primrec₂.natPair.comp Primrec.fst Primrec.snd))).to₂.of_eq fun _ _ => rfl
-
 /-! ## Numeric first-order negation
 
 Canonical paper primes require the dual of a negative prime head.  Foundation's typed
@@ -359,6 +360,7 @@ private lemma paperFirstOrderNegCode_spec_aux :
     simp_all [paperFirstOrderNegCode, LO.FirstOrder.Semiformula.neg,
       LO.FirstOrder.Semiformula.encode_eq_toNat, LO.FirstOrder.Semiformula.toNat]
 
+/-- The raw negation code agrees with Foundation's typed negation on genuine codes. -/
 lemma paperFirstOrderNegCode_spec (φ : ArithmeticProposition) :
     paperFirstOrderNegCode (Encodable.encode φ) = Encodable.encode (∼φ) :=
   by simpa [Semiformula.neg_eq] using paperFirstOrderNegCode_spec_aux φ
@@ -472,6 +474,7 @@ private lemma paperFirstOrderNegStep_history (n : ℕ) :
         rfl
       · simp [paperFirstOrderNegSucc, paperFirstOrderNegCode, h4, h5, h6, h7]
 
+/-- The raw negation code is primitive recursive, by course-of-values recursion. -/
 lemma paperFirstOrderNegCode_prim : Primrec paperFirstOrderNegCode := by
   have hstep : Primrec₂ fun (_ : Unit) (prior : List ℕ) =>
       some (paperFirstOrderNegStep prior) :=
@@ -480,35 +483,21 @@ lemma paperFirstOrderNegCode_prim : Primrec paperFirstOrderNegCode := by
     hstep (fun _ n => by simpa using congrArg some (paperFirstOrderNegStep_history n))
   exact (hrec.comp (Primrec.const ()) Primrec.id).of_eq fun _ => rfl
 
-/-- Raw Gödel code of first-order implication, represented in Foundation's NNF syntax as
-`¬left ∨ right`. -/
-def paperFirstOrderImpCode (left right : ℕ) : ℕ :=
-  Nat.pair 5 (Nat.pair (paperFirstOrderNegCode left) right) + 1
-
-lemma paperFirstOrderImpCode_spec (φ ψ : ArithmeticProposition) :
-    paperFirstOrderImpCode (Encodable.encode φ) (Encodable.encode ψ) =
-      Encodable.encode (φ 🡒 ψ) := by
-  simp [paperFirstOrderImpCode, Semiformula.imp_eq,
-    paperFirstOrderNegCode_toNat, Semiformula.neg_eq,
-    LO.FirstOrder.Semiformula.encode_eq_toNat, LO.FirstOrder.Semiformula.toNat]
-
-lemma paperFirstOrderImpCode_prim : Primrec₂ paperFirstOrderImpCode := by
-  exact (Primrec.succ.comp (Primrec₂.natPair.comp (Primrec.const 5)
-    (Primrec₂.natPair.comp
-      (paperFirstOrderNegCode_prim.comp Primrec.fst) Primrec.snd))).to₂.of_eq
-        fun _ _ => rfl
-
+/-- The raw paper-prime atom builder agrees with the typed one. -/
 @[simp] lemma paperPrimeAtomCodeRaw_spec (positive : Bool) (φ : ArithmeticProposition) :
     paperPrimeAtomCodeRaw positive (Encodable.encode φ) =
       Encodable.encode (paperPrimeSentence positive φ) := rfl
 
+/-- The numeric propositional negation agrees with the typed one. -/
 @[simp] lemma paperPublicNegCode_spec (φ : Sentence) :
     paperPublicNegCode (Encodable.encode φ) = Encodable.encode (∼φ) := rfl
 
+/-- The numeric propositional conjunction agrees with the typed one. -/
 @[simp] lemma paperPublicAndCode_spec (φ ψ : Sentence) :
     paperPublicAndCode (Encodable.encode φ) (Encodable.encode ψ) =
       Encodable.encode (φ ⋏ ψ) := rfl
 
+/-- The numeric propositional disjunction agrees with the typed one. -/
 @[simp] lemma paperPublicOrCode_spec (φ ψ : Sentence) :
     paperPublicOrCode (Encodable.encode φ) (Encodable.encode ψ) =
       Encodable.encode (φ ⋎ ψ) := rfl

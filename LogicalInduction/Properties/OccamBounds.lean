@@ -43,13 +43,12 @@ On the data side the two boundary structures are at the machine classes:
 `PrefixMachinePresentation`'s `sentence_codes` is `MachineSentenceCodes` and both fields of
 `OccamThresholdEmission` are `MachineRatCodes`, rather than the value-metered
 `PolySentenceCodes` / `PolyRatCodes`, so nothing here bounds a sentence's or a gate
-rational's Gödel code.  Data premises at the
-machine classes and a criterion premise at `def:ec` are the paper's own pairing: this is
-`thm:ob` as the paper states it, `def:ec` on both sides.  The constructed presentations in `Construction/NonDogmatism/` still prove their
+rational's Gödel code.  Data premises at the machine classes and a criterion premise at
+`def:ec` are the paper's own pairing: this is `thm:ob` as the paper states it, `def:ec` on
+both sides.  The constructed presentations in `Construction/NonDogmatism/` prove their
 emission certificates in the fuel model and cross at the boundary
-(`MachineSentenceCodes.ofPolySentenceCodes`, `DigitRatCodes.ofPolyRatCodes` +
-`.toMachine`), so nothing about the constructions changed.  The `_unconditional` endpoints
-discharge the criterion through `LIA_is_logical_inductor`.
+(`MachineSentenceCodes.ofPolySentenceCodes`, `DigitRatCodes.ofPolyRatCodes` + `.toMachine`).
+The `_unconditional` endpoints discharge the criterion through `LIA_is_logical_inductor`.
 
 -/
 
@@ -413,36 +412,6 @@ lemma obSentenceEF_rank_le {κ : Sentence → ℕ}
       omega
 
 /-! ## Literal token emission -/
-
-/-- Any polynomially fueled natural stream has polynomially fueled rational-cast tokens.
-
-**A fuel-side lemma with a producer-side consumer outside this file**: the Occam gate
-compiler here runs at `ratNatCast_machineDigits` below, and this lemma's one consumer is
-`matchFeat_paired` (`Construction/Quotation/DeferralFibre.lean`), which reaches
-`MachineRatCodes` through it — `DigitRatCodes.ofPolyRatCodes` then `.toMachine`. That route
-has no machine-direct replacement, `MachineDigits` not being a `MachineRatCodes`. -/
-lemma ratNatCast_codes_of_polyFueled {cf : Nat.Partrec.Code} {f : ℕ → ℕ}
-    (hf : PolyFueled cf f) : PolyRatCodes (fun x ↦ ((f x : ℕ) : ℚ)) := by
-  obtain ⟨cadd, hadd⟩ := addc_polyFueled
-  have hdouble := hadd.comp (hf.pair hf)
-  refine ⟨_, (hdouble.pair (PolyFueled.const 1)).of_eq (fun x ↦ ?_)⟩
-  rw [encode_rat_natCast]
-  simp only [Nat.unpair_pair]
-  congr 1
-  omega
-
-/-- The flat code of a ruler-measured natural, read as a rational, is a machine-metered
-digit block: `⌜(n : ℚ)⌝ = ⟪2n, 1⟫` (`encode_rat_natCast`), so it is `MachineDigits.natPair`
-of the doubled ruler and the constant `1`.  This is what `MachineSpliceStream`'s constant
-leaf consumes, and it replaces the fuel-metered `PolyRatCodes` rational-cast helper: nothing
-here bounds `f`'s value. -/
-lemma ratNatCast_machineDigits {f : ℕ → ℕ} (hf : UnaryRuler f) :
-    MachineDigits (fun x ↦ Encodable.encode (((f x : ℕ) : ℚ))) :=
-  ((MachineDigits.ofUnaryRuler (hf.add hf)).natPair
-      (MachineDigits.ofUnaryRuler (UnaryRuler.const 1))).of_eq (fun x ↦ by
-    rw [encode_rat_natCast]
-    congr 1
-    omega)
 
 /-- One historical arm-chain multiplication block. -/
 def obArmBlock {κ : Sentence → ℕ} (U : PrefixMachinePresentation κ)
@@ -1071,9 +1040,9 @@ propositionally possible at every deductive stage.
 
 The criterion binder is `def:ec`'s own machine quantifier, because the exploiting trader is
 certified there (`obTrader_ec`) and no map back from `EfficientlyComputable` to the fuel
-class is proved or claimed.  Data premises at the machine classes (`U.sentence_codes`, `emit`) paired with a
-criterion premise at `def:ec` is the paper's own statement of `thm:ob`, which reads `def:ec`
-on both sides.
+class is proved or claimed.  Data premises at the machine classes (`U.sentence_codes`,
+`emit`) paired with a criterion premise at `def:ec` is the paper's own statement of
+`thm:ob`, which reads `def:ec` on both sides.
 Paper node: `thm:ob` -/
 theorem lic_occam_lower
     {κ : Sentence → ℕ} (U : PrefixMachinePresentation κ)

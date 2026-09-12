@@ -51,6 +51,14 @@ word's length by a polynomial in its argument (`Cobham.output_length_poly_of_mem
 is what the streaming concatenation behind `concatVar` needs; the scaffolding tag blocks are
 `FPFold.constFn_mem_FP`; and no token's *value* is bounded anywhere.
 
+## Completeness of the mirror
+
+The suite is complete for `BigSpliceStream.*` rather than trimmed to what this repository
+happens to call: `priceSlot` and `serialize_letE` have no in-repo consumer and are kept
+because an emission assembly written against the fuel-side suite must transfer by renaming
+combinators, which a hole in the mirror would break. The rows that are *deliberately* absent
+are the three below, each with its reason.
+
 ## The three fuel-side rows with no separate mirror
 
 `BigSpliceStream.payload` is the value-bounded twin of `.bigPayload`; on this side there is
@@ -140,12 +148,6 @@ by `EfficientlyComputable` itself.
 -/
 
 namespace LogicalInduction
-
-open Nat.Partrec.Code
-
--- `Nat.sqrt` is scoped irreducible: elaboration over paired indices otherwise loops in
--- `whnf` (the same reason `Framework/Emission/RpnSplice.lean` sets it).
-attribute [local irreducible] Nat.sqrt
 
 namespace MachineSpliceStream
 

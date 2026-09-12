@@ -1,4 +1,5 @@
-import LogicalInduction.Construction.LUV.SourceCodec
+import LogicalInduction.Framework.Emission.CodeSource
+import LogicalInduction.Framework.Emission.WriteOut
 
 /-!
 # Machines that carry the day in their own source

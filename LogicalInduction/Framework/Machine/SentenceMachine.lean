@@ -79,8 +79,6 @@ declarations are `lemma`s and carry no `Paper node` line.
 
 namespace LogicalInduction
 
-open Nat.Partrec.Code
-
 -- `Nat.sqrt` is scoped irreducible: `PolyFueled` elaboration over paired inputs otherwise
 -- loops in `whnf` (the same reason `Framework/Emission/RpnSplice.lean` sets it).
 attribute [local irreducible] Nat.sqrt
@@ -104,23 +102,6 @@ none beyond the hypothesis. Fuel-side twin: `BigSentenceCodes.ofPolySentenceCode
 lemma ofPolySentenceCodes {φ : ℕ → Sentence} (h : PolySentenceCodes φ) :
     MachineSentenceCodes φ :=
   (BigSentenceCodes.ofPolySentenceCodes h).toMachine
-
-/-- **A machine-metered Gödel code certifies the sentence sequence.** The two-token escape
-block `[1, ⌜φ d⌝]`: the constant tag and the written-out code concatenated
-(`MachineTokenStream.const`, `.append`, the code being a one-token stream by definition of
-`MachineDigits`), parsed by `parseRpn_escape`. Nothing bounds `⌜φ d⌝`, which is the point —
-this is the machine reading of the layer's own reason to exist, a sentence family whose codes
-grow exponentially in the day.
-
-The hypothesis is `MachineDigits (fun n => ⌜φ n⌝)` rather than the fuel-metered
-`DigitSentenceCodes φ`, which is that class's *definition* with `BigDigits` in place of
-`MachineDigits`; a caller holding the fuel-metered form reaches this through
-`BigDigits.toMachine`. Fuel-side twin: `BigSentenceCodes.ofDigitSentenceCodes`. -/
-lemma ofMachineDigits {φ : ℕ → Sentence}
-    (h : MachineDigits (fun n => Encodable.encode (φ n))) : MachineSentenceCodes φ :=
-  ⟨fun n => [1, Encodable.encode (φ n)],
-    ((MachineTokenStream.const [1]).append h).of_eq (fun _ => rfl),
-    fun n => parseRpn_escape (φ n) [] (by norm_num)⟩
 
 /-- **Congruence.** The parse condition is transported pointwise; the stream is untouched.
 No side condition. Fuel-side twin: `BigSentenceCodes.of_eq`. -/

@@ -65,7 +65,7 @@ rather than assumed.
 
 namespace LogicalInduction
 
-open Classical Set Function
+open Set Function
 
 /-! ## Boolean tables of a fixed length -/
 
@@ -89,14 +89,6 @@ lemma mem_allBoolLists_iff : ∀ {n : ℕ} {xs : List Bool},
 /-! ## Strategy support and aggregate share demand -/
 
 namespace Strategy
-
-private lemma sum_map_eq_fin {α : Type*} (l : List α) (f : α → ℝ) :
-    (l.map f).sum = ∑ i : Fin l.length, f (l.get i) := by
-  induction l with
-  | nil => simp
-  | cons a l ih =>
-      simp only [List.map_cons, List.sum_cons]
-      simp [Fin.sum_univ_succ]
 
 /-- The finite set of sentences on which a strategy takes a position. -/
 def support {n : ℕ} (T : Strategy n) : Finset Sentence :=
@@ -127,7 +119,7 @@ lemma value_eq_sum_support {n : ℕ} (T : Strategy n) (V : History)
     (T.trades.get i).1.denote V * (w (T.trades.get i).2 - V n (T.trades.get i).2)
   have hvalue : T.value V w = ∑ i, term i := by
     rw [Strategy.value]
-    exact sum_map_eq_fin T.trades _
+    exact (Fin.sum_univ_fun_getElem T.trades _).symm
   rw [hvalue]
   rw [← Finset.sum_fiberwise_of_maps_to
     (s := Finset.univ)
@@ -239,7 +231,7 @@ lemma continuous_strategyShares {n : ℕ} (T : Strategy n) (prior : History)
     Continuous (fun x : EuclideanSpace ℝ (Fin (Fintype.card ↥T.support)) =>
       T.shares (strategyHistory T prior x) φ) := by
   unfold Strategy.shares
-  apply continuous_finset_sum
+  apply continuous_finsetSum
   intro i hi
   exact (EF.continuous_denote (T.trades.get i).1).comp
     (continuous_strategyHistory T prior)
@@ -253,7 +245,7 @@ lemma continuous_strategyWorldValue {n : ℕ} (T : Strategy n) (prior : History)
     (w : Sentence → ℝ) : Continuous (strategyWorldValue T prior w) := by
   unfold strategyWorldValue
   simp_rw [Strategy.value_eq_sum_support]
-  apply continuous_finset_sum
+  apply continuous_finsetSum
   intro φ hφ
   have hprice : Continuous (fun x : EuclideanSpace ℝ (Fin (Fintype.card ↥T.support)) =>
       strategyHistory T prior x n φ) := by
@@ -1435,35 +1427,6 @@ lemma marketMakerError_pos (n : ℕ) : 0 < marketMakerError n := by
   unfold marketMakerError
   exact div_pos (by norm_num) (pow_pos (by norm_num) _)
 
-lemma MarketMaker_support {n : ℕ} (T : Strategy n)
-    (past : List RationalBeliefState) (ε : ℚ) (hε : 0 < ε) :
-    (MarketMaker T past ε hε).support ⊆ T.support :=
-  (MarketMaker_accepts T past ε hε).1
-
-/-- MarketMaker returns a belief state, so the valuation it denotes lies in `[0,1]` at every
-sentence.  This is the `MarketMaker`-level, real-valued form of the range clause that
-`exists_computable_beliefSequence_logical_inductor` states — there on `quote` — of the belief
-sequence it hands a client. -/
-lemma MarketMaker_range {n : ℕ} (T : Strategy n)
-    (past : List RationalBeliefState) (ε : ℚ) (hε : 0 < ε) (φ : Sentence) :
-    (MarketMaker T past ε hε).toValuation φ ∈ Set.Icc (0 : ℝ) 1 :=
-  (MarketMaker T past ε hε).toValuation_mem_Icc φ
-
-/-- MarketMaker prices at zero every sentence the strategy does not trade.  This is
-`def:markemaker`'s clause `support(B) ⊆ support(Tₙ)` in valuation form, and the
-`MarketMaker`-level, real-valued form of the vanishing clause that
-`exists_computable_beliefSequence_logical_inductor` states — there on `quote` — of the belief
-sequence it hands a client. -/
-lemma MarketMaker_zero_of_not_support {n : ℕ} (T : Strategy n)
-    (past : List RationalBeliefState) (ε : ℚ) (hε : 0 < ε)
-    {φ : Sentence} (hφ : φ ∉ T.support) :
-    (MarketMaker T past ε hε).toValuation φ = 0 := by
-  have hnot : φ ∉ (MarketMaker T past ε hε).support :=
-    fun hmem => hφ (MarketMaker_support T past ε hε hmem)
-  rw [RationalBeliefState.toValuation,
-    RationalBeliefState.quote_eq_zero_of_not_mem _ hnot]
-  norm_num
-
 lemma MarketMaker_worldValue_le {n : ℕ} (T : Strategy n)
     (past : List RationalBeliefState) (ε : ℚ) (hε : 0 < ε)
     (b : ↥T.support → Bool) :
@@ -1474,7 +1437,7 @@ lemma MarketMaker_worldValue_le {n : ℕ} (T : Strategy n)
 /-! ## `lem:mm` — the recursive market is not exploited -/
 
 /-- The finite list of already-produced states supplied to MarketMaker on day `n`. -/
-noncomputable def marketMakerPast (_Tr : Trader) (states : ℕ → RationalBeliefState)
+noncomputable def marketMakerPast (states : ℕ → RationalBeliefState)
     (n : ℕ) : List RationalBeliefState :=
   List.ofFn fun i : Fin n => states i
 
@@ -1491,7 +1454,7 @@ noncomputable def marketMakerHistory (Tr : Trader) : History :=
   fun n => (marketMakerStates Tr n).toValuation
 
 lemma beliefHistory_marketMakerPast {Tr : Trader} {n day : ℕ} (hday : day < n) :
-    beliefHistory (marketMakerPast Tr (marketMakerStates Tr) n) day =
+    beliefHistory (marketMakerPast (marketMakerStates Tr) n) day =
       marketMakerHistory Tr day := by
   funext φ
   simp [beliefHistory, rationalHistory, marketMakerPast, marketMakerHistory,
@@ -1500,7 +1463,7 @@ lemma beliefHistory_marketMakerPast {Tr : Trader} {n day : ℕ} (hday : day < n)
 lemma candidate_marketMakerHistory_eq_upTo (Tr : Trader) (n day : ℕ)
     (hday : day ≤ n) :
     Function.update
-      (beliefHistory (marketMakerPast Tr (marketMakerStates Tr) n)) n
+      (beliefHistory (marketMakerPast (marketMakerStates Tr) n)) n
       (marketMakerStates Tr n).toValuation day = marketMakerHistory Tr day := by
   by_cases hdn : day = n
   · subst day
@@ -1508,16 +1471,18 @@ lemma candidate_marketMakerHistory_eq_upTo (Tr : Trader) (n day : ℕ)
   · have hlt : day < n := lt_of_le_of_ne hday hdn
     simp [Function.update, hdn, beliefHistory_marketMakerPast hlt]
 
+open Classical in
 lemma supportBitWorld_pcWorld_eq {n : ℕ} (T : Strategy n) (v : PCWorld)
     (φ : Sentence) (hφ : φ ∈ T.support) :
     supportBitWorld T (fun ψ => decide (v.Holds ψ)) φ = v.payout φ := by
   by_cases hv : v.Holds φ <;> simp [supportBitWorld, PCWorld.payout, hφ, hv]
 
+open Classical in
 /-- One-day MarketMaker bound against every propositionally consistent world. -/
 lemma marketMaker_day_value_le (Tr : Trader) (n : ℕ) (v : PCWorld) :
     (Tr.strat n).value (marketMakerHistory Tr) v.payout ≤
       (marketMakerError n : ℝ) := by
-  let past := marketMakerPast Tr (marketMakerStates Tr) n
+  let past := marketMakerPast (marketMakerStates Tr) n
   let b : ↥(Tr.strat n).support → Bool := fun ψ => decide (v.Holds ψ)
   have hmm := MarketMaker_worldValue_le (Tr.strat n) past
     (marketMakerError n) (marketMakerError_pos n) b

@@ -71,8 +71,6 @@ finite list of rows; under mere day agreement it is not.
 namespace LogicalInduction
 namespace FinitePerturbationCounterexample
 
-open Classical
-
 /-! ## Settlement
 
 The diagonal dichotomy is a statement about worlds consistent with the *completed* theory.
@@ -107,11 +105,13 @@ lemma exists_settled {V : History} {DP : DeductiveProcess} {χ : ℕ → Sentenc
       (fun v hv => (PCWorld.holds_neg v (χ m)).2 (fun hH => hlt ((h v hv).1 hH)))
     exact ⟨k, fun v hv => iff_of_false ((PCWorld.holds_neg v (χ m)).1 (hk v hv)) hlt⟩
 
+open Classical in
 /-- A chosen settlement stage for day `m`; `0` on days with no dichotomy. -/
 noncomputable def settleStage (V : History) (DP : DeductiveProcess) (χ : ℕ → Sentence)
     (m : ℕ) : ℕ :=
   if h : ∃ k, SettledAt V DP χ m k then Nat.find h else 0
 
+open Classical in
 /-- Kind `P`; hypotheses `(a)`. -/
 lemma settleStage_spec {V : History} {DP : DeductiveProcess} {χ : ℕ → Sentence} {m : ℕ}
     (h : Dichotomy V DP χ m) : SettledAt V DP χ m (settleStage V DP χ m) := by
@@ -396,6 +396,7 @@ lemma settledAt_congr {P P' : History} {DP : DeductiveProcess} {χ : ℕ → Sen
     SettledAt P DP χ m k ↔ SettledAt P' DP χ m k := by
   simp only [SettledAt, hagree m hm]
 
+open Classical in
 /-- The chosen settlement stage transports too, discharged by minimality rather than by
 rewriting under a dependent motive.
 Kind `C`; hypotheses `(a)`, `(b)` `Nat.find_mono`. -/
@@ -482,7 +483,7 @@ lemma rpn_schedAtom (n : ℕ) : rpn (schedAtom n) = [Nat.pair 7 n + 5] := rfl
 lemma rpn_signAtom (n : ℕ) : rpn (signAtom n) = [Nat.pair 8 n + 5] := rfl
 
 /-- Kind `C`; hypotheses `(b)` the `Computable`/`RpnSplice` emitter suite. -/
-lemma rpnSentenceCodes_schedAtom : MachineSentenceCodes schedAtom := by
+lemma machineSentenceCodes_schedAtom : MachineSentenceCodes schedAtom := by
   obtain ⟨c, hc⟩ := ((PolyFueled.const 7).pair PolyFueled.id).addConst 5
   exact MachineSentenceCodes.ofCanonical
     (BigTokenStream.toMachine ((BigTokenStream.ofPolySegStream
@@ -490,7 +491,7 @@ lemma rpnSentenceCodes_schedAtom : MachineSentenceCodes schedAtom := by
       (fun n => (rpn_schedAtom n).symm)))
 
 /-- Kind `C`; hypotheses `(b)` the `Computable`/`RpnSplice` emitter suite. -/
-lemma rpnSentenceCodes_signAtom : MachineSentenceCodes signAtom := by
+lemma machineSentenceCodes_signAtom : MachineSentenceCodes signAtom := by
   obtain ⟨c, hc⟩ := ((PolyFueled.const 8).pair PolyFueled.id).addConst 5
   exact MachineSentenceCodes.ofCanonical
     (BigTokenStream.toMachine ((BigTokenStream.ofPolySegStream
@@ -511,6 +512,7 @@ rational quote table and a `Nat.Partrec.Code`, not for the history to be a compu
 function, so nothing is lost.
 -/
 
+open Classical in
 /-- The day-`0` advice row over a base valuation. -/
 noncomputable def adviceRow (base : Valuation) (gate sign : ℕ → ℝ) : Valuation :=
   fun φ =>
@@ -596,6 +598,7 @@ because `sched j ≥ 1` — day `0` is not scheduled.  For the gate bit it is `s
 that licenses it, and that is what keeps the day-`0` row a function of `P` alone.
 -/
 
+open Classical in
 /-- The schedule gate bit for day `n`. -/
 noncomputable def gateBit (P : History) (DP : DeductiveProcess) (χ : ℕ → Sentence) (n : ℕ) :
     ℝ := if ∃ j, sched P DP χ j = n then 1 else 0

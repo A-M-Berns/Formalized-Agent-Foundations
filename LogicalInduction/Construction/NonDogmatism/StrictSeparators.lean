@@ -2,7 +2,6 @@ import LogicalInduction.Construction.NonDogmatism.BitPrefix
 import LogicalInduction.Construction.NonDogmatism.RepeatedEnumeration
 import LogicalInduction.Construction.Primcodable
 import Mathlib.Computability.Halting
-import Mathlib.Data.List.Sections
 
 /-!
 # Separator data for strict domination of the universal semimeasure (`thm:strict`)
@@ -55,14 +54,6 @@ bounded-fuel `approximation_computes` interface.
 are inventoried infrastructure for that node, not because they restate the paper's theorem.
 `ordinaryAtom_code_computable` discharges the atom hypothesis for the repo's own atoms, and
 `Endpoints.lean` closes the endpoint over `LIA`.
-**The criterion binder below is `def:lic` at the paper's own quantifier.**  Every result here that consumes an
-exploiting trader takes `[IsLogicalInductor P DP]`, and the trader is certified at `EfficientlyComputable`:
-it is assembled from `AffineCombination.PolySequence`'s machine-metered emission fields
-through `PolySequence.buyBelowTrader_ec` (`Properties/AffineCoherence.lean`), which has no
-fuel-class form: the bridge `BigSpliceStream.toMachine` runs fuel to machine, and no map
-back is proved or claimed.  The
-calibration is stated at `def:ec` in `Framework/Affine.lean`, and the `_unconditional`
-endpoints discharge the criterion through `LIA_is_logical_inductor`.
 
 -/
 
@@ -74,120 +65,40 @@ open Filter Topology
 -- for the product and list types used below, so `Nat.sqrt` is kept opaque in this file.
 attribute [local irreducible] Nat.sqrt
 
-/-! ## Pointwise prefix agreement
-
-`List.IsPrefix` has no computability API in Mathlib, so the prefix relation is used here in
-its pointwise form, which is directly decidable by a `List.range`/`getElem?` comparison. -/
-
-/-- `PrefixAgree σ l` says `σ` is a prefix of `l`, stated pointwise. -/
-def PrefixAgree (σ l : List Bool) : Prop :=
-  ∀ (k : ℕ) (hk : k < σ.length), l[k]? = some σ[k]
-
-lemma PrefixAgree.refl (σ : List Bool) : PrefixAgree σ σ := by
-  intro k hk
-  simp [List.getElem?_eq_getElem hk]
-
-lemma PrefixAgree.trans {a b c : List Bool} (hab : PrefixAgree a b)
-    (hbc : PrefixAgree b c) : PrefixAgree a c := by
-  intro k hk
-  have h1 := hab k hk
-  have hkb : k < b.length := (List.getElem?_eq_some_iff.mp h1).1
-  have hb : b[k] = a[k] := by
-    rw [List.getElem?_eq_getElem hkb] at h1
-    exact Option.some.inj h1
-  rw [hbc k hkb, hb]
-
-/-- A prefix of `σ ++ [b]` truncates to a prefix of `σ`. -/
-lemma PrefixAgree.of_concat {σ : List Bool} {b : Bool} {l : List Bool}
-    (h : PrefixAgree (σ ++ [b]) l) : PrefixAgree σ l := by
-  intro k hk
-  have hk' : k < (σ ++ [b]).length := by simp; omega
-  have hres := h k hk'
-  rwa [List.getElem_append_left hk] at hres
-
-/-- Two opposite one-bit extensions of the same node cannot both be prefixes of one
-string. -/
-lemma PrefixAgree.concat_conflict {σ l : List Bool}
-    (h0 : PrefixAgree (σ ++ [false]) l) (h1 : PrefixAgree (σ ++ [true]) l) : False := by
-  have hk : σ.length < (σ ++ [false]).length := by simp
-  have hk' : σ.length < (σ ++ [true]).length := by simp
-  have e0 := h0 σ.length hk
-  have e1 := h1 σ.length hk'
-  rw [List.getElem_append_right (le_refl _)] at e0 e1
-  simp only [Nat.sub_self, List.getElem_cons_zero] at e0 e1
-  rw [e0] at e1
-  exact absurd e1 (by simp)
-
-/-- The decidable Boolean form of `PrefixAgree`, built from primitive-recursive list
-operations. -/
-def prefixAgreeB (σ l : List Bool) : Bool :=
-  decide ((List.range σ.length).map (fun k ↦ l[k]?) = σ.map some)
-
-lemma prefixAgreeB_iff (σ l : List Bool) :
-    prefixAgreeB σ l = true ↔ PrefixAgree σ l := by
-  rw [prefixAgreeB, decide_eq_true_iff]
-  constructor
-  · intro h k hk
-    have hk1 : k < ((List.range σ.length).map (fun k ↦ l[k]?)).length := by simp [hk]
-    have hk2 : k < (σ.map some).length := by simp [hk]
-    have heq : ((List.range σ.length).map (fun k ↦ l[k]?))[k]'hk1 =
-        (σ.map some)[k]'hk2 := by
-      congr 1
-    simp only [List.getElem_map, List.getElem_range] at heq
-    exact heq
-  · intro h
-    apply List.ext_getElem
-    · simp
-    · intro k h1 h2
-      have hk : k < σ.length := by simpa using h1
-      simp only [List.getElem_map, List.getElem_range]
-      rw [h k hk]
-
-lemma prefixAgreeB_primrec :
-    Primrec fun p : List Bool × List Bool ↦ prefixAgreeB p.1 p.2 := by
-  have hleft : Primrec fun p : List Bool × List Bool ↦
-      (List.range p.1.length).map (fun k ↦ p.2[k]?) :=
-    Primrec.list_map (Primrec.list_range.comp (Primrec.list_length.comp Primrec.fst))
-      (Primrec.list_getElem?.comp (Primrec.snd.comp Primrec.fst) Primrec.snd).to₂
-  have hright : Primrec fun p : List Bool × List Bool ↦
-      p.1.map (some : Bool → Option Bool) :=
-    Primrec.list_map Primrec.fst (Primrec.option_some.comp Primrec.snd).to₂
-  exact Primrec.comp ((Primrec.eq (α := List (Option Bool))).decide) (hleft.pair hright)
-
 /-! ## The semimeasure carried by a computably enumerated nested family -/
 
 variable (enum : ℕ → List Bool)
 
 /-- Stage-`n` approximation: `1` as soon as some `enum j` with `j ≤ n` extends `σ`. -/
 def ceApprox : ℕ → List Bool → ℚ
-  | 0, σ => if prefixAgreeB σ (enum 0) then 1 else 0
-  | n + 1, σ => if prefixAgreeB σ (enum (n + 1)) then 1 else ceApprox n σ
+  | 0, σ => if σ <+: enum 0 then 1 else 0
+  | n + 1, σ => if σ <+: enum (n + 1) then 1 else ceApprox n σ
 
 open scoped Classical in
 /-- Limit mass: `1` exactly on the strings extended by some enumerated string. -/
 noncomputable def ceMass (σ : List Bool) : ℝ :=
-  if ∃ j, PrefixAgree σ (enum j) then 1 else 0
+  if ∃ j, σ <+: enum j then 1 else 0
 
 variable {enum}
 
 open scoped Classical in
 lemma ceApprox_eq (n : ℕ) (σ : List Bool) :
-    ceApprox enum n σ = if ∃ j, j ≤ n ∧ PrefixAgree σ (enum j) then 1 else 0 := by
+    ceApprox enum n σ = if ∃ j, j ≤ n ∧ σ <+: enum j then 1 else 0 := by
   induction n with
   | zero =>
       simp only [ceApprox]
-      by_cases h : PrefixAgree σ (enum 0)
-      · rw [if_pos ((prefixAgreeB_iff σ (enum 0)).2 h), if_pos ⟨0, le_refl _, h⟩]
-      · rw [if_neg (by simpa [prefixAgreeB_iff] using h)]
+      by_cases h : σ <+: enum 0
+      · rw [if_pos h, if_pos ⟨0, le_refl _, h⟩]
+      · rw [if_neg h]
         refine (if_neg ?_).symm
         rintro ⟨j, hj, hja⟩
         exact h (by simpa [Nat.le_zero.mp hj] using hja)
   | succ n ih =>
       simp only [ceApprox, ih]
-      by_cases hnew : PrefixAgree σ (enum (n + 1))
-      · rw [if_pos ((prefixAgreeB_iff _ _).2 hnew), if_pos ⟨n + 1, le_refl _, hnew⟩]
-      · rw [if_neg (by simpa [prefixAgreeB_iff] using hnew)]
-        by_cases hold : ∃ j, j ≤ n ∧ PrefixAgree σ (enum j)
+      by_cases hnew : σ <+: enum (n + 1)
+      · rw [if_pos hnew, if_pos ⟨n + 1, le_refl _, hnew⟩]
+      · rw [if_neg hnew]
+        by_cases hold : ∃ j, j ≤ n ∧ σ <+: enum j
         · obtain ⟨j, hj, hja⟩ := hold
           rw [if_pos ⟨j, hj, hja⟩, if_pos ⟨j, hj.trans (Nat.le_succ n), hja⟩]
         · refine (if_neg hold).trans (if_neg ?_).symm
@@ -208,10 +119,10 @@ lemma ceApprox_le_ceMass (n : ℕ) (σ : List Bool) :
     ((ceApprox enum n σ : ℚ) : ℝ) ≤ ceMass enum σ := by
   classical
   rw [ceApprox_eq, ceMass]
-  by_cases h : ∃ j, j ≤ n ∧ PrefixAgree σ (enum j)
+  by_cases h : ∃ j, j ≤ n ∧ σ <+: enum j
   · obtain ⟨j, hjn, hja⟩ := h
-    rw [if_pos (⟨j, hjn, hja⟩ : ∃ j, j ≤ n ∧ PrefixAgree σ (enum j)),
-      if_pos (⟨j, hja⟩ : ∃ j, PrefixAgree σ (enum j))]
+    rw [if_pos (⟨j, hjn, hja⟩ : ∃ j, j ≤ n ∧ σ <+: enum j),
+      if_pos (⟨j, hja⟩ : ∃ j, σ <+: enum j)]
     norm_num
   · rw [if_neg h]
     split <;> norm_num
@@ -220,7 +131,7 @@ lemma ceApprox_mono (σ : List Bool) : Monotone fun n ↦ ceApprox enum n σ := 
   classical
   refine monotone_nat_of_le_succ fun n ↦ ?_
   rw [ceApprox_eq, ceApprox_eq]
-  by_cases h : ∃ j, j ≤ n ∧ PrefixAgree σ (enum j)
+  by_cases h : ∃ j, j ≤ n ∧ σ <+: enum j
   · obtain ⟨j, hj, hja⟩ := h
     rw [if_pos ⟨j, hj, hja⟩, if_pos ⟨j, hj.trans (Nat.le_succ n), hja⟩]
   · rw [if_neg h]
@@ -229,12 +140,12 @@ lemma ceApprox_mono (σ : List Bool) : Monotone fun n ↦ ceApprox enum n σ := 
 lemma ceApprox_tendsto (σ : List Bool) :
     Tendsto (fun n ↦ ((ceApprox enum n σ : ℚ) : ℝ)) atTop (𝓝 (ceMass enum σ)) := by
   classical
-  by_cases h : ∃ j, PrefixAgree σ (enum j)
+  by_cases h : ∃ j, σ <+: enum j
   · obtain ⟨j, hja⟩ := h
     have hev : ∀ᶠ n in atTop, ((ceApprox enum n σ : ℚ) : ℝ) = ceMass enum σ := by
       refine eventually_atTop.2 ⟨j, fun n hn ↦ ?_⟩
-      rw [ceApprox_eq, if_pos (⟨j, hn, hja⟩ : ∃ j', j' ≤ n ∧ PrefixAgree σ (enum j')),
-        ceMass, if_pos (⟨j, hja⟩ : ∃ j', PrefixAgree σ (enum j'))]
+      rw [ceApprox_eq, if_pos (⟨j, hn, hja⟩ : ∃ j', j' ≤ n ∧ σ <+: enum j'),
+        ceMass, if_pos (⟨j, hja⟩ : ∃ j', σ <+: enum j')]
       norm_num
     exact Tendsto.congr' (hev.mono fun _ h ↦ h.symm) tendsto_const_nhds
   · have hev : ∀ n, ((ceApprox enum n σ : ℚ) : ℝ) = ceMass enum σ := by
@@ -248,9 +159,9 @@ and `1`, so their sentence codes are a choice between two constants.  Working wi
 codes directly avoids needing a `Primcodable ℚ` instance whose `encode` would differ from
 the `Encodable ℚ` one used by `approximation_computes`. -/
 def ceApproxCodeVal (enum : ℕ → List Bool) : ℕ → List Bool → ℕ
-  | 0, σ => if prefixAgreeB σ (enum 0) then Encodable.encode (1 : ℚ)
+  | 0, σ => if σ <+: enum 0 then Encodable.encode (1 : ℚ)
       else Encodable.encode (0 : ℚ)
-  | n + 1, σ => if prefixAgreeB σ (enum (n + 1)) then Encodable.encode (1 : ℚ)
+  | n + 1, σ => if σ <+: enum (n + 1) then Encodable.encode (1 : ℚ)
       else ceApproxCodeVal enum n σ
 
 lemma ceApproxCodeVal_eq (n : ℕ) (σ : List Bool) :
@@ -258,39 +169,39 @@ lemma ceApproxCodeVal_eq (n : ℕ) (σ : List Bool) :
   induction n with
   | zero =>
       simp only [ceApproxCodeVal, ceApprox]
-      by_cases h : prefixAgreeB σ (enum 0) <;> simp [h]
+      by_cases h : σ <+: enum 0 <;> simp [h]
   | succ n ih =>
       simp only [ceApproxCodeVal, ceApprox]
-      by_cases h : prefixAgreeB σ (enum (n + 1)) <;> simp [h, ih]
+      by_cases h : σ <+: enum (n + 1) <;> simp [h, ih]
 
 lemma ceApproxCodeVal_computable (henum : Computable enum) :
     Computable fun p : ℕ × List Bool ↦ ceApproxCodeVal enum p.1 p.2 := by
   have hbase : Computable fun p : ℕ × List Bool ↦
-      if prefixAgreeB p.2 (enum 0) then Encodable.encode (1 : ℚ)
+      if decide (p.2 <+: enum 0) then Encodable.encode (1 : ℚ)
         else Encodable.encode (0 : ℚ) := by
-    have hb : Computable fun p : ℕ × List Bool ↦ prefixAgreeB p.2 (enum 0) :=
-      prefixAgreeB_primrec.to_comp.comp
+    have hb : Computable fun p : ℕ × List Bool ↦ decide (p.2 <+: enum 0) :=
+      isPrefixB_prim.to_comp.comp
         (Computable.snd.pair (Computable.const (enum 0)))
     exact (Computable.cond hb (Computable.const (Encodable.encode (1 : ℚ)))
       (Computable.const (Encodable.encode (0 : ℚ)))).of_eq
-      (by intro p; by_cases h : prefixAgreeB p.2 (enum 0) <;> simp [h])
+      (by intro p; by_cases h : decide (p.2 <+: enum 0) <;> simp [h])
   have hstep : Computable₂ fun (p : ℕ × List Bool) (q : ℕ × ℕ) ↦
-      if prefixAgreeB p.2 (enum (q.1 + 1)) then Encodable.encode (1 : ℚ) else q.2 := by
+      if decide (p.2 <+: enum (q.1 + 1)) then Encodable.encode (1 : ℚ) else q.2 := by
     have hb : Computable fun r : (ℕ × List Bool) × (ℕ × ℕ) ↦
-        prefixAgreeB r.1.2 (enum (r.2.1 + 1)) :=
-      prefixAgreeB_primrec.to_comp.comp
+        decide (r.1.2 <+: enum (r.2.1 + 1)) :=
+      isPrefixB_prim.to_comp.comp
         ((Computable.snd.comp Computable.fst).pair
           (henum.comp (Computable.succ.comp (Computable.fst.comp Computable.snd))))
     exact (Computable.cond hb (Computable.const (Encodable.encode (1 : ℚ)))
       (Computable.snd.comp Computable.snd)).of_eq
-      (by intro r; by_cases h : prefixAgreeB r.1.2 (enum (r.2.1 + 1)) <;> simp [h])
+      (by intro r; by_cases h : decide (r.1.2 <+: enum (r.2.1 + 1)) <;> simp [h])
   refine (Computable.nat_rec Computable.fst hbase hstep).of_eq ?_
   rintro ⟨n, σ⟩
   induction n with
-  | zero => rfl
+  | zero => by_cases h : σ <+: enum 0 <;> simp [ceApproxCodeVal, h]
   | succ n ih =>
       simp only [ceApproxCodeVal]
-      by_cases h : prefixAgreeB σ (enum (n + 1)) <;> simp [h, ← ih]
+      by_cases h : σ <+: enum (n + 1) <;> simp [h, ← ih]
 
 /-- Every computable `ℕ × List Bool → ℕ` has a `Nat.Partrec.Code` computing it on the
 paired encoding with the bounded-fuel interface that
@@ -325,35 +236,35 @@ lemma ceApproxCode_spec (henum : Computable enum) (n : ℕ) (σ : List Bool) :
 enumerated strings is exactly what makes the two children of a node compete, giving the
 continuous-semimeasure inequality. -/
 noncomputable def ceNestedSemimeasure (henum : Computable enum)
-    (hcomparable : ∀ j j', PrefixAgree (enum j) (enum j') ∨ PrefixAgree (enum j') (enum j)) :
+    (hcomparable : ∀ j j', enum j <+: enum j' ∨ enum j' <+: enum j) :
     LowerSemicomputableContinuousSemimeasure where
   mass := ceMass enum
   nonneg σ := ceMass_nonneg σ
   root_le_one := by classical rw [ceMass]; split <;> norm_num
   children_le σ := by
     classical
-    by_cases h0 : ∃ j, PrefixAgree (σ ++ [false]) (enum j)
+    by_cases h0 : ∃ j, σ ++ [false] <+: enum j
     · obtain ⟨j, hj⟩ := h0
       have hσ : ceMass enum σ = 1 := by
-        rw [ceMass, if_pos (⟨j, hj.of_concat⟩ : ∃ j, PrefixAgree σ (enum j))]
-      have h1 : ¬ ∃ j', PrefixAgree (σ ++ [true]) (enum j') := by
+        rw [ceMass, if_pos (⟨j, (List.prefix_append _ _).trans hj⟩ : ∃ j, σ <+: enum j)]
+      have h1 : ¬ ∃ j', σ ++ [true] <+: enum j' := by
         rintro ⟨j', hj'⟩
         rcases hcomparable j j' with hcc | hcc
-        · exact PrefixAgree.concat_conflict (hj.trans hcc) hj'
-        · exact PrefixAgree.concat_conflict hj (hj'.trans hcc)
+        · exact concat_prefix_conflict (by simp) (hj.trans hcc) hj'
+        · exact concat_prefix_conflict (by simp) hj (hj'.trans hcc)
       have e0 : ceMass enum (σ ++ [false]) = 1 := by
-        rw [ceMass, if_pos (⟨j, hj⟩ : ∃ j, PrefixAgree (σ ++ [false]) (enum j))]
+        rw [ceMass, if_pos (⟨j, hj⟩ : ∃ j, σ ++ [false] <+: enum j)]
       have e1 : ceMass enum (σ ++ [true]) = 0 := by rw [ceMass, if_neg h1]
       show ceMass enum (σ ++ [false]) + ceMass enum (σ ++ [true]) ≤ ceMass enum σ
       rw [hσ, e0, e1]
       norm_num
-    · by_cases h1 : ∃ j, PrefixAgree (σ ++ [true]) (enum j)
+    · by_cases h1 : ∃ j, σ ++ [true] <+: enum j
       · obtain ⟨j, hj⟩ := h1
         have hσ : ceMass enum σ = 1 := by
-          rw [ceMass, if_pos (⟨j, hj.of_concat⟩ : ∃ j, PrefixAgree σ (enum j))]
+          rw [ceMass, if_pos (⟨j, (List.prefix_append _ _).trans hj⟩ : ∃ j, σ <+: enum j)]
         have e0 : ceMass enum (σ ++ [false]) = 0 := by rw [ceMass, if_neg h0]
         have e1 : ceMass enum (σ ++ [true]) = 1 := by
-          rw [ceMass, if_pos (⟨j, hj⟩ : ∃ j, PrefixAgree (σ ++ [true]) (enum j))]
+          rw [ceMass, if_pos (⟨j, hj⟩ : ∃ j, σ ++ [true] <+: enum j)]
         show ceMass enum (σ ++ [false]) + ceMass enum (σ ++ [true]) ≤ ceMass enum σ
         rw [hσ, e0, e1]
         norm_num
@@ -375,7 +286,7 @@ domination step of `app:strict`.
 Paper node: `thm:strict` -/
 lemma exists_pos_mass_of_ce_nested (M : UniversalContinuousSemimeasure)
     (henum : Computable enum)
-    (hcomparable : ∀ j j', PrefixAgree (enum j) (enum j') ∨ PrefixAgree (enum j') (enum j)) :
+    (hcomparable : ∀ j j', enum j <+: enum j' ∨ enum j' <+: enum j) :
     ∃ c : ℝ, 0 < c ∧ ∀ j, c ≤ M.mass (enum j) := by
   classical
   obtain ⟨c, hc, hdom⟩ := M.universal (ceNestedSemimeasure henum hcomparable)
@@ -383,7 +294,7 @@ lemma exists_pos_mass_of_ce_nested (M : UniversalContinuousSemimeasure)
   have h := hdom (enum j)
   have hmass : (ceNestedSemimeasure henum hcomparable).mass (enum j) = 1 := by
     show ceMass enum (enum j) = 1
-    rw [ceMass, if_pos ⟨j, PrefixAgree.refl _⟩]
+    rw [ceMass, if_pos ⟨j, List.prefix_refl _⟩]
   rw [hmass] at h
   simpa using h
 
@@ -391,18 +302,18 @@ lemma exists_pos_mass_of_ce_nested (M : UniversalContinuousSemimeasure)
 
 /-- A family nested in the `∃ rest, prefixes (i+1) = prefixes i ++ rest` sense is pairwise
 comparable. -/
-lemma prefixAgree_of_nested {prefixes : ℕ → List Bool}
+lemma prefix_comparable_of_nested {prefixes : ℕ → List Bool}
     (hnested : ∀ i, ∃ rest, prefixes (i + 1) = prefixes i ++ rest) :
-    ∀ i i', PrefixAgree (prefixes i) (prefixes i') ∨
-      PrefixAgree (prefixes i') (prefixes i) := by
-  have hstep : ∀ i, PrefixAgree (prefixes i) (prefixes (i + 1)) := by
-    intro i k hk
+    ∀ i i', prefixes i <+: prefixes i' ∨
+      prefixes i' <+: prefixes i := by
+  have hstep : ∀ i, prefixes i <+: prefixes (i + 1) := by
+    intro i
     obtain ⟨rest, hrest⟩ := hnested i
-    rw [hrest, List.getElem?_append_left hk, List.getElem?_eq_getElem hk]
-  have hmono : ∀ i d, PrefixAgree (prefixes i) (prefixes (i + d)) := by
+    exact hrest ▸ List.prefix_append _ _
+  have hmono : ∀ i d, prefixes i <+: prefixes (i + d) := by
     intro i d
     induction d with
-    | zero => simpa using PrefixAgree.refl (prefixes i)
+    | zero => simp
     | succ d ih => exact ih.trans (hstep (i + d))
   intro i i'
   rcases le_total i i' with h | h
@@ -420,13 +331,13 @@ lemma no_ce_null_prefix_family (M : UniversalContinuousSemimeasure)
     (hsound : ∀ j, ∃ i, enum j = prefixes i)
     (hcov : ∀ i, ∃ j, enum j = prefixes i)
     (hmass : Tendsto (fun i ↦ M.mass (prefixes i)) atTop (𝓝 0)) : False := by
-  have hcomparable : ∀ j j', PrefixAgree (enum j) (enum j') ∨
-      PrefixAgree (enum j') (enum j) := by
+  have hcomparable : ∀ j j', enum j <+: enum j' ∨
+      enum j' <+: enum j := by
     intro j j'
     obtain ⟨i, hi⟩ := hsound j
     obtain ⟨i', hi'⟩ := hsound j'
     rw [hi, hi']
-    exact prefixAgree_of_nested hnested i i'
+    exact prefix_comparable_of_nested hnested i i'
   obtain ⟨c, hc, hlow⟩ := exists_pos_mass_of_ce_nested M henum hcomparable
   have hall : ∀ i, c ≤ M.mass (prefixes i) := by
     intro i
@@ -655,30 +566,23 @@ lemma separatorConstraintCodeAux_eq (atom : ℕ → Sentence) (n : ℕ) :
             rw [hlit, encode_sepAnd, ← ih]
             simp [separatorConstraintCodeAux, h2, bitPrefixLiteral]
 
-lemma kleeneDecideNat_computable :
-    Computable fun p : ℕ × ℕ ↦ kleeneDecideNat p.1 p.2 := by
-  have hcode : Computable fun p : ℕ × ℕ ↦ Denumerable.ofNat Nat.Partrec.Code p.2 :=
-    (Primrec.ofNat Nat.Partrec.Code).to_comp.comp Computable.snd
-  have hev : Computable fun p : ℕ × ℕ ↦
+/-- **The stage decision is primitive recursive.**  `0` = undecided, `1` = decided `false`,
+`2` = decided `true`, read off one clocked `evaln` run of the `e`-th code on `e`. -/
+lemma kleeneDecideNat_primrec : Primrec fun p : ℕ × ℕ ↦ kleeneDecideNat p.1 p.2 := by
+  have hcode : Primrec fun p : ℕ × ℕ ↦ Denumerable.ofNat Nat.Partrec.Code p.2 :=
+    (Primrec.ofNat Nat.Partrec.Code).comp Primrec.snd
+  have hev : Primrec fun p : ℕ × ℕ ↦
       Nat.Partrec.Code.evaln p.1 (Denumerable.ofNat Nat.Partrec.Code p.2) p.2 :=
-    Nat.Partrec.Code.primrec_evaln.to_comp.comp
-      ((Computable.fst.pair hcode).pair Computable.snd)
-  have hbranch : Computable fun w : ℕ ↦ if w = 0 then 1 else if w = 1 then 2 else 0 := by
-    have h1 : Computable fun w : ℕ ↦ decide (w = 0) :=
-      Computable.comp ((Primrec.eq (α := ℕ)).decide).to_comp
-        (Computable.id.pair (Computable.const 0))
-    have h2 : Computable fun w : ℕ ↦ decide (w = 1) :=
-      Computable.comp ((Primrec.eq (α := ℕ)).decide).to_comp
-        (Computable.id.pair (Computable.const 1))
-    exact (Computable.cond h1 (Computable.const 1)
-      (Computable.cond h2 (Computable.const 2) (Computable.const 0))).of_eq (by
-        intro w
-        by_cases hw0 : w = 0
-        · simp [hw0]
-        · by_cases hw1 : w = 1 <;> simp [hw0, hw1])
-  refine (Computable.comp (Primrec.option_getD.to_comp)
-    ((Computable.option_map hev (hbranch.comp Computable.snd).to₂).pair
-      (Computable.const 0))).of_eq ?_
+    Nat.Partrec.Code.primrec_evaln.comp ((Primrec.fst.pair hcode).pair Primrec.snd)
+  have hbranch : Primrec fun w : ℕ ↦ if w = 0 then 1 else if w = 1 then 2 else 0 := by
+    have h1 : PrimrecPred fun w : ℕ ↦ w = 0 :=
+      Primrec.eq.comp Primrec.id (Primrec.const 0)
+    have h2 : PrimrecPred fun w : ℕ ↦ w = 1 :=
+      Primrec.eq.comp Primrec.id (Primrec.const 1)
+    exact Primrec.ite h1 (Primrec.const 1) (Primrec.ite h2 (Primrec.const 2)
+      (Primrec.const 0))
+  refine (Primrec.option_getD.comp
+    (Primrec.option_map hev (hbranch.comp Primrec.snd).to₂) (Primrec.const 0)).of_eq ?_
   rintro ⟨n, e⟩
   unfold kleeneDecideNat
   rcases Nat.Partrec.Code.evaln n (Denumerable.ofNat Nat.Partrec.Code e) e with _ | v
@@ -687,6 +591,11 @@ lemma kleeneDecideNat_computable :
     | 0 => rfl
     | 1 => rfl
     | (v + 2) => simp
+
+/-- The `Computable` reading, for the c.e. constraint-theory enumerator. -/
+lemma kleeneDecideNat_computable :
+    Computable fun p : ℕ × ℕ ↦ kleeneDecideNat p.1 p.2 :=
+  kleeneDecideNat_primrec.to_comp
 
 lemma separatorConstraintCodeAux_computable {atomCode : ℕ → ℕ}
     (hatom : Computable atomCode) :
@@ -789,28 +698,10 @@ noncomputable def separatorConstraintCE {atom : ℕ → Sentence}
   halts := (Classical.choose_spec (exists_separatorConstraintCode hatom)).1
   outputs_sound := (Classical.choose_spec (exists_separatorConstraintCode hatom)).2
 
-/-- All bit strings of a given length. -/
-def allBitStrings (n : ℕ) : List (List Bool) :=
-  List.sections (List.replicate n [false, true])
-
-lemma mem_allBitStrings {σ : List Bool} {n : ℕ} :
-    σ ∈ allBitStrings n ↔ σ.length = n := by
-  rw [allBitStrings, List.mem_sections]
-  constructor
-  · intro h
-    simpa using h.length_eq
-  · intro h
-    subst h
-    induction σ with
-    | nil => simp
-    | cons b σ ih =>
-        rw [List.length_cons, List.replicate_succ]
-        exact List.Forall₂.cons (by cases b <;> simp) ih
-
 /-- The stage-`n` class: every length-`n` string agreeing with the bits decided by stage
 `n`. -/
 def separatorConsistentAt (n : ℕ) : List (List Bool) :=
-  (allBitStrings n).filter fun σ ↦
+  (allBitLists n).filter fun σ ↦
     (List.range n).all fun e ↦
       match kleeneDecide n e with
       | none => true
@@ -819,7 +710,7 @@ def separatorConsistentAt (n : ℕ) : List (List Bool) :=
 lemma mem_separatorConsistentAt {σ : List Bool} {n : ℕ} :
     σ ∈ separatorConsistentAt n ↔
       σ.length = n ∧ ∀ e < n, ∀ b, kleeneDecide n e = some b → σ.getD e false = b := by
-  rw [separatorConsistentAt, List.mem_filter, mem_allBitStrings]
+  rw [separatorConsistentAt, List.mem_filter, mem_allBitLists]
   constructor
   · rintro ⟨hlen, hall⟩
     refine ⟨hlen, fun e he b hb ↦ ?_⟩
@@ -889,23 +780,8 @@ lemma ContinuousSemimeasure.sum_le_of_take (M : ContinuousSemimeasure) {n : ℕ}
         rw [Finset.sum_pair (by simp)]
         exact M.children_le τ
 
-lemma allBitStrings_succ (n : ℕ) :
-    allBitStrings (n + 1) = (allBitStrings n).flatMap fun σ ↦ [false :: σ, true :: σ] := by
-  simp [allBitStrings, List.replicate_succ]
-
-lemma allBitStrings_nodup (n : ℕ) : (allBitStrings n).Nodup := by
-  induction n with
-  | zero => simp [allBitStrings]
-  | succ n ih =>
-      rw [allBitStrings_succ]
-      refine List.nodup_flatMap.2 ⟨fun σ _ ↦ by simp, List.Pairwise.imp ?_ ih⟩
-      intro a b hab
-      simp only [Function.onFun, List.disjoint_left, List.mem_cons,
-        List.not_mem_nil, or_false]
-      rintro x (rfl | rfl) <;> rintro (h | h) <;> simp_all
-
 lemma separatorConsistentAt_nodup (n : ℕ) : (separatorConsistentAt n).Nodup :=
-  List.Nodup.filter _ (allBitStrings_nodup n)
+  List.Nodup.filter _ (allBitLists_nodup n)
 
 /-- Stage decisions only grow: `evaln` is monotone in its fuel. -/
 lemma kleeneDecide_mono {n n' e : ℕ} {b : Bool} (h : n ≤ n')
@@ -1115,25 +991,6 @@ The Kučera–Demuth separator has to *run* on inputs, so every ingredient below
 the `Primrec` level: the enumeration of bit strings, the stage class, the bounded-fuel
 approximants, and the rational comparison against the threshold. -/
 
-lemma allBitStrings_primrec : Primrec allBitStrings := by
-  have hcons : Primrec fun y : (ℕ × (ℕ × List (List Bool))) × List Bool ↦
-      [false :: y.2, true :: y.2] :=
-    Primrec.list_cons.comp
-      (Primrec.list_cons.comp (Primrec.const false) Primrec.snd)
-      (Primrec.list_cons.comp
-        (Primrec.list_cons.comp (Primrec.const true) Primrec.snd)
-        (Primrec.const []))
-  have hstep : Primrec₂ fun (_ : ℕ) (z : ℕ × List (List Bool)) ↦
-      z.2.flatMap fun σ ↦ [false :: σ, true :: σ] :=
-    Primrec.list_flatMap (Primrec.snd.comp Primrec.snd) hcons.to₂
-  have h := Primrec.nat_rec' Primrec.id
-    (Primrec.const ([[]] : List (List Bool))) hstep
-  refine h.of_eq fun n ↦ ?_
-  simp only [id_eq]
-  induction n with
-  | zero => simp [allBitStrings]
-  | succ n ih => rw [allBitStrings_succ, ← ih]
-
 /-- The stage decision in numeral form agreeing with a bit. -/
 def decideAgrees (d : ℕ) (x : Bool) : Bool :=
   if d = 0 then true else cond x (decide (d = 2)) (decide (d = 1))
@@ -1150,7 +1007,7 @@ lemma decideAgrees_eq (n e : ℕ) (x : Bool) :
 
 lemma separatorConsistentAt_eq (n : ℕ) :
     separatorConsistentAt n =
-      (allBitStrings n).filter fun σ ↦
+      (allBitLists n).filter fun σ ↦
         decide (∀ e ∈ List.range n,
           decideAgrees (kleeneDecideNat n e) (σ.getD e false) = true) := by
   rw [separatorConsistentAt]
@@ -1165,30 +1022,6 @@ lemma separatorConsistentAt_eq (n : ℕ) :
   · intro h e he
     rw [← decideAgrees_eq]
     exact h e he
-
-lemma kleeneDecideNat_primrec : Primrec fun p : ℕ × ℕ ↦ kleeneDecideNat p.1 p.2 := by
-  have hcode : Primrec fun p : ℕ × ℕ ↦ Denumerable.ofNat Nat.Partrec.Code p.2 :=
-    (Primrec.ofNat Nat.Partrec.Code).comp Primrec.snd
-  have hev : Primrec fun p : ℕ × ℕ ↦
-      Nat.Partrec.Code.evaln p.1 (Denumerable.ofNat Nat.Partrec.Code p.2) p.2 :=
-    Nat.Partrec.Code.primrec_evaln.comp ((Primrec.fst.pair hcode).pair Primrec.snd)
-  have hbranch : Primrec fun w : ℕ ↦ if w = 0 then 1 else if w = 1 then 2 else 0 := by
-    have h1 : PrimrecPred fun w : ℕ ↦ w = 0 :=
-      Primrec.eq.comp Primrec.id (Primrec.const 0)
-    have h2 : PrimrecPred fun w : ℕ ↦ w = 1 :=
-      Primrec.eq.comp Primrec.id (Primrec.const 1)
-    exact Primrec.ite h1 (Primrec.const 1) (Primrec.ite h2 (Primrec.const 2)
-      (Primrec.const 0))
-  refine (Primrec.option_getD.comp
-    (Primrec.option_map hev (hbranch.comp Primrec.snd).to₂) (Primrec.const 0)).of_eq ?_
-  rintro ⟨n, e⟩
-  unfold kleeneDecideNat
-  rcases Nat.Partrec.Code.evaln n (Denumerable.ofNat Nat.Partrec.Code e) e with _ | v
-  · rfl
-  · match v with
-    | 0 => rfl
-    | 1 => rfl
-    | (v + 2) => simp
 
 lemma separatorConsistentAt_primrec : Primrec separatorConsistentAt := by
   have hagree : Primrec fun z : (List Bool × ℕ) × ℕ ↦
@@ -1218,19 +1051,10 @@ lemma separatorConsistentAt_primrec : Primrec separatorConsistentAt := by
     have hforall := PrimrecRel.forall_mem_list hbase
     exact hforall.comp (Primrec.list_range.comp Primrec.snd) Primrec.id
   have hfilter := PrimrecRel.listFilter hR
-  refine (hfilter.comp allBitStrings_primrec Primrec.id).of_eq fun n ↦ ?_
+  refine (hfilter.comp allBitLists_prim Primrec.id).of_eq fun n ↦ ?_
   simp only [id_eq]
   rw [separatorConsistentAt_eq]
   rfl
-
-private lemma list_sum_primrec : Primrec fun L : List ℚ ↦ L.sum := by
-  have h := Primrec.list_foldr (α := List ℚ) Primrec.id (Primrec.const (0 : ℚ))
-    (ratAdd_prim.comp (Primrec.fst.comp Primrec.snd) (Primrec.snd.comp Primrec.snd)).to₂
-  refine h.of_eq fun L ↦ ?_
-  simp only [id_eq]
-  induction L with
-  | nil => rfl
-  | cons a L ih => simp only [List.foldr_cons, List.sum_cons, ih]
 
 lemma boundedApprox_primrec (M : LowerSemicomputableContinuousSemimeasure) :
     Primrec fun z : (ℕ × ℕ) × List Bool ↦ boundedApprox M z.1.1 z.1.2 z.2 := by
@@ -1272,7 +1096,7 @@ lemma sepApproxSum_primrec (M : LowerSemicomputableContinuousSemimeasure) (b : B
     (boundedApprox_primrec M).comp
       (((Primrec.fst.comp (Primrec.snd.comp Primrec.fst)).pair
         (Primrec.snd.comp (Primrec.snd.comp Primrec.fst))).pair Primrec.snd)
-  exact list_sum_primrec.comp (Primrec.list_map hclass happrox)
+  exact ratListSum_prim.comp (Primrec.list_map hclass happrox)
 
 /-- One dovetailed search step of the Kučera–Demuth separator: at search index `z` it looks
 at stage `k + j + 1 + z.unpair.1` (above both the pivot `k` and the bit index `j`) with
@@ -1356,7 +1180,7 @@ lemma exists_sepGuard (M : LowerSemicomputableContinuousSemimeasure) {r : ℝ} {
   have hsplit := classMass_bit_split C j true s
   have hside : ∃ b : Bool, (q : ℝ) < classMass C (fun σ ↦ σ.getD j false == b) s := by
     by_contra h
-    push_neg at h
+    push Not at h
     have h1 := h true
     have h2 := h false
     have h3 := hle s

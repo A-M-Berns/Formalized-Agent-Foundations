@@ -57,9 +57,9 @@ which is the sense in which the deadline stays undecidable without one.
 `k ≤ i` conjunction; both are machine-metered (`unaryRuler_deadlinePassed`), and the test is
 sound (`deadlinePassed_sound`), monotone in the budget, and eventually true.
 
-`deadlineRun` and its soundness and monotonicity lemmas are stated beside `DeferralFunction`
-itself, in `Properties/SelfTrust.lean`; the schedule built on them is shared with
-`Construction/Quotation/`, and this module builds the clock out of them. -/
+`deadlineRun` is stated beside `DeferralFunction` itself, in `Properties/SelfTrust.lean`;
+the schedule built on it is shared with `Construction/Quotation/`, and this module builds
+the clock out of it. -/
 
 /-- A prefix sum of counts vanishes exactly when every summand does. -/
 private lemma segPrefix_eq_zero_iff (lenFn : ℕ → ℕ) (n : ℕ) : ∀ r : ℕ,
@@ -153,22 +153,6 @@ The clock's one remaining ingredient is a *code* semi-deciding settlement.  It i
 as `SettlementSemiDecider` — a pure computability obligation with no market, economic or
 limit content — and the clock is constructed from it, so building a patient clock reduces
 entirely to inhabiting that structure (done below from `SettlementChecker`). -/
-
-lemma acceptsWithin_mono (c : Nat.Partrec.Code) {F F' x : ℕ} (h : F ≤ F')
-    (ha : acceptsWithin c F x = true) : acceptsWithin c F' x = true := by
-  cases hev : Nat.Partrec.Code.evaln F c x with
-  | none => simp [acceptsWithin, codeEvalnNat, hev] at ha
-  | some out =>
-      have hm : Nat.Partrec.Code.evaln F' c x = some out :=
-        Nat.Partrec.Code.evaln_mono h hev
-      simp only [acceptsWithin, codeEvalnNat, Nat.unpair_pair, hev, decide_eq_true_iff] at ha
-      simp [acceptsWithin, codeEvalnNat, hm, ha]
-
-lemma dovetailFound_mono (c : Nat.Partrec.Code) {i n : ℕ}
-    (h : dovetailFound c i n = true) : dovetailFound c i (n + 1) = true := by
-  rw [dovetailFound_eq_true_iff] at h ⊢
-  obtain ⟨j, hj, ha⟩ := h
-  exact ⟨j, by omega, acceptsWithin_mono c (Nat.le_succ n) ha⟩
 
 /-- A code semi-deciding **tolerance agreement**, stated semantically.
 

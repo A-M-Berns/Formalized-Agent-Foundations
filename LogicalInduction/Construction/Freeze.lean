@@ -31,8 +31,8 @@ without leaving the class.
 
 ## The quote-table freeze
 
-* `Prefix` — the `dd:fuel` half: polynomial parser control (`freezeControlNat`),
-  variable-width emission of the frozen suffix, exhaustive raw-code sentence matching
+* `Prefix` — the `dd:fuel` half: variable-width emission of the frozen suffix on the token
+  model's parser control (`freezeControlNat`), exhaustive raw-code sentence matching
   (`sentenceMatches`), and lookup in the inductor's finite prefix quote table, assembled into
   `liaFreezeBefore_preserves_ecTok` (`def:lia`).  Its docstring states the disclosed boundary:
   the collapsed class asks for token-metered preservation, and the digit model is closed under
@@ -53,8 +53,8 @@ the kit splits it into a finite-state half, a one-counter half, and a decode tes
 
 * `RunAutomaton` — `BlockAutomaton` (bounded finite control) and `BlockMachine` (an arbitrary
   word state growing by a constant per token), each with its `Complexity.FP` fold.
-* `PatternAutomaton` — the legacy grammar's spelling characterization as a `BlockAutomaton`,
-  isolating everything non-unconditional in the interface `HoleGuards`.
+* `PatternAutomaton` — `HoleGuards`, the escape-leaf decode test as an interface: everything
+  a spelling recognizer cannot have unconditionally, in one structure with one field.
 * `StructuredPatterns` — the full grammar's characterization with no side condition:
   segment patterns, of which a structured paper-prime block is one variable-width segment.
 * `CounterAutomaton` — the one-counter inhabitant of `BlockMachine`, which is what decides
@@ -65,7 +65,8 @@ the kit splits it into a finite-state half, a one-counter half, and a decode tes
   `SegMatch`, and the proof that their conjunction is exactly `SegMatch`.
 * `FiberTest` — `HoleGuards` inhabited: the escape-leaf decode test run on digit words inside
   `Complexity.FP`.
-* `SegmentRecognizer` — the three assembled into the unconditional polynomial-time decision.
+* `SegmentRecognizer` — the regular and counting halves assembled into the unconditional
+  polynomial-time decision, over the `HoleGuards` interface.
 
 ## The endpoints
 

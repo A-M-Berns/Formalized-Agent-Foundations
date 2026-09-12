@@ -18,7 +18,7 @@ source-dependent axioms.
 * `paperTheoremFires` is the r.e. event predicate (encoded provability in `T`),
   `paperTheoremSentence` decodes the numeric compiler's output, and `exists_paperTheoremCode`
   gives the semi-decider.
-* `paperTheoremStage` / `paperTheoryDP` dovetail over that semi-decider; coverage is stated
+* `paperTheoryDP` dovetails over that semi-decider; coverage is stated
   at ordinary object-level provability (`paperTheoryDP_covers_outer_provable`), encoded
   provability staying an implementation detail.
 * Assignment-level soundness (`derivation2_evalf_of_model`,
@@ -57,6 +57,7 @@ variable (T : ArithmeticTheory)
 def paperTheoremFires [T.Δ₁] (formulaCode : ℕ) : Prop :=
   Bootstrapping.Provable T formulaCode
 
+/-- The theorem event is r.e.: `Bootstrapping.Provable T` is `Σ₁` over a `Δ₁` theory. -/
 lemma paperTheoremFires_re [T.Δ₁] :
     REPred (paperTheoremFires T) := by
   apply re_iff_sigma1.mpr
@@ -68,6 +69,8 @@ malformed output. -/
 def paperTheoremSentence (formulaCode : ℕ) : Sentence :=
   (Encodable.decode (α := Sentence) (paperPrimeDecomposeCode formulaCode)).getD ⊥
 
+/-- On a genuine proposition code the event's sentence is that proposition's prime
+decomposition. -/
 @[simp] lemma paperTheoremSentence_spec (φ : ArithmeticProposition) :
     paperTheoremSentence (Encodable.encode φ) = paperPrimeDecompose φ := by
   unfold paperTheoremSentence
@@ -75,6 +78,8 @@ def paperTheoremSentence (formulaCode : ℕ) : Sentence :=
     Encodable.encode (paperPrimeDecompose φ) from paperPrimeDecomposeCode_spec φ]
   simp
 
+/-- The event naming map is primitive recursive — the one obligation the shared dovetail
+asks of this lane. -/
 lemma paperTheoremSentence_prim : Primrec paperTheoremSentence := by
   exact (Primrec.option_getD.comp
     (Primrec.decode.comp paperPrimeDecomposeCode_prim)
@@ -83,13 +88,8 @@ lemma paperTheoremSentence_prim : Primrec paperTheoremSentence := by
 /-- A partial-recursive semi-decider for the universal theorem events. -/
 lemma exists_paperTheoremCode [T.Δ₁] :
     ∃ code : Nat.Partrec.Code,
-      ∀ formulaCode, (code.eval formulaCode).Dom ↔ paperTheoremFires T formulaCode := by
-  obtain ⟨f, hf, hfP⟩ := REPred.iff'.mp (paperTheoremFires_re T)
-  obtain ⟨code, hcode⟩ := Nat.Partrec.Code.exists_code.mp
-    (Partrec.nat_iff.mp (hf.map (Computable.const (0 : ℕ)).to₂))
-  refine ⟨code, fun formulaCode => ?_⟩
-  rw [hcode]
-  exact (hfP formulaCode).symm
+      ∀ formulaCode, (code.eval formulaCode).Dom ↔ paperTheoremFires T formulaCode :=
+  exists_semiDecider (paperTheoremFires_re T)
 
 /-! ## Assignment-level soundness
 
@@ -98,6 +98,8 @@ The theorem process therefore uses the stronger and natural soundness fact that 
 proved proposition is true under every assignment in every model of `T`.
 -/
 
+/-- Soundness at the sequent level: in a model of `T`, some member of a derived sequent is
+satisfied by every assignment. -/
 lemma derivation2_evalf_of_model
     {M : Type*} [Nonempty M] [Structure ℒₒᵣ M]
     (hT : M ↓[ℒₒᵣ] ⊧* T) {Γ : Finset ArithmeticProposition}
@@ -122,6 +124,8 @@ lemma derivation2_evalf_of_model
       exact hnφ htruth
     exact hnψ hψT
 
+/-- Soundness at the proposition level: a `T`-provable proposition is satisfied by every
+assignment into a model of `T`. -/
 lemma provable_proposition_evalf_of_model
     [T.Δ₁]
     {M : Type*} [Nonempty M] [Structure ℒₒᵣ M]
@@ -138,44 +142,21 @@ lemma provable_proposition_evalf_of_model
 
 /-! ## The fixed dovetailed process -/
 
-open Classical in
-/-- Stage `k` of the dovetail: the decompositions of every event code `e ≤ k` on which the
-semi-decider halts within fuel `k`. -/
-noncomputable def paperTheoremStage (code : Nat.Partrec.Code) (k : ℕ) : Finset Sentence :=
-  ((Finset.range (k + 1)).filter
-    (fun e => (Nat.Partrec.Code.evaln k code e).isSome = true)).image paperTheoremSentence
-
-lemma paperTheoremStage_mono (code : Nat.Partrec.Code) (k : ℕ) :
-    paperTheoremStage code k ⊆ paperTheoremStage code (k + 1) := by
-  classical
-  intro φ hφ
-  simp only [paperTheoremStage, Finset.mem_image, Finset.mem_filter, Finset.mem_range] at hφ ⊢
-  obtain ⟨e, ⟨he, hsome⟩, rfl⟩ := hφ
-  exact ⟨e, ⟨by omega, evaln_isSome_mono (Nat.le_succ k) hsome⟩, rfl⟩
-
 /-- The fixed public process enumerating decompositions of all `T`-provable first-order
-propositions. -/
-noncomputable def paperTheoryDP [T.Δ₁] :
-    DeductiveProcess where
-  D := paperTheoremStage (exists_paperTheoremCode T).choose
-  mono := paperTheoremStage_mono _
+propositions: the dovetail (`Construction/DeductiveDovetail.lean`) of
+`exists_paperTheoremCode`'s semi-decider under the naming map `paperTheoremSentence`. -/
+noncomputable def paperTheoryDP [T.Δ₁] : DeductiveProcess :=
+  dovetailProcess paperTheoremSentence (exists_paperTheoremCode T).choose
 
+/-- Coverage: a fired theorem event's sentence eventually appears in a stage. -/
 lemma paperTheoryDP_covers [T.Δ₁]
     {formulaCode : ℕ} (hfire : paperTheoremFires T formulaCode) :
-    ∃ k, paperTheoremSentence formulaCode ∈ (paperTheoryDP T).D k := by
-  classical
-  set code := (exists_paperTheoremCode T).choose
-  have hdom : (code.eval formulaCode).Dom :=
-    ((exists_paperTheoremCode T).choose_spec formulaCode).mpr hfire
-  obtain ⟨out, hout⟩ := Part.dom_iff_mem.mp hdom
-  obtain ⟨fuel, hfuel⟩ := Nat.Partrec.Code.evaln_complete.mp hout
-  refine ⟨max formulaCode fuel, ?_⟩
-  simp only [paperTheoryDP, paperTheoremStage, Finset.mem_image,
-    Finset.mem_filter, Finset.mem_range]
-  refine ⟨formulaCode, ⟨by omega, ?_⟩, rfl⟩
-  exact evaln_isSome_mono (le_max_right formulaCode fuel)
-    (Option.isSome_iff_exists.mpr ⟨out, hfuel⟩)
+    ∃ k, paperTheoremSentence formulaCode ∈ (paperTheoryDP T).D k :=
+  dovetailProcess_covers
+    (((exists_paperTheoremCode T).choose_spec formulaCode).mpr hfire)
 
+/-- Coverage in the form the consumers use: every `T`-provable proposition's prime
+decomposition eventually appears. -/
 lemma paperTheoryDP_covers_provable [T.Δ₁] (φ : ArithmeticProposition)
     (hφ : Bootstrapping.Provable T (Encodable.encode φ)) :
     ∃ k, paperPrimeDecompose φ ∈ (paperTheoryDP T).D k := by
@@ -204,77 +185,22 @@ lemma PCWorld.holds_paperPrimeDecompose_of_provable [T.Δ₁] (v : PCWorld)
 
 /-! ## Computability -/
 
-/-- The stage as a deduplicated list, the shape the primitive-recursive encoder works on. -/
-lemma paperTheoremStage_eq_toFinset (c : Nat.Partrec.Code) (n : ℕ) :
-    paperTheoremStage c n =
-      ((List.range (n + 1)).filterMap
-        (fun e => if (Nat.Partrec.Code.evaln n c e).isSome = true then
-          some (paperTheoremSentence e) else none)).toFinset := by
-  classical
-  ext φ
-  simp only [paperTheoremStage, Finset.mem_image, Finset.mem_filter, Finset.mem_range,
-    List.mem_toFinset, List.mem_filterMap, List.mem_range]
-  constructor
-  · rintro ⟨e, ⟨he, hsome⟩, rfl⟩
-    exact ⟨e, he, by rw [if_pos hsome]⟩
-  · rintro ⟨e, he, hcond⟩
-    by_cases hs : (Nat.Partrec.Code.evaln n c e).isSome = true
-    · rw [if_pos hs] at hcond
-      exact ⟨e, ⟨he, hs⟩, Option.some_inj.mp hcond⟩
-    · rw [if_neg hs] at hcond
-      exact absurd hcond (by simp)
-
-lemma paperTheoremStage_encode_prim (c : Nat.Partrec.Code) :
-    Primrec (fun n => Encodable.encode (paperTheoremStage c n)) := by
-  have hevaln : Primrec (fun p : ℕ × ℕ =>
-      (Nat.Partrec.Code.evaln p.1 c p.2).isSome) :=
-    Primrec.option_isSome.comp
-      (Nat.Partrec.Code.primrec_evaln.comp
-        ((Primrec.fst.pair (Primrec.const c)).pair Primrec.snd))
-  have hguncur : Primrec (fun p : ℕ × ℕ =>
-      if (Nat.Partrec.Code.evaln p.1 c p.2).isSome = true then
-        some (paperTheoremSentence p.2) else (none : Option Sentence)) := by
-    have hb : Primrec (fun p : ℕ × ℕ =>
-        bif (Nat.Partrec.Code.evaln p.1 c p.2).isSome then
-          some (paperTheoremSentence p.2) else (none : Option Sentence)) :=
-      Primrec.cond hevaln
-        (Primrec.option_some.comp (paperTheoremSentence_prim.comp Primrec.snd))
-        (Primrec.const (none : Option Sentence))
-    exact hb.of_eq fun p => by
-      cases (Nat.Partrec.Code.evaln p.1 c p.2).isSome <;> simp
-  have hlist : Primrec (fun n : ℕ => (List.range (n + 1)).filterMap
-      (fun e => if (Nat.Partrec.Code.evaln n c e).isSome = true then
-        some (paperTheoremSentence e) else none)) :=
-    Primrec.listFilterMap (Primrec.list_range.comp Primrec.succ) hguncur.to₂
-  have hkey : (fun n => Encodable.encode (paperTheoremStage c n)) =
-      (fun n => Encodable.encode
-        ((sentenceDedup ((List.range (n + 1)).filterMap
-          (fun e => if (Nat.Partrec.Code.evaln n c e).isSome = true then
-            some (paperTheoremSentence e) else none))).insertionSort sentenceCodeLE)) := by
-    funext n
-    rw [paperTheoremStage_eq_toFinset, encode_toFinset_eq]
-  rw [hkey]
-  exact Primrec.encode.comp
-    (sentenceInsertionSort_prim.comp (sentenceDedup_prim.comp hlist))
-
+/-- The fixed public process is computable: the dovetail's own certificate, at
+`paperTheoremSentence_prim`. -/
 lemma paperTheoryDP_computable [T.Δ₁] :
-    ComputableDeductiveProcess (paperTheoryDP T) := by
-  obtain ⟨code, hcode⟩ := Nat.Partrec.Code.exists_code.mp
-    (Nat.Partrec.of_primrec
-      (Primrec.nat_iff.mp
-        (paperTheoremStage_encode_prim (exists_paperTheoremCode T).choose)))
-  refine ⟨code, fun n => ?_⟩
-  rw [hcode]
-  exact Part.mem_some _
+    ComputableDeductiveProcess (paperTheoryDP T) :=
+  dovetailProcess_computable paperTheoremSentence_prim _
 
 /-! ## Non-vacuity -/
 
+/-- A well-formed formula code is the code of an actual `ℒₒᵣ` proposition. -/
 lemma paperFormulaCode_has_proposition {formulaCode : ℕ}
     (hwf : Bootstrapping.IsFormula ℒₒᵣ formulaCode) :
     ∃ φ : ArithmeticProposition, Encodable.encode φ = formulaCode := by
   rcases hwf.sound with ⟨φ, hφ⟩
   exact ⟨φ, by simpa [LO.FirstOrder.Semiformula.quote_eq_encode] using hφ⟩
 
+/-- A fired event code names a proposition, and that proposition is `T`-provable. -/
 lemma paperTheoremFires_has_proposition [T.Δ₁] {formulaCode : ℕ}
     (hfire : paperTheoremFires T formulaCode) :
     ∃ φ : ArithmeticProposition, Encodable.encode φ = formulaCode ∧
@@ -294,8 +220,7 @@ lemma paperTheoryDP_hworld_of_model [T.Δ₁]
     (hT : M ↓[ℒₒᵣ] ⊧* T) (f : ℕ → M) :
     (paperPrimeWorld M f).ConsistentWithTheory (paperTheoryDP T) := by
   intro k φ hφ
-  simp only [paperTheoryDP, paperTheoremStage, Finset.mem_image,
-    Finset.mem_filter, Finset.mem_range] at hφ
+  simp only [paperTheoryDP, dovetailProcess_D, mem_dovetailStage] at hφ
   obtain ⟨formulaCode, ⟨-, hsome⟩, rfl⟩ := hφ
   have hfire : paperTheoremFires T formulaCode := by
     obtain ⟨out, hout⟩ := Option.isSome_iff_exists.mp hsome
@@ -306,11 +231,12 @@ lemma paperTheoryDP_hworld_of_model [T.Δ₁]
     paperPrimeWorld_holds_decompose M f]
   exact provable_proposition_evalf_of_model T hT f hprov
 
+/-- Every atom of every stage sentence carries the paper-prime tag: this lane owns exactly
+that slice of the atom space. -/
 lemma paperTheoryDP_atom_tag [T.Δ₁] {k : ℕ} {sentence : Sentence}
     (hsentence : sentence ∈ (paperTheoryDP T).D k) {a : ℕ}
     (ha : a ∈ sentenceAtomCodes sentence) : a.unpair.1 = paperPrimeTag := by
-  simp only [paperTheoryDP, paperTheoremStage, Finset.mem_image,
-    Finset.mem_filter, Finset.mem_range] at hsentence
+  simp only [paperTheoryDP, dovetailProcess_D, mem_dovetailStage] at hsentence
   obtain ⟨formulaCode, ⟨-, hsome⟩, rfl⟩ := hsentence
   have hfire : paperTheoremFires T formulaCode := by
     obtain ⟨out, hout⟩ := Option.isSome_iff_exists.mp hsome
@@ -335,6 +261,8 @@ lemma paperTheoryDP_nonvacuous [T.Δ₁] [Entailment.Consistent T] :
 
 /-! ## Joint compatibility with the established theorem stream -/
 
+/-- The computation-literal lane's atoms carry a different tag, so the two streams never
+collide. -/
 lemma eventAtom_atomCodes_ne_paperPrimeTag (e : ℕ) :
     ∀ a ∈ sentenceAtomCodes (eventAtom e), a.unpair.1 ≠ paperPrimeTag := by
   intro a ha
@@ -367,18 +295,22 @@ noncomputable def paperTheoryExtensionWorld
     (f : ℕ → M) : PCWorld := fun a =>
   if a.unpair.1 = paperPrimeTag then paperPrimeWorld M f a else provabilityWorld T a
 
+/-- Off the paper-prime tag the extension world is the provability world. -/
 lemma paperTheoryExtensionWorld_agree_base
     (T : ArithmeticTheory) (M : Type*) [Nonempty M] [Structure ℒₒᵣ M]
     (f : ℕ → M) {a : ℕ} (ha : a.unpair.1 ≠ paperPrimeTag) :
     paperTheoryExtensionWorld T M f a ↔ provabilityWorld T a := by
   simp [paperTheoryExtensionWorld, ha]
 
+/-- On the paper-prime tag the extension world is the model's own prime world. -/
 lemma paperTheoryExtensionWorld_agree_paper
     (T : ArithmeticTheory) (M : Type*) [Nonempty M] [Structure ℒₒᵣ M]
     (f : ℕ → M) {a : ℕ} (ha : a.unpair.1 = paperPrimeTag) :
     paperTheoryExtensionWorld T M f a ↔ paperPrimeWorld M f a := by
   simp [paperTheoryExtensionWorld, ha]
 
+/-- A sentence with no paper-prime atom is held by the extension world exactly when the
+provability world holds it. -/
 lemma paperTheoryExtensionWorld_holds_base_iff
     (T : ArithmeticTheory) (M : Type*) [Nonempty M] [Structure ℒₒᵣ M]
     (f : ℕ → M) {φ : Sentence}
@@ -387,6 +319,8 @@ lemma paperTheoryExtensionWorld_holds_base_iff
   PCWorld.holds_congr_atomCodes φ fun a ha =>
     paperTheoryExtensionWorld_agree_base T M f (hφ a ha)
 
+/-- A prime decomposition is held by the extension world exactly when the model's prime
+world holds it. -/
 lemma paperTheoryExtensionWorld_holds_paper_iff
     (T : ArithmeticTheory) (M : Type*) [Nonempty M] [Structure ℒₒᵣ M]
     (f : ℕ → M) (φ : ArithmeticProposition) :
@@ -441,6 +375,8 @@ noncomputable def paperDPComputation [T.Δ₁] :
   ((theoremDP_computable T).nonemptyComputation.some).union
     (paperTheoryDP_computable T).nonemptyComputation.some
 
+/-- The extension world built from a model of `T` is consistent with every stage of the
+joint process. -/
 lemma paperDP_hworld_of_model [T.Δ₁] [𝗣𝗔⁻ ⪯ T] [Entailment.Consistent T]
     {M : Type*} [Nonempty M] [Structure ℒₒᵣ M]
     (hT : M ↓[ℒₒᵣ] ⊧* T) (f : ℕ → M) :
@@ -450,12 +386,10 @@ lemma paperDP_hworld_of_model [T.Δ₁] [𝗣𝗔⁻ ⪯ T] [Entailment.Consiste
   rcases hφ with hbase | hpaper
   · apply (paperTheoryExtensionWorld_holds_base_iff T M f fun a ha => ?_).mpr
       (theoremDP_hworld T k φ hbase)
-    simp only [theoremDP, theoremStage, Finset.mem_image, Finset.mem_filter,
-      Finset.mem_range] at hbase
+    simp only [theoremDP, dovetailProcess_D, mem_dovetailStage] at hbase
     obtain ⟨e, _, rfl⟩ := hbase
     exact eventAtom_atomCodes_ne_paperPrimeTag e a ha
-  · simp only [paperTheoryDP, paperTheoremStage, Finset.mem_image,
-      Finset.mem_filter, Finset.mem_range] at hpaper
+  · simp only [paperTheoryDP, dovetailProcess_D, mem_dovetailStage] at hpaper
     obtain ⟨formulaCode, ⟨-, hsome⟩, rfl⟩ := hpaper
     have hfire : paperTheoremFires T formulaCode := by
       obtain ⟨out, hout⟩ := Option.isSome_iff_exists.mp hsome
@@ -467,6 +401,8 @@ lemma paperDP_hworld_of_model [T.Δ₁] [𝗣𝗔⁻ ⪯ T] [Entailment.Consiste
       paperPrimeWorld_holds_decompose M f]
     exact provable_proposition_evalf_of_model T hT f hprov
 
+/-- **Non-vacuity of the joint process**: a consistent theory has a model, and that model's
+extension world is consistent with every stage. -/
 lemma paperDP_nonvacuous [T.Δ₁] [𝗣𝗔⁻ ⪯ T] [Entailment.Consistent T] :
     ∃ v : PCWorld, v.ConsistentWithTheory (paperDP T) := by
   have hs : LO.FirstOrder.Satisfiable T :=

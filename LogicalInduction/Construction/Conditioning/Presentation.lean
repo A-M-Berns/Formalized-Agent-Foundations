@@ -10,9 +10,10 @@ forms, so that no caller of `lic_conditioned` has to assume one.
 **Shared machinery.**  `deductiveStageCondition` is the canonical finite conjunction of a
 deductive stage under the code-canonical `Finset` order (empty conjunction `⊤`), with its
 exact Boolean semantics `PCWorld.holds_deductiveStageCondition`;
-`sentenceFinsetUnionNorm` and `sentenceListFinsetNorm` are the primitive-recursive
-normalizers behind `DeductiveProcessComputation.union`, which computes the union process a
-presentation must certify.
+and `sentenceFinsetUnionNorm` is the primitive-recursive normalizer behind
+`DeductiveProcessComputation.union`, which computes the union process a presentation must
+certify.  The prefix process itself, its membership law and its stage encoder are shared with
+the other decidable-clause lanes and live in `Construction/DeductiveDovetail.lean`.
 
 **Form 1, fixed condition** (`fixedConditionProcess`, `fixedConditioningPresentation`): the
 paper's `Θ ∪ {ψ}` case, tex:6124.
@@ -39,8 +40,7 @@ only for the order-insensitive `holds_condition` and for the union computation.
 **Non-vacuity.**  `growingCompactConditioningProcessComputation` adjoins stages that are
 nonempty and strictly grow (`growingConditionProcess_ssubset`,
 `deductiveStageCondition_growing_ne`, `deductiveStageCondition_growing_ne_top`), so the
-growing form says something; `compactConditioningProcessComputation_nonempty` is
-inhabitation only and carries no such content.
+growing form says something.
 -/
 
 namespace LogicalInduction
@@ -80,7 +80,7 @@ def sentenceFinsetUnionNorm (z : ℕ) : ℕ :=
   let left := (Encodable.decode (α := List Sentence) z.unpair.1).getD []
   let right := (Encodable.decode (α := List Sentence) z.unpair.2).getD []
   Encodable.encode <|
-    (sentenceDedup (left ++ right)).insertionSort sentenceCodeLE
+    (List.dedup (left ++ right)).insertionSort sentenceCodeLE
 
 /-- The union normalizer is primitive recursive. -/
 lemma sentenceFinsetUnionNorm_prim : Primrec sentenceFinsetUnionNorm := by
@@ -97,7 +97,7 @@ lemma sentenceFinsetUnionNorm_prim : Primrec sentenceFinsetUnionNorm := by
         (Encodable.decode (α := List Sentence) z.unpair.2).getD [] :=
     Primrec.list_append.comp hleft hright
   exact (Primrec.encode.comp
-    (sentenceInsertionSort_prim.comp (sentenceDedup_prim.comp happend))).of_eq
+    (sentenceInsertionSort_prim.comp (dedup_prim.comp happend))).of_eq
       fun z ↦ by rfl
 
 /-- On a pair of encoded finite stages the normalizer computes the code of their union. -/
@@ -106,10 +106,10 @@ lemma sentenceFinsetUnionNorm_spec (left right : Finset Sentence) :
         (Nat.pair (Encodable.encode left) (Encodable.encode right)) =
       Encodable.encode (left ∪ right) := by
   let canonical :=
-    (sentenceDedup (stageSort left ++ stageSort right)).insertionSort sentenceCodeLE
+    (List.dedup (stageSort left ++ stageSort right)).insertionSort sentenceCodeLE
   have hnodup : canonical.Nodup :=
     (List.perm_insertionSort sentenceCodeLE _).nodup_iff.mpr
-      (sentenceDedup_nodup (stageSort left ++ stageSort right))
+      (List.nodup_dedup (stageSort left ++ stageSort right))
   have hsorted : canonical.Pairwise sentenceCodeLE :=
     List.pairwise_insertionSort sentenceCodeLE _
   have htoFinset : canonical.toFinset = left ∪ right := by
@@ -123,7 +123,7 @@ lemma sentenceFinsetUnionNorm_spec (left right : Finset Sentence) :
   simp only [Encodable.encodek, Option.getD_some]
   calc
     Encodable.encode
-        ((sentenceDedup (stageSort left ++ stageSort right)).insertionSort
+        ((List.dedup (stageSort left ++ stageSort right)).insertionSort
           sentenceCodeLE) = Encodable.encode canonical := rfl
     _ = Encodable.encode ((left ∪ right).sort sentenceCodeLE) :=
       congrArg Encodable.encode hsort.symm
@@ -201,28 +201,6 @@ structure CompactConditioningProcessComputation (extra : DeductiveProcess)
     extends DeductiveProcessComputation extra where
   condition_codes : MachineSentenceCodes fun n ↦ deductiveStageCondition (extra.D n)
 
-/-- **Inhabitation only, and degenerate.**  The compact operational interface is inhabited by
-the constantly empty deductive process, whose stage program and empty-conjunction program
-are both literal constant programs.  This says the interface's fields are satisfiable and
-nothing more: at `extra.D n = ∅` the adjoined condition is the empty conjunction `⊤` and
-`DP.union extra = DP`, so instantiating the growing form of `thm:scon` here restates the
-unconditioned theorem.  It is **not** evidence that the growing endpoint has content; the
-witness that carries that burden is `growingCompactConditioningProcessComputation` below,
-put to work in `exists_growing_conditioned_inductor`. -/
-lemma compactConditioningProcessComputation_nonempty :
-    ∃ extra : DeductiveProcess,
-      Nonempty (CompactConditioningProcessComputation extra) := by
-  let extra : DeductiveProcess :=
-    { D := fun _ ↦ ∅
-      mono := fun _ φ hφ ↦ by simp at hφ }
-  refine ⟨extra, ⟨{
-    code := Nat.Partrec.Code.const (Encodable.encode (∅ : Finset Sentence))
-    code_spec := fun n ↦ by simp [extra]
-    condition_codes := MachineSentenceCodes.ofPolySentenceCodes
-      ⟨_, (PolyFueled.const
-        (Encodable.encode (deductiveStageCondition (∅ : Finset Sentence)))).of_eq
-          (fun n ↦ by simp [extra])⟩ }⟩⟩
-
 /-- Construct the exact syntax/semantics presentation used by `thm:scon` from operational
 programs for the base process and the compact extra process.
 Paper node: `thm:scon` -/
@@ -238,9 +216,10 @@ noncomputable def conditioningPresentationOfComputations
 
 /-! ## A genuinely growing extra process
 
-`compactConditioningProcessComputation_nonempty` above is inhabitation only, and degenerate
-for the reason recorded at that lemma.  The process below carries the non-vacuity burden
-instead: it reveals `atom 0` on day `0` and adds `atom 1` from day `1` on, so its stages are
+The compact interface is trivially inhabited by the constantly empty process, at which the
+adjoined condition is the empty conjunction `⊤` and `DP.union extra = DP`, so the growing
+form there restates the unconditioned theorem.  The process below carries the non-vacuity
+burden instead: it reveals `atom 0` on day `0` and adds `atom 1` from day `1` on, so its stages are
 nonempty, they *strictly grow*, and the condition sequence `n ↦ ⋀ (extra.D n)` changes with
 `n` — `atom 0` at day `0`, a two-conjunct conjunction thereafter.  Its condition-code
 certificate is a two-way dispatch of constant sentence-block streams, which is what keeps
@@ -414,61 +393,16 @@ poly-writable for a growing family: the `Finset.toList` order is recoverable onl
 exponential Gödel codes and `conj₂` is not permutation-invariant, so the index order the
 emitter needs is erased by the `Finset`. -/
 
-/-- Primrec renaming of a sentence *list* to the Gödel code of the finite set it spans:
-dedup, then code-sort, then encode.  The list-input analogue of `sentenceFinsetUnionNorm`,
-used to compute the prefix process's stage codes from `(range (n+1)).map ψ`. -/
-def sentenceListFinsetNorm (l : List Sentence) : ℕ :=
-  Encodable.encode ((sentenceDedup l).insertionSort sentenceCodeLE)
-
-/-- The list-input normalizer is primitive recursive. -/
-lemma sentenceListFinsetNorm_prim : Primrec sentenceListFinsetNorm :=
-  Primrec.encode.comp (sentenceInsertionSort_prim.comp sentenceDedup_prim)
-
-/-- The normalizer computes the code of the finite set a sentence list spans. -/
-lemma sentenceListFinsetNorm_spec (l : List Sentence) :
-    sentenceListFinsetNorm l = Encodable.encode l.toFinset := by
-  let canonical := (sentenceDedup l).insertionSort sentenceCodeLE
-  have hnodup : canonical.Nodup :=
-    (List.perm_insertionSort sentenceCodeLE _).nodup_iff.mpr (sentenceDedup_nodup l)
-  have hsorted : canonical.Pairwise sentenceCodeLE :=
-    List.pairwise_insertionSort sentenceCodeLE _
-  have htoFinset : canonical.toFinset = l.toFinset := by
-    ext φ; simp [canonical, mem_sentenceDedup]
-  have hsort : l.toFinset.sort sentenceCodeLE = canonical := by
-    rw [← htoFinset]
-    exact (List.toFinset_sort (r := sentenceCodeLE) hnodup).mpr hsorted
-  rw [sentenceListFinsetNorm, encode_eq_encode_stageSort l.toFinset, stageSort, hsort]
-
-/-- The prefix deductive process of a sentence sequence: stage `n` is the finite set
-`{ψ₀, …, ψₙ}`.  Its condition (below) is the prefix conjunction `ψ₀ ⋏ ⋯ ⋏ ψₙ`.
-Paper node: `thm:scon` -/
-def prefixProcess (ψ : ℕ → Sentence) : DeductiveProcess where
-  D n := ((List.range (n + 1)).map ψ).toFinset
-  mono n := by
-    intro φ hφ
-    simp only [List.mem_toFinset, List.mem_map, List.mem_range] at hφ ⊢
-    obtain ⟨i, hi, rfl⟩ := hφ
-    exact ⟨i, by omega, rfl⟩
-
 /-- The prefix process's stage codes are primitive recursive: dedup-and-sort the list
 `(range (n+1)).map ψ`, whose elements come from the primitive-recursive naming program
 extracted from the write-out certificate `hψ` (`MachineSentenceCodes.primrec`). -/
 private lemma exists_prefixProcessCode (ψ : ℕ → Sentence) (hψ : MachineSentenceCodes ψ) :
     ∃ code : Nat.Partrec.Code, ∀ n,
       Encodable.encode ((prefixProcess ψ).D n) ∈ code.eval n := by
-  have hψp : Primrec ψ := Primrec.encode_iff.mp hψ.primrec
-  have hrange : Primrec fun n : ℕ => List.range (n + 1) :=
-    Primrec.list_range.comp (Primrec.nat_add.comp Primrec.id (Primrec.const 1))
-  have hlist : Primrec fun n : ℕ => (List.range (n + 1)).map ψ :=
-    Primrec.list_map hrange (hψp.comp Primrec.snd).to₂
-  have hstage : Primrec fun n : ℕ =>
-      sentenceListFinsetNorm ((List.range (n + 1)).map ψ) :=
-    sentenceListFinsetNorm_prim.comp hlist
   obtain ⟨code, hcode⟩ := Nat.Partrec.Code.exists_code.mp
-    (Nat.Partrec.of_primrec (Primrec.nat_iff.mp hstage))
-  exact ⟨code, fun n => by
-    rw [hcode]
-    exact Part.mem_some_iff.mpr (sentenceListFinsetNorm_spec _).symm⟩
+    (Nat.Partrec.of_primrec (Primrec.nat_iff.mp
+      (prefixProcess_encode_prim (Primrec.encode_iff.mp hψ.primrec))))
+  exact ⟨code, fun n => by rw [hcode]; exact Part.mem_some _⟩
 
 /-- The prefix process is computable, by the code extracted above.
 Paper node: `thm:scon` -/

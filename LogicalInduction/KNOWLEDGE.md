@@ -84,11 +84,139 @@ indicator family as data — its `[0,1)` thresholds are `φ ⋏ ∼∼φ`, *not*
 `not_polyFueled_doublingDeferral`; `UnaryRuler.two_pow_min`; and `unboundedTruth` with
 `unboundedFeedbackTruthComputation_nonempty` / `exists_unbounded_feedbackTruthComputation`.
 
+**More names that moved, in the later end-state pass.** Same rule — look the name up rather
+than trusting a note — but these are the ones worth knowing without the lookup.
+`LUVCombination.BoundedSequence.prandexp` is now the **two-sided** statement and the
+above-branch is `prandexp_above` (with `AffineCombination.BoundedSequence.prandexp_above_of_historicalVerifiers`
+below it); `no_nonvacuous_worldValued_presented_of_rpn` is `…_of_machine` and its bridge
+binder is `presented_of_machine`, with `rpnThresholdSourceCode(_spec)` now
+`machineThresholdSourceCode(_spec)` — the premise those name is `LUV.MachineThresholdCodeSeq`
+and no token class occurs in it; `semanticEmitterSchema` was a definitional alias and is gone,
+`semanticSourceSchema` (with `semanticSourceSchema_source`) being the one name;
+`theoremQuoteCertifiedProductWorld*` are `theoremQuoteProductWorld*` and
+`semanticCertifiedProductDP_hworld` is `semanticProductDP_hworld`, restated for the unguarded
+process; `encNumeral*` is one arity-polymorphic public `numeralEnc*`
+(`Construction/LUV/ArithmeticSource.lean`); `BigSpliceStream.feature_primrec` is
+`MachineSpliceStream.feature_primrec`; `ConditioningCompile.frameBudgetCodes_polyFueled` is
+split into `frameBudgetCode_polyFueled` and `frameInverseBudgetCode_polyFueled`;
+`decode_sentence_eq_ofNat'`, `encode_sentence_eq_toNat'`, `unRpn_price_escape'` and
+`unRpn_trade_escape'` lost their primes; `FreezeOracle.exampleS` is `pointS`, with
+`exampleSentence` naming the worked example's atom; `compileCodeAt` (an `Option (TM n)` with
+an `isSome` layer over it) is the total, computable
+`compiledTM : (c : Code) → Regs (codeRegs c) n → TM n`; and the binary-node register layout in
+`Framework/Machine/EvalnCompiler.lean` is `binSelf` / `binLeftSub` / `binRightSub` /
+`binLeftLoc` / `binRightLoc`, with a trailing `_selfW` component spelled `_self` throughout
+and `unpairWindow` spelled `unpairSlot` — `unpairSlot` and `pairSlot` embed a window into a
+node's own `Fin 16` while `precUnpairW`/`rfUnpairW` embed into the whole layout, so those two
+families are *not* to be unified, and `TraderMachine.selfW` is a different window in its own
+namespace and keeps its name. One namespace moved: the Framework clock block (`ecClock`,
+`ecClock_polyFueled`, `clockedRawLength(_eq)`, `clockedRawToken(_eq)`,
+`clockedTokens_polySegStream`) is `ClockedEmission`, and `PrefixPatchCompile` now names only
+the §4.6 prefix-freeze compiler in `Construction/Freeze/Prefix.lean`.
+
+**Lanes that no longer exist at all.** Grepping for any of these finds nothing, and the
+replacement is named beside it.
+
+* **One freeze recognizer generation, not three.** The live chain is
+  `StructPat.segPatterns` → `SegAuto` (regular half) + `SegCtr` (counter half) →
+  `SegRec.ifParseFull_mem_FP`, over the `PatAuto.HoleGuards` interface inhabited by
+  `FiberTest.holeGuards`. The spelling-list generation (`RpnFreeze.spellings`,
+  `spellings_sound/_complete`), the token-automaton generation (`PatAuto.patAuto`, `patNest`,
+  `ifParse_mem_FP`) and the token-granular pattern layer (`PatTok`, `PatMatch`, `patterns`,
+  `patterns_sound/_complete`, `parseRpnUnescaped_iff_patMatch`, `parseRpn_iff_patMatch`,
+  `parseStructuredPaperPrime_shape`) are all gone. The one characterization of the grammar is
+  `StructPat.parseRpn_iff_segMatch` — full grammar, no `BotFree` and no `NoReserved` — and the
+  reserved-atom shape fact is the stronger `StructPat.parseStructuredPaperPrime_inv`. Anything
+  citing `PatAuto.ifParse_mem_FP` as "the recognizer" is stale.
+* **There is no unescaped fragment grammar.** `parseRpnUnescaped`, `parseRpn_of_unescaped` and
+  the whole fragment lemma corpus in `Framework/Emission/RpnSentence.lean`
+  (`parseRpnUnescaped_cons`/`_mono`/`_append`/`_block_head`/`_bin_body`/`_bin_inv`/`_block_inv`/`_strip`)
+  are deleted; `parseRpn` is the only sentence-block parser and `StructPat.parseRpn_cons`,
+  `_mono`, `_append`, `_block_head`, `_bin_body`, `_bin_inv`, `_block_inv`, `_strip` are the
+  full-grammar versions to reach for. The structured leaf's framing is justified by
+  `StructPat.parseStructuredPaperPrime_inv` and `StructPat.parseRpn_iff_segMatch`, which is
+  what `Construction/LUV/SourceCodec.lean`'s header cites.
+* **`Framework/Machine/CodeSteps.lean` is gone**; the whole-tree time bound is
+  `codeMachineTime` / `codeMachineTime_poly` (`Framework/Machine/EvalnRegBound.lean`), and the
+  fixed-list run matcher (`TokenFold`'s `tkFold_undigitize` lane) went with it.
+* **`TokenFold`'s three-block packing has exactly two projections**, the public
+  `TokenFold.midBlock` and `TokenFold.lastBlock` with `midBlock_pair`/`lastBlock_pair` and
+  `midBlock_mem_FP`/`lastBlock_mem_FP`. The lane-local spellings (`leCli`/`leSlots`,
+  `icCli`/`icSlots`, `spCli`/`spSlots`, `cvJm`/`cvOut`, `dph`/`dcli`, `dst`, and the three
+  private Freeze copies `RunAuto.cliOf/tokOf`, `CtrAuto.cliBlk/tokBlk`,
+  `FreezeStep.gvCli/gvTok`) are gone. A lane that needs its own name for a sub-slot builds it
+  on those two.
+* **`StrictSeparators`' pointwise prefix layer is gone** (`PrefixAgree`, `prefixAgreeB` and
+  their laws): prefix comparison is Mathlib's `<+:`, certified by
+  `isPrefix_prim` / `isPrefixB_prim` in `Framework/BooleanWorlds.lean`, and
+  `prefixAgree_of_nested` is `prefix_comparable_of_nested`. `listDedup` and `sentenceDedup`
+  are gone likewise: use `List.dedup` with `dedup_prim` (`Construction/Primcodable.lean`),
+  `List.nodup_dedup` and `List.mem_dedup`.
+* **The rounded `gridApprox` stage table, the certified-product CCEE sub-lane, the
+  certified-source completeness lane, the unstrengthened diagonal, the discrete-ROI section
+  and the round-trip ROI cluster** are all deleted as superseded generations. The live
+  substitutes are `Dovetail.dusApprox` (`thm:dus`), `semanticProductWorld` with the
+  obstruction block below it, the entailment lane in
+  `Construction/SemanticExtension/LanguageCopy.lean` (whose completeness result
+  `liftedMachineSourcePrefix_eventually_valid` is what the endpoint consumes), the
+  world-valued obstruction, and `ROIBudget.repeatableROI_of_frequently`.
+
+**Shared vocabulary added in the same pass — reach for these rather than re-deriving.**
+`Construction/DeductiveDovetail.lean` is a new module owning two layers: the stage-list layer
+every `ComputableDeductiveProcess` proof should go through (`encode_toFinset_eq`,
+`encode_stage_prim_of_list (hl : Primrec l) (hD : ∀ k, D k = (l k).toFinset)`,
+`ComputableDeductiveProcess.ofEncodePrim`) and the dovetail layer (`exists_semiDecider`,
+`dovetailStage`, `mem_dovetailStage`, `dovetailProcess`, `dovetailProcess_D`,
+`dovetailProcess_covers`, `dovetailProcess_computable`). `theoremDP`, `paperTheoryDP` and
+`luvThresholdDP` are `dovetailProcess <atom> <code>`, and `theoremStage`, `paperTheoremStage`
+and `luvStage` no longer exist. The **prefix** process lives there too and moved:
+`prefixProcess ψ` (stage `n` = `{ψ₀ … ψₙ}`, frozen, `Paper node: thm:scon`) is in
+`Construction/DeductiveDovetail.lean`, not in `Construction/Conditioning/Presentation.lean`,
+with `mem_prefixProcess : φ ∈ (prefixProcess ψ).D n ↔ ∃ e ≤ n, ψ e = φ`,
+`self_mem_prefixProcess`, `prefixProcess_encode_prim (hψ : Primrec ψ)` and
+`prefixProcess_computable (hψ : Computable ψ)`; `semanticQuoteDP`, `semanticProductDP`,
+`semanticSourceDP`, `productDefDP` and `semanticRegistryProductDP` are all
+`prefixProcess <clause family>`, and the per-lane `*StageList` definitions with their `mem_`
+and `_exists` lemmas, and `sentenceListFinsetNorm{,_prim,_spec}`, are gone.
+`Dovetail.SelfClamped` (`Construction/NonDogmatism/UniversalDovetailer.lean`) is the one
+self-clamped stage-table scan over a fixed code `c` — `read`, `fuel`, `stage`, `state`,
+`selCode`, with `selCode_polyFueled` the `dd:fuel` certificate and `state_eq` /
+`eventually_le_stage` the two table-facing lemmas — and `Dovetail.dusApprox` and `UPrefix.uSel`
+are instantiations of it.
+
+**Where generic facts landed.** `Framework/Criterion.lean`: `Trader.Exploits.of_boundedDifference`,
+`strategyOfTokens_nil_trades`, `digitize_append`/`digitize_singleton`,
+`unaryDay_injective`/`mem_image_unaryDay`, and `PCWorld.holds_atom`/`holds_neg` as `@[simp]` at
+their own declarations. `Framework/BooleanWorlds.lean`: `allBitLists` (+ `mem_allBitLists`,
+`allBitLists_nodup`, `allBitLists_prim`) and the prefix layer above.
+`Framework/Foundations.lean`: the constructor codes `encode_falsum`, `encode_atom`,
+`encode_imp`, `encode_and`, `encode_or`, `encode_negAtom`, `encode_top`.
+`Framework/Emission/Computable.lean`: `exists_commonClock`, `clockedTokens_eq_of_emission`,
+`polyFueled_ifZero`, `finsetMembership_polyFueled`, `PolyTokenStream.of_eq`,
+`PolySegStream.constList`, `encode_rat_of_nonneg`, and the `RuntimeArith` section
+(`sqrtc_polyFueled`, `sizec_polyFueled`). `Framework/Emission/FreezeTransducer.lean`:
+`freezeNextNat*` and `freezeControlNat*`. `Framework/Emission/RpnSentence.lean`:
+`BitChain.rpn_top`, `BitChain.rpn_and`, `modDispatch_of_closure`, `parseRpn_and_blocks`.
+`Framework/Emission/DigitArith.lean`: `list_eq_rangeMap_getD`.
+`Framework/Emission/Emission.lean`: `acceptsWithin_mono`, `dovetailFound_mono`.
+`Framework/Affine.lean`: `AffineCombination.getD_map_range`. `Framework/Expectations.lean`:
+`PGenerableRat.ofPolyRatCodes` with `harmonicWeight_polyRatCodes`/`_mem`/`_not_constant`.
+`Framework/Machine/EvalnCompiler.lean`: `update_le`/`update_lt`, generic over
+`{ι} [DecidableEq ι]`. `Properties/Conditioning.lean`:
+`PCWorld.consistentWithTheory_union_left`/`_right` and
+`EF.retainedConditionPricesExceptZero_empty`. `Properties/Support/Exploitation.lean`: the one
+scale ladder (`ladderShares`, `ladderCoef`, `ladderEF`, `ladderTrader`, `ladderTrader_exploits`,
+`ladderCube_le_one`, `ladderWeight_mul`, `sum_range_triangle_comm`, `sum_inv_sq_le_two`).
+`Construction/Primcodable.lean`: `ratMin_prim`, `ratAbs_prim`, `ratNatCast_prim`,
+`natListSum_prim`, `ratListSum_prim` (Mathlib has **no** `Primrec` lemma for `List.sum`),
+`sentenceNeg_prim`, `sentenceImp_prim`, `listRangeAny_prim`, `dedup_prim`.
+`Construction/Quotation/ExactProduct.lean`: the public `models_iOpen_of_models`.
+
 ## Layout
 
 **One directory, one reason to exist**, stated in that directory's own map module, and legible
 from its name. The library is 160 modules; the full tree is in `LogicalInduction/README.md`'s
-*Layout* section, whose four graded entry points elaborate 40 / 58 / 148 / 159 of them. What
+*Layout* section, whose four graded entry points elaborate 39 / 58 / 148 / 159 of them. What
 belongs here is the rule that decides where a new module goes:
 
 * `Framework/` — the paper's §2–3 objects plus the substrate the later directories consume; a
@@ -107,14 +235,17 @@ belongs here is the rule that decides where a new module goes:
 * `Construction/` — §5, plus one lane directory per §4 family the construction discharges over
   the single market `liaHistory (paperDP T)`. A lane is named after the paper family, never
   after a role: there is no `Witnesses/`, no `Certified…`, no `…II`. Six of the nine lanes end
-  in an `Endpoints.lean` holding exactly the statements over that market. Three top-level
+  in an `Endpoints.lean` holding exactly the statements over that market. Four top-level
   modules of `Construction/` are not §5 mathematics but the substrate §5 runs on, and they are
   here rather than in `Framework/` because their subject matter is declared here:
   `Descriptions` and `ClockedSim` (the executable machine-description interpreter and its
   clocked simulator, which make the trader enumeration effective) sit beside
-  `MachineTraderEnumeration`, their only consumer, and `Primcodable` carries the concrete
+  `MachineTraderEnumeration`, their only consumer; `Primcodable` carries the concrete
   `Primcodable` instances and parser certificates — a `Primcodable RationalBeliefState`
-  instance cannot live under `Framework/`, since `RationalBeliefState` is `MarketMaker`'s.
+  instance cannot live under `Framework/`, since `RationalBeliefState` is `MarketMaker`'s —
+  and `DeductiveDovetail` carries the stage-list and dovetail construction every lane's
+  deductive process is built from, which is downstream of `Primcodable` for the same
+  reason.
 
 Two consequences worth stating because they were each derived the hard way. A module that
 *consumes* the criterion belongs in `Properties/`; a module whose conclusion *is* the criterion
@@ -196,7 +327,7 @@ by `digitMachineCodes_nest_not_polyMachineCodes` and `bigDigits_two_pow_not_poly
 
 Two paper conditions bound a runtime in the **value the program returns** rather than in the
 day it is given: `def:deferralfunc`'s condition 2, "`f(n)` computable in time polynomial in
-`f(n)`" (tex:1243), and `thm:wub`'s feedback clause, "`Th(φ_{f(n)})` computable in `O(f(n+1))`
+`f(n)`" (tex:1244), and `thm:wub`'s feedback clause, "`Th(φ_{f(n)})` computable in `O(f(n+1))`
 time" (tex:1251). `Complexity.FP` meters the length of its *input*, so it has no form of
 either condition of a machine handed the day alone — but it has one of a machine handed the
 **unary pair**, whose length dominates the value. That is the whole trick, and it is worth
@@ -208,7 +339,7 @@ picking the input that carries the bound is enough — no new FP primitive is ne
 
 | paper clause | Lean field | shape |
 |---|---|---|
-| `def:deferralfunc` cond. 2 (tex:1243) | `DeferralFunction.graph_fp` (`Properties/SelfTrust.lean`) | `∃ G ∈ Complexity.FP, ∀ n m, G (unary ⟨n,m⟩) = ⟦f n = m⟧` — the *graph* is decided, on an input of length `Nat.pair n m ≥ m` |
+| `def:deferralfunc` cond. 2 (tex:1244) | `DeferralFunction.graph_fp` (`Properties/SelfTrust.lean`) | `∃ G ∈ Complexity.FP, ∀ n m, G (unary ⟨n,m⟩) = ⟦f n = m⟧` — the *graph* is decided, on an input of length `Nat.pair n m ≥ m` |
 | `thm:wub` feedback (tex:1251) | `FeedbackTruth.FeedbackTruthComputation.computes` + `.computes_at` (`Construction/Statistics/FeedbackTruth.lean`) | `MachineDigits code` with `∀ k, code ⟨k, f (k+1)⟩ = ⌜value k⌝` |
 
 **The two are not symmetric and must not be described in one breath.** `graph_fp` is
@@ -251,7 +382,7 @@ source.
 provability, `∃ d, Proof T d φ ∧ dSize d ≤ k`, the bound **inclusive** as the paper's is),
 `conWithin T k` (= the paper's `Con(T)(k)`), `bprovValue T : ℕ → ℕ` (the decider),
 `conRunValue T f` (the universal decider `thm:pac` represents), `conWithin_of_consistent`,
-`conWithin_anti`, plus `ProofPacked`/`proofPacked_sigmaOne`/`not_proofPacked_sigmaOne`/
+plus `ProofPacked`/`proofPacked_sigmaOne`/`not_proofPacked_sigmaOne`/
 `proofPacked_computable` and `bProv_iff_bounded`, which is where `le_G_dSize` is spent.
 `Construction/Knowledge/Endpoints.lean` carries the claim family: `conClaimArg`, `conClaimSentence`,
 `conGamma`/`conGamma_spec`, `representedConClaims`, `conClaimSentence_ne_of_day_ne`.
@@ -321,8 +452,8 @@ reconstruction theorem), `sourceRun_sourceTokens` (completeness), canonical-only
 `structuredNatRun`, level-function factoring, full `Primrec` certificates. The endpoint's
 signature is untouched by all of this; what the gate buys is that the day sentence's content
 *equals* the `dd:machinetheory` claim. Also here: `theoryOf_const_ofNNF` (every one-axiom
-theory realized exactly; uniform surjectivity honestly scoped as not formalized),
-`not_provableCode_zero`, and `ArithSource.compile_eq_of_sourceTokens_eq` — `sourceTokens` is
+theory realized exactly; uniform surjectivity honestly scoped as not formalized)
+and `ArithSource.compile_eq_of_sourceTokens_eq` — `sourceTokens` is
 NOT injective (leaf `(φ⋏ψ)` vs `and (leaf φ) (leaf ψ)`) but equal runs compile equally.
 `machineTheoryInconsistent_iff` and `theoryOf_const_ofNNF` are `Paper node: thm:incons`
 carriers.
@@ -623,6 +754,41 @@ convenience — clients hand-assemble via `paperTheoryDP_subset_paperDP` + `Clas
 metering trap: when a value-metered field appears on day-indexed syntax, ask for the
 *emptiness* proof, not an inhabitation proof.
 
+
+Cleared in the end-state pass, with the check that clears each — none of these is a defect
+and none should be re-opened:
+
+* **`simp only []` in `Framework/Emission/DigitArith.lean`'s `IsPolyBounded` side-goals is
+  LOAD-BEARING.** It beta-reduces `(fun m => mulCarry4 (x m.unpair.1) …) z` before `omega`
+  sees the goal; delete it and `omega` fails on an uninterpreted atom. The same holds at
+  `Construction/LUV/SourceCodec.lean`'s residue, where the call also iota-reduces a `match` on
+  a `cons` so the following `rw` can see its `if`. The `unusedSimpArgs` linter tells you which
+  *argument* is unused, never that the *call* is; treat every flagged `simp only [x]` as
+  `simp only []` until a build says otherwise.
+* **`Construction/Brouwer.lean`'s `pivot_ne` and `face_last_ge` have no textual consumer and
+  are load-bearing** through `grind`/`aesop`/`simp_all`. They are docstring'd for that reason.
+* **`BitChain.rpn_top` / `rpn_and` moved to `Framework/Emission/RpnSentence.lean` on
+  placement, not on cross-lane use.** They had no consumer outside
+  `Construction/NonDogmatism/BitPrefix.lean`; a generic fact about `rpn` belongs beside `rpn`'s
+  lemma corpus. Do not re-raise a "already consumed across lanes" claim about them.
+* **`PrefixMachine`'s `p2s` and `sizec` are not two copies of one proof.** `p2s x = 2 ^ x.size`
+  doubles a state clocked by a halving and `Nat.size` counts the halvings; they share only the
+  shape `PolyFueled.prec` already abstracts, and `p2s` cannot be derived from
+  `sizec_polyFueled` because `2 ^ k` is not poly-fueled as a standalone function — it is
+  admissible only because `p2s x ≤ 2(x+1)` caps the output.
+* **`Conditioning.lean`'s two `@[simp]` rank lemmas (`absVal_rank`,
+  `conditioningTolerance_rank`) are not dead.** They fire anonymously in six proofs in the same
+  file; a reference grep does not see them.
+* **The four graded entry-point counts are import CLOSURES, not directory file counts.**
+  `scripts/check_li_census.py` recomputes all of them from source, so a hand count of the files
+  under `Properties/` disagreeing with the printed 58 is a mis-reading of what the number says,
+  not a stale figure.
+* **A `Paper node:`-less `lemma` in the `AxiomAudit.lean` inventory is within convention**, but
+  it needs an exemption entry in `scripts/check-paper-nodes.sh` — a name in the inventory with
+  no `Paper node:` line and no exemption fails `MISSING FIELD`, and an exemption for a name that
+  is not inventoried fails `STALE EXEMPTION`. Both directions are checked, which is what keeps
+  the witness and obstruction blocks honest.
+
 More cleared points, each with the argument that clears it, so the next reader need not
 re-derive them:
 
@@ -665,8 +831,12 @@ re-derive them:
   range, so the Lean hypothesis set is *implied* by the paper's.
 * **`hshare : ∀ n, (As n).shareNorm P ≤ b` on `luv_wubexp_ofComputation` is not extra
   generality lost**: `LUVCombination.BoundedSequence.exists_rat_shareBound`
-  (`Properties/ExpectationProperties.lean`) derives it from the `def:blcp` L¹ bound, and the
-  `_ofBounded` / `_unconditional` forms do exactly that.
+  (`Properties/ExpectationProperties.lean`) derives it from the `def:blcp` L¹ bound. The
+  client form that discharges it is the `_ofSyntax` tier (`Construction/LUV/Syntax.lean`),
+  whose four endpoints call `exists_rat_shareBound` internally so no `b` is printed; the
+  `luv_wubexp_ofComputation` family and its `_unconditional` form both print `b` and
+  `hshare`, and a client supplies them from that lemma. There is no intermediate
+  bound-discharging tier.
 * **`MachineDigits` / `MachineTokenStream` do not smuggle a value bound in through the length
   bound.** FP on `unaryDay d` bounds the emitted *word*, so token values up to `4^poly(d)` are
   admitted — witnessed by `machineDigits_two_pow` and `machineRatCodes_two_pow_inv`, which are
@@ -874,6 +1044,109 @@ history-arbitrary and so discharges `weight_generable` in one line at any market
 
 ## Settled design decisions
 
+**Consumerless by design, and not to be re-raised as dead code.** The library's default is
+that a declaration with no consumer, no `Paper node:` line and no client test is deleted.
+These are the standing exceptions, each with the reason it earns its keep:
+
+* **The semantic-extension obstruction block.**
+  `semanticProductDP_no_increasing_factor_assignment`,
+  `semanticFreshIncreasing_not_jointly_reflected`, `semanticFreshIncreasing_no_cutCertificate`
+  and `theorem_quote_product_not_jointly_satisfiable` have no term-level consumer and never
+  will: they *refute* candidate universal designs. `semanticProductDP_hworld` is their `N+`
+  witness (the class of worlds they quantify over is non-empty) and
+  `semanticFreshIncreasingLUVSeq_fresh` / `_machineThresholdCodeSeq` certify that the
+  malformed witness family satisfies the very premises a candidate fix would impose.
+  `quotationRepresentation_positive_path` / `_negative_path` (`Quotation/Packages.lean`) are
+  the same shape for `QuotationTheoryPresentation`'s two quote fields. All nine are
+  inventoried in `AxiomAudit.lean` and named in `check-paper-nodes.sh`'s exemption table,
+  because a `Paper node:` line would file a refutation as a rendering.
+* **`Budgeter.lean`'s `(0, 1]` characterisation.** `lossCap_le_one`,
+  `EF.listMin_denote_le_one` and `budgetScaleFeature_denote_le_one` are the module header's
+  central claim about `eq:budgeter` — that the clause only ever scales a trade *down* —
+  and deleting them would leave that claim as unsupported prose. They are exported through the
+  API import and exercised in `APITests/LogicalInduction.lean` by a client example concluding
+  `(budgetScaleFeature DP Tr b Q n).denote P ∈ Set.Ioc (0 : ℝ) 1`.
+* **`ComputableLUV.luvThresholdDP_computable`.** `ComputableDeductiveProcess (L.luvThresholdDP T)`
+  is one of the two fields of the `[IsLogicalInductor P (L.luvThresholdDP T)]` instance that
+  four `_arith` endpoints in `Construction/LUV/Endpoints.lean` bind; without it nothing on the
+  gate rules those four out as vacuous. It is inventoried in the non-vacuity witness block.
+  Apply the same test before deleting any other unconsumed `*_computable` / `*_hworld` lemma
+  about a constructed process: ask which instance field it inhabits.
+* **The machine splice suite is kept complete against `BigSpliceStream.*`** — including
+  `priceSlot` and `serialize_letE`, which nothing currently calls — so that a fuel-suite
+  assembly transfers to the machine suite by renaming rather than by re-deriving. The
+  rationale is stated once, in `Framework/Machine/SpliceMachine.lean`'s
+  *Completeness of the mirror* section. The sentence suite is deliberately **not** mirrored
+  that way: it is eleven declarations, and `MachineSentenceCodes.ofMachineDigits` was dropped
+  because the fuel side's counterpart had no machine-side use.
+* **`Construction/Brouwer.lean`'s file-level `set_option maxHeartbeats 1000000`.** It covers
+  machine-generated `grind`/`simp_all`/`aesop` proofs over `Fin`-indexed sums and
+  permutations, is justified in a comment at the site, and that file does not behave like
+  hand-written Lean (see the gotchas note on grep and deadness). Do not sweep it with the
+  rest.
+
+**`ROIBudget.PolyActiveSchedule` is a `UnaryRuler`, not a fuel existential.** The only
+fuel-metered item left in the ROI lane is the `check_poly` field of
+`VerifiedMaturitySchedule` / `HistoricalVerifiedMaturitySchedule` — a one-bit schedule
+predicate, not emitted data — and `VerifiedMaturitySchedule.polyActive` is the single crossing
+from fuel into the machine class. Everything the shared budgeted trader emits (trade counts,
+the openness table) is machine-metered.
+
+**The dovetail and stage-list combinator cannot live in `Framework/`, and the reason is
+structural.** Any statement of the form `Primrec (atom : ℕ → Sentence)` or
+`Primrec fun k => Encodable.encode (D k : Finset Sentence)` needs the `Primcodable Sentence`
+instance, which is built in `Construction/Primcodable.lean` — downstream of all of
+`Framework/`. The stage-list half additionally needs `sentenceInsertionSort_prim` / `dedup_prim`
+(same file) and `stageSort` / `sentenceCodeLE` (`Properties/Support/SettlementDecision.lean`).
+Anyone asked to put `Primrec`-over-`Sentence` machinery in `Framework/` should push back with
+this rather than attempt it; moving the combinator means moving the `Primcodable Sentence`
+layer itself.
+
+**`Framework/Emission/Computable.lean` keeps its own two-line proofs of
+`evaln_prec_zero`/`evaln_prec_succ`** even though `Framework/Machine/EvalnCompiler.lean`
+proves the unconditional equational forms and there is no import cycle. The reason is the
+import closure, not the mathematics: `Computable.lean` imports only `Framework/Criterion` plus
+Mathlib, while `EvalnCompiler` imports `complexitylib`, so deriving from it would put the
+register-machine substrate in the dependency closure of every `dd:fuel` statement. The
+converse edge is fine and is used: `Framework/Emission/FreezeTransducer.lean` imports
+`Computable.lean`, which does not enlarge `Computable.lean`'s own closure.
+
+**The conditioning lane's plain price rewrite is the zero-aware rewrite at `zeroDays = ∅`.**
+`conditionPriceTokenSegment` / `Emit` / `Run` still exist (the digit-model emitters name them)
+but their parser theory is *derived*: `conditionPriceTokenRun_eq_zeroAware` plus
+`EF.retainedConditionPricesExceptZero_empty` (`Properties/Conditioning.lean`) give
+`conditionPriceTokenRun_range` and `strategyOfTokens_conditionPriceTokenRun_trades` in four
+lines each. There is no `retainedConditionStreamState`,
+`streamReadFrom_conditionPriceTokenEmit` or `deserializeTrades_conditionPriceTokenRun` any
+more — the zero-aware twins are the only copies, so do not re-prove a plain-lane parser fact;
+instantiate the zero-aware one at `∅`. Both routes the gated-conditioning contract offers are
+in use at once: the *skeleton* is parameterized over the substitution, and the *compiler*
+derives its plain family at `zeroDays = ∅`, which is what keeps the EF-level bridge alive.
+
+**`Construction/Conditioning/FramePass.lean` publishes no class-preservation capstone, by
+design.** Its fifteen `thm:scon` annotations are infrastructure of the machine rendering,
+inventoried as such. `def:ec` is read on ordinary machines and the transports are
+`CondStep.conditionedTranslation_preserves_ec` / `.eventualConditionedTranslation_preserves_ec`;
+closure of the certification engine's own class is not a paper claim, so there is no fuel-side
+counterpart and none is missing.
+
+**`semanticRegistryClosureDP_hworld` is deleted, and the reason matters for anyone tempted to
+re-factor.** Its premise `hDPfresh : ∀ k φ, φ ∈ DP.D k → SemanticPrimeFreshSentence φ` is
+UNSATISFIABLE at the one base the lane uses, because `liftedCCEEBaseDP` contains
+`semanticQuoteDP`, whose clauses mention quote leaves (semantic-prime atoms). That is why
+`canonicalCCEEDP_hworld` re-proves the three-way trichotomy inline instead of instantiating a
+general closure lemma: the general form cannot apply.
+
+**Open placement question: `DeferralFunction.computable`.** Its subject is `DeferralFunction`
+(`Properties/SelfTrust.lean`) but its engine is `UnaryRuler.primrec`
+(`Construction/MachineTraderEnumeration.lean`), and `MachineTraderEnumeration` does not import
+`SelfTrust`, so neither module can host it without a new import edge — and `Properties/`
+importing `Construction/` is the wrong direction. The only modules upstream of its current
+home that see both are `Construction/Statistics/SettlementCompiler.lean` and
+`Construction/Paper/ComputationDP.lean`, neither of which owns the subject. It stays in
+`Construction/Quotation/MarketQuoteCodes.lean` as the least-wrong placement; moving it needs a
+ruling on where a deferral-function computability fact belongs.
+
 **`thm:provind` is stated at the paper's semantic quantifier, and stage membership is strictly
 stronger.** `lic_provind` takes `∀ n v, v.ConsistentWithTheory DP → v.Holds (φ n)`, which is
 what Θ-completeness (tex:740) makes "φ is a theorem" mean under §4's standing setting. The
@@ -884,9 +1157,9 @@ axioms is Θ-complete and contains no derived theorem. The one-way bridge is
 (`Framework/Compactness.lean`) goes the OTHER way and lands on stage *entailment*, not
 membership; it is not needed here, because the affine parent
 `PolySequence.affine_provind_theory_eq` was already at the semantic form and moving to it
-shortens the proofs. `lic_provind_seq`, whose `hded : ∀ n, φ n ∈ DP.D n` is the stronger
-stage-indexed premise, is a `lemma` and carries no `Paper node:` line: a declaration whose
-docstring disclaims a node must not be anchored to it.
+shortens the proofs. There is no stage-indexed variant taking `hded : ∀ n, φ n ∈ DP.D n`:
+the fragment that carried it had no consumer and no node, and a declaration whose docstring
+disclaims a node must not be anchored to one to keep it alive.
 
 **"The unary pair" means the unary numeral of `Nat.pair`, and it is the general device for
 stating a polynomial-in-the-OUTPUT bound in an input-length class.** See *The two
@@ -938,9 +1211,10 @@ the declaration.
   (`Framework/Emission/Computable.lean`) separates only `PolyFueled`, by output size. The
   model card's "Lower calibration" wording is authoritative.
 - The fuel bound is polynomial in the **day**, and the day is unary, so composing
-  `codeEvalSteps_poly` (`Framework/Machine/CodeSteps.lean`) with either the `PolyFueled`
-  bound or `PolyFueledTrader`'s explicit clock `a * (n + 1) ^ k + a` gives a step count
-  polynomial in the input length. A binary day rendering would silently strengthen the class.
+  `codeMachineTime_poly` (`Framework/Machine/EvalnRegBound.lean`) with either the
+  `PolyFueled` bound or `PolyFueledTrader`'s explicit clock `a * (n + 1) ^ k + a` gives a
+  step count polynomial in the input length. A binary day rendering would silently
+  strengthen the class.
 - The clock normal form's `+ a` summand and `(n + 1)` base are load-bearing for
   satisfiability at degenerate inputs: `|output| ≤ |input| + t` at `w = []` needs
   `clock 0 ≥ output length`, which `2a` supplies and a bare `a · n ^ k` would not.
@@ -1004,11 +1278,13 @@ the declaration.
   `EfficientlyComputable` is not defined as "occurs in the enumeration"; that every member
   does occur is the content of `exists_enumeratedTrader_eq`.
 
-**Renames — every name left of an arrow below is gone; grepping it finds nothing.** `buySeq_ec_rpn` →
-`buySeq_ec`; `rpnSentenceCodes_bitPrefixSentence` →
+**Renames — every name left of an arrow below is gone; grepping it finds nothing.**
+`rpnSentenceCodes_bitPrefixSentence` →
 `bigSentenceCodes_bitPrefixSentence`; `digitMachineCodes_twoPowMachine_not_polyMachineCodes` →
 `digitMachineCodes_nest_not_polyMachineCodes` with the witness changed to
 `Nat.Partrec.Code.nest`; `ratCodeFeature`/`toWeighting` moved up into `Framework`/`Properties`.
+The `buySeq` / `buySeq_value` / `buySeq_ec` lane is gone outright — it was a documented
+fragment with no node and no consumer.
 
 **Σ₁-soundness is assumed nowhere, and object-level exclusivity is what makes that
 possible.** No declaration in `LogicalInduction/` takes a `SoundOnHierarchy` instance
@@ -1555,11 +1831,21 @@ boundary, if any, a given paper node carries is recorded in that node's own row 
 `scripts/coverage-classification.md`; `LogicalInduction/README.md` explains the categories.
 Entries there are not audit findings unless the justification itself is wrong.
 
+- **`CertifiedSourceLUVSeq` stands with a two-lemma API**, `source_valued` and
+  `thresholdSchema`. Its verification apparatus — `toPresented`, the
+  `certified_*_eventually_checked` family, `certifiedSourcePrefix_eventually_valid`,
+  `certifiedSource_threshold_reflected`, `certifiedSource_valuesAt_iff` — is a superseded
+  generation and is deleted: the live source gate is the certificate-free entailment lane in
+  `Construction/SemanticExtension/LanguageCopy.lean`, whose completeness result
+  `liftedMachineSourcePrefix_eventually_valid` is what
+  `lic_no_expected_net_update_conditional_exact_canonical` actually consumes. The structure
+  itself is kept as the disclosed open-inhabitation interface (see the bullet below).
+
 - **`CertifiedSourceLUVSeq` has no inhabitant, and its satisfiability is open.**
   (`Construction/SemanticExtension/Source.lean`.) Three of its four fields are routine;
   `cut_certificate : SourceCutCertificate DP toLUV` asks every world consistent with the
   completed theory to rationally cut every member of the family at a caller-chosen `DP`, and
-  the naive universal route is REFUTED by `no_nonvacuous_worldValued_presented_of_rpn`
+  the naive universal route is REFUTED by `no_nonvacuous_worldValued_presented_of_machine`
   (`SemanticExtension/Prime.lean`). An inhabitant would have to name a specific process with
   the cut property. Everything stated over the structure is therefore conditional on a caller
   supplying one; the interface is proof-carrying by design, not vacuous by oversight. Its
@@ -1574,7 +1860,7 @@ Entries there are not audit findings unless the justification itself is wrong.
   *strengthens* `IsLogicalInductor`, so the direction is safe; the citation is what makes it
   disclosed rather than silent.
 - **`FeedbackTruthComputation.computes` is a relaxation of tex:1251, and `DeferralFunction.graph_fp`
-  is an equivalent of tex:1243.** The asymmetry is deliberate and permanent (`Complexity.FP`
+  is an equivalent of tex:1244.** The asymmetry is deliberate and permanent (`Complexity.FP`
   has no linear-time form); it is set out at *The two output-sensitive clocks* above and must
   not be flattened into one sentence.
 - **Machine naming is not Mathlib's `Encodable.encode`**. `encodeCode`
@@ -1654,6 +1940,95 @@ mention unboundedly many `φ`; and `not_overgeneral_ifp` negates the statement a
 paper's own quantifiers (`ComputableMarket` is `def:marketprocess`).
 
 ## Pitfalls
+
+**The statement snapshot has two operating instructions, and both have cost a full
+reconciliation.** `scripts/li_statement_snapshot.py`'s freeze set is the union of the
+`Paper node:`-annotated carriers, the `AxiomAudit.lean` inventory, every `theorem` under
+`LogicalInduction/` and every `API.lean` declaration. (1) A `theorem` demoted to `lemma` —
+names and types unchanged — therefore leaves the set, so a snapshot taken without the
+demotion list passed as `--extra` reports dozens of spurious losses on a clean tree; read a
+large MISSING list as a missing `--extra` before reading it as a disaster. (2) `diff --renames`
+substitutes every occurrence of a rename's NEW name back to its OLD name in every printed
+type, so a rename entry whose new name is a live, widely-used identifier rewrites the whole
+surface: one such entry produced 263 "CHANGED" blocks whose before and after were
+character-identical. Run the diff without `--renames` and account for the MISSING names by
+hand.
+
+**Two findings raised against the same round can each protect a declaration the other kills.**
+One report kept `rpnCondWindow_zero` because it fires at a line number, while another deleted
+the section containing that line; applying both left `rpnCondWindow` and `rpnCondWindow_zero`
+with no consumer at all. When a fix spans two files that cite each other's line numbers,
+re-run the reference check *after* the first deletion, not before.
+
+**A dead-code cascade in a parser lane does not terminate where the first step suggests.**
+Retiring the token-granular pattern layer orphaned `parseRpnUnescaped_block_inv`, which
+orphaned `_bin_inv`, which orphaned `_strip`; those, with the already-dead `_bin_body`, were
+the only consumers of `_block_head`, hence of `_append`, `_mono` and `_cons` — an entire
+section of `Framework/Emission/RpnSentence.lean`, and finally the `parseRpnUnescaped`
+definition in `Framework/Criterion.lean`. Compute the transitive orphan closure before
+starting, and decide in advance where it stops: the natural stopping points are a
+statement-surface boundary and a declaration that prose elsewhere CITES as proved. Both showed
+up here, and the second is the one to handle deliberately — re-point the prose at the facts
+the claim actually rests on, or the deletion turns a proved citation into an assertion.
+
+**Deleting an unused hypothesis from a `def` cascades three ways**, and the linter reports
+only the first: section-variable lemmas lose the automatic `include` (add `include h`), a
+`rw [lem]` that used it leaves a `case h` goal (pass it explicitly, or drop it from `lem`
+too), and positional call sites change arity. Sixteen linter-flagged binders took four build
+rounds and about forty further binders to reach a fixpoint.
+
+**A parameter passed as a literal `0` at every recursive call is invisible to the type checker
+and nearly invisible to a regex.** Stripping such a slot from a parser needed fifteen files,
+and the sites a `NAME arg1 (0|depth|d|k)` pattern misses are the NAMED-argument ones —
+`f (d := 0) (d' := 0) …`. Grep for `(<param> :=` separately before building.
+
+**Renaming a namespace that is REOPENED elsewhere leaves `open <OldName>` lines in files that
+do not import the reopening file**, and those fail with `unknown namespace` even when nothing
+from the namespace is used. Grep `open .*<Name>` before the rename, not after the gate. The
+mirror-image trap: an `open` in an audit block may be protecting exactly one unqualified
+name, and whether it does depends on whether that declaration is inside the namespace or
+after its `end` — check the `end` line, not the file.
+
+**The three prose gates read PATTERNS, and rewording is what breaks them.**
+`check_li_census.py` recomputes every printed census and module count through an explicit
+regex listed beside its site, and a pattern that no longer matches is itself a failure —
+reword freely, but keep the number greppable or update the pattern in the same change.
+`check_li_rollcall.py` diffs `AxiomAudit.lean`'s canonical inventory against
+`APITests/LogicalInduction.lean`'s roll-call in both directions, and recomputes the
+`𝗜𝚺₁ ⪯ T` endpoint list and the `Construction/Primcodable.lean` importer count.
+`check_li_class_claims.py` is the one that surprises: it reads, per *clause* (sentences cut
+at semicolons, backticked spans masked first), every metering class a strength row or a
+trust-surface reading note attributes to a named endpoint, and requires it to occur in that
+endpoint's elaborated signature or in a field of a boundary structure the signature binds.
+A clause is exempt only if it carries the vocabulary of a legitimate non-hypothesis use — a
+negative claim, a producer route or bridge, a strictness foil, a retirement — and that
+vocabulary is read off the *prose*, never off a backticked name, so a lemma called
+`not_polyNatCodes_ack` does not exempt the clause it sits in. If a true sentence trips it,
+the fix is to write the clause in that vocabulary, not to widen the checker.
+
+**`check_li_census.py` treats ANY new `structure` whose field types mention a fuel, token or
+value metering class as a boundary structure needing a FIELD METERING TABLE row.** A bundle of
+closure operations over `PolyFueled` trips it. Take the operations as explicit hypotheses of
+the shared lemma instead of bundling them into a structure: no table row, no new type on the
+surface, and the call sites are the same length. Adding a structure to `#assert_fields` has
+the same effect from the other direction — it enters the paper-node inventory, and
+`check-paper-nodes.sh` then demands a `Paper node:` line or a named exemption.
+
+**Adding ONE module under `LogicalInduction/` breaks `check_li_census.py` in five places at
+once**: the module total and three closure numbers in `LogicalInduction/README.md`, the same in
+`LogicalInduction/API.lean`'s header, and the *Layout* line in this file. All five are
+recomputed from source, so the gate is red until every one is updated in the same change.
+
+**When deleting a lane that an inventoried `#assert_axioms_clean` block names, the
+`AxiomAudit.lean` line is a SEPARATE edit.** `check-paper-nodes.sh` fails with
+`MISSING FIELD: inventory member '<name>' has no Paper node annotation` — not
+`unknown identifier` — because the inventory is read textually. Grep `AxiomAudit.lean` for
+every deleted name before the gate.
+
+**Naming a worked example's data by a `def` can break proofs that were reducing it by
+`rfl`.** Replacing a literal `Formula.atom 0` inside an example's entry table by a named
+`exampleSentence` left `⊢ #0 = exampleSentence` unsolved in two downstream proofs; the fix is
+to state the surrounding `by_cases`/`simp` in the NEW name rather than the literal.
 
 **A WRONG BELIEF that stood in this library for a long time, and the shape of its repair.** The
 claim was that a `MachineDigits` certificate on a *rational* value stream needs an arithmetic

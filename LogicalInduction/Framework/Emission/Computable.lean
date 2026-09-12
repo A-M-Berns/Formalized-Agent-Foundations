@@ -1,5 +1,6 @@
 import LogicalInduction.Framework.Criterion
 import Mathlib.Analysis.SpecificLimits.Normed
+import Mathlib.Data.Nat.Size
 
 /-!
 # Efficient-computability infrastructure (`dd:fuel`)
@@ -24,7 +25,8 @@ Contents:
   `predc`, `subc` and `len4` are code definitions, and addition, multiplication,
   division with remainder, gcd and division by a power of four enter as the poly-fuel
   lemmas `addc_polyFueled`, `mulc_polyFueled`, `mul_polyFueled`, `divmodc_polyFueled`,
-  `divmod1_polyFueled`, `gcdc_polyFueled` and `divPow4_polyFueled`.  `polyFueled_eqConst`
+  `divmod1_polyFueled`, `gcdc_polyFueled`, `divPow4_polyFueled`, `sqrtc_polyFueled` and
+  `sizec_polyFueled`.  `polyFueled_eqConst`
   and `polyFueled_selectConst` are the constant-test and constant-selection tables the
   settlement clock, the conditioning compiler and the freeze compiler all branch on.
 * **Emission layers**, in increasing generality: fixed-length token lists
@@ -772,6 +774,29 @@ lemma PolyFueledTuple.cons {t : ℕ → ℕ} {ts : List (ℕ → ℕ)} {ct : Nat
     funext n; simp [tupleEnc]
   rw [heq]; exact ht.pair hcs
 
+/-- A length/token emission under one polynomial clock *is* the clocked token stream.
+This is the step every raw-emission certificate below shares. -/
+lemma clockedTokens_eq_of_emission (raw : ℕ → List ℕ)
+    (lengthCode tokenCode : Nat.Partrec.Code) (a k : ℕ)
+    (hlength : ∀ n, evaln (a * (n + 1) ^ k + a) lengthCode n =
+      some (raw n).length)
+    (hsize : ∀ n, (raw n).length ≤ a * (n + 1) ^ k + a)
+    (htoken : ∀ n i, i < (raw n).length →
+      evaln (a * (n + 1) ^ k + a) tokenCode (Nat.pair n i) =
+        some ((raw n).getD i 0)) :
+    ∀ n, clockedTokens lengthCode tokenCode (a * (n + 1) ^ k + a) n = raw n := by
+  intro n
+  unfold clockedTokens
+  rw [hlength n]
+  simp only []
+  rw [min_eq_left (hsize n)]
+  apply List.ext_getElem
+  · simp
+  · intro i hleft hright
+    simp only [List.getElem_ofFn]
+    rw [htoken n i hright, Option.getD_some]
+    exact List.getD_eq_get (raw n) 0 ⟨i, hright⟩
+
 /-- Exact canonical token emitters instantiate the bounded-emulator definition of efficient
 computability.  This is the bridge used by all concrete trader compilers below. -/
 lemma ecTok_of_rawEmission (Tr : Trader) (raw : ℕ → List ℕ)
@@ -791,19 +816,8 @@ lemma ecTok_of_rawEmission (Tr : Trader) (raw : ℕ → List ℕ)
     funext n
     change strategyOfTokens n
       (clockedTokens lengthCode tokenCode (a * (n + 1) ^ k + a) n) = Tr.strat n
-    have htoks :
-        clockedTokens lengthCode tokenCode (a * (n + 1) ^ k + a) n = raw n := by
-      unfold clockedTokens
-      rw [hlength n]
-      simp only
-      rw [min_eq_left (hsize n)]
-      apply List.ext_getElem
-      · simp
-      · intro i hleft hright
-        simp only [List.getElem_ofFn]
-        rw [htoken n i hright, Option.getD_some]
-        exact List.getD_eq_get (raw n) 0 ⟨i, hright⟩
-    rw [htoks, hstrategy n]
+    rw [clockedTokens_eq_of_emission raw lengthCode tokenCode a k hlength hsize htoken n,
+      hstrategy n]
   exact congrArg Trader.mk hstrat
 
 /-- Exact canonical token emitters instantiate the bounded-emulator definition of efficient
@@ -826,20 +840,8 @@ lemma ecTok_of_exactEmission (Tr : Trader)
     funext n
     change strategyOfTokens n
       (clockedTokens lengthCode tokenCode (a * (n + 1) ^ k + a) n) = Tr.strat n
-    have htoks :
-        clockedTokens lengthCode tokenCode (a * (n + 1) ^ k + a) n =
-          serializeTrades (Tr.strat n).trades := by
-      unfold clockedTokens
-      rw [hlength n]
-      simp only
-      rw [min_eq_left (hsize n)]
-      apply List.ext_getElem
-      · simp
-      · intro i hleft hright
-        simp only [List.getElem_ofFn]
-        rw [htoken n i hright, Option.getD_some]
-        exact List.getD_eq_get (serializeTrades (Tr.strat n).trades) 0 ⟨i, hright⟩
-    rw [htoks]
+    rw [clockedTokens_eq_of_emission (fun n => serializeTrades (Tr.strat n).trades)
+      lengthCode tokenCode a k hlength hsize htoken n]
     unfold strategyOfTokens
     rw [deserializeTrades_serializeTrades]
     simp only
@@ -970,6 +972,11 @@ lemma PolyTokenStream.polyTok {c : Nat.Partrec.Code} {f : ℕ → ℕ} (h : Poly
   refine ⟨[f], fun _ => rfl, fun t ht => ?_⟩
   simp only [List.mem_singleton] at ht; subst ht; exact ⟨c, h⟩
 
+/-- Transport a poly token stream along a pointwise equality of streams. -/
+lemma PolyTokenStream.of_eq {s s' : ℕ → List ℕ} (h : PolyTokenStream s)
+    (he : ∀ n, s n = s' n) : PolyTokenStream s' := by
+  rwa [funext he] at h
+
 /-- Efficient computability from a compositional stream proof. -/
 lemma ecTok_of_stream (Tr : Trader)
     (h : PolyTokenStream (fun n => serializeTrades (Tr.strat n).trades)) :
@@ -1002,6 +1009,18 @@ lemma encode_rat_eq (q : ℚ) :
 
 lemma encode_int_natCast (n : ℕ) : Encodable.encode ((n : ℤ)) = 2 * n := rfl
 
+/-- Closed pairing form of a **nonnegative** rational's code: `⌜q⌝ = ⟪2 · num, den⟫`.  The
+nonnegativity is what collapses `Encodable.encode q.num` to `2 * q.num.toNat`, so a consumer
+recovers the numerator by halving the left component. -/
+lemma encode_rat_of_nonneg {q : ℚ} (hq : 0 ≤ q) :
+    Encodable.encode q = Nat.pair (2 * q.num.toNat) q.den := by
+  have hnn : 0 ≤ q.num := Rat.num_nonneg.mpr hq
+  have h : Encodable.encode q.num = 2 * q.num.toNat := by
+    obtain ⟨m, hm⟩ := Int.eq_ofNat_of_zero_le hnn
+    rw [hm]
+    simpa using encode_int_natCast m
+  rw [encode_rat_eq, h]
+
 lemma encode_rat_natCast (n : ℕ) :
     Encodable.encode ((n : ℚ)) = Nat.pair (2 * n) 1 := by
   rw [encode_rat_eq, Rat.num_natCast, Rat.den_natCast, encode_int_natCast]
@@ -1011,6 +1030,41 @@ lemma encode_rat_inv_natCast {n : ℕ} (hn : 0 < n) :
   rw [encode_rat_eq, Rat.inv_natCast_num_of_pos hn, Rat.inv_natCast_den_of_pos hn]
   rfl
 
+/-- `⌜(0 : ℚ)⌝ = 1`. -/
+lemma encode_rat_zero : Encodable.encode ((0 : ℚ)) = 1 := rfl
+
+/-- `⌜−n⌝ = 2n − 1` for `n > 0`, via `Int.negSucc`. -/
+lemma encode_int_neg_natCast {n : ℕ} (hn : 0 < n) :
+    Encodable.encode ((-(n : ℤ))) = 2 * n - 1 := by
+  have h : -((n : ℤ)) = Int.negSucc (n - 1) := by omega
+  rw [h, show Encodable.encode (Int.negSucc (n - 1)) = 2 * (n - 1) + 1 from rfl]
+  omega
+
+lemma encode_rat_neg_natCast {n : ℕ} (hn : 0 < n) :
+    Encodable.encode (-((n : ℚ))) = Nat.pair (2 * n - 1) 1 := by
+  rw [encode_rat_eq, Rat.neg_num, Rat.neg_den, Rat.num_natCast, Rat.den_natCast,
+    encode_int_neg_natCast hn]
+
+/-- Encoding a normalized negative fraction: `⌜−(a/b)⌝ = pair (2(a−1)+1) b`. -/
+lemma encode_rat_neg_div {a b : ℕ} (ha : 0 < a) (hab : a < b) (hcop : a.Coprime b) :
+    Encodable.encode (-((a : ℚ) / (b : ℚ))) = Nat.pair (2 * (a - 1) + 1) b := by
+  have hb : b ≠ 0 := by omega
+  have hnat : (Int.negSucc (a - 1)).natAbs = a := by
+    rw [Int.natAbs_negSucc]
+    omega
+  have hcop' : (Int.negSucc (a - 1)).natAbs.Coprime b := by rwa [hnat]
+  have heq : -((a : ℚ) / (b : ℚ)) = Rat.mk' (Int.negSucc (a - 1)) b hb hcop' := by
+    rw [Rat.mk_eq_divInt, Rat.divInt_eq_div]
+    have hcast : ((Int.negSucc (a - 1) : ℤ) : ℚ) = -(a : ℚ) := by
+      have h1 : Int.negSucc (a - 1) = -(a : ℤ) := by omega
+      rw [h1]
+      push_cast
+      ring
+    rw [hcast]
+    push_cast
+    ring
+  rw [heq, encode_rat_eq]
+  rfl
 /-- Reciprocal of a **positive** rational, in closed arithmetic form on the codes: if
 `⌜q⌝ = ⟪2a, b⟫` (numerator `a > 0` sits on the `2n` branch of `ℤ`'s sign fold) then
 `⌜1/q⌝ = ⟪2b, a⟫`.  No normalization step is involved — `a/b` in lowest terms gives
@@ -1214,20 +1268,23 @@ lemma PolyFueled.of_eq {c : Nat.Partrec.Code} {f f' : ℕ → ℕ}
     (h : PolyFueled c f) (he : ∀ n, f n = f' n) : PolyFueled c f' := by
   rwa [funext he] at h
 
-/-- Base unrolling of `evaln`'s `prec` clause.  The unconditional equational form is
-`LogicalInduction.EvalnCompiler.evaln_prec_zero` (`Framework/Machine/EvalnCompiler.lean`),
-which does not import this module; the implication form here is what `evaln_prec`
-consumes. -/
+/-- Base unrolling of `evaln`'s `prec` clause, in the implication form `evaln_prec`
+consumes.  `LogicalInduction.EvalnCompiler.evaln_prec_zero`
+(`Framework/Machine/EvalnCompiler.lean`) states the unconditional equational form of the
+same unrolling.  The two-line proof is repeated rather than imported because `dd:fuel` is
+developed independently of the register-machine substrate: `EvalnCompiler.lean` imports
+`complexitylib`, and importing it here would put that substrate in the dependency closure of
+every efficient-computability statement.  Every bridge between the two lanes runs
+fuel → machine, never the other way. -/
 lemma evaln_prec_zero {cf cg : Nat.Partrec.Code} {k a v : ℕ}
     (hg : Nat.pair a 0 ≤ k) (hcf : evaln (k + 1) cf a = some v) :
     evaln (k + 1) (Nat.Partrec.Code.prec cf cg) (Nat.pair a 0) = some v := by
   rw [evaln]
   simp [Nat.unpaired, hg, hcf]
 
-/-- Step unrolling of `evaln`'s `prec` clause.  The unconditional equational form is
-`LogicalInduction.EvalnCompiler.evaln_prec_succ` (`Framework/Machine/EvalnCompiler.lean`),
-which does not import this module; the implication form here is what `evaln_prec`
-consumes. -/
+/-- Step unrolling of `evaln`'s `prec` clause, in the implication form `evaln_prec`
+consumes.  `LogicalInduction.EvalnCompiler.evaln_prec_succ` states the unconditional
+equational form; see `evaln_prec_zero` for why the fuel lane keeps its own proof. -/
 lemma evaln_prec_succ {cf cg : Nat.Partrec.Code} {k a m prev v : ℕ}
     (hg1 : Nat.pair a (m + 1) ≤ k)
     (hrec : evaln k (Nat.Partrec.Code.prec cf cg) (Nat.pair a m) = some prev)
@@ -1468,11 +1525,124 @@ lemma divmod1_polyFueled :
     hst
   exact ⟨_, hprec⟩
 
+/-! ### Runtime `sqrt` and `size`
+
+Two whole-value arithmetic certificates the prefix-machine lanes charge their
+self-delimiting codes against.  Both are `prec` scans with a clamped state: the counting
+square root bumps its count while `(j+1)² ≤ a`, and the halving scan bumps its count while
+the quotient is nonzero.  `Nat.sqrt` is locally irreducible here for the same reason as in
+`ConstTables` below. -/
+
+section RuntimeArith
+
+-- `Nat.unpair` reduction loops `whnf` on `Nat.sqrt` inside the `Primcodable` instances for
+-- the product types appearing in the assemblies below, so `Nat.sqrt` is kept opaque here.
+attribute [local irreducible] Nat.sqrt
+
+/-- One step of the counting square root: bump the count while `(j+1)² ≤ a`. -/
+lemma sqrtc_polyFueled : ∃ c, PolyFueled c Nat.sqrt := by
+  obtain ⟨cad, had⟩ := addc_polyFueled
+  obtain ⟨cm, hm⟩ := mul_polyFueled
+  have aPF := PolyFueled.left
+  have jPF := PolyFueled.left.comp PolyFueled.right
+  have prevPF := PolyFueled.right.comp PolyFueled.right
+  have j1PF := jPF.succ_comp
+  have sqPF := (hm.comp (j1PF.pair j1PF)).of_eq
+    (f' := fun z => (z.unpair.2.unpair.1 + 1) * (z.unpair.2.unpair.1 + 1))
+    (fun z => by simp only [Nat.unpair_pair])
+  have tPF := subc_polyFueled.comp (sqPF.pair aPF)
+  have indPF := ifzSel_polyFueled.comp ((PolyFueled.const (Nat.pair 1 0)).pair tPF)
+  have gPF := had.comp (prevPF.pair indPF)
+  have hst : IsPolyBounded (fun m => min m.unpair.2 (Nat.sqrt m.unpair.1)) :=
+    isPolyBounded_snd.of_le (fun m => Nat.min_le_left _ _)
+  have hprec := PolyFueled.prec (PolyFueled.const 0) gPF
+    (st := fun a j => min j (Nat.sqrt a))
+    (fun a => by simp)
+    (fun a j => by
+      simp only [Nat.unpair_pair, ifzSelFn]
+      have hiff : (j + 1) * (j + 1) ≤ a ↔ j + 1 ≤ Nat.sqrt a := Nat.le_sqrt.symm
+      by_cases hc : (j + 1) * (j + 1) - a = 0
+      · have : j + 1 ≤ Nat.sqrt a := hiff.mp (by omega)
+        rw [if_pos hc]
+        omega
+      · have : ¬ (j + 1 ≤ Nat.sqrt a) := fun hcon => hc (by
+          have := hiff.mpr hcon
+          omega)
+        rw [if_neg hc]
+        omega)
+    hst
+  refine ⟨_, (hprec.comp (PolyFueled.id.pair PolyFueled.id)).of_eq (fun a => ?_)⟩
+  simp only [Nat.unpair_pair]
+  exact Nat.min_eq_right (Nat.sqrt_le_self a)
+
+/-- One step of the halving `size` scan: bump the count while the quotient is nonzero. -/
+def szStep (p : ℕ) : ℕ :=
+  ifzSelFn (Nat.pair p (Nat.pair (p.unpair.1 / 2) (p.unpair.2 + 1))) p.unpair.1
+
+lemma szStep_spec (a j : ℕ) :
+    szStep (Nat.pair (a / 2 ^ j) (min j a.size)) =
+      Nat.pair (a / 2 ^ (j + 1)) (min (j + 1) a.size) := by
+  by_cases hc : a / 2 ^ j = 0
+  · have hlt : a < 2 ^ j := by
+      rw [Nat.div_eq_zero_iff] at hc
+      have : (0:ℕ) < 2 ^ j := Nat.pow_pos (by norm_num)
+      omega
+    have hs : a.size ≤ j := Nat.size_le.mpr hlt
+    have h1 : a / 2 ^ (j + 1) = 0 :=
+      Nat.div_eq_of_lt (lt_of_lt_of_le hlt (Nat.pow_le_pow_right (by norm_num) (by omega)))
+    rw [szStep, ifzSelFn]
+    simp only [Nat.unpair_pair, hc, if_true]
+    rw [h1, Nat.min_eq_right hs, Nat.min_eq_right (by omega)]
+  · have h2j : 2 ^ j ≤ a := by
+      rw [Nat.div_eq_zero_iff] at hc
+      have : (0:ℕ) < 2 ^ j := Nat.pow_pos (by norm_num)
+      omega
+    have hjs : j < a.size := by
+      by_contra hcon
+      have := Nat.size_le.mp (le_of_not_gt hcon)
+      omega
+    rw [szStep, ifzSelFn]
+    simp only [Nat.unpair_pair]
+    rw [if_neg hc, Nat.div_div_eq_div_mul, ← pow_succ,
+      Nat.min_eq_left (by omega), Nat.min_eq_left (by omega)]
+
+lemma sizec_polyFueled : ∃ c, PolyFueled c Nat.size := by
+  obtain ⟨cdm, hdm⟩ := divmodc_polyFueled 2 (by norm_num)
+  have prevPF := PolyFueled.right.comp PolyFueled.right
+  have curPF := PolyFueled.left.comp prevPF
+  have cntPF := PolyFueled.right.comp prevPF
+  have halfPF := (PolyFueled.left.comp (hdm.comp curPF)).of_eq
+    (f' := fun z => z.unpair.2.unpair.2.unpair.1 / 2)
+    (fun z => by simp only [Nat.unpair_pair])
+  have gPF : PolyFueled _ (fun z => szStep (z.unpair.2.unpair.2)) :=
+    (ifzSel_polyFueled.comp ((prevPF.pair (halfPF.pair cntPF.succ_comp)).pair curPF)).of_eq
+      (fun z => by simp only [Nat.unpair_pair, szStep])
+  have hst : IsPolyBounded (fun m =>
+      Nat.pair (m.unpair.1 / 2 ^ m.unpair.2) (min m.unpair.2 m.unpair.1.size)) := by
+    apply (isPolyBounded_fst.pair isPolyBounded_snd).of_le
+    intro m
+    exact le_trans (pair_le_pair_left' _ (Nat.div_le_self _ _))
+      (pair_le_pair_right' _ (Nat.min_le_left _ _))
+  have hprec := PolyFueled.prec (PolyFueled.id.pair (PolyFueled.const 0)) gPF
+    (st := fun a j => Nat.pair (a / 2 ^ j) (min j a.size))
+    (fun a => by simp)
+    (fun a j => by
+      simp only [Nat.unpair_pair]
+      exact (szStep_spec a j).symm)
+    hst
+  refine ⟨_, (PolyFueled.right.comp
+    (hprec.comp (PolyFueled.id.pair PolyFueled.id))).of_eq (fun a => ?_)⟩
+  simp only [Nat.unpair_pair]
+  exact Nat.min_eq_right (Nat.size_le.mpr (Nat.lt_pow_self (by norm_num)))
+
+end RuntimeArith
+
 /-! ### Constant tests and constant selection
 
-The two Boolean-table combinators every downstream compiler in the calculus runs on: compare
-a poly-fueled value against a fixed constant, and choose between two constants on a zero
-test.  `Nat.sqrt` is locally irreducible in the section: elaborating these certificates over
+The Boolean-table combinators every downstream compiler in the calculus runs on: compare
+a poly-fueled value against a fixed constant, choose between two constants on a zero test,
+and branch between two poly-fueled functions on one.  `Nat.sqrt` is locally irreducible in
+the section: elaborating these certificates over
 `Nat.pair`-encoded products reaches `Nat.unpair`, and unfolding `Nat.sqrt`'s well-founded
 definition sends `whnf` into a loop. -/
 
@@ -1508,6 +1678,32 @@ lemma polyFueled_selectConst {cf : Nat.Partrec.Code} {f : ℕ → ℕ}
   refine ⟨_, (ifzSel_polyFueled.comp
     (((PolyFueled.const A).pair (PolyFueled.const B)).pair hf)).of_eq (fun z => ?_)⟩
   simp only [ifzSelFn, Nat.unpair_pair]
+
+/-- Closure of polynomial fuel under a zero-test branch. -/
+lemma polyFueled_ifZero {ct c₀ c₁ : Nat.Partrec.Code}
+    {test f₀ f₁ : ℕ → ℕ} (ht : PolyFueled ct test)
+    (h₀ : PolyFueled c₀ f₀) (h₁ : PolyFueled c₁ f₁) :
+    ∃ c, PolyFueled c (fun z => if test z = 0 then f₀ z else f₁ z) :=
+  ⟨_, (ifzSel_polyFueled.comp ((h₀.pair h₁).pair ht)).of_eq (fun z => by
+    simp only [ifzSelFn, Nat.unpair_pair])⟩
+
+/-- Membership in a fixed finite set as a polynomial `0`/`1` table: a fixed nest of
+equality tests, one per element. -/
+lemma finsetMembership_polyFueled {cf : Nat.Partrec.Code} {f : ℕ → ℕ}
+    (hf : PolyFueled cf f) (s : Finset ℕ) :
+    ∃ c, PolyFueled c (fun z => if f z ∈ s then 1 else 0) := by
+  classical
+  induction s using Finset.induction with
+  | empty =>
+      exact ⟨_, (PolyFueled.const 0).of_eq fun z => by simp⟩
+  | @insert a s ha ih =>
+      obtain ⟨ceq, heq⟩ := polyFueled_eqConst hf a
+      obtain ⟨cmem, hmem⟩ := ih
+      obtain ⟨cout, hout⟩ := polyFueled_ifZero heq hmem (PolyFueled.const 1)
+      refine ⟨cout, hout.of_eq fun z => ?_⟩
+      by_cases hfa : f z = a
+      · simp [hfa]
+      · simp [hfa, Finset.mem_insert]
 
 end ConstTables
 
@@ -1663,7 +1859,7 @@ private lemma natCast_div_reduce {b k : ℕ} (hk : k ≠ 0) :
     exact_mod_cast congrArg (Nat.cast : ℕ → ℚ) hk'.symm
   refine ⟨?_, by exact_mod_cast hkg, ?_⟩
   · rw [hbQ, hkQ, mul_div_mul_right _ _ hgQ, Int.cast_natCast, Int.cast_natCast]
-  · simp only [← Int.natCast_div, Int.natAbs_natCast]
+  · simp only [Int.natAbs_natCast]
     exact Nat.coprime_div_gcd_div_gcd hg
 
 /-- Reduced numerator of a natural-cast quotient: `((b : ℚ) / k).num = b / gcd b k`. -/
@@ -1821,52 +2017,48 @@ has no consumer and no cheap bridge, so the two calibrations differ in what they
 as in how they meter it.  The forward inclusion `BigDigits.toMachine` runs in the same
 direction as every other bridge regardless.
 
-**The value lane's one missing mirror has been written.**  `MachineDigits.natPair` — and
-through it the `MachineRatCodes.toMachineDigits` mirror of `DigitRatCodes.toBigDigits` —
-needs base-four *multiplication* on digit words, the unary route being unsound for a class
-whose values may be exponential in the day.  `DigitFP.mulW`
-(`Framework/Machine/DigitArithFP.lean`) supplies it: a Horner loop over the multiplier's
-digits under `Cobham.iterate_mem_FP`, with the running product truncated at a ruler built
-from the two operands, which is what keeps the iterated state bounded.
+**The value lane's mirrors.**  `MachineDigits.natPair` — and through it the
+`MachineRatCodes.toMachineDigits` mirror of `DigitRatCodes.toBigDigits` — needs base-four
+*multiplication* on digit words, the unary route being unsound for a class whose values may
+be exponential in the day.  `DigitFP.mulW` (`Framework/Machine/DigitArithFP.lean`) supplies
+it: a Horner loop over the multiplier's digits under `Cobham.iterate_mem_FP`, with the
+running product truncated at a ruler built from the two operands, which is what keeps the
+iterated state bounded.
 
-**Where that gap bites is the producer side, not the mirror.**  Nothing inside the machine
-suite consumes the two lemmas — every machine combinator is stated at the hypothesis it
-actually needs — but their *fuel-side originals* are load-bearing, and a producer whose
+**Those mirrors serve the producer side, not the machine suite.**  Nothing inside the
+machine suite consumes the two lemmas — every machine combinator is stated at the hypothesis
+it actually needs — but their *fuel-side originals* are load-bearing, and a producer whose
 write-out certificate is `DigitRatCodes` or the `DigitMachineCodes`/`BigDigits` pair reaches
-the emitted sentence through exactly them.
-`DigitRatCodes.toBigDigits` was consumed by `ratCodeFeature_generated`
+the emitted sentence through exactly them.  `ratCodeFeature_generated`
 (`Framework/Expectations.lean`, hence `def:ece` and `GeneratedRatFeature`),
 `PairedWeighting.ofRatCodes` and `DeferralFibre.ctsInd`
 (`Construction/Quotation/DeferralFibre.lean`), `sentenceMinusProbability_polySequence`
 (`Properties/TimelyLearning.lean`, hence `thm:perkno`), `PolyPositiveWidths`
-(`Properties/Calibration.lean`) and `MarketQuoteCodes.lean`.  **All of those now take
-`MachineRatCodes` and cross by `.toMachineDigits`**, so `thm:ref`, `thm:st` and `thm:perkno`
-carry the machine data premise, and so does `def:ece` itself, `ratCodeFeature_generated`
-included.  That one is the layering-sensitive case: it needs
-`MachineSpliceStream.serialize_const_write`, which `Framework/Expectations.lean` can see
-only because the `LUV` threshold section lives in the leaf
-`Framework/Machine/ThresholdMachine.lean` rather than in
+(`Properties/Calibration.lean`) and `MarketQuoteCodes.lean` all take `MachineRatCodes` and
+cross by `.toMachineDigits`, so `thm:ref`, `thm:st` and `thm:perkno` carry the machine data
+premise, and so does `def:ece` itself.  `ratCodeFeature_generated` is the layering-sensitive
+case: it needs `MachineSpliceStream.serialize_const_write`, which
+`Framework/Expectations.lean` can see only because the `LUV` threshold section lives in the
+leaf `Framework/Machine/ThresholdMachine.lean` rather than in
 `Framework/Machine/SentenceMachine.lean`, leaving `Expectations` free to import
-`SpliceMachine`.  So `ratCodeFeature_generated` and `PGenerableRat.ofMachineRatCodes` take
-the machine class like the rest.
+`SpliceMachine`.
 
 `BigDigits.natPair`'s machine twin `MachineDigits.natPair` is what
 `haltingClaimInput_digits` (`Construction/Knowledge/Syntax.lean`), `boundedArg_digits` and
-`conClaimArg_digits` (`Construction/Knowledge/Endpoints.lean`) now run, hence what
+`conClaimArg_digits` (`Construction/Knowledge/Endpoints.lean`) run, hence what
 `thm:halts`, `thm:loops`, `thm:dontwait` and `thm:pac` run.  (`thm:incons` is the one
 §4.9/§4.10 endpoint that escapes the pairing: its argument is the machine's source number
 alone.)  What those endpoints spend the premise on is the compact numeral emitter, not
 `natPair`; the fuel emitter reads `len4` and `dig4` off the certificate's random-access
 programs.  `MachineDigits` names the emitted block instead, and the block need not be the
 canonical `natDigits4` run, so `len4` — which fixes `binNumeral`'s shape exactly — is not
-recoverable from the emitted word's length.  What closed the gap is
+recoverable from the emitted word's length.  The emitter that closes that gap is
 `machineTokenStream_binNumeral_const` (`Construction/LUV/SourceCodec.lean`), built on
-`TokenFold.Strip`, an `FP` canonicalization of a digit word; ruler-indexed random access
-into the emitted word was expected too and turned out unnecessary, because the emitter reads
-the canonical digits in order and the strip client emits them most significant first by
-prepending.  The **trader
-lane is closed** regardless.  No §4 endpoint concluding an asymptotic price statement builds its own
-trader — they route through `AffineCombination.PolySequence` and
+`TokenFold.Strip`, an `FP` canonicalization of a digit word; no ruler-indexed random access
+into the emitted word is needed, because the emitter reads the canonical digits in order and
+the strip client emits them most significant first by prepending.  The **trader lane is
+closed** independently of all this.  No §4 endpoint concluding an asymptotic price statement
+builds its own trader — they route through `AffineCombination.PolySequence` and
 `PolySequence.buyBelowTrader_ec`, the single funnel — and that structure's three emission
 fields are machine-metered (`MachineSpliceStream` / `MachineSentenceCodes`), so
 `buyBelowTrader_ec` certifies at `EfficientlyComputable` and every result consuming it takes
@@ -1890,14 +2082,14 @@ scanning down for the last of them agree).  The polynomial cap is taken once, by
 `Cobham.output_length_poly_of_mem_FP` on the segment ruler at the largest paired index the
 loop reaches, never compounded inside the loop.
 
-The device that unblocked the move was **`MachineTokenStream.primrec`**
+The bridge into primitive recursiveness is **`MachineTokenStream.primrec`**
 (`Construction/MachineTraderEnumeration.lean`).  `Complexity.FP ⊆ Primrec` is not available —
 `complexitylib` carries no computability bridge at all — and three consumers read primitive
-recursiveness straight off a fuel certificate's `BigTokenStream.primrec`:
+recursiveness straight off an emission certificate:
 `AffineCombination.PolySequence.primrec` and `PolyTradeEmulatable.trades_primrec`
-(the settlement and historical-maturity compilers) and `BigSpliceStream.feature_primrec`
-(`PGenerableRat.computable`, `def:ece`).  The machine twin is proved through the trader
-enumeration's own coverage argument instead: an `FP` witness names a description and a clock
+(the settlement and historical-maturity compilers) and `MachineSpliceStream.feature_primrec`
+(`PGenerableRat.computable`, `def:ece`).  The machine class has no `Primrec` bridge of its own,
+so the twin is proved through the trader enumeration's own coverage argument: an `FP` witness names a description and a clock
 (`exists_desc_computesInTime_clock`), `machineTokens` at that fixed index *is* the described
 machine's budgeted run, and `primrec_machineTokens` is that run's primitive recursiveness.
 `UnaryRuler.primrec` is the count-level twin, by the same bridge but reading the raw output
@@ -1907,7 +2099,7 @@ No general `FP ⊆ Primrec` is claimed.
 
 **No canonical endpoint takes a fuel- or value-metered emission premise**, printed or through
 a boundary structure: the sentence, threshold, rational, digit, arithmetic-source, Occam and
-conditioning lanes are all stated at the machine classes.  What is still metered in this
+conditioning lanes are all stated at the machine classes.  What remains metered in this
 calculus on the emission side is *by design* and binds
 no endpoint premise: the two ROI maturity schedules carry `check_poly` (a schedule
 predicate, not a reindexer and not emitted data), and `DigitRatCodes`, `BigDigits`,
@@ -1919,18 +2111,18 @@ producer routes and as the subjects of this file's strictness proofs.
 the input that carries the bound.**  `DeferralFunction.graph_fp`
 (`Properties/SelfTrust.lean`) and `FeedbackTruth.FeedbackTruthComputation.computes`
 (`Construction/Statistics/FeedbackTruth.lean`) render the paper's own *output-sensitive*
-conditions — `f(n)` computable in time polynomial in `f(n)` (tex:1243), `Th(φ_{f(n)})`
+conditions — `f(n)` computable in time polynomial in `f(n)` (tex:1244), `Th(φ_{f(n)})`
 computable in `O(f(n+1))` time (tex:1251).  `Complexity.FP` meters the length of its input,
 so it has no form of either condition *of a machine handed the day alone* — but it has one
 of a machine handed the **unary pair**, whose length dominates the value: the deferral
 function's *graph* `f n = m` is decided in `Complexity.FP` on the unary `⟨n, m⟩`, and the
 feedback value codes are `MachineDigits` read at `⟨k, f (k+1)⟩`.  The gap recorded above is
 therefore **not** live on these two: no `evaln` clock appears in either statement, and the
-`def:ec` row of `scripts/coverage-classification.md` is `exact`.  Three of the moves are
-**trades** rather than pure strengthenings and are recorded as such — at `thm:obu`, `thm:dus`
+`def:ec` row of `scripts/coverage-classification.md` is `exact`.  At `thm:obu`, `thm:dus`
 and `thm:ob` the exploiting trader is certified at `EfficientlyComputable`, which has no
-fuel-class form, so the data premises weaken and the criterion premise strengthens together,
-which is `def:ec` on both sides as the paper writes it.
+fuel-class form, so the data premises are weaker and the criterion premise stronger than a
+fuel-class rendering would give — `def:ec` on both sides, as the paper writes it.  The ledger
+records those three as **trades** rather than pure strengthenings.
 
 None of this is a converse.  Every bridge runs fuel → machine, every machine combinator builds
 a machine certificate out of machine certificates, and the lower calibration above stays
@@ -1999,69 +2191,27 @@ theorem not_polyFueled_two_pow (c : Nat.Partrec.Code) :
     ¬ PolyFueled c (fun n => 2 ^ n) :=
   fun ⟨_, _, hf, _⟩ => not_isPolyBounded_two_pow hf
 
-/-! ### `ecTok_of_tokenFn` — the varying-length emission workhorse.
-
-Generalizes `ecTok_of_tokenList` (fixed length) to **growing** streams: a trader is
-`EfficientlyComputableTok` as soon as a *single* poly-fueled function `tokenFn` computes the
-`i`-th token of `serializeTrades (strat n)` from `⟨n, i⟩`, and the stream length is polynomial.
-This is what deep (size-`Θ(n)`) traders need — their `i`-th token is a fixed arithmetic
-expression in `⟨n,i⟩` (built from `ifzSel`/`predc`/`subc`), not a lookup in a fixed list. -/
-lemma ecTok_of_tokenFn (Tr : Trader) {tokenFn : ℕ → ℕ} {c : Nat.Partrec.Code}
-    (hpf : PolyFueled c tokenFn)
-    (hlen : ∃ lengthCode : Nat.Partrec.Code, PolyFueled lengthCode
-      (fun n => (serializeTrades (Tr.strat n).trades).length))
-    (htok : ∀ n i, i < (serializeTrades (Tr.strat n).trades).length →
-        tokenFn (Nat.pair n i) = (serializeTrades (Tr.strat n).trades).getD i 0) :
-    EfficientlyComputableTok Tr := by
-  obtain ⟨lengthCode, hlen⟩ := hlen
-  obtain ⟨bc, hfc, _, a₀, k₀, hk₀⟩ := hpf
+/-- **One clock for a length certificate and a paired token certificate.**  Every
+raw-emission bridge below needs a single polynomial day clock under which the length code
+returns the stream length and the token code returns each in-range token; this produces one,
+by majorizing both fuel bounds and the stream length at the largest paired index the day
+reaches.  It is the clock-max step those bridges would otherwise each repeat. -/
+lemma exists_commonClock {len tokenFn : ℕ → ℕ} {lengthCode tokenCode : Nat.Partrec.Code}
+    (hlen : PolyFueled lengthCode len) (htok : PolyFueled tokenCode tokenFn) :
+    ∃ A K : ℕ,
+      (∀ n, evaln (A * (n + 1) ^ K + A) lengthCode n = some (len n)) ∧
+      (∀ n, len n ≤ A * (n + 1) ^ K + A) ∧
+      (∀ n i, i < len n →
+        evaln (A * (n + 1) ^ K + A) tokenCode (Nat.pair n i) =
+          some (tokenFn (Nat.pair n i))) := by
+  obtain ⟨bc, hfc, _, a₀, k₀, hk₀⟩ := htok
   obtain ⟨bl, hfl, hlenBounded, hblBounded⟩ := hlen
-  set len := fun n => (serializeTrades (Tr.strat n).trades).length with hlendef
   -- A poly upper bound for `bc ⟨n,i⟩` over all `i < len n`, monotone in the pair.
   have hbcbound : IsPolyBounded (fun n => a₀ * (Nat.pair n (len n) + 1) ^ k₀ + a₀) :=
     (show IsPolyBounded (fun x => a₀ * (x + 1) ^ k₀ + a₀) from ⟨a₀, k₀, fun _ => le_rfl⟩).comp
       ((IsPolyBounded.linear 0).pair hlenBounded)
   obtain ⟨A, K, hAK⟩ := (hblBounded.max hbcbound).max hlenBounded
-  refine ecTok_of_exactEmission Tr lengthCode c A K (fun n => ?_) (fun n => ?_)
-    (fun n i hi => ?_)
-  · exact evaln_mono
-      ((le_max_left _ _).trans ((le_max_left _ _).trans (hAK n))) (hfl n)
-  · exact (le_max_right _ _).trans (hAK n)
-  · -- `bc ⟨n,i⟩ ≤ A(n+1)^K + A`, then `evaln_mono` on `hfc`.
-    have hple : Nat.pair n i ≤ Nat.pair n (len n) :=
-      pair_le_pair_right' n (le_of_lt hi)
-    have hbc : bc (Nat.pair n i) ≤ A * (n + 1) ^ K + A := by
-      calc bc (Nat.pair n i) ≤ a₀ * (Nat.pair n i + 1) ^ k₀ + a₀ := hk₀ _
-        _ ≤ a₀ * (Nat.pair n (len n) + 1) ^ k₀ + a₀ := by gcongr
-        _ ≤ A * (n + 1) ^ K + A :=
-          (le_max_right _ _).trans ((le_max_left _ _).trans (hAK n))
-    have key := hfc (Nat.pair n i)
-    rw [htok n i hi] at key
-    exact evaln_mono hbc key
-
-/-- Raw-stream counterpart of `ecTok_of_tokenFn`.  The stream need not be a canonical
-serialization: it may be malformed, provided validation of the emitted stream is exactly the
-target strategy.  This is the closure principle needed by parser-transparent transducers. -/
-lemma ecTok_of_rawTokenFn (Tr : Trader) (raw : ℕ → List ℕ)
-    {tokenFn : ℕ → ℕ} {c : Nat.Partrec.Code}
-    (hpf : PolyFueled c tokenFn)
-    (hlen : ∃ lengthCode : Nat.Partrec.Code, PolyFueled lengthCode
-      (fun n => (raw n).length))
-    (htok : ∀ n i, i < (raw n).length →
-        tokenFn (Nat.pair n i) = (raw n).getD i 0)
-    (hstrategy : ∀ n, strategyOfTokens n (raw n) = Tr.strat n) :
-    EfficientlyComputableTok Tr := by
-  obtain ⟨lengthCode, hlen⟩ := hlen
-  obtain ⟨bc, hfc, _, a₀, k₀, hk₀⟩ := hpf
-  obtain ⟨bl, hfl, hlenBounded, hblBounded⟩ := hlen
-  set len := fun n => (raw n).length with hlendef
-  have hbcbound : IsPolyBounded (fun n => a₀ * (Nat.pair n (len n) + 1) ^ k₀ + a₀) :=
-    (show IsPolyBounded (fun x => a₀ * (x + 1) ^ k₀ + a₀) from
-      ⟨a₀, k₀, fun _ => le_rfl⟩).comp
-      ((IsPolyBounded.linear 0).pair hlenBounded)
-  obtain ⟨A, K, hAK⟩ := (hblBounded.max hbcbound).max hlenBounded
-  refine ecTok_of_rawEmission Tr raw lengthCode c A K (fun n => ?_) (fun n => ?_)
-    (fun n i hi => ?_) hstrategy
+  refine ⟨A, K, fun n => ?_, fun n => ?_, fun n i hi => ?_⟩
   · exact evaln_mono
       ((le_max_left _ _).trans ((le_max_left _ _).trans (hAK n))) (hfl n)
   · exact (le_max_right _ _).trans (hAK n)
@@ -2072,9 +2222,41 @@ lemma ecTok_of_rawTokenFn (Tr : Trader) (raw : ℕ → List ℕ)
         _ ≤ a₀ * (Nat.pair n (len n) + 1) ^ k₀ + a₀ := by gcongr
         _ ≤ A * (n + 1) ^ K + A :=
           (le_max_right _ _).trans ((le_max_left _ _).trans (hAK n))
-    have key := hfc (Nat.pair n i)
-    rw [htok n i hi] at key
-    exact evaln_mono hbc key
+    exact evaln_mono hbc (hfc (Nat.pair n i))
+
+/-! ### `ecTok_of_tokenFn` — the varying-length emission workhorse.
+
+Generalizes `ecTok_of_tokenList` (fixed length) to **growing** streams: a trader is
+`EfficientlyComputableTok` as soon as a *single* poly-fueled function `tokenFn` computes the
+`i`-th token of `serializeTrades (strat n)` from `⟨n, i⟩`, and the stream length is polynomial.
+This is what deep (size-`Θ(n)`) traders need — their `i`-th token is a fixed arithmetic
+expression in `⟨n,i⟩` (built from `ifzSel`/`predc`/`subc`), not a lookup in a fixed list. -/
+lemma ecTok_of_tokenFn (Tr : Trader) {tokenFn : ℕ → ℕ}
+    {c lengthCode : Nat.Partrec.Code}
+    (hpf : PolyFueled c tokenFn)
+    (hlen : PolyFueled lengthCode
+      (fun n => (serializeTrades (Tr.strat n).trades).length))
+    (htok : ∀ n i, i < (serializeTrades (Tr.strat n).trades).length →
+        tokenFn (Nat.pair n i) = (serializeTrades (Tr.strat n).trades).getD i 0) :
+    EfficientlyComputableTok Tr := by
+  obtain ⟨A, K, hclock, hsize, htokclock⟩ := exists_commonClock hlen hpf
+  exact ecTok_of_exactEmission Tr lengthCode c A K hclock hsize
+    (fun n i hi => (htokclock n i hi).trans (congrArg some (htok n i hi)))
+
+/-- Raw-stream counterpart of `ecTok_of_tokenFn`.  The stream need not be a canonical
+serialization: it may be malformed, provided validation of the emitted stream is exactly the
+target strategy.  This is the closure principle needed by parser-transparent transducers. -/
+lemma ecTok_of_rawTokenFn (Tr : Trader) (raw : ℕ → List ℕ)
+    {tokenFn : ℕ → ℕ} {c lengthCode : Nat.Partrec.Code}
+    (hpf : PolyFueled c tokenFn)
+    (hlen : PolyFueled lengthCode (fun n => (raw n).length))
+    (htok : ∀ n i, i < (raw n).length →
+        tokenFn (Nat.pair n i) = (raw n).getD i 0)
+    (hstrategy : ∀ n, strategyOfTokens n (raw n) = Tr.strat n) :
+    EfficientlyComputableTok Tr := by
+  obtain ⟨A, K, hclock, hsize, htokclock⟩ := exists_commonClock hlen hpf
+  exact ecTok_of_rawEmission Tr raw lengthCode c A K hclock hsize
+    (fun n i hi => (htokclock n i hi).trans (congrArg some (htok n i hi))) hstrategy
 
 /-! ### `ecTok_of_blockStream` — the repeating-block emission workhorse.
 
@@ -2169,14 +2351,13 @@ lemma ecTok_of_blockStream (Tr : Trader) (head bs tail : List (ℕ → ℕ))
     simp only [List.length_append, List.length_map,
       length_flatMap_const_width _ W (cnt n) (fun j _ => hblockLen n j)]
     omega
-  refine ecTok_of_tokenFn Tr tokPF ?_ ?_
-  · -- Emit the exact stream length `H + cnt n · W + T` under a polynomial clock.
-    have hcntW := hml.comp hcnt
-    have hHplus := had.comp ((PolyFueled.const H).pair hcntW)
-    have htotal := had.comp (hHplus.pair (PolyFueled.const T))
-    exact ⟨_, htotal.of_eq (fun n => by
+  -- Emit the exact stream length `H + cnt n · W + T` under a polynomial clock.
+  have hcntW := hml.comp hcnt
+  have hHplus := had.comp ((PolyFueled.const H).pair hcntW)
+  have htotal := had.comp (hHplus.pair (PolyFueled.const T))
+  refine ecTok_of_tokenFn Tr tokPF (htotal.of_eq (fun n => by
       simp only [Nat.unpair_pair]
-      rw [hlen' n])⟩
+      rw [hlen' n])) ?_
   · intro n i hi
     rw [hlen' n] at hi
     rw [hTr n]
@@ -2212,6 +2393,23 @@ def PolySentenceCodes (φ : ℕ → Sentence) : Prop :=
 /-- An efficiently codeable sequence of rational constants. -/
 def PolyRatCodes (q : ℕ → ℚ) : Prop :=
   ∃ c : Nat.Partrec.Code, PolyFueled c (fun n => Encodable.encode (q n))
+
+/-- Any polynomially fueled natural stream has polynomially fueled rational-cast tokens.
+
+The consumer is `matchFeat_paired` (`Construction/Quotation/DeferralFibre.lean`), which
+reaches `MachineRatCodes` through it — `DigitRatCodes.ofPolyRatCodes` then `.toMachine`.
+That route has no machine-direct replacement, `MachineDigits` not being a `MachineRatCodes`;
+the machine-metered counterpart is `ratNatCast_machineDigits`
+(`Framework/Machine/WriteOutMachine.lean`). -/
+lemma ratNatCast_codes_of_polyFueled {cf : Nat.Partrec.Code} {f : ℕ → ℕ}
+    (hf : PolyFueled cf f) : PolyRatCodes (fun x ↦ ((f x : ℕ) : ℚ)) := by
+  obtain ⟨cadd, hadd⟩ := addc_polyFueled
+  have hdouble := hadd.comp (hf.pair hf)
+  refine ⟨_, (hdouble.pair (PolyFueled.const 1)).of_eq (fun x ↦ ?_)⟩
+  rw [encode_rat_natCast]
+  simp only [Nat.unpair_pair]
+  congr 1
+  omega
 
 /-- **Efficient codeability is closed under reciprocals of positive sequences.** By
 `encode_rat_inv_of_pos` the reciprocal's code is `⟪2·snd, fst/2⟫` of the original's, so
@@ -2276,7 +2474,7 @@ lemma PolySegStream.ecTok {s : ℕ → List ℕ} (h : PolySegStream s) (Tr : Tra
     (hstrategy : ∀ n, strategyOfTokens n (s n) = Tr.strat n) :
     EfficientlyComputableTok Tr := by
   obtain ⟨ct, cl, tokenFn, lenFn, htoken, hlen, hslen, hget⟩ := h
-  apply ecTok_of_rawTokenFn Tr s htoken ⟨cl, hlen.of_eq (fun n => (hslen n).symm)⟩
+  apply ecTok_of_rawTokenFn Tr s htoken (hlen.of_eq (fun n => (hslen n).symm))
     (fun n i hi => hget n i (by rwa [← hslen n]))
   exact hstrategy
 
@@ -2360,6 +2558,14 @@ constructor has a member, and that completeness is the contract: a member is kep
 where nothing in the library currently calls it, so a client can write an emission
 assembly against the whole datatype. -/
 
+/-- Every fixed token list is a segment stream: the fuel twin of
+`MachineTokenStream.const`, built by `append`-ing one constant token per entry. -/
+lemma PolySegStream.constList : ∀ c : List ℕ, PolySegStream (fun _ : ℕ => c)
+  | [] => PolySegStream.ofTokenStream PolyTokenStream.nil
+  | t :: c =>
+      ((PolySegStream.ofTokenStream (PolyTokenStream.const t)).append
+        (PolySegStream.constList c)).of_eq fun _ => rfl
+
 /-- Segment-level serialization of a rational constant `[1, ⌜q⌝]`. -/
 lemma PolySegStream.serialize_const (q : ℚ) :
     PolySegStream (fun _ => (EF.const q).serialize) :=
@@ -2371,7 +2577,7 @@ lemma PolySegStream.serialize_safeRecip {A : ℕ → EF}
     PolySegStream (fun n => (EF.safeRecip (A n)).serialize) := by
   refine PolySegStream.of_eq (hA.append
     (PolySegStream.ofTokenStream (PolyTokenStream.const 5))) ?_
-  intro n; simp [EF.serialize, List.append_assoc]
+  intro n; simp [EF.serialize]
 
 /-- Segment-level serialization closure for `EF.add`. -/
 lemma PolySegStream.serialize_add {A B : ℕ → EF}
@@ -2725,16 +2931,15 @@ lemma ecTok_of_segStream (Tr : Trader)
     (h : PolySegStream (fun n => serializeTrades (Tr.strat n).trades)) :
     EfficientlyComputableTok Tr := by
   obtain ⟨ct, cl, tokenFn, lenFn, htok, hlen, hlens, hspec⟩ := h
-  refine ecTok_of_tokenFn Tr htok ?_ ?_
-  · exact ⟨_, hlen.of_eq (fun n => (hlens n).symm)⟩
-  · intro n i hi
-    exact hspec n i (by rw [← hlens n]; exact hi)
+  refine ecTok_of_tokenFn Tr htok (hlen.of_eq (fun n => (hlens n).symm)) ?_
+  intro n i hi
+  exact hspec n i (by rw [← hlens n]; exact hi)
 
 /-! ### The digit layer is poly-fueled (`dd:fuel`)
 
 The inclusion `EfficientlyComputableTok → EfficientlyComputableDigit` factors through
 `PolySegStream`: a token-model certificate's clocked token stream is a `PolySegStream`
-(`PrefixPatchCompile.clockedTokens_polySegStream`, `Framework/Emission/Emission.lean`), the
+(`ClockedEmission.clockedTokens_polySegStream`, `Framework/Emission/Emission.lean`), the
 digit stream of any `PolySegStream` is again one (`PolySegStream.digitizeStream` below, via
 `concatVar`), and any `PolySegStream` realizes a digit-model certificate
 (`ecDigit_of_rawSegStream`, also below).  The composition of the three is
@@ -2929,24 +3134,12 @@ lemma ecDigit_of_rawEmission (Tr : Trader) (raw : ℕ → List ℕ)
     funext n
     change strategyOfTokens n (undigitize
       (clockedTokens lengthCode tokenCode (a * (n + 1) ^ k + a) n)) = Tr.strat n
-    have htoks :
-        clockedTokens lengthCode tokenCode (a * (n + 1) ^ k + a) n = raw n := by
-      unfold clockedTokens
-      rw [hlength n]
-      simp only
-      rw [min_eq_left (hsize n)]
-      apply List.ext_getElem
-      · simp
-      · intro i hleft hright
-        simp only [List.getElem_ofFn]
-        rw [htoken n i hright, Option.getD_some]
-        exact List.getD_eq_get (raw n) 0 ⟨i, hright⟩
-    rw [htoks]
+    rw [clockedTokens_eq_of_emission raw lengthCode tokenCode a k hlength hsize htoken n]
     exact hstrategy n
   exact congrArg Trader.mk hstrat
 
 /-- Any `PolySegStream` whose undigitized decode is the target trader realizes a
-digit-model certificate (the clock-max juggling of `ecTok_of_rawTokenFn`, verbatim). -/
+digit-model certificate, at the shared clock of `exists_commonClock`. -/
 lemma ecDigit_of_rawSegStream (Tr : Trader) {raw : ℕ → List ℕ}
     (h : PolySegStream raw)
     (hstrategy : ∀ n, strategyOfTokens n (undigitize (raw n)) = Tr.strat n) :
@@ -2954,29 +3147,10 @@ lemma ecDigit_of_rawSegStream (Tr : Trader) {raw : ℕ → List ℕ}
   obtain ⟨ct, cl, tokenFn, lenFn, htokf, hlenf, hlens, hspec⟩ := h
   have hlenRaw : PolyFueled cl (fun n => (raw n).length) :=
     hlenf.of_eq (fun n => (hlens n).symm)
-  obtain ⟨bc, hfc, _, a₀, k₀, hk₀⟩ := htokf
-  obtain ⟨bl, hfl, hlenBounded, hblBounded⟩ := hlenRaw
-  set len := fun n => (raw n).length with hlendef
-  have hbcbound : IsPolyBounded (fun n => a₀ * (Nat.pair n (len n) + 1) ^ k₀ + a₀) :=
-    (show IsPolyBounded (fun x => a₀ * (x + 1) ^ k₀ + a₀) from
-      ⟨a₀, k₀, fun _ => le_rfl⟩).comp
-      ((IsPolyBounded.linear 0).pair hlenBounded)
-  obtain ⟨A, K, hAK⟩ := (hblBounded.max hbcbound).max hlenBounded
-  refine ecDigit_of_rawEmission Tr raw cl ct A K (fun n => ?_) (fun n => ?_)
-    (fun n i hi => ?_) hstrategy
-  · exact evaln_mono
-      ((le_max_left _ _).trans ((le_max_left _ _).trans (hAK n))) (hfl n)
-  · exact (le_max_right _ _).trans (hAK n)
-  · have hple : Nat.pair n i ≤ Nat.pair n (len n) :=
-      pair_le_pair_right' n (le_of_lt hi)
-    have hbc : bc (Nat.pair n i) ≤ A * (n + 1) ^ K + A := by
-      calc bc (Nat.pair n i) ≤ a₀ * (Nat.pair n i + 1) ^ k₀ + a₀ := hk₀ _
-        _ ≤ a₀ * (Nat.pair n (len n) + 1) ^ k₀ + a₀ := by gcongr
-        _ ≤ A * (n + 1) ^ K + A :=
-          (le_max_right _ _).trans ((le_max_left _ _).trans (hAK n))
-    have key := hfc (Nat.pair n i)
-    rw [hspec n i (by rw [← hlens n]; exact hi)] at key
-    exact evaln_mono hbc key
+  obtain ⟨A, K, hclock, hsize, htokclock⟩ := exists_commonClock hlenRaw htokf
+  exact ecDigit_of_rawEmission Tr raw cl ct A K hclock hsize
+    (fun n i hi => (htokclock n i hi).trans
+      (congrArg some (hspec n i (by rw [← hlens n]; exact hi)))) hstrategy
 
 /-- `price φ (f m)` streams for a poly-fueled index `f` — the day-index-in-block case. -/
 lemma PolyTokenStream.serialize_price_comp {f : ℕ → ℕ} {c : Nat.Partrec.Code}

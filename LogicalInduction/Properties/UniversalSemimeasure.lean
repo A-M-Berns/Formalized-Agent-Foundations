@@ -67,14 +67,6 @@ deductive process, and is an inhabitation witness only.  The substantive layer o
 `paperDP T` is `bitPrefixSentencesOfIndependentAtoms (paperIndependentBitAtoms T)
 paperBitPrefixCodes` (`Construction/NonDogmatism/Endpoints.lean`; see the README's
 non-vacuity caveat).
-**The criterion binder below is `def:lic` at the paper's own quantifier.**  Every result here that consumes an
-exploiting trader takes `[IsLogicalInductor P DP]`, and the trader is certified at `EfficientlyComputable`:
-it is assembled from `AffineCombination.PolySequence`'s machine-metered emission fields
-through `PolySequence.buyBelowTrader_ec` (`Properties/AffineCoherence.lean`), which has no
-fuel-class form: the bridge `BigSpliceStream.toMachine` runs fuel to machine, and no map
-back is proved or claimed.  The
-calibration is stated at `def:ec` in `Framework/Affine.lean`, and the `_unconditional`
-endpoints discharge the criterion through `LIA_is_logical_inductor`.
 
 -/
 
@@ -822,8 +814,8 @@ lemma dusRemainingEF_machineSpliceStream
       (UnaryRuler.unpairSnd.succ)
   refine MachineSpliceStream.of_eq ((hbodies.append hvar).append htags) ?_
   intro z
-  rw [dusRemainingEF, ROIBudget.sharedFeatureWeight,
-    ROIBudget.sharedWeights_serialize, List.range_eq_range']
+  rw [dusRemainingEF, ROIBudget.sharedFeatureWeight, ROIBudget.sharedOf,
+    ROIBudget.letChain_serialize, List.range_eq_range']
 
 /-- Uniform emission of the share coefficient. -/
 lemma dusSharesEF_machineSpliceStream
@@ -1277,7 +1269,7 @@ private lemma dus_mass_pos_of_low_limit
       (fun n ↦ (IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n φ).1))
   have hkpos : 0 < (8 * ((k + 1 : ℕ) : ℝ)) := by positivity
   by_contra h
-  push_neg at h
+  push Not at h
   have hdivle : M.mass (B.enumeration i) / (8 * ((k + 1 : ℕ) : ℝ)) ≤ 0 :=
     div_nonpos_of_nonpos_of_nonneg h hkpos.le
   linarith
@@ -1373,7 +1365,7 @@ lemma exists_dusMeanPayout_ge_of_low_limit
   have hmass : 0 < M.mass (B.enumeration i) :=
     dus_mass_pos_of_low_limit P hworld k i hlow
   by_contra hreach
-  push_neg at hreach
+  push Not at hreach
   let g : ℕ → ℕ := fun r ↦ Nat.pair (N + r) i
   have hg : StrictMono g := by
     intro a b hab
@@ -2164,7 +2156,7 @@ theorem lic_strict_domination_universalSemimeasure
     S.constraint S.repetition S.jointly_possible
   intro C hC
   by_contra hno
-  push_neg at hno
+  push Not at hno
   have hscaled : Tendsto (fun n ↦ C * ((S.consistentAt n).map M.mass).sum) atTop (𝓝 0) := by
     simpa using S.mass_class_tendsto_zero.const_mul C
   obtain ⟨N, hN⟩ := Filter.eventually_atTop.1 ((tendsto_order.1 hscaled).2 ε hε)

@@ -511,16 +511,6 @@ lemma csPack_runFold (EMITr : List Bool → List ℕ → List Bool) :
       rw [runFold, csPack_runFold EMITr rs, csPack_condStepR, List.map_cons,
         List.foldl_cons]
 
-/-- The same on the paper side. -/
-lemma rpnFrameRun_state (second : Bool) (blk : List ℕ) (ε : ℚ) (day bc ibc : ℕ) :
-    ∀ (ts : List ℕ) (st : ℕ) (buf : List ℕ),
-      (rpnFrameRun second blk ε day bc ibc (st, buf) ts).1.1 = ts.foldl rpnCondStep st
-  | [], st, buf => rfl
-  | t :: ts, st, buf => by
-      rw [rpnFrameRun, List.foldl_cons,
-        rpnFrameRun_state second blk ε day bc ibc ts (rpnCondStep st t)
-          (rpnCondBuf st buf t)]
-
 lemma decodeBits_runFold_frame (second : Bool) (ε : ℚ) (W : List Bool) {bc ibc : ℕ}
     (hblk : BlockWF (fpBlk W)) (hbc : BlockWF (fpBc W)) (hibc : BlockWF (fpIbc W))
     (hbcv : decodeBits (fpBc W) = [bc]) (hibcv : decodeBits (fpIbc W) = [ibc]) :
@@ -933,14 +923,14 @@ lemma safeFrameW_mem_FP (ε : ℚ) {Wf Sf Acc : List Bool → List Bool}
       (frameLegW_mem_FP true ε hWf hSf))
 
 /-- The trade-run count of a priced stream is polynomial time. -/
-lemma countOf_mem_FP {Wf Pr : List Bool → List Bool} (hWf : Wf ∈ FP) (hPr : Pr ∈ FP) :
-    countOf Pr ∈ FP := countPass_mem_FP hWf hPr
+lemma countOf_mem_FP {Pr : List Bool → List Bool} (hPr : Pr ∈ FP) :
+    countOf Pr ∈ FP := countPass_mem_FP hPr
 
 lemma budgetOf_mem_FP {Wf Pr : List Bool → List Bool} (hWf : Wf ∈ FP) (hPr : Pr ∈ FP) :
-    budgetOf Wf Pr ∈ FP := budgetCodeW_mem_FP hWf (countOf_mem_FP hWf hPr)
+    budgetOf Wf Pr ∈ FP := budgetCodeW_mem_FP hWf (countOf_mem_FP hPr)
 
 lemma invBudgetOf_mem_FP {Wf Pr : List Bool → List Bool} (hWf : Wf ∈ FP) (hPr : Pr ∈ FP) :
-    invBudgetOf Wf Pr ∈ FP := invBudgetCodeW_mem_FP hWf (countOf_mem_FP hWf hPr)
+    invBudgetOf Wf Pr ∈ FP := invBudgetCodeW_mem_FP hWf (countOf_mem_FP hPr)
 
 /-- **The frame join is polynomial time over any polynomial-time priced stream.** -/
 lemma condOutputOf_mem_FP (ε : ℚ) {B Wf Pr : List Bool → List Bool}
@@ -949,7 +939,7 @@ lemma condOutputOf_mem_FP (ε : ℚ) {B Wf Pr : List Bool → List Bool}
       (invBudgetOf Wf Pr z)) ∈ FP :=
     pairFn_mem_FP hWf (pairFn_mem_FP (mem_FP_comp hWf hB)
       (pairFn_mem_FP (budgetOf_mem_FP hWf hPr) (invBudgetOf_mem_FP hWf hPr)))
-  exact safeFrameW_mem_FP ε hparams hPr (acceptsW_mem_FP hWf hPr)
+  exact safeFrameW_mem_FP ε hparams hPr (acceptsW_mem_FP hPr)
 
 lemma condOutputW_mem_FP (ε : ℚ) {B Wf Sf : List Bool → List Bool}
     (hB : B ∈ FP) (hWf : Wf ∈ FP) (hSf : Sf ∈ FP) : condOutputW ε B Wf Sf ∈ FP :=
@@ -1040,7 +1030,7 @@ acceptance test and the frame join all take the priced stream as input, so only 
 is new. -/
 
 /-- Membership in a *fixed* finite set is a polynomial-time test of an `FP` word. -/
-lemma ifMemFinset_mem_FP {A X Y : List Bool → List Bool} (hA : A ∈ FP)
+private lemma ifMemFinset_mem_FP {A X Y : List Bool → List Bool} (hA : A ∈ FP)
     (S : Finset (List Bool)) (hX : X ∈ FP) (hY : Y ∈ FP) :
     (fun z => if A z ∈ S then X z else Y z) ∈ FP := by
   have hflag : (fun z => if A z ∈ S then ([true] : List Bool) else []) ∈ FP :=
@@ -1053,11 +1043,6 @@ lemma ifMemFinset_mem_FP {A X Y : List Bool → List Bool} (hA : A ∈ FP)
     · rw [if_pos hc, if_pos hc, selectHead_emptyFlag_cons]
     · rw [if_neg hc, if_neg hc, selectHead_emptyFlag_nil]
   rwa [heq] at h
-
-lemma unaryDay_injective : Function.Injective unaryDay := by
-  intro a b h
-  have := congrArg List.length h
-  simpa using this
 
 /-- **The zero-day test may be clamped at the cutoff, and the clamp separates.**  Every zero
 day is *strictly* below the cutoff, so `min D cutoff` lands on `D` when `D` is a zero day
@@ -1110,16 +1095,6 @@ lemma zeroEmitW_eq (zeroDays : Finset ℕ) (cutoff : ℕ) (ε : ℚ) (B : List B
   rw [zeroEmitW, zeroEmitR, zeroTokW, dayClamp]
   simp only [cvW, cvCli, cvTok, sndBlock_pair, fstBlock_pair, hd]
   rfl
-
-lemma mem_image_unaryDay (S : Finset ℕ) (k : ℕ) :
-    List.replicate k true ∈ S.image unaryDay ↔ k ∈ S := by
-  rw [Finset.mem_image]
-  constructor
-  · rintro ⟨d, hd, he⟩
-    have hdk : d = k := unaryDay_injective (by rw [he]; rfl)
-    exact hdk ▸ hd
-  · intro hk
-    exact ⟨k, hk, rfl⟩
 
 /-- The finite-zero price emitter with its condition-block oracle clamped to the trading
 day, exactly as `clampedEmit` is for the gated rewrite. -/

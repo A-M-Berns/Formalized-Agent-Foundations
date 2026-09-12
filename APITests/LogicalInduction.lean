@@ -430,7 +430,7 @@ noncomputable example (φ : ℕ → Sentence) (hφ : MachineSentenceCodes φ) :
   AffineCombination.sentenceAffine_polySequence φ hφ
 
 /-- `thm:obu`'s ladder trader is certified at `EfficientlyComputable` from machine sentence
-data, which is why the three `thm:obu` endpoints now carry `[IsLogicalInductor P DP]`
+data, which is why the three `thm:obu` endpoints carry `[IsLogicalInductor P DP]`
 on the criterion and `MachineSentenceCodes` on the enumeration. -/
 example (φ : ℕ → Sentence) (hφ : MachineSentenceCodes φ) :
     EfficientlyComputable (obuTrader φ) :=
@@ -501,7 +501,7 @@ example (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
 /-- Variable trade count, write-out coefficients and write-out sentences: the general
 assembly constructor a `def:ec` argument ends with. -/
 example (T : Trader) (count : ℕ → ℕ) (f : ℕ → EF) (ψ : ℕ → Sentence)
-    (hcount : ∃ c, PolyFueled c count)
+    {ccount : Nat.Partrec.Code} (hcount : PolyFueled ccount count)
     (hf : BigSpliceStream fun z => (f z).serialize)
     (hψ : BigSentenceCodes ψ)
     (hT : ∀ n, (T.strat n).trades =
@@ -736,6 +736,18 @@ example (Ts : ℕ → Trader) (V : History) (DP : DeductiveProcess) (ε η : ℝ
 
 end
 
+/-! ### The Budgeter's scale factor is a reduction
+
+`eq:budgeter`'s `else` branch multiplies the day's trade by the infimum of the world-specific
+loss caps.  That factor lies in `(0, 1]`, so the clause can only scale a trade *down*; a
+client sizing a budgeted position may rely on it. -/
+
+example (DP : DeductiveProcess) (Tr : Trader) (b : ℕ) (P : History)
+    (Q : ℕ → Sentence → ℚ) (n : ℕ) :
+    (budgetScaleFeature DP Tr b Q n).denote P ∈ Set.Ioc (0 : ℝ) 1 :=
+  ⟨budgetScaleFeature_denote_pos DP Tr b P Q n,
+    budgetScaleFeature_denote_le_one DP Tr b P Q n⟩
+
 /-! ## 14. The refuted printed theorem, reachable by its bare name
 
 `not_overgeneral_ifp` is re-exported by `LogicalInduction.API`, so a client can state the
@@ -770,7 +782,7 @@ certificate crosses by `DigitRatCodes.toMachine`. -/
 example (P : History) (q : ℕ → ℚ) (hq : MachineRatCodes q) : PGenerableRat P q :=
   PGenerableRat.ofMachineRatCodes hq P
 
-/-- The rational lane at the machine meter (P-F5c3).  A client that only knows how to
+/-- The rational lane at the machine meter.  A client that only knows how to
 *write out* `q` — three polynomial-time emitters, no bound on any numerator or
 denominator — gets the reciprocal by representation, the sign as a unary ruler, and a
 `Computable` program back, with no fuel certificate anywhere. -/
@@ -788,7 +800,7 @@ example : PolyPositiveWidths (fun n => (((2 ^ n : ℕ) : ℚ))⁻¹) :=
 /-- A fuel-metered client crosses at the boundary, in one step. -/
 example (q : ℕ → ℚ) (hq : DigitRatCodes q) : MachineRatCodes q := hq.toMachine
 
-/-- The digit lane at the machine meter (P-F5c4).  A client that only knows how to *write
+/-- The digit lane at the machine meter.  A client that only knows how to *write
 out* an emitted token run — one polynomial-time emitter, no bound on any token's value —
 gets the run's own **name** back as a machine-metered value, and a `Computable` program
 from it.  This is `def:ec`'s write-out bridge for objects presented by source text. -/
@@ -796,7 +808,7 @@ example (L : ℕ → List ℕ) (hL : MachineTokenStream L) (hlt : ∀ n, ∀ t �
     MachineDigits (fun n => tokenListNat (L n)) ∧ UnaryRuler (fun n => (L n).length) :=
   ⟨MachineDigits.ofTokenListNat hL hlt, hL.lengthRuler⟩
 
-/-- The compact numeral at the machine meter (P-F5c4): a machine-metered value family names
+/-- The compact numeral at the machine meter: a machine-metered value family names
 itself in `O(log v)` `ℒₒᵣ` nodes, and that naming is itself machine-metered.  This is what
 `thm:halts`, `thm:loops`, `thm:dontwait` and `thm:incons` spend their data premises on. -/
 example (v : ℕ → ℕ) (hv : MachineDigits v) :
@@ -804,7 +816,7 @@ example (v : ℕ → ℕ) (hv : MachineDigits v) :
       UnaryRuler (fun n => binNumeralLen (v n) - 1) :=
   ⟨machineTokenStream_binNumeralEnc hv, unaryRuler_binNumeralLen_pred hv⟩
 
-/-- A written formula family at the machine meter (P-F5c4): the paper's own source language,
+/-- A written formula family at the machine meter: the paper's own source language,
 its closure calculus, and the delivery interface that turns a written family into
 machine-metered *names*. -/
 example (a b : ℕ → ArithSource 0) (ha : MachineArithmeticSourceSeq a)
@@ -959,9 +971,9 @@ example := @AffineCombination.BoundedCombinationSequence.prandaff_below
 example := @AffineCombination.BoundedCombinationSequence.recunbiasedaff
 example := @AffineCombination.recurringunbiasedness
 example := @AffineCombination.simcal
-example := @LUVCombination.BoundedSequence.prandexp
+example := @LUVCombination.BoundedSequence.prandexp_above
 example := @LUVCombination.BoundedSequence.prandexp_below
-example := @LUVCombination.BoundedSequence.prandexp_eq
+example := @LUVCombination.BoundedSequence.prandexp
 example := @LUVCombination.BoundedSequence.recurringunbiasednessexp
 example := @lic_learning_pseudorandom_frequency
 example := @lic_learning_pseudorandom_frequency_above
@@ -1073,7 +1085,7 @@ example := @FeedbackEmission.boundedCombination_wubaff_ofFeedbackTruth
 example := @FeedbackEmission.luv_wubexp_ofFeedbackTruth
 
 -- Construction/SemanticExtension/Prime.lean — the presented-LUV source interface
-example := @no_nonvacuous_worldValued_presented_of_rpn
+example := @no_nonvacuous_worldValued_presented_of_machine
 
 -- Construction/LUV/ — the certified and the literal first-order LUV frontends
 example := @ComputableLUV.toLUV_polyThresholdCodes

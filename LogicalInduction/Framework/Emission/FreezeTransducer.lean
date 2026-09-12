@@ -1,11 +1,12 @@
-import LogicalInduction.Framework.Criterion
+import LogicalInduction.Framework.Emission.Computable
 
 /-!
 # The price freeze and its streaming transducer
 
-The syntactic operation §4.6 transports a trader with, together with the flat-token model of
-it that a machine-class trader must run. Both are operations on the feature syntax `EF` and
-on its token serialization, so they live beside the rest of the emission vocabulary; the
+The syntactic operation §4.6 transports a trader with — the price freeze — together with the
+flat-token model of it that a machine-class trader must run. Both are operations on the
+feature syntax `EF` and on its token serialization, so they live beside the rest of the
+emission vocabulary; the
 §4.6 theorems that consume them are `Properties/FinitePerturbations.lean`.
 
 ## The selector-indexed freeze
@@ -31,6 +32,13 @@ sentence-level selector `EF.freezeOn` reads. `EF.freezeTokenRunOn_serialize` and
 canonical feature serialization the streaming rewrite is exactly `EF.freezeOn`.
 
 `EF.freezeTokenRun` and `EF.cutoffSel_bridge` are the day-cutoff instance of the token model.
+
+## The numeric form
+
+`freezeControlNat` is the control state re-encoded on `ℕ`, and `freezeControlNat_polyFueled`
+its `dd:fuel` certificate: the parser control before a token of a polynomially fueled stream
+is itself polynomially fueled.  Every compiler that has to know which stream position it is
+at reads the control through it.
 
 Consumers are `Properties/FinitePerturbations.lean` and the §4.6/§4.7 compilers
 `Construction/Freeze/{Compiler,Prefix}.lean` and
@@ -115,8 +123,8 @@ lemma freezeOn_denoteWith (e : EF) (quote : ℕ → Sentence → ℚ)
       intro ρ
       simp only [freezeOn]
       cases hsel : sel day φ with
-      | true => simp [hsel, hin day φ hsel]
-      | false => simp [hsel, hout day φ hsel]
+      | true => simp [hin day φ hsel]
+      | false => simp [hout day φ hsel]
   | const q => intro ρ; rfl
   | add a b iha ihb => intro ρ; simp [freezeOn, iha ρ, ihb ρ]
   | mul a b iha ihb => intro ρ; simp [freezeOn, iha ρ, ihb ρ]
@@ -369,6 +377,14 @@ lemma freezeToken_initial_matches :
     FreezeTokenState.Matches (0, 0) EF.streamInitial := by
   simp [FreezeTokenState.Matches, EF.streamInitial]
 
+section TokenDispatch
+
+-- Every branch of the token dispatch in `streamReadFrom_freezeTokenEmitOn` unfolds the
+-- same five definitions.  They are local simp lemmas for this section only, so the
+-- branches read as the case split they are and no other proof's `simp` is affected.
+attribute [local simp] freezeTokenEmitOn freezeTokenNext freezeStreamStateOn
+  EF.streamReadFrom EF.streamStep
+
 /-- One source token and the bounded suffix emitted for it commute with the actual streaming
 decoder.  This includes malformed inputs: the copied offending token fails before an inserted
 suffix could repair it. -/
@@ -396,76 +412,57 @@ lemma streamReadFrom_freezeTokenEmitOn
   | zero =>
       by_cases h0 : token = 0
       · subst token
-        simp [freezeTokenEmitOn, freezeTokenNext, freezeStreamStateOn,
-          EF.streamReadFrom, EF.streamStep]
+        simp
       by_cases h1 : token = 1
       · subst token
-        simp [freezeTokenEmitOn, freezeTokenNext, freezeStreamStateOn,
-          EF.streamReadFrom, EF.streamStep]
+        simp
       by_cases h2 : token = 2
       · subst token
         cases stack with
-        | nil => simp [freezeTokenEmitOn, freezeTokenNext, freezeStreamStateOn,
-            EF.streamReadFrom, EF.streamStep]
+        | nil => simp
         | cons a stack =>
           cases stack with
-          | nil => simp [freezeTokenEmitOn, freezeTokenNext, freezeStreamStateOn,
-              EF.streamReadFrom, EF.streamStep]
-          | cons b stack => simp [freezeTokenEmitOn, freezeTokenNext, freezeStreamStateOn,
-              EF.streamReadFrom, EF.streamStep, freezeOn]
+          | nil => simp
+          | cons b stack => simp [freezeOn]
       by_cases h3 : token = 3
       · subst token
         cases stack with
-        | nil => simp [freezeTokenEmitOn, freezeTokenNext, freezeStreamStateOn,
-            EF.streamReadFrom, EF.streamStep]
+        | nil => simp
         | cons a stack =>
           cases stack with
-          | nil => simp [freezeTokenEmitOn, freezeTokenNext, freezeStreamStateOn,
-              EF.streamReadFrom, EF.streamStep]
-          | cons b stack => simp [freezeTokenEmitOn, freezeTokenNext, freezeStreamStateOn,
-              EF.streamReadFrom, EF.streamStep, freezeOn]
+          | nil => simp
+          | cons b stack => simp [freezeOn]
       by_cases h4 : token = 4
       · subst token
         cases stack with
-        | nil => simp [freezeTokenEmitOn, freezeTokenNext, freezeStreamStateOn,
-            EF.streamReadFrom, EF.streamStep]
+        | nil => simp
         | cons a stack =>
           cases stack with
-          | nil => simp [freezeTokenEmitOn, freezeTokenNext, freezeStreamStateOn,
-              EF.streamReadFrom, EF.streamStep]
-          | cons b stack => simp [freezeTokenEmitOn, freezeTokenNext, freezeStreamStateOn,
-              EF.streamReadFrom, EF.streamStep, freezeOn]
+          | nil => simp
+          | cons b stack => simp [freezeOn]
       by_cases h5 : token = 5
       · subst token
-        cases stack <;> simp [freezeTokenEmitOn, freezeTokenNext, freezeStreamStateOn,
-          EF.streamReadFrom, EF.streamStep, freezeOn]
+        cases stack <;> simp [freezeOn]
       by_cases h6 : token = 6
       · subst token
-        simp [freezeTokenEmitOn, freezeTokenNext, freezeStreamStateOn,
-          EF.streamReadFrom, EF.streamStep]
+        simp
       by_cases h7 : token = 7
       · subst token
-        simp [freezeTokenEmitOn, freezeTokenNext, freezeStreamStateOn,
-          EF.streamReadFrom, EF.streamStep]
+        simp
       by_cases h8 : token = 8
       · subst token
         cases stack with
-        | nil => simp [freezeTokenEmitOn, freezeTokenNext, freezeStreamStateOn,
-            EF.streamReadFrom, EF.streamStep]
+        | nil => simp
         | cons a stack =>
           cases stack with
-          | nil => simp [freezeTokenEmitOn, freezeTokenNext, freezeStreamStateOn,
-              EF.streamReadFrom, EF.streamStep]
-          | cons b stack => simp [freezeTokenEmitOn, freezeTokenNext, freezeStreamStateOn,
-              EF.streamReadFrom, EF.streamStep, freezeOn]
-      · simp [freezeTokenEmitOn, freezeTokenNext, freezeStreamStateOn,
-          EF.streamReadFrom, EF.streamStep, h0, h1, h2, h3, h4, h5, h6, h7, h8]
+          | nil => simp
+          | cons b stack => simp [freezeOn]
+      · simp [h0, h1, h2, h3, h4, h5, h6, h7, h8]
   | succ mode =>
       cases mode with
       | zero =>
           cases hdecode : Encodable.decode (α := Sentence) token <;>
-            simp [freezeTokenEmitOn, freezeTokenNext, freezeStreamStateOn,
-              EF.streamReadFrom, EF.streamStep, hdecode]
+            simp [hdecode]
       | succ mode =>
           cases mode with
           | zero =>
@@ -473,33 +470,27 @@ lemma streamReadFrom_freezeTokenEmitOn
               subst pending
               have hcode := hsel token code φ hdecode
               by_cases hday : sel token φ = true
-              · simp [freezeTokenEmitOn, freezeTokenNext, freezeStreamStateOn,
-                  EF.streamReadFrom, EF.streamStep, hcode, hday,
-                  hquote token code φ hdecode, freezeOn]
-              · simp [freezeTokenEmitOn, freezeTokenNext, freezeStreamStateOn,
-                  EF.streamReadFrom, EF.streamStep, hcode, hday, freezeOn]
+              · simp [hcode, hday, hquote token code φ hdecode, freezeOn]
+              · simp [hcode, hday, freezeOn]
           | succ mode =>
               cases mode with
               | zero =>
                   cases hdecode : Encodable.decode (α := ℚ) token <;>
-                    simp [freezeTokenEmitOn, freezeTokenNext, freezeStreamStateOn,
-                      EF.streamReadFrom, EF.streamStep, hdecode, freezeOn]
+                    simp [hdecode, freezeOn]
               | succ mode =>
                   cases mode with
                   | zero =>
                       cases stack with
-                      | nil => simp [freezeTokenEmitOn, freezeTokenNext, freezeStreamStateOn,
-                          EF.streamReadFrom, EF.streamStep]
+                      | nil => simp
                       | cons e stack =>
                         cases hdecode : Encodable.decode (α := Sentence) token <;>
-                          simp [freezeTokenEmitOn, freezeTokenNext, freezeStreamStateOn,
-                            EF.streamReadFrom, EF.streamStep, hdecode]
+                          simp [hdecode]
                   | succ mode =>
                       cases mode with
-                      | zero => simp [freezeTokenEmitOn, freezeTokenNext, freezeStreamStateOn,
-                          EF.streamReadFrom, EF.streamStep, freezeOn]
-                      | succ mode => simp [freezeTokenEmitOn, freezeTokenNext, freezeStreamStateOn,
-                          EF.streamReadFrom, EF.streamStep]
+                      | zero => simp [freezeOn]
+                      | succ mode => simp
+
+end TokenDispatch
 
 lemma streamReadFrom_freezeTokenRunOn
     (quote : ℕ → Sentence → ℚ) (sel : ℕ → Sentence → Bool)
@@ -721,5 +712,179 @@ lemma strategyOfTokens_freezeTokenRun_trades
     (cutoffSel_bridge cutoff) hquote tokens
 
 end EF
+
+/-! ## The numeric form of the parser control
+
+The transducer's control automaton, re-encoded on `ℕ` so that a `dd:fuel` certificate can be
+stated for it: `freezeNextNat` is the transition on packed states and `freezeControlNat` the
+state reached before a token index, both polynomially fueled over any polynomially fueled
+token stream.  `Nat.sqrt` is locally irreducible in the section: the certificates below
+elaborate over `Nat.pair`-encoded products, which reach `Nat.unpair`, and unfolding
+`Nat.sqrt`'s well-founded definition sends `whnf` into a loop. -/
+
+section ParserControl
+
+attribute [local irreducible] Nat.sqrt
+
+/-- Numeric form of the small parser-control transition. -/
+def freezeNextNat (z : ℕ) : ℕ :=
+  let mode := z.unpair.1.unpair.1
+  let token := z.unpair.2
+  if mode = 0 then
+    if token = 0 then Nat.pair 1 0
+    else if token = 1 then Nat.pair 3 0
+    else if token = 6 then Nat.pair 4 0
+    else if token = 7 then Nat.pair 5 0
+    else 0
+  else if mode = 1 then Nat.pair 2 token
+  else 0
+
+private lemma freezeNextNat_eq (state : EF.FreezeTokenState) (token : ℕ) :
+    freezeNextNat (Nat.pair (Nat.pair state.1 state.2) token) =
+      Nat.pair (EF.freezeTokenNext state token).1 (EF.freezeTokenNext state token).2 := by
+  rcases state with ⟨mode, pending⟩
+  simp only [freezeNextNat, Nat.unpair_pair]
+  cases mode with
+  | zero =>
+      simp only [EF.freezeTokenNext]
+      by_cases h0 : token = 0
+      · simp [h0]
+      by_cases h1 : token = 1
+      · simp [h1]
+      by_cases h6 : token = 6
+      · simp [h6]
+      by_cases h7 : token = 7
+      · simp [h7]
+      · simp [h0, h1, h6, h7]
+        rfl
+  | succ mode =>
+      cases mode with
+      | zero => simp [EF.freezeTokenNext]
+      | succ mode =>
+          simp [EF.freezeTokenNext]
+          rfl
+
+private lemma freezeNextNat_polyFueled : ∃ c, PolyFueled c freezeNextNat := by
+  have hmode := PolyFueled.left.comp PolyFueled.left
+  have htoken := PolyFueled.right
+  obtain ⟨eq0, heq0⟩ := polyFueled_eqConst htoken 0
+  obtain ⟨eq1, heq1⟩ := polyFueled_eqConst htoken 1
+  obtain ⟨eq6, heq6⟩ := polyFueled_eqConst htoken 6
+  obtain ⟨eq7, heq7⟩ := polyFueled_eqConst htoken 7
+  obtain ⟨out7, hout7⟩ := polyFueled_ifZero heq7 (PolyFueled.const 0)
+    (PolyFueled.const (Nat.pair 5 0))
+  obtain ⟨out6, hout6⟩ := polyFueled_ifZero heq6 hout7
+    (PolyFueled.const (Nat.pair 4 0))
+  obtain ⟨out1, hout1⟩ := polyFueled_ifZero heq1 hout6
+    (PolyFueled.const (Nat.pair 3 0))
+  obtain ⟨out0, hout0⟩ := polyFueled_ifZero heq0 hout1
+    (PolyFueled.const (Nat.pair 1 0))
+  have hmode1 : PolyFueled ((Nat.Partrec.Code.const 2).pair Nat.Partrec.Code.right)
+      (fun z => Nat.pair 2 z.unpair.2) :=
+    (PolyFueled.const 2).pair PolyFueled.right
+  obtain ⟨modeEq1, hmodeEq1⟩ := polyFueled_eqConst hmode 1
+  obtain ⟨other, hother⟩ := polyFueled_ifZero hmodeEq1 (PolyFueled.const 0) hmode1
+  obtain ⟨modeEq0, hmodeEq0⟩ := polyFueled_eqConst hmode 0
+  obtain ⟨result, hresult⟩ := polyFueled_ifZero hmodeEq0 hother hout0
+  refine ⟨result, hresult.of_eq (fun z => ?_)⟩
+  simp only [freezeNextNat]
+  by_cases hm0 : z.unpair.1.unpair.1 = 0
+  · simp [hm0]
+  · by_cases hm1 : z.unpair.1.unpair.1 = 1 <;> simp [hm0, hm1]
+
+private lemma freezeTokenNext_mode_le (state : EF.FreezeTokenState) (token : ℕ) :
+    (EF.freezeTokenNext state token).1 ≤ 5 := by
+  rcases state with ⟨mode, pending⟩
+  cases mode with
+  | zero =>
+      by_cases h0 : token = 0 <;> by_cases h1 : token = 1 <;>
+        by_cases h6 : token = 6 <;> by_cases h7 : token = 7 <;>
+        simp [EF.freezeTokenNext, h0, h1, h6, h7]
+  | succ mode =>
+      cases mode <;> simp [EF.freezeTokenNext]
+
+private lemma freezeTokenNext_pending (state : EF.FreezeTokenState) (token : ℕ) :
+    (EF.freezeTokenNext state token).2 = 0 ∨
+      (EF.freezeTokenNext state token).2 = token := by
+  rcases state with ⟨mode, pending⟩
+  cases mode with
+  | zero =>
+      by_cases h0 : token = 0 <;> by_cases h1 : token = 1 <;>
+        by_cases h6 : token = 6 <;> by_cases h7 : token = 7 <;>
+        simp [EF.freezeTokenNext, h0, h1, h6, h7]
+  | succ mode =>
+      cases mode <;> simp [EF.freezeTokenNext]
+
+private lemma freezeTokenControlAt_mode_le (tokenFn : ℕ → ℕ) (n j : ℕ) :
+    (EF.freezeTokenControlAt tokenFn n j).1 ≤ 5 := by
+  cases j with
+  | zero => simp [EF.freezeTokenControlAt]
+  | succ j =>
+      simp only [EF.freezeTokenControlAt]
+      exact freezeTokenNext_mode_le _ _
+
+private lemma freezeTokenControlAt_pending (tokenFn : ℕ → ℕ) (n j : ℕ) :
+    (EF.freezeTokenControlAt tokenFn n j).2 = 0 ∨
+      ∃ i < j, (EF.freezeTokenControlAt tokenFn n j).2 = tokenFn (Nat.pair n i) := by
+  cases j with
+  | zero => simp [EF.freezeTokenControlAt]
+  | succ j =>
+      rcases freezeTokenNext_pending (EF.freezeTokenControlAt tokenFn n j)
+          (tokenFn (Nat.pair n j)) with h | h
+      · exact Or.inl (by simpa only [EF.freezeTokenControlAt] using h)
+      · exact Or.inr ⟨j, Nat.lt_succ_self j,
+          by simpa only [EF.freezeTokenControlAt] using h⟩
+
+/-- Encoded parser control before the token index carried in `z = ⟨n,j⟩`. -/
+def freezeControlNat (tokenFn : ℕ → ℕ) (z : ℕ) : ℕ :=
+  let state := EF.freezeTokenControlAt tokenFn z.unpair.1 z.unpair.2
+  Nat.pair state.1 state.2
+
+/-- The parser control before a token of a polynomial stream is itself polynomially fueled. -/
+lemma freezeControlNat_polyFueled {ct : Nat.Partrec.Code} {tokenFn : ℕ → ℕ}
+    (htoken : PolyFueled ct tokenFn) :
+    ∃ c, PolyFueled c (freezeControlNat tokenFn) := by
+  obtain ⟨cnext, hnext⟩ := freezeNextNat_polyFueled
+  have hn := PolyFueled.left
+  have hj := PolyFueled.left.comp PolyFueled.right
+  have hprev := PolyFueled.right.comp PolyFueled.right
+  have hsource := htoken.comp (hn.pair hj)
+  have hstep := hnext.comp (hprev.pair hsource)
+  obtain ⟨_, _, htokenBounded, _⟩ := htoken
+  obtain ⟨a, k, hbound⟩ := htokenBounded
+  have hmajor : IsPolyBounded (fun m => Nat.pair 5 (a * (m + 1) ^ k + a)) :=
+    ((IsPolyBounded.linear 5).of_le (fun _ => by omega)).pair
+      ⟨a, k, fun _ => le_rfl⟩
+  have hstate : IsPolyBounded (fun m => freezeControlNat tokenFn m) :=
+    hmajor.of_le (fun m => by
+      simp only [freezeControlNat]
+      have hmode := freezeTokenControlAt_mode_le tokenFn m.unpair.1 m.unpair.2
+      rcases freezeTokenControlAt_pending tokenFn m.unpair.1 m.unpair.2 with hpending | hpending
+      · rw [hpending]
+        exact (pair_le_pair_left' 0 hmode).trans
+          (pair_le_pair_right' 5 (Nat.zero_le _))
+      · obtain ⟨i, hi, hpending⟩ := hpending
+        rw [hpending]
+        have hpair : Nat.pair m.unpair.1 i ≤ m := by
+          calc Nat.pair m.unpair.1 i ≤ Nat.pair m.unpair.1 m.unpair.2 :=
+              pair_le_pair_right' _ (le_of_lt hi)
+            _ = m := Nat.pair_unpair m
+        have htok : tokenFn (Nat.pair m.unpair.1 i) ≤ a * (m + 1) ^ k + a :=
+          (hbound _).trans (by gcongr)
+        exact (pair_le_pair_right' _ htok).trans (pair_le_pair_left' _ hmode))
+  have hstate' : IsPolyBounded (fun m =>
+      freezeControlNat tokenFn (Nat.pair m.unpair.1 m.unpair.2)) :=
+    hstate.of_le (fun m => by rw [Nat.pair_unpair])
+  refine ⟨_, (PolyFueled.prec (PolyFueled.const 0) hstep
+    (st := fun n j => freezeControlNat tokenFn (Nat.pair n j)) (fun n => ?_)
+    (fun n j => ?_) hstate').of_eq (fun z => ?_)⟩
+  · simp only [freezeControlNat, Nat.unpair_pair, EF.freezeTokenControlAt]
+    rfl
+  · simp only [freezeControlNat, Nat.unpair_pair, EF.freezeTokenControlAt]
+    exact (freezeNextNat_eq (EF.freezeTokenControlAt tokenFn n j)
+      (tokenFn (Nat.pair n j))).symm
+  · rw [Nat.pair_unpair]
+
+end ParserControl
 
 end LogicalInduction

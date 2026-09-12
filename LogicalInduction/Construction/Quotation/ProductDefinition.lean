@@ -74,7 +74,7 @@ residue, replacing the mesh route's slack disclosure with a strictly milder one.
 ## Objects and results
 
 `productTag = 3`, `productAtom`, `productLUV`, `ProductAtomFresh`, `meshIndexRat`,
-`productSchemaInstance`, `productDefSentence`, `productStageList`, `productDefDP`,
+`productSchemaInstance`, `productDefSentence`, `productDefDP`,
 `ProductAtomTruth`, `productExtensionWorld`.
 
 The main results are `productLUV_valuesAt` and `productLUV_valuesAt_union` (exact reflection,
@@ -93,14 +93,6 @@ the tag-ownership lemmas below.
 extension of the base process computable; through it the `Quotation/` lane also reaches
 `Properties/Conditioning.lean`'s `DeductiveProcess.union` vocabulary, which the product
 schema is stated over.
-**The criterion binder below is `def:lic` at the paper's own quantifier.**  Every result here that consumes an
-exploiting trader takes `[IsLogicalInductor P DP]`, and the trader is certified at `EfficientlyComputable`:
-it is assembled from `AffineCombination.PolySequence`'s machine-metered emission fields
-through `PolySequence.buyBelowTrader_ec` (`Properties/AffineCoherence.lean`), which has no
-fuel-class form: the bridge `BigSpliceStream.toMachine` runs fuel to machine, and no map
-back is proved or claimed.  The
-calibration is stated at `def:ec` in `Framework/Affine.lean`, and the `_unconditional`
-endpoints discharge the criterion through `LIA_is_logical_inductor`.
 
 -/
 
@@ -120,10 +112,6 @@ def productTag : ℕ := 3
 /-- The fresh atom standing for `⌜Xₙ · Wₙ > r⌝`. -/
 def productAtom (n : ℕ) (r : ℚ) : Sentence :=
   Formula.atom (Nat.pair productTag (Nat.pair n (Encodable.encode r)))
-
-@[simp] lemma sentenceAtomCodes_productAtom (n : ℕ) (r : ℚ) :
-    sentenceAtomCodes (productAtom n r) =
-      {Nat.pair productTag (Nat.pair n (Encodable.encode r))} := rfl
 
 /-- The quoted product LUV: its threshold family *is* the fresh atom family. -/
 def productLUV (n : ℕ) : LUV := ⟨productAtom n⟩
@@ -193,8 +181,7 @@ lemma theoremDP_atomCodes_ne_productTag (T : ArithmeticTheory) [T.Δ₁]
     ∀ φ ∈ (theoremDP T).D k, ∀ a ∈ sentenceAtomCodes φ, a.unpair.1 ≠ productTag := by
   classical
   intro φ hφ
-  simp only [theoremDP, theoremStage, Finset.mem_image, Finset.mem_filter,
-    Finset.mem_range] at hφ
+  simp only [theoremDP, dovetailProcess_D, mem_dovetailStage] at hφ
   obtain ⟨e, _, rfl⟩ := hφ
   exact eventAtom_atomCodes_ne_productTag e
 
@@ -244,34 +231,16 @@ def productDefSentence (X W : ℕ → LUV) (e : ℕ) : Sentence :=
     e.unpair.2.unpair.2.unpair.2.unpair.1
     e.unpair.2.unpair.2.unpair.2.unpair.2
 
-/-- Job codes revealed by day `k`: all of them up to `k`.  The schema is decidable, so no
-dovetailing clock is needed — the process is a plain enumeration. -/
-def productStageList (X W : ℕ → LUV) : ℕ → List Sentence
-  | 0 => [productDefSentence X W 0]
-  | k + 1 => productDefSentence X W (k + 1) :: productStageList X W k
-
-lemma mem_productStageList {X W : ℕ → LUV} {e k : ℕ} (h : e ≤ k) :
-    productDefSentence X W e ∈ productStageList X W k := by
-  induction k with
-  | zero => simp [productStageList, Nat.le_zero.mp h]
-  | succ k ih =>
-      rcases Nat.lt_or_ge e (k + 1) with hlt | hge
-      · exact List.mem_cons_of_mem _ (ih (Nat.lt_succ_iff.mp hlt))
-      · have : e = k + 1 := le_antisymm h hge
-        simp [productStageList, this]
-
-/-- The product-definition deductive process.
+/-- The product-definition deductive process.  The schema is decidable, so no dovetailing
+clock is needed: job code `e`'s clause is revealed at stage `e` (`prefixProcess`,
+`Construction/DeductiveDovetail.lean`).
 Paper node: `thm:ccee` -/
-def productDefDP (X W : ℕ → LUV) : DeductiveProcess where
-  D k := (productStageList X W k).toFinset
-  mono k := by
-    intro φ hφ
-    simp only [List.mem_toFinset] at hφ ⊢
-    exact List.mem_cons_of_mem _ hφ
+def productDefDP (X W : ℕ → LUV) : DeductiveProcess :=
+  prefixProcess (productDefSentence X W)
 
 lemma productDefSentence_mem_stage (X W : ℕ → LUV) (e : ℕ) :
     productDefSentence X W e ∈ (productDefDP X W).D e :=
-  List.mem_toFinset.mpr (mem_productStageList (le_refl e))
+  self_mem_prefixProcess _ (le_refl e)
 
 /-- Every world consistent with the whole product-definition process holds every schema
 instance. -/
@@ -470,16 +439,6 @@ lemma productExtensionWorld_holds_iff (X W : ℕ → LUV) (v₀ : PCWorld) {φ :
     (productExtensionWorld X W v₀).Holds φ ↔ v₀.Holds φ :=
   PCWorld.holds_congr_atomCodes φ (fun a ha => productExtensionWorld_agree X W v₀ (hφ a ha))
 
-/-- A LUV whose thresholds avoid the product tag is valued the same by the extension. -/
-lemma productExtensionWorld_valuesAt {X W : ℕ → LUV} {v₀ : PCWorld} {Y : ℕ → LUV}
-    (hY : ProductAtomFresh Y) {n : ℕ} {y : ℝ} (hy : v₀.ValuesAt (Y n) y) :
-    (productExtensionWorld X W v₀).ValuesAt (Y n) y := by
-  obtain ⟨hy0, hy1, hythr⟩ := hy
-  refine ⟨hy0, hy1, fun r => ⟨fun h => ?_, fun h => ?_⟩⟩
-  · exact (productExtensionWorld_holds_iff X W v₀ (hY n r)).mpr ((hythr r).1 h)
-  · exact fun hcon =>
-      (hythr r).2 h ((productExtensionWorld_holds_iff X W v₀ (hY n r)).mp hcon)
-
 /-- **The extension satisfies the whole defining schema.**  This is the load-bearing half of
 non-vacuity: the fresh atoms can be assigned consistently with every clause at once.
 Paper node: `thm:ccee` -/
@@ -509,17 +468,17 @@ lemma productExtensionWorld_holds_schema {X W : ℕ → LUV} {v₀ : PCWorld}
     show (productExtensionWorld X W v₀).Holds ((X n).gt s) ∨
       (productExtensionWorld X W v₀).Holds ((W n).gt t)
     by_contra hcon
-    push_neg at hcon
+    push Not at hcon
     obtain ⟨hnX, hnW⟩ := hcon
     obtain ⟨x, hx0, _, hxthr⟩ := hXval n
     obtain ⟨c, hc0, _, hcthr⟩ := hWval n
     have hxs : x ≤ (s : ℝ) := by
       by_contra hcc
-      push_neg at hcc
+      push Not at hcc
       exact hnX ((hXtr n s).2 ((hxthr s).1 hcc))
     have hct : c ≤ (t : ℝ) := by
       by_contra hcc
-      push_neg at hcc
+      push Not at hcc
       exact hnW ((hWtr n t).2 ((hcthr t).1 hcc))
     rcases hp' with hrneg | ⟨zs₁, zt₁, hr₁, hXs₁, hWt₁⟩
     · nlinarith
@@ -529,11 +488,11 @@ lemma productExtensionWorld_holds_schema {X W : ℕ → LUV} {v₀ : PCWorld}
       have ht₁ : 0 ≤ t₁ := meshIndexRat_nonneg zt₁
       have hs₁x : (s₁ : ℝ) ≤ x := by
         by_contra hcc
-        push_neg at hcc
+        push Not at hcc
         exact (hxthr s₁).2 hcc hXs₁
       have ht₁c : (t₁ : ℝ) ≤ c := by
         by_contra hcc
-        push_neg at hcc
+        push Not at hcc
         exact (hcthr t₁).2 hcc hWt₁
       have hs₁s : s₁ ≤ s := by exact_mod_cast le_trans hs₁x hxs
       have ht₁t : t₁ ≤ t := by exact_mod_cast le_trans ht₁c hct
@@ -546,15 +505,6 @@ lemma productExtensionWorld_holds_schema {X W : ℕ → LUV} {v₀ : PCWorld}
   · exact (productExtensionWorld_productAtom X W v₀ n r).mpr (Or.inl hneg)
   · exact PCWorld.holds_top _
 
-lemma exists_of_mem_productStageList {X W : ℕ → LUV} {φ : Sentence} {k : ℕ}
-    (h : φ ∈ productStageList X W k) : ∃ e, φ = productDefSentence X W e := by
-  induction k with
-  | zero => exact ⟨0, by simpa [productStageList] using h⟩
-  | succ k ih =>
-      rcases List.mem_cons.mp h with h1 | h2
-      · exact ⟨k + 1, h1⟩
-      · exact ih h2
-
 /-- **`hworld` for the definitional extension.**  The extension of a base world that values
 both source families is consistent with every stage of the product-definition process.
 Paper node: `thm:ccee` -/
@@ -563,7 +513,7 @@ theorem productExtensionWorld_consistentWithTheory {X W : ℕ → LUV} {v₀ : P
     (hXval : ∀ n, ∃ x, v₀.ValuesAt (X n) x) (hWval : ∀ n, ∃ c, v₀.ValuesAt (W n) c) :
     (productExtensionWorld X W v₀).ConsistentWithTheory (productDefDP X W) := by
   intro k φ hφ
-  obtain ⟨e, rfl⟩ := exists_of_mem_productStageList (List.mem_toFinset.mp hφ)
+  obtain ⟨e, -, rfl⟩ := mem_prefixProcess.mp hφ
   rw [productDefSentence]
   exact productExtensionWorld_holds_schema hX hW hXval hWval _ _ _ _ _
 
@@ -583,16 +533,6 @@ theorem productDefDP_union_consistentWithTheory {B : DeductiveProcess} {X W : �
   · intro φ hφ
     exact (productExtensionWorld_holds_iff X W v₀ (hB k φ hφ)).mpr (hv₀ k φ hφ)
   · exact productExtensionWorld_consistentWithTheory hX hW hXval hWval k
-
-/-- Stages of the union constrain the extra process in particular. -/
-lemma PCWorld.consistentWithTheory_union_right {v : PCWorld} {DP extra : DeductiveProcess}
-    (h : v.ConsistentWithTheory (DP.union extra)) : v.ConsistentWithTheory extra :=
-  fun n => ((v.consistentWith_union_iff DP extra n).mp (h n)).2
-
-/-- Stages of the union constrain the base process in particular. -/
-lemma PCWorld.consistentWithTheory_union_left {v : PCWorld} {DP extra : DeductiveProcess}
-    (h : v.ConsistentWithTheory (DP.union extra)) : v.ConsistentWithTheory DP :=
-  fun n => ((v.consistentWith_union_iff DP extra n).mp (h n)).1
 
 /-- **The exact product law over the union process.**  This is the shape
 `ConditionalExpectationQuote.left_reflected` consumes, at `slack = 0`.
@@ -779,28 +719,8 @@ two source families' own `def:ec` threshold certificates.
 Paper node: `def:dedproc`, `thm:ccee` -/
 lemma productDefDP_computable {X W : ℕ → LUV}
     (hX : LUV.MachineThresholdCodeSeq X) (hW : LUV.MachineThresholdCodeSeq W) :
-    ComputableDeductiveProcess (productDefDP X W) := by
-  have hlist : Computable (productStageList X W) := by
-    have hstep : Computable fun p : ℕ × List Sentence =>
-        productDefSentence X W (p.1 + 1) :: p.2 :=
-      Computable.list_cons.comp
-        ((productDefSentence_computable hX hW).comp
-          (Primrec.succ.to_comp.comp Computable.fst)) Computable.snd
-    refine (Computable.nat_rec Computable.id
-      (Computable.const [productDefSentence X W 0])
-      (hstep.comp₂ Computable.snd.to₂)).of_eq (fun k => ?_)
-    induction k with
-    | zero => rfl
-    | succ k ih => simpa [productStageList] using ih
-  have hkey : Computable fun k => Encodable.encode
-      ((sentenceDedup (productStageList X W k)).insertionSort sentenceCodeLE) :=
-    Computable.encode.comp
-      ((sentenceInsertionSort_prim.comp sentenceDedup_prim).to_comp.comp hlist)
-  obtain ⟨code, hcode⟩ := Nat.Partrec.Code.exists_code.mp
-    (Partrec.nat_iff.mp hkey)
-  refine ⟨code, fun k => ?_⟩
-  rw [hcode]
-  exact Part.mem_some_iff.mpr (encode_toFinset_eq (productStageList X W k))
+    ComputableDeductiveProcess (productDefDP X W) :=
+  prefixProcess_computable (productDefSentence_computable hX hW)
 
 end
 
@@ -926,6 +846,9 @@ Paper node: `thm:ccee` -/
 noncomputable def exactProductDP (X : ℕ → LUV) : DeductiveProcess :=
   (theoremDP T).union (productDefDP X (exactWeightLUV T f w weight_mem weight_generable))
 
+omit [Entailment.Consistent T] in
+/-- `def:dedproc` computability of the definitional extension, as the union of the theorem
+stream's own program and the product-definition process's. -/
 lemma exactProductDP_computable {X : ℕ → LUV} (hX : LUV.MachineThresholdCodeSeq X) :
     ComputableDeductiveProcess (exactProductDP T f w weight_mem weight_generable X) :=
   DeductiveProcessComputation.union_toComputable
@@ -1063,33 +986,6 @@ set is exhibited, not argued, and by an **index-varying** construction at both e
 weight is the harmonic sequence `1/(n+1)` (efficiently codeable, so `def:ece` holds against
 *every* market, the extended one included) and the source is that sequence's own quotation
 threshold family, whose day-`n` LUV is a distinct family of atoms for each `n`. -/
-
-/-- The harmonic weight `n ↦ 1/(n+1)`: efficiently codeable, `[0,1]`-valued, and not
-eventually constant. -/
-lemma harmonicWeight_polyRatCodes : PolyRatCodes (fun n : ℕ => 1 / ((n : ℚ) + 1)) := by
-  refine ⟨_, ((PolyFueled.const 2).pair PolyFueled.id.succ_comp).of_eq (fun n => ?_)⟩
-  have h : (1 : ℚ) / ((n : ℚ) + 1) = (((n + 1 : ℕ) : ℚ))⁻¹ := by push_cast; rw [one_div]
-  show Nat.pair 2 (n + 1) = Encodable.encode ((1 : ℚ) / ((n : ℚ) + 1))
-  rw [h, encode_rat_inv_natCast n.succ_pos]
-
-lemma harmonicWeight_mem (n : ℕ) : 0 ≤ 1 / ((n : ℚ) + 1) ∧ 1 / ((n : ℚ) + 1) ≤ 1 := by
-  have hpos : (0 : ℚ) < (n : ℚ) + 1 := by positivity
-  exact ⟨by positivity, by rw [div_le_one hpos]; linarith [Nat.cast_nonneg (α := ℚ) n]⟩
-
-lemma harmonicWeight_not_constant : ¬ ∀ m n : ℕ, 1 / ((m : ℚ) + 1) = 1 / ((n : ℚ) + 1) := by
-  intro h
-  have := h 0 1
-  norm_num at this
-
-/-- Every **value-bounded** rational code sequence is `def:ece` against every market —
-the derived corollary of the general write-out constructor
-`PGenerableRat.ofMachineRatCodes`, kept for callers who already hold a `PolyRatCodes`
-certificate.  It is strictly weaker: `PolyRatCodes` excludes the paper's own `δ n = 2⁻ⁿ`
-(`digitRatCodes_two_pow_inv_not_polyRatCodes`), which the general constructor admits
-(`pGenerableRat_two_pow_inv`). -/
-lemma PGenerableRat.ofPolyRatCodes {q : ℕ → ℚ} (hq : PolyRatCodes q) (P : History) :
-    PGenerableRat P q :=
-  PGenerableRat.ofMachineRatCodes (DigitRatCodes.ofPolyRatCodes hq).toMachine P
 
 /-- **N±.**  The obstruction-closure demonstration's whole premise set is jointly
 satisfiable, by an index-varying construction rather than a stand-in witness: the `def:ec`

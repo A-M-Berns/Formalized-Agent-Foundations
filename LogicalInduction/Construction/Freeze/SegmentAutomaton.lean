@@ -33,6 +33,9 @@ namespace LogicalInduction.SegAuto
 
 open Complexity LogicalInduction.RunAuto LogicalInduction.StructPat
 
+-- The `Nat.pair`/`unpair` reachable from the sentence codec unfolds `Nat.sqrt`'s
+-- well-founded definition during `whnf` and loops; local opacity stops that.
+-- See `notes/lean-gotchas.md`.
 attribute [local irreducible] Nat.sqrt
 
 /-! ## The payload recognizer, as an interface -/
@@ -53,28 +56,18 @@ structure PayRec (fc : ℕ) where
   step_le : ∀ i t, i ≤ Q → step i t ≤ Q
   /-- And it decides a complete structured payload parse to `fc`. -/
   spec : ∀ q : List ℕ, accept (q.foldl step init) = true ↔
-    parseStructuredArithmeticFormula q.length 0 q = some (fc, [])
+    parseStructuredArithmeticFormula q.length q = some (fc, [])
 
 /-! ## The relaxed language -/
 
-lemma segMatchRelaxed_nil (b : List ℕ) : SegMatchRelaxed [] b ↔ b = [] := by
-  constructor
-  · rintro ⟨bs, hf, rfl⟩
-    rw [List.forall₂_nil_left_iff.mp hf]
-    rfl
-  · rintro rfl
-    exact ⟨[], List.Forall₂.nil, rfl⟩
+lemma segMatchRelaxed_nil (b : List ℕ) : SegMatchRelaxed [] b ↔ b = [] :=
+  StructPat.segMatchWith_nil _ b
 
 lemma segMatchRelaxed_cons_left_iff {σ : StructPat.PatSeg} {p : List StructPat.PatSeg}
     {b : List ℕ} :
     SegMatchRelaxed (σ :: p) b ↔
-      ∃ b₁ b₂, PatSeg.MatchesRelaxed σ b₁ ∧ SegMatchRelaxed p b₂ ∧ b = b₁ ++ b₂ := by
-  constructor
-  · rintro ⟨bs, hf, rfl⟩
-    obtain ⟨b₁, bs', h₁, hrest, rfl⟩ := List.forall₂_cons_left_iff.mp hf
-    exact ⟨b₁, bs'.flatten, h₁, ⟨bs', hrest, rfl⟩, by simp⟩
-  · rintro ⟨b₁, b₂, h₁, ⟨bs, hf, rfl⟩, rfl⟩
-    exact ⟨b₁ :: bs, List.Forall₂.cons h₁ hf, by simp⟩
+      ∃ b₁ b₂, PatSeg.MatchesRelaxed σ b₁ ∧ SegMatchRelaxed p b₂ ∧ b = b₁ ++ b₂ :=
+  StructPat.segMatchWith_cons_left_iff
 
 /-- No pattern segment matches the empty run. -/
 lemma patSegMatchesRelaxed_ne_nil {σ : StructPat.PatSeg} {b : List ℕ}
@@ -107,16 +100,16 @@ needs the numeric bound as well: everything the structured grammar consumes is a
 `23`.  This is that lemma; the term and numeral sub-grammars already have the stronger
 `< 19` bound. -/
 private lemma parseFormula_consumed_lt_23 :
-    ∀ {fuel depth : ℕ} {ts : List ℕ} {code : ℕ} {rest : List ℕ},
-      parseStructuredArithmeticFormula fuel depth ts = some (code, rest) →
+    ∀ {fuel : ℕ} {ts : List ℕ} {code : ℕ} {rest : List ℕ},
+      parseStructuredArithmeticFormula fuel ts = some (code, rest) →
       ∃ w, ts = w ++ rest ∧ ∀ x ∈ w, x < 23 := by
   intro fuel
   induction fuel with
   | zero =>
-      intro depth ts code rest h
+      intro ts code rest h
       simp [parseStructuredArithmeticFormula] at h
   | succ fuel ih =>
-      intro depth ts code rest h
+      intro ts code rest h
       rcases ts with _ | ⟨t, ts⟩
       · simp [parseStructuredArithmeticFormula] at h
       rw [parseStructuredArithmeticFormula] at h
@@ -132,8 +125,8 @@ private lemma parseFormula_consumed_lt_23 :
       rw [if_neg h10] at h
       by_cases hrel : t = 11 ∨ t = 12 ∨ t = 13 ∨ t = 14
       · rw [if_pos hrel] at h
-        rcases hp : parseStructuredArithmeticTerm fuel 0 ts with _ | q <;> simp [hp] at h
-        rcases hq : parseStructuredArithmeticTerm fuel 0 q.2 with _ | r <;> simp [hq] at h
+        rcases hp : parseStructuredArithmeticTerm fuel ts with _ | q <;> simp [hp] at h
+        rcases hq : parseStructuredArithmeticTerm fuel q.2 with _ | r <;> simp [hq] at h
         obtain ⟨a, rfl, -⟩ := h
         obtain ⟨w₁, hts, hw₁⟩ := parseStructuredArithmeticTerm_consumed_lt hp
         obtain ⟨w₂, hp2, hw₂⟩ := parseStructuredArithmeticTerm_consumed_lt hq
@@ -147,8 +140,8 @@ private lemma parseFormula_consumed_lt_23 :
       rw [if_neg hrel] at h
       by_cases hbin : t = 15 ∨ t = 16
       · rw [if_pos hbin] at h
-        rcases hp : parseStructuredArithmeticFormula fuel 0 ts with _ | q <;> simp [hp] at h
-        rcases hq : parseStructuredArithmeticFormula fuel 0 q.2 with _ | r <;> simp [hq] at h
+        rcases hp : parseStructuredArithmeticFormula fuel ts with _ | q <;> simp [hp] at h
+        rcases hq : parseStructuredArithmeticFormula fuel q.2 with _ | r <;> simp [hq] at h
         obtain ⟨a, rfl, -⟩ := h
         obtain ⟨w₁, hts, hw₁⟩ := ih hp
         obtain ⟨w₂, hp2, hw₂⟩ := ih hq
@@ -162,7 +155,7 @@ private lemma parseFormula_consumed_lt_23 :
       rw [if_neg hbin] at h
       by_cases hquant : t = 17 ∨ t = 18
       · rw [if_pos hquant] at h
-        rcases hp : parseStructuredArithmeticFormula fuel 0 ts with _ | q <;> simp [hp] at h
+        rcases hp : parseStructuredArithmeticFormula fuel ts with _ | q <;> simp [hp] at h
         rcases h with ⟨-, hrest⟩
         subst rest
         obtain ⟨w₁, hts, hw₁⟩ := ih hp
@@ -174,7 +167,7 @@ private lemma parseFormula_consumed_lt_23 :
       rw [if_neg hquant] at h
       by_cases h20 : t = 20
       · rw [if_pos h20] at h
-        rcases hp : parseStructuredArithmeticFormula fuel 0 ts with _ | q <;> simp [hp] at h
+        rcases hp : parseStructuredArithmeticFormula fuel ts with _ | q <;> simp [hp] at h
         rcases h with ⟨-, hrest⟩
         subst rest
         obtain ⟨w₁, hts, hw₁⟩ := ih hp
@@ -186,8 +179,8 @@ private lemma parseFormula_consumed_lt_23 :
       rw [if_neg h20] at h
       by_cases h21 : t = 21
       · rw [if_pos h21] at h
-        rcases hp : parseStructuredArithmeticFormula fuel 0 ts with _ | q <;> simp [hp] at h
-        rcases hq : parseStructuredArithmeticFormula fuel 0 q.2 with _ | r <;> simp [hq] at h
+        rcases hp : parseStructuredArithmeticFormula fuel ts with _ | q <;> simp [hp] at h
+        rcases hq : parseStructuredArithmeticFormula fuel q.2 with _ | r <;> simp [hq] at h
         obtain ⟨a, rfl, -⟩ := h
         obtain ⟨w₁, hts, hw₁⟩ := ih hp
         obtain ⟨w₂, hp2, hw₂⟩ := ih hq
@@ -201,8 +194,8 @@ private lemma parseFormula_consumed_lt_23 :
       rw [if_neg h21] at h
       by_cases h22 : t = 22
       · rw [if_pos h22] at h
-        rcases hp : parseStructuredArithmeticFormula fuel 0 ts with _ | q <;> simp [hp] at h
-        rcases hq : parseStructuredArithmeticFormula fuel 0 q.2 with _ | r <;> simp [hq] at h
+        rcases hp : parseStructuredArithmeticFormula fuel ts with _ | q <;> simp [hp] at h
+        rcases hq : parseStructuredArithmeticFormula fuel q.2 with _ | r <;> simp [hq] at h
         obtain ⟨a, rfl, -⟩ := h
         obtain ⟨w₁, hts, hw₁⟩ := ih hp
         obtain ⟨w₂, hp2, hw₂⟩ := ih hq
@@ -217,7 +210,7 @@ private lemma parseFormula_consumed_lt_23 :
       exact absurd h (by simp)
 
 lemma payload_tokens_lt_23 {q : List ℕ} {fc : ℕ}
-    (h : parseStructuredArithmeticFormula q.length 0 q = some (fc, [])) :
+    (h : parseStructuredArithmeticFormula q.length q = some (fc, [])) :
     ∀ x ∈ q, x < 23 := by
   obtain ⟨w, hw, hlt⟩ := parseFormula_consumed_lt_23 h
   rw [List.append_nil] at hw

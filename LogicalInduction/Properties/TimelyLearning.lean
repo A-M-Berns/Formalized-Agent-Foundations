@@ -389,8 +389,7 @@ the same limsup as their future infima.
 
 The price range is carried by the criterion; plausible-world existence remains an
 explicit deductive-process hypothesis.  The criterion binder is `def:lic` at the paper's
-own quantifier, the trader being certified
-is certified at `EfficientlyComputable`.
+own quantifier, with the trader certified at `EfficientlyComputable`.
 Paper node: `thm:tbo` -/
 theorem lic_preemptive_learning (P : History) (DP : DeductiveProcess)
     [IsLogicalInductor P DP] (φ : ℕ → Sentence) (hφ : MachineSentenceCodes φ)

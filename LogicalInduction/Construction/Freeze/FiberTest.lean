@@ -1,4 +1,5 @@
 import LogicalInduction.Framework.Machine.DigitArithFP
+import LogicalInduction.Construction.Freeze.CanonicalCodes
 import LogicalInduction.Construction.Freeze.PatternAutomaton
 
 /-!
@@ -27,10 +28,10 @@ multiplicity propagates through every connective.
   constant of the frozen table, so the whole test is a fixed-depth composition rather than a
   scan) and `length_fiberW_eq_one` (it computes `sentenceMatches`).
 
-`fiberW_mem_FP` and `holeGuards` are in `AxiomAudit.lean`.  `SegmentRecognizer.lean` is
-parameterized over the interface `PatAuto.HoleGuards` rather than over these terms;
-`Oracle.lean` supplies `holeGuards` as its inhabitant, and the term-level consumers are
-`Oracle.lean`, `PatternAutomaton.lean`, `Compiler.lean` and `CanonicalCodes.lean`.
+`fiberW_mem_FP` and `holeGuards` are in `AxiomAudit.lean`.  `SegmentAutomaton.lean` and
+`SegmentRecognizer.lean` are parameterized over the interface `PatAuto.HoleGuards` rather
+than over these terms, and `Oracle.lean` is the one module that supplies `holeGuards` as its
+inhabitant.
 -/
 
 namespace LogicalInduction.FiberTest
@@ -322,9 +323,8 @@ def holeGuard (χ : Sentence) : TokGuard where
 
 /-- **`PatAuto.HoleGuards` is inhabited.**
 
-With it, `PatAuto.ifParseLegacy_mem_FP` decides "this run denotes `ψ`" in the legacy grammar
-for an arbitrary target; `SegRec.ifParseFull_mem_FP` is the corresponding unconditional
-decision at the full grammar `parseRpn`.
+With it, `SegRec.ifParseFull_mem_FP` decides "this run denotes `ψ`" at the full grammar
+`parseRpn`, for an arbitrary target and with no syntactic side condition.
 
 Kind `N+` non-vacuity witness.  Provenance: (a) `fiberW_mem_FP`, `length_fiberW_eq_one`;
 (b) `PrefixPatchCompile.sentenceMatches_eq_one_iff`.

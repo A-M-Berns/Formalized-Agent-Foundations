@@ -154,12 +154,12 @@ as the same five declarations.
 
 /-- `parseStructuredNat` on the paired index `⟨fuel, encode ts⟩` (list argument via the
 canonical `ofNat`). -/
-public def structuredNatF (m : ℕ) : Option (ℕ × List ℕ) :=
+def structuredNatF (m : ℕ) : Option (ℕ × List ℕ) :=
   parseStructuredNat m.unpair.1 (Denumerable.ofNat (List ℕ) m.unpair.2)
 
 /-- One strong-recursion step of the numeral grammar over an abstract lookup for the
 smaller indices: tag `0` ends the numeral, tags `1`/`2` append a binary digit. -/
-public def structuredNatGCore (m : ℕ) (look : ℕ → Option (ℕ × List ℕ)) :
+def structuredNatGCore (m : ℕ) (look : ℕ → Option (ℕ × List ℕ)) :
     Option (ℕ × List ℕ) :=
   match m.unpair.1, Denumerable.ofNat (List ℕ) m.unpair.2 with
   | 0, _ => none
@@ -197,7 +197,7 @@ private lemma structured_smaller_index_of_suffix {m fuel t rest r}
   lt_of_le_of_lt (pair_le_pair_right' fuel (encode_le_of_suffix hr))
     (structured_smaller_index hfuel hts)
 
-public lemma structuredNatGCore_spec (m : ℕ) (look : ℕ → Option (ℕ × List ℕ))
+lemma structuredNatGCore_spec (m : ℕ) (look : ℕ → Option (ℕ × List ℕ))
     (hlook : ∀ i, i < m → look i = structuredNatF i) :
     structuredNatGCore m look = structuredNatF m := by
   rw [structuredNatGCore, structuredNatF]
@@ -215,11 +215,11 @@ public lemma structuredNatGCore_spec (m : ℕ) (look : ℕ → Option (ℕ × Li
     Nat.unpair_pair, Denumerable.ofNat_encode]
 
 /-- The numeral grammar's strong-recursion step over the value table. -/
-public def structuredNatG (prev : List (Option (ℕ × List ℕ))) :
+def structuredNatG (prev : List (Option (ℕ × List ℕ))) :
     Option (Option (ℕ × List ℕ)) :=
   some (structuredNatGCore prev.length fun i => (prev[i]?).getD none)
 
-public lemma structuredNatG_spec (m : ℕ) :
+lemma structuredNatG_spec (m : ℕ) :
     structuredNatG ((List.range m).map structuredNatF) = some (structuredNatF m) := by
   rw [structuredNatG, show ((List.range m).map structuredNatF).length = m from by simp]
   congr 1
@@ -230,14 +230,14 @@ public lemma structuredNatG_spec (m : ℕ) :
 
 /-- `parseStructuredArithmeticTerm` on the paired index `⟨fuel, encode ts⟩` (list argument
 via the canonical `ofNat`). -/
-public def structuredTermF (m : ℕ) : Option (ℕ × List ℕ) :=
-  parseStructuredArithmeticTerm m.unpair.1 0
+def structuredTermF (m : ℕ) : Option (ℕ × List ℕ) :=
+  parseStructuredArithmeticTerm m.unpair.1
     (Denumerable.ofNat (List ℕ) m.unpair.2)
 
 /-- One strong-recursion step of the term grammar over an abstract lookup for the smaller
 indices: tags `3`/`4` read a variable or a numeral, `5`/`6` the constants, `7`/`8` the two
 binary function symbols. -/
-public def structuredTermGCore (m : ℕ)
+def structuredTermGCore (m : ℕ)
     (look : ℕ → Option (ℕ × List ℕ)) : Option (ℕ × List ℕ) :=
   match m.unpair.1, Denumerable.ofNat (List ℕ) m.unpair.2 with
   | 0, _ => none
@@ -257,7 +257,7 @@ public def structuredTermGCore (m : ℕ)
               (arithmeticVec2Code p.1 q.1), q.2)
       else none
 
-public lemma structuredTermGCore_spec (m : ℕ)
+lemma structuredTermGCore_spec (m : ℕ)
     (look : ℕ → Option (ℕ × List ℕ))
     (hlook : ∀ i, i < m → look i = structuredTermF i) :
     structuredTermGCore m look = structuredTermF m := by
@@ -274,7 +274,7 @@ public lemma structuredTermGCore_spec (m : ℕ)
   by_cases hb : t = 7 ∨ t = 8 <;> simp only [hb, if_true, if_false]
   rw [hlook _ (structured_smaller_index hf hs), structuredTermF,
     Nat.unpair_pair, Denumerable.ofNat_encode]
-  rcases hp : parseStructuredArithmeticTerm fuel 0 rest with _ | p
+  rcases hp : parseStructuredArithmeticTerm fuel rest with _ | p
   · rfl
   simp only [Option.bind_some]
   have hidx := structured_smaller_index_of_suffix hf hs
@@ -282,11 +282,11 @@ public lemma structuredTermGCore_spec (m : ℕ)
   rw [hlook _ hidx, structuredTermF, Nat.unpair_pair, Denumerable.ofNat_encode]
 
 /-- The term grammar's strong-recursion step over the value table. -/
-public def structuredTermG
+def structuredTermG
     (prev : List (Option (ℕ × List ℕ))) : Option (Option (ℕ × List ℕ)) :=
   some (structuredTermGCore prev.length fun i => (prev[i]?).getD none)
 
-public lemma structuredTermG_spec (m : ℕ) :
+lemma structuredTermG_spec (m : ℕ) :
     structuredTermG ((List.range m).map structuredTermF) =
       some (structuredTermF m) := by
   rw [structuredTermG, show ((List.range m).map structuredTermF).length = m from by simp]
@@ -298,8 +298,8 @@ public lemma structuredTermG_spec (m : ℕ) :
 
 /-- `parseStructuredArithmeticFormula` on the paired index `⟨fuel, encode ts⟩` (list
 argument via the canonical `ofNat`). -/
-public def structuredFormulaF (m : ℕ) : Option (ℕ × List ℕ) :=
-  parseStructuredArithmeticFormula m.unpair.1 0
+def structuredFormulaF (m : ℕ) : Option (ℕ × List ℕ) :=
+  parseStructuredArithmeticFormula m.unpair.1
     (Denumerable.ofNat (List ℕ) m.unpair.2)
 
 /-- One strong-recursion step of the formula grammar over an abstract lookup for the
@@ -307,7 +307,7 @@ smaller indices. The tag dispatch mirrors `parseStructuredArithmeticFormula`: `9
 the propositional constants, `11`–`14` the relations, `15`/`16` the normal-form binary
 connectives and `17`/`18` the quantifiers, while `20`/`21`/`22` carry the paper's own
 `¬`/`⟹`/`⟺` and expand them into normal form here, uncharged (`dd:nnf`). -/
-public def structuredFormulaGCore (m : ℕ)
+def structuredFormulaGCore (m : ℕ)
     (look : ℕ → Option (ℕ × List ℕ)) : Option (ℕ × List ℕ) :=
   match m.unpair.1, Denumerable.ofNat (List ℕ) m.unpair.2 with
   | 0, _ => none
@@ -316,8 +316,8 @@ public def structuredFormulaGCore (m : ℕ)
       if t = 9 then some (Nat.pair 2 0 + 1, rest)
       else if t = 10 then some (Nat.pair 3 0 + 1, rest)
       else if t = 11 ∨ t = 12 ∨ t = 13 ∨ t = 14 then
-        (parseStructuredArithmeticTerm fuel 0 rest).bind fun p =>
-          (parseStructuredArithmeticTerm fuel 0 p.2).map fun q =>
+        (parseStructuredArithmeticTerm fuel rest).bind fun p =>
+          (parseStructuredArithmeticTerm fuel p.2).map fun q =>
             (arithmeticRelCode (t = 12 ∨ t = 14)
               (if t = 11 ∨ t = 12 then 0 else 1) p.1 q.1, q.2)
       else if t = 15 ∨ t = 16 then
@@ -342,7 +342,7 @@ public def structuredFormulaGCore (m : ℕ)
                 (Nat.pair 5 (Nat.pair (negFormulaCode q.1) p.1) + 1)) + 1, q.2)
       else none
 
-public lemma structuredFormulaGCore_spec (m : ℕ)
+lemma structuredFormulaGCore_spec (m : ℕ)
     (look : ℕ → Option (ℕ × List ℕ))
     (hlook : ∀ i, i < m → look i = structuredFormulaF i) :
     structuredFormulaGCore m look = structuredFormulaF m := by
@@ -359,7 +359,7 @@ public lemma structuredFormulaGCore_spec (m : ℕ)
   by_cases hbin : t = 15 ∨ t = 16 <;> simp only [hbin, if_true, if_false]
   · rw [hlook _ (structured_smaller_index hf hs), structuredFormulaF,
       Nat.unpair_pair, Denumerable.ofNat_encode]
-    rcases hp : parseStructuredArithmeticFormula fuel 0 rest with _ | p
+    rcases hp : parseStructuredArithmeticFormula fuel rest with _ | p
     · rfl
     simp only [Option.bind_some]
     have hidx := structured_smaller_index_of_suffix hf hs
@@ -375,7 +375,7 @@ public lemma structuredFormulaGCore_spec (m : ℕ)
   by_cases h21 : t = 21 <;> simp only [h21, if_true, if_false]
   · rw [hlook _ (structured_smaller_index hf hs), structuredFormulaF,
       Nat.unpair_pair, Denumerable.ofNat_encode]
-    rcases hp : parseStructuredArithmeticFormula fuel 0 rest with _ | p
+    rcases hp : parseStructuredArithmeticFormula fuel rest with _ | p
     · rfl
     simp only [Option.bind_some]
     have hidx := structured_smaller_index_of_suffix hf hs
@@ -385,7 +385,7 @@ public lemma structuredFormulaGCore_spec (m : ℕ)
   by_cases h22 : t = 22 <;> simp only [h22, if_true, if_false]
   rw [hlook _ (structured_smaller_index hf hs), structuredFormulaF,
     Nat.unpair_pair, Denumerable.ofNat_encode]
-  rcases hp : parseStructuredArithmeticFormula fuel 0 rest with _ | p
+  rcases hp : parseStructuredArithmeticFormula fuel rest with _ | p
   · rfl
   simp only [Option.bind_some]
   have hidx := structured_smaller_index_of_suffix hf hs
@@ -394,11 +394,11 @@ public lemma structuredFormulaGCore_spec (m : ℕ)
     Denumerable.ofNat_encode]
 
 /-- The formula grammar's strong-recursion step over the value table. -/
-public def structuredFormulaG
+def structuredFormulaG
     (prev : List (Option (ℕ × List ℕ))) : Option (Option (ℕ × List ℕ)) :=
   some (structuredFormulaGCore prev.length fun i => (prev[i]?).getD none)
 
-public lemma structuredFormulaG_spec (m : ℕ) :
+lemma structuredFormulaG_spec (m : ℕ) :
     structuredFormulaG ((List.range m).map structuredFormulaF) =
       some (structuredFormulaF m) := by
   rw [structuredFormulaG,
@@ -498,7 +498,7 @@ lemma parseGCore_spec (m : ℕ) (look : ℕ → Option (ℕ × List ℕ))
       · rw [if_neg (by norm_num), if_pos rfl]
       · rw [if_neg (by norm_num), if_neg (by norm_num), if_pos rfl]
   · rw [if_neg hb]
-    push_neg at hb
+    push Not at hb
     obtain ⟨hb2, hb3, hb4⟩ := hb
     rw [if_neg hb2, if_neg hb3, if_neg hb4]
 

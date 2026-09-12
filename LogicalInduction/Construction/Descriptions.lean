@@ -118,10 +118,6 @@ def decode (t : CodedTape) : Tape where
   head := t.head
   cells := fun i => if i = 0 then Γ.start else (t.cells[i - 1]?).getD Γ.blank
 
-@[simp] lemma decode_head (t : CodedTape) : t.decode.head = t.head := rfl
-
-@[simp] lemma decode_cells_zero (t : CodedTape) : t.decode.cells 0 = Γ.start := rfl
-
 lemma decode_cells_succ (t : CodedTape) (i : ℕ) :
     t.decode.cells (i + 1) = (t.cells[i]?).getD Γ.blank := by
   simp [decode]
@@ -415,21 +411,12 @@ supplies `Primrec.list_findIdx` and `Primrec.list_getElem?`, whose composite is 
 because `findIdx` returns the list length when nothing matches and `getElem?` returns `none`
 there. -/
 
-/-- `List.find?` is the `getElem?` of the list at the index `findIdx` reports. -/
-lemma list_find?_eq_getElem? {β : Type*} (p : β → Bool) :
-    ∀ l : List β, l.find? p = l[l.findIdx p]?
-  | [] => rfl
-  | a :: l => by
-      by_cases h : p a
-      · simp [List.findIdx_cons, h]
-      · simp [List.findIdx_cons, h, list_find?_eq_getElem? p l]
-
 open Primrec in
 lemma primrec_list_find? {α β : Type*} [Primcodable α] [Primcodable β]
     {f : α → List β} {p : α → β → Bool} (hf : Primrec f) (hp : Primrec₂ p) :
     Primrec fun a => (f a).find? (p a) :=
-  ((Primrec.list_getElem?.comp hf (Primrec.list_findIdx hf hp))).of_eq fun a =>
-    (list_find?_eq_getElem? (p a) (f a)).symm
+  ((Primrec.list_getElem?.comp hf (Primrec.list_findIdx hf hp))).of_eq fun _ =>
+    List.find?_eq_getElem?_findIdx.symm
 
 /-- Any function out of `Γ` is primitive recursive: `Γ` has four elements, so the
 function is a fixed finite lookup table indexed by the code of its argument. -/
@@ -442,7 +429,6 @@ lemma primrec_of_gamma {σ : Type*} [Primcodable σ] (g : Γ → σ) (dflt : σ)
 lemma primrec_readback : Primrec TMDesc.readback :=
   primrec_of_gamma TMDesc.readback Γw.blank
 
-set_option maxHeartbeats 1000000 in
 /-- The default action taken when no table row matches. -/
 lemma primrec_defaultAct :
     Primrec fun z : TMDesc × Γ × Γ => z.1.defaultAct z.2.1 z.2.2 := by
@@ -455,7 +441,6 @@ lemma primrec_defaultAct :
   intro z
   rfl
 
-set_option maxHeartbeats 1000000 in
 /-- The table-row match predicate. -/
 lemma primrec_entryMatches :
     Primrec₂ fun (z : ℕ × Γ × Γ × Γ) (e : DescEntry) =>
@@ -476,7 +461,6 @@ lemma primrec_entryMatches :
         (Primrec.snd.comp he))))
       (Primrec.snd.comp (Primrec.snd.comp (Primrec.snd.comp hz))))
 
-set_option maxHeartbeats 1000000 in
 /-- **The description's transition lookup is primitive recursive.** -/
 lemma primrec_lookup :
     Primrec fun z : TMDesc × ℕ × Γ × Γ × Γ =>
@@ -511,7 +495,6 @@ lemma primrec_tape_cells : Primrec CodedTape.cells :=
 
 end
 
-set_option maxHeartbeats 1000000 in
 lemma primrec_tape_read : Primrec CodedTape.read :=
   (Primrec.ite (Primrec.eq.comp primrec_tape_head (Primrec.const 0))
     (Primrec.const Γ.start)
@@ -520,7 +503,6 @@ lemma primrec_tape_read : Primrec CodedTape.read :=
         (Primrec.nat_sub.comp primrec_tape_head (Primrec.const 1)))
       (Primrec.const Γ.blank))).of_eq fun _ => rfl
 
-set_option maxHeartbeats 1000000 in
 lemma primrec_setAt :
     Primrec fun z : List Γ × ℕ × Γ => CodedTape.setAt z.1 z.2.1 z.2.2 := by
   set A := List Γ × ℕ × Γ
@@ -539,7 +521,6 @@ lemma primrec_setAt :
         (Primrec.const Γ.blank))
   exact Primrec.list_map hrange hinner
 
-set_option maxHeartbeats 1000000 in
 lemma primrec_tape_write : Primrec fun z : CodedTape × Γ => z.1.write z.2 := by
   refine (Primrec.ite
     (Primrec.eq.comp (primrec_tape_head.comp Primrec.fst) (Primrec.const 0))
@@ -555,7 +536,6 @@ lemma primrec_tape_write : Primrec fun z : CodedTape × Γ => z.1.write z.2 := b
   rw [CodedTape.write]
   split <;> rfl
 
-set_option maxHeartbeats 1000000 in
 lemma primrec_tape_move : Primrec fun z : CodedTape × Dir3 => z.1.move z.2 := by
   set B := CodedTape × Dir3
   have hcells : Primrec fun z : B => z.1.cells := primrec_tape_cells.comp Primrec.fst
@@ -572,7 +552,6 @@ lemma primrec_tape_move : Primrec fun z : CodedTape × Dir3 => z.1.move z.2 := b
   rintro ⟨t, d⟩
   cases d <;> rfl
 
-set_option maxHeartbeats 1000000 in
 lemma primrec_tape_writeAndMove :
     Primrec fun z : CodedTape × Γ × Dir3 => z.1.writeAndMove z.2.1 z.2.2 :=
   (primrec_tape_move.comp (Primrec.pair
@@ -601,7 +580,6 @@ lemma primrec_of_bool {σ : Type*} [Primcodable σ] (g : Bool → σ) (dflt : σ
 `codedStep` is primitive recursive in the pair (description, configuration); every coding and
 accessor above feeds into this one lemma. -/
 
-set_option maxHeartbeats 4000000 in
 /-- **The executable step is primitive recursive.** -/
 lemma primrec_codedStep :
     Primrec fun z : TMDesc × CodedCfg => codedStep z.1 z.2 := by
@@ -681,7 +659,6 @@ lemma decode_initCoded (d : TMDesc) (x : List Bool) :
   show min (d.qstart % 2 ^ d.w) (2 ^ d.w) = d.qstart % 2 ^ d.w
   omega
 
-set_option maxHeartbeats 1000000 in
 lemma primrec_initCoded :
     Primrec fun z : TMDesc × List Bool => initCoded z.1 z.2 := by
   have hw : Primrec fun z : TMDesc × List Bool => 2 ^ z.1.w :=
@@ -799,7 +776,6 @@ lemma primrec_frontier : Primrec CodedTape.frontier :=
   Primrec.list_findIdx primrec_tape_cells
     (Primrec.to₂ (Primrec.beq.comp Primrec.snd (Primrec.const Γ.blank)))
 
-set_option maxHeartbeats 1000000 in
 lemma primrec_outputWord : Primrec CodedTape.outputWord :=
   Primrec.list_map (Primrec.list_range.comp primrec_frontier)
     (Primrec.to₂ (Primrec.beq.comp
@@ -808,7 +784,6 @@ lemma primrec_outputWord : Primrec CodedTape.outputWord :=
         (Primrec.const Γ.blank))
       (Primrec.const Γ.one)))
 
-set_option maxHeartbeats 1000000 in
 /-- Output extraction is primitive recursive. -/
 lemma primrec_codedOutput : Primrec codedOutput := by
   have hout : Primrec fun c : CodedCfg => c.output :=
@@ -858,6 +833,29 @@ lemma halted_of_codedStep_none {d : TMDesc} {c : CodedCfg} (h : codedStep d c = 
   rw [TM.step, if_neg hne] at h2
   simp at h2
 
+/-- **One budgeted step.**  A successful run on budget `t + 1` either finds the machine
+already halted, or takes one coded step and succeeds on budget `t`.  This is the case split
+both soundness lemmas below run. -/
+private lemma runUntilHalt_succ {d : TMDesc} {t : ℕ} {c c' : CodedCfg}
+    (h : runUntilHalt d (t + 1) c = some c') :
+    (codedStep d c = none ∧ c' = c) ∨
+      ∃ c₁, codedStep d c = some c₁ ∧ runUntilHalt d t c₁ = some c' := by
+  rw [runUntilHalt, Function.iterate_succ_apply] at h
+  have hsf : stepFrozen d (c, false)
+      = (match codedStep d c with
+         | none => (c, true)
+         | some c₁ => (c₁, false)) := by
+    rw [stepFrozen]; rfl
+  rw [hsf] at h
+  cases hs : codedStep d c with
+  | none =>
+      rw [hs] at h
+      simp only [stepFrozen_frozen, if_pos, Option.some.injEq] at h
+      exact Or.inl ⟨rfl, h.symm⟩
+  | some c₁ =>
+      rw [hs] at h
+      exact Or.inr ⟨c₁, rfl, by rw [runUntilHalt]; exact h⟩
+
 /-- **Budgeted execution is faithful.** If the evaluator reports a halted configuration, the
 real machine reaches its decoding, in at most the budgeted number of steps, and has genuinely
 halted there. The step bound `s ≤ t` is the fact the polynomial-soundness argument uses. -/
@@ -868,29 +866,14 @@ lemma runUntilHalt_spec (d : TMDesc) :
   | 0, c, c', h => by
       rw [runUntilHalt] at h; simp at h
   | (t + 1), c, c', h => by
-      rw [runUntilHalt, Function.iterate_succ_apply] at h
-      have hsf : stepFrozen d (c, false)
-          = (match codedStep d c with
-             | none => (c, true)
-             | some c₁ => (c₁, false)) := by
-        rw [stepFrozen]; rfl
-      rw [hsf] at h
-      cases hs : codedStep d c with
-      | none =>
-          rw [hs] at h
-          simp only [stepFrozen_frozen, if_pos, Option.some.injEq] at h
-          subst h
-          exact ⟨0, Nat.succ_pos t, .zero, halted_of_codedStep_none hs⟩
-      | some c₁ =>
-          rw [hs] at h
-          obtain ⟨s, hst, hreach, hhalt⟩ :=
-            runUntilHalt_spec d t c₁ c' (by rw [runUntilHalt]; exact h)
-          refine ⟨s + 1, by omega, .step ?_ hreach, hhalt⟩
-          have h2 := codedStep_eq d c
-          rw [hs, Option.map_some] at h2
-          exact h2.symm
+      rcases runUntilHalt_succ h with ⟨hs, rfl⟩ | ⟨c₁, hs, hrest⟩
+      · exact ⟨0, Nat.succ_pos t, .zero, halted_of_codedStep_none hs⟩
+      · obtain ⟨s, hst, hreach, hhalt⟩ := runUntilHalt_spec d t c₁ c' hrest
+        refine ⟨s + 1, by omega, .step ?_ hreach, hhalt⟩
+        have h2 := codedStep_eq d c
+        rw [hs, Option.map_some] at h2
+        exact h2.symm
 
-set_option maxHeartbeats 1000000 in
 lemma primrec_stepFrozen :
     Primrec fun z : TMDesc × CodedCfg × Bool => stepFrozen z.1 z.2 := by
   have hc : Primrec fun z : TMDesc × CodedCfg × Bool => z.2.1 :=
@@ -909,6 +892,8 @@ lemma primrec_stepFrozen :
   · rw [stepFrozen]
     rfl
 
+-- `Primrec.nat_iterate` over `stepFrozen`, whose own witness is a large
+-- `cond`/`option_casesOn` nest; unifying the iterate against it exceeds the default budget.
 set_option maxHeartbeats 4000000 in
 /-- The budgeted run is primitive recursive. -/
 lemma primrec_runUntilHalt :
@@ -925,7 +910,6 @@ lemma primrec_runUntilHalt :
   rintro ⟨d, t, c⟩
   rw [runUntilHalt]
 
-set_option maxHeartbeats 4000000 in
 lemma primrec_evalHalted :
     Primrec fun z : TMDesc × ℕ × List Bool => evalHalted z.1 z.2.1 z.2.2 :=
   (primrec_runUntilHalt.comp (Primrec.pair Primrec.fst
@@ -995,25 +979,11 @@ lemma runUntilHalt_output_invariants (d : TMDesc) :
   | 0, c, c', h => by rw [runUntilHalt] at h; simp at h
   | (t + 1), c, c', h => by
       intro k hns hb
-      rw [runUntilHalt, Function.iterate_succ_apply] at h
-      have hsf : stepFrozen d (c, false)
-          = (match codedStep d c with
-             | none => (c, true)
-             | some c₁ => (c₁, false)) := by
-        rw [stepFrozen]; rfl
-      rw [hsf] at h
-      cases hs : codedStep d c with
-      | none =>
-          rw [hs] at h
-          simp only [stepFrozen_frozen, if_pos, Option.some.injEq] at h
-          subst h
-          exact ⟨hns, hb.mono (by omega)⟩
-      | some c₁ =>
-          rw [hs] at h
-          obtain ⟨h1, h2⟩ := runUntilHalt_output_invariants d t c₁ c'
-            (by rw [runUntilHalt]; exact h) (k + 1)
-            (codedStep_output_noStart hns hs) (codedStep_output_bounded hb hs)
-          exact ⟨h1, h2.mono (by omega)⟩
+      rcases runUntilHalt_succ h with ⟨_, rfl⟩ | ⟨c₁, hs, hrest⟩
+      · exact ⟨hns, hb.mono (by omega)⟩
+      · obtain ⟨h1, h2⟩ := runUntilHalt_output_invariants d t c₁ c' hrest (k + 1)
+          (codedStep_output_noStart hns hs) (codedStep_output_bounded hb hs)
+        exact ⟨h1, h2.mono (by omega)⟩
 
 /-- Both invariants at the end of a successful budgeted run, from the blank initial tape. -/
 lemma evalHalted_output_invariants {d : TMDesc} {t : ℕ} {x : List Bool} {c : CodedCfg}
@@ -1215,7 +1185,6 @@ lemma primrec_progDeg : Primrec progDeg := Primrec.snd.comp Primrec.unpair
 
 lemma primrec_b2n : Primrec b2n := primrec_of_bool b2n 0
 
-set_option maxHeartbeats 1000000 in
 lemma primrec_progClock : Primrec₂ progClock := by
   have hpow₂ : Primrec₂ ((· ^ ·) : ℕ → ℕ → ℕ) := Primrec₂.unpaired'.mp Nat.Primrec.pow
   have hc : Primrec fun z : ℕ × ℕ => progCoeff z.1 := primrec_progCoeff.comp Primrec.fst
@@ -1227,7 +1196,6 @@ lemma primrec_unaryDay : Primrec unaryDay :=
   (Primrec.list_map Primrec.list_range (Primrec.const true).to₂).of_eq fun n => by
     simp [unaryDay, List.map_const']
 
-set_option maxHeartbeats 1000000 in
 lemma primrec_digitAt : Primrec₂ digitAt := by
   have hbit : ∀ r : ℕ, Primrec₂ fun (l : List Bool) (i : ℕ) =>
       b2n ((l[3 * i + r]?).getD false) := fun r =>
@@ -1243,19 +1211,16 @@ lemma primrec_digitAt : Primrec₂ digitAt := by
       (Primrec.nat_mul.comp (Primrec.const 2) (hbit 1)))
     (hbit 2)
 
-set_option maxHeartbeats 1000000 in
 lemma primrec_bitsToDigits : Primrec bitsToDigits :=
   Primrec.list_map
     (Primrec.list_range.comp (Primrec.nat_div.comp Primrec.list_length (Primrec.const 3)))
     primrec_digitAt
 
-set_option maxHeartbeats 1000000 in
 lemma primrec_tokensOf : Primrec tokensOf :=
   (Primrec.option_casesOn Primrec.id (Primrec.const [])
     (Primrec.to₂ (primrec_bitsToDigits.comp
       (primrec_codedOutput.comp Primrec.snd)))).of_eq fun o => by cases o <;> rfl
 
-set_option maxHeartbeats 1000000 in
 /-- **The obligation `LIACompiler` consumes.** -/
 lemma primrec_machineTokens : Primrec₂ machineTokens :=
   primrec_tokensOf.comp

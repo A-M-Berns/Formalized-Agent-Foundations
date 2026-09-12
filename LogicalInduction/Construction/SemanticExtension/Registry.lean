@@ -86,47 +86,12 @@ noncomputable def semanticRegistryProductDefSentence {DP : DeductiveProcess}
     semanticProductDefSentence e
   else ⊤
 
-/-- The clause list the registry process publishes at stage `k`: one decoded product task
-per index up to `k`. -/
-noncomputable def semanticRegistryProductStageList {DP : DeductiveProcess}
-    (base : DeductiveProcessComputation DP) : ℕ → List Sentence
-  | 0 => [semanticRegistryProductDefSentence base 0]
-  | k + 1 => semanticRegistryProductDefSentence base (k + 1) ::
-      semanticRegistryProductStageList base k
-
-/-- Every task index up to `k` is published by stage `k`. -/
-lemma mem_semanticRegistryProductStageList {DP : DeductiveProcess}
-    (base : DeductiveProcessComputation DP) {q k : ℕ} (h : q ≤ k) :
-    semanticRegistryProductDefSentence base q ∈
-      semanticRegistryProductStageList base k := by
-  induction k with
-  | zero => simp [semanticRegistryProductStageList, Nat.le_zero.mp h]
-  | succ k ih =>
-      rcases Nat.lt_or_ge q (k + 1) with hlt | hge
-      · exact List.mem_cons_of_mem _ (ih (Nat.lt_succ_iff.mp hlt))
-      · have hq : q = k + 1 := le_antisymm h hge
-        simp [semanticRegistryProductStageList, hq]
-
-/-- Every published clause is a decoded product task. -/
-lemma semanticRegistryProductStageList_exists {DP : DeductiveProcess}
-    (base : DeductiveProcessComputation DP) {φ : Sentence} {k : ℕ}
-    (h : φ ∈ semanticRegistryProductStageList base k) :
-    ∃ q, φ = semanticRegistryProductDefSentence base q := by
-  induction k with
-  | zero => exact ⟨0, by simpa [semanticRegistryProductStageList] using h⟩
-  | succ k ih =>
-      rcases List.mem_cons.mp h with h | h
-      · exact ⟨k + 1, h⟩
-      · exact ih h
-
-/-- Fixed exact-product closure for sources admitted by `base`'s executable registry. -/
+/-- Fixed exact-product closure for sources admitted by `base`'s executable registry.  One
+decoded product task per index up to `k` is published at stage `k` (`prefixProcess`,
+`Construction/DeductiveDovetail.lean`). -/
 noncomputable def semanticRegistryProductDP {DP : DeductiveProcess}
-    (base : DeductiveProcessComputation DP) : DeductiveProcess where
-  D k := (semanticRegistryProductStageList base k).toFinset
-  mono k := by
-    intro φ hφ
-    simp only [List.mem_toFinset] at hφ ⊢
-    exact List.mem_cons_of_mem _ hφ
+    (base : DeductiveProcessComputation DP) : DeductiveProcess :=
+  prefixProcess (semanticRegistryProductDefSentence base)
 
 /-- The prefix bound is primitive recursive. -/
 lemma semanticRegistryProductLimit_prim : Primrec semanticRegistryProductLimit := by
@@ -183,6 +148,8 @@ lemma semanticFactorPrefixValidAtFuel_computable {DP : DeductiveProcess}
         · simp [semanticFactorPrefixValidAtFuel, h2]
         · simp [semanticFactorPrefixValidAtFuel, h0, h2]
 
+-- Six `Nat.pair` projections feed two admission tests inside one `Computable.cond`; the
+-- default `whnf` budget is short for it.
 set_option maxHeartbeats 2000000 in
 /-- Each decoded product task publishes a computable sentence. -/
 lemma semanticRegistryProductDefSentence_computable {DP : DeductiveProcess}
@@ -225,34 +192,14 @@ lemma semanticRegistryProductDefSentence_computable {DP : DeductiveProcess}
 /-- The registry-guarded product process is a computable deductive process. -/
 lemma semanticRegistryProductDP_computable {DP : DeductiveProcess}
     (base : DeductiveProcessComputation DP) :
-    ComputableDeductiveProcess (semanticRegistryProductDP base) := by
-  have hlist : Computable (semanticRegistryProductStageList base) := by
-    have hstep : Computable fun p : ℕ × List Sentence =>
-        semanticRegistryProductDefSentence base (p.1 + 1) :: p.2 :=
-      Computable.list_cons.comp
-        (semanticRegistryProductDefSentence_computable base |>.comp
-          (Primrec.succ.to_comp.comp Computable.fst)) Computable.snd
-    refine (Computable.nat_rec Computable.id
-      (Computable.const [semanticRegistryProductDefSentence base 0])
-      (hstep.comp₂ Computable.snd.to₂)).of_eq (fun k => ?_)
-    induction k with
-    | zero => rfl
-    | succ k ih => simpa [semanticRegistryProductStageList] using ih
-  have hkey : Computable fun k => Encodable.encode
-      ((sentenceDedup (semanticRegistryProductStageList base k)).insertionSort sentenceCodeLE) :=
-    Computable.encode.comp
-      ((sentenceInsertionSort_prim.comp sentenceDedup_prim).to_comp.comp hlist)
-  obtain ⟨code, hcode⟩ := Nat.Partrec.Code.exists_code.mp (Partrec.nat_iff.mp hkey)
-  refine ⟨code, fun k => ?_⟩
-  rw [hcode]
-  exact Part.mem_some_iff.mpr
-    (encode_toFinset_eq (semanticRegistryProductStageList base k))
+    ComputableDeductiveProcess (semanticRegistryProductDP base) :=
+  prefixProcess_computable (semanticRegistryProductDefSentence_computable base)
 
 /-- Task `q` is published by stage `q`. -/
 lemma semanticRegistryProductDefSentence_mem_stage {DP : DeductiveProcess}
     (base : DeductiveProcessComputation DP) (q : ℕ) :
     semanticRegistryProductDefSentence base q ∈ (semanticRegistryProductDP base).D q :=
-  List.mem_toFinset.mpr (mem_semanticRegistryProductStageList base (le_refl q))
+  self_mem_prefixProcess _ (le_refl q)
 
 /-- A world consistent with the process satisfies every published task clause. -/
 lemma holds_semanticRegistryProductDefSentence {DP : DeductiveProcess}
@@ -440,15 +387,6 @@ lemma semanticRegistryProductExtensionWorld_leaf {DP : DeductiveProcess}
   apply semanticRegistryProductExtensionWorld_agree
   simp [semanticPrimeCode, hschema]
 
-/-- A leaf outside the source namespace is read the same way in the source extension. -/
-lemma semanticSourceExtensionWorld_leaf_other (v₀ : PCWorld)
-    (schema input : ℕ) (hschema : schema.unpair.1 ≠ 0) :
-    (semanticSourceExtensionWorld v₀).Holds (semanticPrimeSentence schema input) ↔
-      v₀.Holds (semanticPrimeSentence schema input) := by
-  change semanticSourceExtensionWorld v₀ (semanticPrimeCode schema input) ↔
-    v₀ (semanticPrimeCode schema input)
-  simp [semanticSourceExtensionWorld, semanticPrimeCode, hschema]
-
 /-- A sentence free of semantic-prime atoms is read the same way in the extension. -/
 lemma semanticRegistryProductExtensionWorld_holds_fresh {DP : DeductiveProcess}
     (base : DeductiveProcessComputation DP) (v : PCWorld) {φ : Sentence}
@@ -590,7 +528,7 @@ lemma semanticRegistryProductExtensionWorld_downward_two_prefixes {DP : Deductiv
       hza (hzb.trans hBA) hab
 
 private lemma mul_factor_le_of_nonneg {a b c d : ℚ}
-    (ha : 0 ≤ a) (hb : 0 ≤ b) (hc : 0 ≤ c) (hd : 0 ≤ d)
+    (hc : 0 ≤ c) (hd : 0 ≤ d)
     (hprod : a * b ≤ c * d) : a ≤ c ∨ b ≤ d := by
   by_contra hnot
   push Not at hnot
@@ -609,7 +547,6 @@ lemma semanticFactorPrefixValidAtFuel_tag_ne_one {DP : DeductiveProcess}
     · omega
     · simp at h
 
-set_option maxHeartbeats 2000000 in
 /-- Every registry-activated exact-product clause is true in the canonical joint world. -/
 lemma semanticRegistryProductExtensionWorld_holds_schema {DP : DeductiveProcess}
     (base : DeductiveProcessComputation DP) (v₀ : PCWorld)
@@ -650,8 +587,8 @@ lemma semanticRegistryProductExtensionWorld_holds_schema {DP : DeductiveProcess}
       linarith
     · have hfactor : meshIndexRat zs ≤ meshIndexRat zs' ∨
           meshIndexRat zt ≤ meshIndexRat zt' :=
-        mul_factor_le_of_nonneg (meshIndexRat_nonneg zs) (meshIndexRat_nonneg zt)
-          (meshIndexRat_nonneg zs') (meshIndexRat_nonneg zt') (hneg.trans hpos')
+        mul_factor_le_of_nonneg (meshIndexRat_nonneg zs') (meshIndexRat_nonneg zt')
+          (hneg.trans hpos')
       have hleftCur : semanticFactorPrefixValidAtFuel base left
           (semanticRegistryProductLimit
             (semanticProductJob left right n 1 r zs zt)) fuel = true := by
@@ -772,8 +709,7 @@ lemma semanticRegistryProductDP_hworld {DP : DeductiveProcess}
       (semanticSourceExtensionWorld v₀)).ConsistentWithTheory
         (semanticRegistryProductDP base) := by
   intro k φ hφ
-  obtain ⟨q, rfl⟩ := semanticRegistryProductStageList_exists base
-    (List.mem_toFinset.mp hφ)
+  obtain ⟨q, -, rfl⟩ := mem_prefixProcess.mp hφ
   exact semanticRegistryProductExtensionWorld_holds_defSentence base v₀ hv₀ q
 
 /-- Adding product atoms preserves every universal source-definition clause. -/
@@ -829,31 +765,10 @@ noncomputable def semanticRegistryClosureDPComputation {DP : DeductiveProcess}
   (base.union semanticSourceDP_computable.nonemptyComputation.some).union
     (semanticRegistryProductDP_computable base).nonemptyComputation.some
 
-/-- The whole registry closure has a model over every model of a base process whose own
-clauses avoid the semantic-prime namespace. -/
-lemma semanticRegistryClosureDP_hworld {DP : DeductiveProcess}
-    (base : DeductiveProcessComputation DP) (v₀ : PCWorld)
-    (hv₀ : v₀.ConsistentWithTheory DP)
-    (hDPfresh : ∀ k φ, φ ∈ DP.D k → SemanticPrimeFreshSentence φ) :
-    (semanticRegistryProductExtensionWorld base
-      (semanticSourceExtensionWorld v₀)).ConsistentWithTheory
-        (semanticRegistryClosureDP base) := by
-  intro k φ hφ
-  rw [semanticRegistryClosureDP, DeductiveProcess.union_stage, Finset.mem_union,
-    DeductiveProcess.union_stage, Finset.mem_union] at hφ
-  rcases hφ with (hbase | hsource) | hproduct
-  · exact (semanticRegistryProductExtensionWorld_holds_fresh base
-      (semanticSourceExtensionWorld v₀) (hDPfresh k φ hbase)).mpr
-        ((semanticSourceExtensionWorld_holds_fresh v₀ (hDPfresh k φ hbase)).mpr
-          (hv₀ k φ hbase))
-  · obtain ⟨e, rfl⟩ := semanticSourceStageList_exists (List.mem_toFinset.mp hsource)
-    exact semanticRegistryProductExtensionWorld_holds_sourceDef base v₀ e
-  · exact semanticRegistryProductDP_hworld base v₀ hv₀ k φ hproduct
-
 /-! ## The schema-level product LUV -/
 
-/-- Product LUV for two admitted raw schema names; unlike `semanticProductLUV`, the right
-factor may belong to the disjoint quotation namespace. -/
+/-- Product LUV for two admitted raw schema names: the right factor may belong to the
+disjoint quotation namespace, which is what a deferred weight's quote code needs. -/
 def semanticSchemaProductLUV (left right n : ℕ) : LUV :=
   ⟨semanticProductAtom left right n⟩
 

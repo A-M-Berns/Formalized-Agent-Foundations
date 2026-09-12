@@ -57,11 +57,13 @@ transducer `EF.freezeTokenRunOn` that a machine-class trader runs in its place, 
 `rfl`, so every day-cutoff law is a transport rather than a parallel induction).  The laws
 proved here are strategy value on an unselected day (`Strategy.freezeOn_value`) and the
 explicit finite net-worth error bound `Trader.freezeOnErrorBound` together with
-`Trader.freezeOn_netWorth_difference_le`.
+`Trader.freezeOn_netWorth_difference_le`.  The error statements are bounds rather than
+equalities because the settlement term `- V day φ` of `Strategy.value` is not syntax, so on
+an affected day the frozen strategy's value differs from the original's by the price gap.
 
-`Trader.Exploits.of_boundedDifference` is the abstract finite-prefix accounting step that
-both directions of every form below use: a uniform bounded net-worth difference preserves
-exploitation.
+`Trader.Exploits.of_boundedDifference` (`Framework/Criterion.lean`) is the abstract
+finite-prefix accounting step that both directions of every form below use: a uniform
+bounded net-worth difference preserves exploitation.
 
 ## The corrected statement
 
@@ -342,51 +344,6 @@ lemma freezeOn_netWorth_difference_le (Tr : Trader) (quote : ℕ → Sentence �
 
 end Trader
 
-/-! ### Why the error bound is not an equality
-
-The freeze cannot transport exactly on an affected day, so every net-worth statement in this
-module carries a bound rather than an equality.  The lemma below computes the residual. -/
-
-/-- The settlement term `- V day φ` in `Strategy.value` is not syntax, so the frozen
-strategy's value on an *affected* day differs from the original's by exactly
-`coefficient * (P' day φ - P day φ)`.  Concretely, with a single unit trade the
-discrepancy is the price gap itself. -/
-lemma freezeOn_value_gap_on_selected_day
-    (day : ℕ) (φ : Sentence) (P P' : History) (w : Valuation)
-    (quote : ℕ → Sentence → ℚ) (sel : ℕ → Sentence → Bool)
-    (T : Strategy day) (hT : T.trades = [(EF.const 1, φ)]) :
-    (T.freezeOn quote sel).value P' w - T.value P w = P day φ - P' day φ := by
-  simp [Strategy.value, Strategy.freezeOn, hT, EF.freezeOn, EF.denote, EF.denoteWith]
-
-/-! ## Bounded difference preserves exploitation -/
-
-/-- **Uniform bounded net-worth error preserves exploitation.**  If `Tr` exploits `P` and
-`Tr'`'s net worth against `P'` stays within a constant `C` of `Tr`'s against `P` on every
-day and every consistent world, then `Tr'` exploits `P'`.  This is the abstract
-finite-prefix accounting step both directions of every closure theorem below run through. -/
-lemma Trader.Exploits.of_boundedDifference
-    {Tr Tr' : Trader} {P P' : History} {DP : DeductiveProcess}
-    (h : Tr.Exploits P DP) (C : ℝ)
-    (hdiff : ∀ n v, v.ConsistentWith (DP.D n) →
-      |Tr.netWorth P v n - Tr'.netWorth P' v n| ≤ C) :
-    Tr'.Exploits P' DP := by
-  rcases h with ⟨⟨L, hL⟩, hnotAbove⟩
-  refine ⟨⟨L - C, ?_⟩, ?_⟩
-  · rintro x ⟨n, v, hv, rfl⟩
-    have hbase := hL ⟨n, v, hv, rfl⟩
-    have herr := hdiff n v hv
-    rw [abs_le] at herr
-    linarith
-  · intro hUpper
-    apply hnotAbove
-    rcases hUpper with ⟨U, hU⟩
-    refine ⟨U + C, ?_⟩
-    rintro x ⟨n, v, hv, rfl⟩
-    have hpatched := hU ⟨n, v, hv, rfl⟩
-    have herr := hdiff n v hv
-    rw [abs_le] at herr
-    linarith
-
 /-! ## The paper's own hypothesis shape: finitely many changed *days*
 
 `EfficientPrefixPatch` is the freeze certificate for a *prefix* freeze, and
@@ -549,10 +506,9 @@ polynomial-time rewrite of the trader's own output word.
 **This structure is implementation machinery, not a hypothesis.**  It is inhabited —
 unlike the prefix certificate `EfficientPrefixPatch` — and it is inhabited
 *without a caller-supplied witness*: `FreezeOracle.finiteSupportPatch` compiles one
-from the market's own `ComputableMarket` certificate and the coordinate set alone, with
-`FreezeOracle.finiteSupportPatch_ofRecognizable` the narrower constructor that also
-takes a syntactic recognizability hypothesis on the moved sentences.  So the public
-corrected theorem does not mention this structure.  Read it as the compiler's interface, and
+from the market's own `ComputableMarket` certificate and the coordinate set alone, with no
+syntactic condition on the moved sentences at all.  So the public corrected theorem does not
+mention this structure.  Read it as the compiler's interface, and
 `FreezeOracle.lic_iff_of_finiteSupport` as the statement: that theorem asks for
 finite `(day, sentence)` support and computability of both markets, and carries no condition
 on the moved sentences.

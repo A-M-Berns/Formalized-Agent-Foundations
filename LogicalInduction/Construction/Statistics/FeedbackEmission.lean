@@ -42,21 +42,12 @@ inhabitants of `AffineCombination.FeedbackTraderEmissionSigns`.
 market and convergence arguments they invoke live in `Properties/Pseudorandomness.lean` and
 `Properties/ExpectationProperties.lean`.
 
-**The criterion binder below is `def:lic` at the paper's own quantifier.**  Every result here that consumes an
-exploiting trader takes `[IsLogicalInductor P DP]`, and the trader is certified at `EfficientlyComputable`:
-it is assembled from `AffineCombination.PolySequence`'s machine-metered emission fields
-through `PolySequence.buyBelowTrader_ec` (`Properties/AffineCoherence.lean`), which has no
-fuel-class form: the bridge `BigSpliceStream.toMachine` runs fuel to machine, and no map
-back is proved or claimed.  The
-calibration is stated at `def:ec` in `Framework/Affine.lean`, and the `_unconditional`
-endpoints discharge the criterion through `LIA_is_logical_inductor`.
-
 -/
 
 namespace LogicalInduction
 namespace FeedbackEmission
 
-open AffineCombination PrefixPatchCompile
+open AffineCombination
 
 /-! ## Reading the bounded deferral schedule
 

@@ -41,14 +41,6 @@ is the *write-out* `def:ec` interface for the paper's `Θ`-definable LUV syntax:
 bounds is the number of symbols each threshold sentence takes to write, not the size of its
 Gödel code.  The token-metered interface embeds into it by `LUV.RpnThresholdCodes.toBig`
 (`Framework/Expectations.lean`).
-**The criterion binder below is `def:lic` at the paper's own quantifier.**  Every result here that consumes an
-exploiting trader takes `[IsLogicalInductor P DP]`, and the trader is certified at `EfficientlyComputable`:
-it is assembled from `AffineCombination.PolySequence`'s machine-metered emission fields
-through `PolySequence.buyBelowTrader_ec` (`Properties/AffineCoherence.lean`), which has no
-fuel-class form: the bridge `BigSpliceStream.toMachine` runs fuel to machine, and no map
-back is proved or claimed.  The
-calibration is stated at `def:ec` in `Framework/Affine.lean`, and the `_unconditional`
-endpoints discharge the criterion through `LIA_is_logical_inductor`.
 
 -/
 
@@ -134,7 +126,7 @@ lemma expectApprox_limitingBelief_eq_integral (P : History) {μ : Measure PCWorl
   have hsplit : ∫ v, X.expectApprox v.payout n ∂μ
       = (n : ℝ)⁻¹ * ∑ i ∈ Finset.range n, ∫ v, v.payout (X.gt ((i : ℚ) / (n : ℚ))) ∂μ := by
     simp only [LUV.expectApprox]
-    rw [integral_const_mul, integral_finset_sum _ (fun i _ => integrable_payout _)]
+    rw [integral_const_mul, integral_finsetSum _ (fun i _ => integrable_payout _)]
   rw [hsplit, LUV.expectApprox]
   congr 1
   exact Finset.sum_congr rfl (fun i _ => (hpay _).symm)

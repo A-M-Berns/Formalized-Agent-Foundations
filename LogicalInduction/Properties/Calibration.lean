@@ -60,14 +60,6 @@ constructed market and deductive-process computations.
 Convention: `weightedAverage` is total, taking value zero when the denominator vanishes.
 Every result that divides separately proves the denominator eventually positive from
 divergence, so the paper's divergent-weighting hypothesis is never silently strengthened.
-**The criterion binder below is `def:lic` at the paper's own quantifier.**  Every result here that consumes an
-exploiting trader takes `[IsLogicalInductor P DP]`, and the trader is certified at `EfficientlyComputable`:
-it is assembled from `AffineCombination.PolySequence`'s machine-metered emission fields
-through `PolySequence.buyBelowTrader_ec` (`Properties/AffineCoherence.lean`), which has no
-fuel-class form: the bridge `BigSpliceStream.toMachine` runs fuel to machine, and no map
-back is proved or claimed.  The
-calibration is stated at `def:ec` in `Framework/Affine.lean`, and the `_unconditional`
-endpoints discharge the criterion through `LIA_is_logical_inductor`.
 
 -/
 
@@ -101,12 +93,11 @@ on its own day.  Its denotation may depend continuously on the market prefix, ex
 in the paper's notion “generable from `P`”.
 Paper node: `def:ece` -/
 structure PGenerableWeighting (W : ℕ → EF) : Prop where
-  /-- The feature progression is emitted by a machine-metered spliceable stream.  This
-  field moved from `BigSpliceStream` to `MachineSpliceStream` with
-  `AffineCombination.PolySequence`'s emission fields, because the patient-selector witness
-  `patientUnderpriceWeight_pgenerable` (`Properties/Pseudorandomness.lean`) is built out of
-  `PolySequence.priceFeature_polySeg`, which is machine-metered and has no fuel form.  A
-  client holding a fuel certificate converts by `BigSpliceStream.toMachine`. -/
+  /-- The feature progression is emitted by a machine-metered spliceable stream, the class
+  `AffineCombination.PolySequence`'s emission fields are stated at: the patient-selector
+  witness `patientUnderpriceWeight_pgenerable` (`Properties/Pseudorandomness.lean`) is built
+  out of `PolySequence.priceFeature_polySeg`, which is machine-metered and has no fuel form.
+  A client holding a fuel certificate converts by `BigSpliceStream.toMachine`. -/
   polySeg : MachineSpliceStream (fun n => (W n).serialize)
   rank_le : ∀ n, (W n).rank ≤ n
   closed : ∀ n ρ V, (W n).denoteWith ρ V = (W n).denote V
@@ -120,10 +111,10 @@ at the day, both demand closure; they differ only in `GeneratedRatFeature`'s ext
 clause tying the feature's value at the market to a rational sequence.  The lemmas below
 make that relation a theorem rather than a remark, in both directions.
 
-Both moved from `BigSpliceStream` to `MachineSpliceStream` with
-`AffineCombination.PolySequence`'s emission fields, so a client discharges them from
-ordinary `Complexity.FP` data and never writes a `Nat.Partrec.Code`; a client holding a
-fuel certificate converts by `BigSpliceStream.toMachine`.  Primitive recursiveness of the
+Both meter at `MachineSpliceStream`, as `AffineCombination.PolySequence`'s emission fields
+do, so a client discharges them from ordinary `Complexity.FP` data and never writes a
+`Nat.Partrec.Code`; a client holding a fuel certificate converts by
+`BigSpliceStream.toMachine`.  Primitive recursiveness of the
 progression, which `PGenerableRat.computable` consumes, comes back through
 `MachineTokenStream.primrec`.
 
@@ -317,18 +308,7 @@ def HasLimitPointIn (f : ℕ → ℝ) (s : Set ℝ) : Prop :=
 lemma HasLimitPoint.exists_subseq {f : ℕ → ℝ} {x : ℝ}
     (h : HasLimitPoint f x) :
     ∃ ψ : ℕ → ℕ, StrictMono ψ ∧ Tendsto (f ∘ ψ) atTop (𝓝 x) :=
-  TopologicalSpace.FirstCountableTopology.tendsto_subseq h
-
-lemma hasLimitPoint_of_convergesTo {f : ℕ → ℝ} {x : ℝ}
-    (h : ConvergesTo f x) : HasLimitPoint f x :=
-  h.mapClusterPt
-
-lemma convergesTo_eq_of_hasLimitPoint {f : ℕ → ℝ} {x y : ℝ}
-    (hy : ConvergesTo f y) (hx : HasLimitPoint f x) : x = y := by
-  obtain ⟨ψ, hψ, hψx⟩ := hx.exists_subseq
-  have hψy : Tendsto (f ∘ ψ) atTop (𝓝 y) :=
-    hy.comp hψ.tendsto_atTop
-  exact tendsto_nhds_unique hψx hψy
+  MapClusterPt.tendsto_subseq h
 
 /-- If a real sequence returns arbitrarily late to both sides of zero and its adjacent
 jumps vanish, it has zero as a limit point.  This is the exact crossing argument used in
@@ -453,8 +433,7 @@ lemma calibration_limitPoint_transfer
   obtain ⟨x, hx01, hxcluster⟩ :=
     isCompact_Icc.exists_mapClusterPt_of_frequently
       (htruthAvg.frequently)
-  obtain ⟨χ, hχmono, hχtruth⟩ :=
-    TopologicalSpace.FirstCountableTopology.tendsto_subseq hxcluster
+  obtain ⟨χ, hχmono, hχtruth⟩ := HasLimitPoint.exists_subseq hxcluster
   let θ : ℕ → ℕ := ψ ∘ χ
   have hθmono : StrictMono θ := hψmono.comp hχmono
   have hbiasθ : Tendsto (weightedBias w market truth ∘ θ) atTop (𝓝 0) := by
@@ -742,8 +721,8 @@ lemma fractionalFamilyFeatureWeight_polySeg
       (UnaryRuler.unpairSnd.succ)
   refine MachineSpliceStream.of_eq ((hbodies.append hvar0).append htags) ?_
   intro z
-  rw [ROIBudget.fractionalSharedFeatureWeight,
-    ROIBudget.fractionalSharedWeights_serialize]
+  rw [ROIBudget.fractionalSharedFeatureWeight, ROIBudget.sharedOf,
+    ROIBudget.letChain_serialize]
   rw [List.range_eq_range']
 
 /-- The attempted purchase weight for family member `k` on day `n`: zero before launch,
@@ -1325,12 +1304,6 @@ noncomputable def biasRunTrader_polyTrade {As : ℕ → AffineCombination}
       sentence_poly := biasRunTradeSentence_poly h
       trades_eq := biasRunTrader_trades_eq h hW rate }
 
-@[simp] lemma biasRunTrader_before {As : ℕ → AffineCombination}
-    (h : PolySequence As) {W : ℕ → EF} (hW : PGenerableWeighting W)
-    (rate : ℕ → ℚ) (k n : ℕ) (hnk : n < k) :
-    ((biasRunTrader h hW rate k).strat n).trades = [] := by
-  simp [biasRunTrader, Nat.not_le.mpr hnk]
-
 lemma biasRunTrader_value {As : ℕ → AffineCombination}
     (h : PolySequence As) {W : ℕ → EF} (hW : PGenerableWeighting W)
     (rate : ℕ → ℚ) (P : History) (w : Valuation)
@@ -1463,7 +1436,7 @@ lemma ApproxDeterminedViaTheory.abs_truth_sub_price_le_magnitude
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1) (n : ℕ) :
     |truth n - (As n).price P n| ≤ (As n).magnitude P + e n := by
-  obtain ⟨v, hv⟩ := exists_consistentWithTheory DP hworld
+  obtain ⟨v, hv⟩ := DP.exists_consistentWithTheory hworld
   have hval := (As n).abs_value_sub_price_le_magnitude P v.payout n
     (hpoly.terms_rank n) (fun φ => by
       by_cases hφ : v.Holds φ
@@ -2308,7 +2281,7 @@ lemma TheoryTruth.isBoolean {φ : ℕ → Sentence} {DP : DeductiveProcess}
     {truth : ℕ → ℝ} (h : TheoryTruth φ DP truth)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) (n : ℕ) :
     truth n = 0 ∨ truth n = 1 := by
-  obtain ⟨v, hv⟩ := exists_consistentWithTheory DP hworld
+  obtain ⟨v, hv⟩ := DP.exists_consistentWithTheory hworld
   have hn := h n v hv
   by_cases hh : v.Holds (φ n)
   · right

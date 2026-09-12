@@ -91,9 +91,9 @@ closed feature progression. This is the propositional/token-model rendering of t
 paper's `def:ece` for rational sequences. Closure is load-bearing: internal `EF.var`
 nodes are legal only underneath the shared `letE` emitter and cannot be free inputs.
 
-The emission field is **write-out metered** (`BigSpliceStream`): the feature progression
-costs polynomially many *symbols* per day, with no bound on any single token's numeric
-value. That is what admits a constant leaf `EF.const (q n)` whose payload token is
+The emission field is **write-out metered** (`MachineSpliceStream`): the feature
+progression costs polynomially many *symbols* per day, with no bound on any single token's
+numeric value. That is what admits a constant leaf `EF.const (q n)` whose payload token is
 literally `⌜q n⌝` — for the paper's own `δ n = 2⁻ⁿ` an exponential value, and so outside
 the value-metered `RpnSpliceStream` (`digitRatCodes_two_pow_inv_not_polyRatCodes`).
 `PGenerableRat.ofMachineRatCodes` is the constructor that uses the width;
@@ -137,7 +137,7 @@ mirror of the fuel side's route into `BigSpliceStream.serialize_const_write` thr
 Kind: `P` proved; provenance: (a) derived in-project. -/
 lemma ratCodeFeature_generated (P : History) (q : ℕ → ℚ) (hq : MachineRatCodes q) :
     GeneratedRatFeature P q (ratCodeFeature q) where
-  rank_le := fun n => by simp [ratCodeFeature, EF.rank]
+  rank_le := fun n => by simp [ratCodeFeature]
   polyTok := MachineSpliceStream.serialize_const_write hq.toMachineDigits
   closed := fun n ρ V => by simp [ratCodeFeature]
   denote := fun n => by simp [ratCodeFeature]
@@ -157,6 +157,39 @@ Kind: `C` composition; provenance: (a) derived in-project. -/
 lemma PGenerableRat.ofMachineRatCodes {q : ℕ → ℚ} (hq : MachineRatCodes q) (P : History) :
     PGenerableRat P q :=
   ⟨ratCodeFeature q, ratCodeFeature_generated P q hq⟩
+
+/-- Every **value-bounded** rational code sequence is `def:ece` against every market —
+the derived corollary of the general write-out constructor
+`PGenerableRat.ofMachineRatCodes`, kept for callers who already hold a `PolyRatCodes`
+certificate.  It is strictly weaker: `PolyRatCodes` excludes the paper's own `δ n = 2⁻ⁿ`
+(`digitRatCodes_two_pow_inv_not_polyRatCodes`), which the general constructor admits
+(`pGenerableRat_two_pow_inv`). -/
+lemma PGenerableRat.ofPolyRatCodes {q : ℕ → ℚ} (hq : PolyRatCodes q) (P : History) :
+    PGenerableRat P q :=
+  PGenerableRat.ofMachineRatCodes (DigitRatCodes.ofPolyRatCodes hq).toMachine P
+
+/-! ### The harmonic weight
+
+`n ↦ 1/(n+1)` is the repository's standard non-constant `[0,1]` weight witness: four lanes
+use it to show that a `weight_mem` / `weight_generable` binder pair is jointly inhabited by
+something other than a constant. -/
+
+/-- The harmonic weight `n ↦ 1/(n+1)`: efficiently codeable, `[0,1]`-valued, and not
+eventually constant. -/
+lemma harmonicWeight_polyRatCodes : PolyRatCodes (fun n : ℕ => 1 / ((n : ℚ) + 1)) := by
+  refine ⟨_, ((PolyFueled.const 2).pair PolyFueled.id.succ_comp).of_eq (fun n => ?_)⟩
+  have h : (1 : ℚ) / ((n : ℚ) + 1) = (((n + 1 : ℕ) : ℚ))⁻¹ := by push_cast; rw [one_div]
+  show Nat.pair 2 (n + 1) = Encodable.encode ((1 : ℚ) / ((n : ℚ) + 1))
+  rw [h, encode_rat_inv_natCast n.succ_pos]
+
+lemma harmonicWeight_mem (n : ℕ) : 0 ≤ 1 / ((n : ℚ) + 1) ∧ 1 / ((n : ℚ) + 1) ≤ 1 := by
+  have hpos : (0 : ℚ) < (n : ℚ) + 1 := by positivity
+  exact ⟨by positivity, by rw [div_le_one hpos]; linarith [Nat.cast_nonneg (α := ℚ) n]⟩
+
+lemma harmonicWeight_not_constant : ¬ ∀ m n : ℕ, 1 / ((m : ℚ) + 1) = 1 / ((n : ℚ) + 1) := by
+  intro h
+  have := h 0 1
+  norm_num at this
 
 /-- **Non-vacuity for the widened `def:ece` (kind `N+`).**  The paper's own tolerance
 sequence `δ n = 2⁻ⁿ` is ℙ‾-generable at every market, and its Gödel codes are *not*

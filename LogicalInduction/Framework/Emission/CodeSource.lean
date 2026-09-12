@@ -765,10 +765,6 @@ lemma ofSource_primrec : _root_.Primrec ofSource := by
   exact (_root_.Primrec.option_getD.comp (_root_.Primrec.list_head?.comp hfold)
     (_root_.Primrec.const Code.zero)).of_eq (fun n => (hhd _ _).symm)
 
-/-- The decoder is `Computable`, the form a client working in the `Computable` hierarchy
-rather than the `Primrec` one asks for. -/
-lemma ofSource_computable : _root_.Computable ofSource := ofSource_primrec.to_comp
-
 /-! ## The `nest` family
 
 The left-nested spine `nest 0 = zero`, `nest (n+1) = pair (nest n) zero`, on which
@@ -783,15 +779,6 @@ with. -/
 def nest : ℕ → Code
   | 0 => .zero
   | n + 1 => .pair (nest n) .zero
-
-lemma sourceTags_nest (n : ℕ) :
-    sourceTags (nest n) = 1 :: (List.replicate n [1, 5]).flatten := by
-  induction n with
-  | zero => simp [nest, sourceTags]
-  | succ n ih =>
-      show sourceTags (nest n) ++ sourceTags Code.zero ++ [5] = _
-      rw [ih]
-      simp [sourceTags, List.replicate_succ']
 
 lemma size_nest (n : ℕ) : (nest n).size = 2 * n + 1 := by
   induction n with

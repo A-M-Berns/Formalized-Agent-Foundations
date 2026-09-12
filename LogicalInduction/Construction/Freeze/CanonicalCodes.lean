@@ -21,9 +21,10 @@ This file draws the line exactly: the non-injectivity is caused *entirely* by `�
   `decode c = some ψ ↔ c = ⌜ψ⌝`, so the escape test is a comparison against a fixed
   numeral, a forward digit operation needing no square root.
 * `sentenceMatches_of_botFree` — its operational form: on a `⊥`-free target the
-  decoder-faithful matcher *is* the canonical comparison.  It is consumed in
-  `Compiler.lean` (the spelling-list lane); the injectivity lemma itself is consumed there
-  and in `PatternAutomaton.lean`.
+  decoder-faithful matcher *is* the canonical comparison.  Both are rulings rather than
+  steps of a later proof: the recognizer chain builds the square root instead of avoiding it
+  (`DigitFP.sqrtRemW_mem_FP`), so what they settle is *why* `BotFree` can be dropped, not
+  how.
 * `decode_falsum_noncanonical`, `ofNat_and_pair`, `decode_and_noncanonical` — the converse.
   `⊥` has two codes and the ambiguity propagates through every connective, so on a target
   with a `⊥` subformula the canonical test rejects codes the parser accepts, leaving the
@@ -73,7 +74,7 @@ def BotFree : Sentence → Prop
 
 Tag `5` is the atom payload the structured paper-prime leaf builds
 (`parseStructuredPaperPrime`), and it is the *only* sentence shape that leaf can denote
-(`RpnFreeze.parseStructuredPaperPrime_shape`).  So a target satisfying this is never denoted
+(`StructPat.parseStructuredPaperPrime_inv`).  So a target satisfying this is never denoted
 by a structured block, and a run matcher may reject one on its two-token tag alone. -/
 def NoReserved : Sentence → Prop
   | ⊥ => True
@@ -107,7 +108,7 @@ because they are exactly what the `⊥`-fibre lemmas above are about, and becaus
    square root.  The freeze makes that decision instead of avoiding it:
    `DigitFP.sqrtRemW_mem_FP` and `DigitFP.unpairW_spec` put base-4 integer square root and
    `Nat.unpair` inside `Complexity.FP`, `FiberTest.fiberW_mem_FP` is the escape-leaf test
-   built on them, and `RpnFreeze.patterns` replaces the spelling list by a list of patterns
+   built on them, and `StructPat.segPatterns` replaces the spelling list by a list of patterns
    with holes, so the infinite fibre lives inside a hole predicate rather than defeating
    exhaustiveness.
 2. `NoReserved ψ` — no reserved-atom subformula.  It is what the *structured* branch needs:
@@ -117,8 +118,9 @@ because they are exactly what the `⊥`-fibre lemmas above are about, and becaus
    makes that length unbounded even for a fixed target — and the payload language of a fixed
    formula code must be recognized exactly.  `CtrAuto.ctrMachine` is the first
    (`RunAuto.BlockMachine` instantiated as a finite control with one unary counter) and
-   `PayAuto` the second.  The recognizer the freeze runs,
-   `RpnFreeze.parseRpn_iff_patMatch`, needs only this condition.
+   `PayAuto` the second.  The characterization the freeze's recognizer runs on,
+   `StructPat.parseRpn_iff_segMatch`, carries a structured block as one segment and so
+   needs neither condition; the two devices are what discharge it.
 3. The constant output bound `FreezeStep.RunOracle.R_length_le` — the emitted quote block
    fits in a fixed budget.  This is the paper's own finiteness (`app:ifp`) reappearing as
    the condition that makes `TokenFold.runFold_mem_FP`'s emission budget close, and it is
@@ -160,7 +162,7 @@ lemma decode_eq_some_iff_of_botFree :
   | hfalsum => exact absurd hφ id
   | hatom a =>
       intro c hc
-      rw [decode_sentence_eq_ofNat'] at hc
+      rw [decode_sentence_eq_ofNat] at hc
       cases c with
       | zero => simp [Formula.ofNat] at hc
       | succ e =>
@@ -175,7 +177,7 @@ lemma decode_eq_some_iff_of_botFree :
               exact Formula.atom.inj this
             have hpair : Nat.pair e.unpair.1 e.unpair.2 = e := Nat.pair_unpair e
             rw [htag, hpay] at hpair
-            rw [encode_sentence_eq_toNat', Formula.toNat]
+            rw [encode_sentence_eq_toNat, Formula.toNat]
             have hea : (Encodable.encode a : ℕ) = a := rfl
             rw [hea, hpair]
           · rcases tag with _ | _ | _ | tag <;>
@@ -183,7 +185,7 @@ lemma decode_eq_some_iff_of_botFree :
   | himp φ ψ ihφ ihψ =>
       obtain ⟨hbφ, hbψ⟩ := hφ
       intro c hc
-      rw [decode_sentence_eq_ofNat'] at hc
+      rw [decode_sentence_eq_ofNat] at hc
       cases c with
       | zero => simp [Formula.ofNat] at hc
       | succ e =>
@@ -198,14 +200,14 @@ lemma decode_eq_some_iff_of_botFree :
               · rw [hα, hβ] at hc
                 have hc' : (some (α 🡒 β) : Option Sentence) = some (φ 🡒 ψ) := hc
                 obtain ⟨hab1, hab2⟩ := Formula.imp.inj (Option.some.inj hc')
-                have h1 := ihφ hbφ _ (by rw [decode_sentence_eq_ofNat', hα, hab1])
-                have h2 := ihψ hbψ _ (by rw [decode_sentence_eq_ofNat', hβ, hab2])
-                rw [encode_sentence_eq_toNat'] at h1 h2
+                have h1 := ihφ hbφ _ (by rw [decode_sentence_eq_ofNat, hα, hab1])
+                have h2 := ihψ hbψ _ (by rw [decode_sentence_eq_ofNat, hβ, hab2])
+                rw [encode_sentence_eq_toNat] at h1 h2
                 have hp2 : Nat.pair e.unpair.2.unpair.1 e.unpair.2.unpair.2
                     = e.unpair.2 := Nat.pair_unpair _
                 have hp1 : Nat.pair e.unpair.1 e.unpair.2 = e := Nat.pair_unpair e
                 have htagN : e.unpair.1 = 2 := by omega
-                rw [encode_sentence_eq_toNat',
+                rw [encode_sentence_eq_toNat,
                   show Formula.toNat (φ 🡒 ψ)
                       = Nat.pair 2 (Nat.pair φ.toNat ψ.toNat) + 1 from rfl,
                   ← h1, ← h2, hp2, ← htagN, hp1]
@@ -214,7 +216,7 @@ lemma decode_eq_some_iff_of_botFree :
   | hand φ ψ ihφ ihψ =>
       obtain ⟨hbφ, hbψ⟩ := hφ
       intro c hc
-      rw [decode_sentence_eq_ofNat'] at hc
+      rw [decode_sentence_eq_ofNat] at hc
       cases c with
       | zero => simp [Formula.ofNat] at hc
       | succ e =>
@@ -230,14 +232,14 @@ lemma decode_eq_some_iff_of_botFree :
               · rw [hα, hβ] at hc
                 have hc' : (some (α ⋏ β) : Option Sentence) = some (φ ⋏ ψ) := hc
                 obtain ⟨hab1, hab2⟩ := Formula.and.inj (Option.some.inj hc')
-                have h1 := ihφ hbφ _ (by rw [decode_sentence_eq_ofNat', hα, hab1])
-                have h2 := ihψ hbψ _ (by rw [decode_sentence_eq_ofNat', hβ, hab2])
-                rw [encode_sentence_eq_toNat'] at h1 h2
+                have h1 := ihφ hbφ _ (by rw [decode_sentence_eq_ofNat, hα, hab1])
+                have h2 := ihψ hbψ _ (by rw [decode_sentence_eq_ofNat, hβ, hab2])
+                rw [encode_sentence_eq_toNat] at h1 h2
                 have hp2 : Nat.pair e.unpair.2.unpair.1 e.unpair.2.unpair.2
                     = e.unpair.2 := Nat.pair_unpair _
                 have hp1 : Nat.pair e.unpair.1 e.unpair.2 = e := Nat.pair_unpair e
                 have htagN : e.unpair.1 = 3 := by omega
-                rw [encode_sentence_eq_toNat',
+                rw [encode_sentence_eq_toNat,
                   show Formula.toNat (φ ⋏ ψ)
                       = Nat.pair 3 (Nat.pair φ.toNat ψ.toNat) + 1 from rfl,
                   ← h1, ← h2, hp2, ← htagN, hp1]
@@ -246,7 +248,7 @@ lemma decode_eq_some_iff_of_botFree :
   | hor φ ψ ihφ ihψ =>
       obtain ⟨hbφ, hbψ⟩ := hφ
       intro c hc
-      rw [decode_sentence_eq_ofNat'] at hc
+      rw [decode_sentence_eq_ofNat] at hc
       cases c with
       | zero => simp [Formula.ofNat] at hc
       | succ e =>
@@ -263,14 +265,14 @@ lemma decode_eq_some_iff_of_botFree :
               · rw [hα, hβ] at hc
                 have hc' : (some (α ⋎ β) : Option Sentence) = some (φ ⋎ ψ) := hc
                 obtain ⟨hab1, hab2⟩ := Formula.or.inj (Option.some.inj hc')
-                have h1 := ihφ hbφ _ (by rw [decode_sentence_eq_ofNat', hα, hab1])
-                have h2 := ihψ hbψ _ (by rw [decode_sentence_eq_ofNat', hβ, hab2])
-                rw [encode_sentence_eq_toNat'] at h1 h2
+                have h1 := ihφ hbφ _ (by rw [decode_sentence_eq_ofNat, hα, hab1])
+                have h2 := ihψ hbψ _ (by rw [decode_sentence_eq_ofNat, hβ, hab2])
+                rw [encode_sentence_eq_toNat] at h1 h2
                 have hp2 : Nat.pair e.unpair.2.unpair.1 e.unpair.2.unpair.2
                     = e.unpair.2 := Nat.pair_unpair _
                 have hp1 : Nat.pair e.unpair.1 e.unpair.2 = e := Nat.pair_unpair e
                 have htagN : e.unpair.1 = 4 := by omega
-                rw [encode_sentence_eq_toNat',
+                rw [encode_sentence_eq_toNat,
                   show Formula.toNat (φ ⋎ ψ)
                       = Nat.pair 4 (Nat.pair φ.toNat ψ.toNat) + 1 from rfl,
                   ← h1, ← h2, hp2, ← htagN, hp1]
@@ -305,7 +307,7 @@ lemma decode_falsum_noncanonical :
     (Encodable.decode 2 : Option Sentence) = some ⊥ ∧
       (2 : ℕ) ≠ Encodable.encode (⊥ : Sentence) := by
   constructor
-  · rw [decode_sentence_eq_ofNat']
+  · rw [decode_sentence_eq_ofNat]
     have h : (1 : ℕ).unpair.1 = 0 := by decide
     simp [Formula.ofNat, h]
   · rw [show Encodable.encode (⊥ : Sentence) = 1 from by decide]
@@ -318,7 +320,7 @@ lemma ofNat_and_pair {φ ψ : Sentence} {c d : ℕ}
     (hd : (Encodable.decode d : Option Sentence) = some ψ) :
     (Encodable.decode (Nat.pair 3 (Nat.pair c d) + 1) : Option Sentence)
       = some (φ ⋏ ψ) := by
-  rw [decode_sentence_eq_ofNat'] at hc hd ⊢
+  rw [decode_sentence_eq_ofNat] at hc hd ⊢
   simp [Formula.ofNat, hc, hd]
 
 /-- **The restriction is necessary, not an artifact.**  `⊥`'s two codes propagate
@@ -338,7 +340,7 @@ lemma decode_and_noncanonical (φ : Sentence) :
   refine ⟨ofNat_and_pair (Encodable.encodek φ) decode_falsum_noncanonical.1, ?_⟩
   have he : Encodable.encode (φ ⋏ (⊥ : Sentence))
       = Nat.pair 3 (Nat.pair (Encodable.encode φ) 1) + 1 := by
-    rw [encode_sentence_eq_toNat', encode_sentence_eq_toNat']
+    rw [encode_sentence_eq_toNat, encode_sentence_eq_toNat]
     rw [show Formula.toNat (φ ⋏ (⊥ : Sentence))
         = Nat.pair 3 (Nat.pair φ.toNat (⊥ : Sentence).toNat) + 1 from rfl]
     rw [show ((⊥ : Sentence)).toNat = 1 from by decide]

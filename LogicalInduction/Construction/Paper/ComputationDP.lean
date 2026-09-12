@@ -33,7 +33,7 @@ atoms' payload tag is `2` — see the allocation table at `ComputationClaimKind.
 
 The two mechanical obligations behind the construction are discharged here: provability of
 schema instances is recursively enumerable (`provable_instances_re`), and the fuel-clocked
-stage enumerator is primitive recursive (`eventAtom_prim`, `theoremStage_encode_prim`,
+stage enumerator is primitive recursive (`eventAtom_prim`,
 `theoremDP_computable`).
 
 `theoremDP` is a *component*, not a market of record.  The paper fixes one deductive
@@ -170,51 +170,22 @@ lemma eventFires_re [T.Δ₁] :
 
 /-- A partial-recursive semi-decider for `eventFires`: `code.eval e` halts iff `e` fires. -/
 lemma exists_eventCode [T.Δ₁] :
-    ∃ code : Nat.Partrec.Code, ∀ e, (code.eval e).Dom ↔ eventFires T e := by
-  obtain ⟨f, hf, hfP⟩ := REPred.iff'.mp (eventFires_re T)
-  obtain ⟨code, hcode⟩ := Nat.Partrec.Code.exists_code.mp
-    (Partrec.nat_iff.mp (hf.map (Computable.const (0 : ℕ)).to₂))
-  refine ⟨code, fun e => ?_⟩
-  rw [hcode]
-  exact (hfP e).symm
+    ∃ code : Nat.Partrec.Code, ∀ e, (code.eval e).Dom ↔ eventFires T e :=
+  exists_semiDecider (eventFires_re T)
 
 /-! ## The deductive process -/
 
-open Classical in
-/-- Fuel-`k` dovetailer: the atoms of every event `e ≤ k` whose semi-decider halts within `k`
-interpreter steps.  Monotone in `k` by `evaln`-monotonicity. -/
-noncomputable def theoremStage (code : Nat.Partrec.Code) (k : ℕ) : Finset Sentence :=
-  ((Finset.range (k + 1)).filter (fun e => (Nat.Partrec.Code.evaln k code e).isSome = true)).image
-    eventAtom
-
-lemma theoremStage_mono (code : Nat.Partrec.Code) (k : ℕ) :
-    theoremStage code k ⊆ theoremStage code (k + 1) := by
-  classical
-  intro φ hφ
-  simp only [theoremStage, Finset.mem_image, Finset.mem_filter, Finset.mem_range] at hφ ⊢
-  obtain ⟨e, ⟨he, hsome⟩, rfl⟩ := hφ
-  exact ⟨e, ⟨by omega, evaln_isSome_mono (Nat.le_succ k) hsome⟩, rfl⟩
-
-/-- The constructed deductive process enumerating the `T`-provable computation literals. -/
-noncomputable def theoremDP [T.Δ₁] : DeductiveProcess where
-  D := theoremStage (exists_eventCode T).choose
-  mono := theoremStage_mono _
+/-- The constructed deductive process enumerating the `T`-provable computation literals:
+the dovetail (`Construction/DeductiveDovetail.lean`) of `exists_eventCode`'s semi-decider
+under the event naming map `eventAtom`. -/
+noncomputable def theoremDP [T.Δ₁] : DeductiveProcess :=
+  dovetailProcess eventAtom (exists_eventCode T).choose
 
 /-- Coverage: every fired event's atom eventually appears in a stage. -/
 lemma theoremDP_covers [T.Δ₁]
     {e : ℕ} (he : eventFires T e) :
-    ∃ k, eventAtom e ∈ (theoremDP T).D k := by
-  classical
-  have hspec := (exists_eventCode T).choose_spec
-  set code := (exists_eventCode T).choose with hc
-  have hdom : (code.eval e).Dom := (hspec e).mpr he
-  obtain ⟨out, hout⟩ := Part.dom_iff_mem.mp hdom
-  obtain ⟨fuel, hfuel⟩ := Nat.Partrec.Code.evaln_complete.mp hout
-  refine ⟨max e fuel, ?_⟩
-  simp only [theoremDP, theoremStage, Finset.mem_image, Finset.mem_filter, Finset.mem_range]
-  refine ⟨e, ⟨by omega, ?_⟩, rfl⟩
-  exact evaln_isSome_mono (le_max_right e fuel)
-    (Option.isSome_iff_exists.mpr ⟨out, hfuel⟩)
+    ∃ k, eventAtom e ∈ (theoremDP T).D k :=
+  dovetailProcess_covers (((exists_eventCode T).choose_spec e).mpr he)
 
 /-! ## Non-vacuity: a consistent world for every stage
 
@@ -238,10 +209,6 @@ noncomputable def provabilityWorld : PCWorld := fun m =>
     T ⊢ universalQuotePos/[↑m.unpair.2.unpair.2.unpair.2]
   else False
 
--- Atom and negation normalisation is wanted throughout the deductive-process lane; the
--- laws themselves are `Framework/Criterion.lean`'s.
-attribute [simp] PCWorld.holds_atom PCWorld.holds_neg
-
 @[simp] lemma provabilityWorld_halting (z : ℕ) :
     (provabilityWorld T) ((haltingClaim z).godelCode) ↔ T ⊢ universalHaltingSchema/[↑z] := by
   simp [provabilityWorld, haltingClaim, ComputationClaim.godelCode,
@@ -263,8 +230,7 @@ lemma theoremDP_hworld [T.Δ₁] [𝗣𝗔⁻ ⪯ T] [Entailment.Consistent T] (
     (provabilityWorld T).ConsistentWith ((theoremDP T).D n) := by
   classical
   intro φ hφ
-  simp only [theoremDP, theoremStage, Finset.mem_image, Finset.mem_filter,
-    Finset.mem_range] at hφ
+  simp only [theoremDP, dovetailProcess_D, mem_dovetailStage] at hφ
   obtain ⟨e, ⟨-, hsome⟩, rfl⟩ := hφ
   have hfires : eventFires T e := by
     obtain ⟨out, hout⟩ := Option.isSome_iff_exists.mp hsome
@@ -318,17 +284,6 @@ in the stage index.  Isolating this mechanical obligation keeps the epistemic co
 fully proved. -/
 
 /-! ### The atom encoder is primitive recursive -/
-
-lemma encode_atom (m : ℕ) :
-    Encodable.encode (Formula.atom m : Sentence) = Nat.pair 1 m + 1 := rfl
-
-lemma encode_negAtom (m : ℕ) :
-    Encodable.encode (∼(Formula.atom m) : Sentence) =
-      Nat.pair 2 (Nat.pair (Nat.pair 1 m + 1) (Nat.pair 0 0 + 1)) + 1 := rfl
-
-lemma encode_top :
-    Encodable.encode (⊤ : Sentence) =
-      Nat.pair 2 (Nat.pair (Nat.pair 0 0 + 1) (Nat.pair 0 0 + 1)) + 1 := rfl
 
 /-- `eventAtom` is primitive recursive (its Gödel code is a bounded case split over the tag
 into fixed pairings of the fixed schema constants). -/
@@ -391,65 +346,12 @@ lemma eventAtom_prim : Primrec (fun e : ℕ => eventAtom e) := by
 
 /-! ### Assembling the computation -/
 
-lemma theoremStage_eq_toFinset (c : Nat.Partrec.Code) (n : ℕ) :
-    theoremStage c n =
-      ((List.range (n + 1)).filterMap
-        (fun e => if (Nat.Partrec.Code.evaln n c e).isSome = true then some (eventAtom e)
-          else none)).toFinset := by
-  classical
-  ext φ
-  simp only [theoremStage, Finset.mem_image, Finset.mem_filter, Finset.mem_range,
-    List.mem_toFinset, List.mem_filterMap, List.mem_range]
-  constructor
-  · rintro ⟨e, ⟨he, hsome⟩, rfl⟩
-    exact ⟨e, he, by rw [if_pos hsome]⟩
-  · rintro ⟨e, he, hcond⟩
-    by_cases hs : (Nat.Partrec.Code.evaln n c e).isSome = true
-    · rw [if_pos hs] at hcond
-      exact ⟨e, ⟨he, hs⟩, Option.some_inj.mp hcond⟩
-    · rw [if_neg hs] at hcond; exact absurd hcond (by simp)
-
-lemma theoremStage_encode_prim (c : Nat.Partrec.Code) :
-    Primrec (fun n => Encodable.encode (theoremStage c n)) := by
-  -- The fuel-clocked dovetail list is primrec.
-  have hevaln : Primrec (fun p : ℕ × ℕ =>
-      (Nat.Partrec.Code.evaln p.1 c p.2).isSome) :=
-    Primrec.option_isSome.comp
-      (Nat.Partrec.Code.primrec_evaln.comp
-        ((Primrec.fst.pair (Primrec.const c)).pair Primrec.snd))
-  have hguncur : Primrec (fun p : ℕ × ℕ =>
-      if (Nat.Partrec.Code.evaln p.1 c p.2).isSome = true then some (eventAtom p.2)
-        else (none : Option Sentence)) := by
-    have hb : Primrec (fun p : ℕ × ℕ =>
-        bif (Nat.Partrec.Code.evaln p.1 c p.2).isSome then some (eventAtom p.2)
-          else (none : Option Sentence)) :=
-      Primrec.cond hevaln (Primrec.option_some.comp (eventAtom_prim.comp Primrec.snd))
-        (Primrec.const (none : Option Sentence))
-    exact hb.of_eq (fun p => by
-      cases (Nat.Partrec.Code.evaln p.1 c p.2).isSome <;> simp)
-  have hlist : Primrec (fun n : ℕ => (List.range (n + 1)).filterMap
-      (fun e => if (Nat.Partrec.Code.evaln n c e).isSome = true then some (eventAtom e)
-        else none)) :=
-    Primrec.listFilterMap (Primrec.list_range.comp Primrec.succ) hguncur.to₂
-  have hkey : (fun n => Encodable.encode (theoremStage c n)) =
-      (fun n => Encodable.encode
-        ((sentenceDedup ((List.range (n + 1)).filterMap
-          (fun e => if (Nat.Partrec.Code.evaln n c e).isSome = true then some (eventAtom e)
-            else none))).insertionSort sentenceCodeLE)) := by
-    funext n; rw [theoremStage_eq_toFinset, encode_toFinset_eq]
-  rw [hkey]
-  exact Primrec.encode.comp (sentenceInsertionSort_prim.comp (sentenceDedup_prim.comp hlist))
-
 /-- The provability deductive process is computable: one fixed partial-recursive program
-emits the encoded stage `D n` on input `n`. -/
+emits the encoded stage `D n` on input `n`.  The whole argument is
+`dovetailProcess_computable`; all this lane supplies is `eventAtom_prim`. -/
 lemma theoremDP_computable [T.Δ₁] :
-    ComputableDeductiveProcess (theoremDP T) := by
-  let eventCode := (exists_eventCode T).choose
-  obtain ⟨code, hcode⟩ := Nat.Partrec.Code.exists_code.mp
-    (Nat.Partrec.of_primrec (Primrec.nat_iff.mp (theoremStage_encode_prim eventCode)))
-  refine ⟨code, fun n => ?_⟩
-  rw [hcode]
-  exact Part.mem_some _
+    ComputableDeductiveProcess (theoremDP T) :=
+  dovetailProcess_computable eventAtom_prim _
 
 /-! ## The presentations -/
 

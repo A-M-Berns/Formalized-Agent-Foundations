@@ -1,6 +1,6 @@
 import LogicalInduction.Construction.Budgeter
+import LogicalInduction.Construction.MachineTraderEnumeration
 import LogicalInduction.Framework.Efficiency
-import LogicalInduction.Properties.FinitePerturbations
 
 /-!
 # `eq:tradingfirm` — the Trading Firm and its dominance lemma
@@ -42,8 +42,6 @@ calculation finite and executable.
 -/
 
 namespace LogicalInduction
-
-open Classical
 
 /-! ## Absolute bounds on features and strategies
 

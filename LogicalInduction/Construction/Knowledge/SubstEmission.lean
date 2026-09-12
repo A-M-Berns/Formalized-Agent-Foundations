@@ -84,38 +84,6 @@ numeral notation and writes numerals positionally (tex:614, tex:757) — which i
 below is tied to it: a value too large to name in unary is named by `binNumeral` instead,
 and the general lemmas take whichever certificate the caller has. -/
 
-/-- Symbol list of Foundation's unary numeral for `v`, zero included. -/
-private def numeralEnc (v : ℕ) : List ℕ :=
-  if v = 0 then [5] else List.replicate (v - 1) 7 ++ List.replicate v 6
-
-/-- Kind `P` (proved).  Provenance: (a) derived in-project from
-`encodeArithmeticTermSymbols_numeral`. -/
-private lemma encodeArithmeticTermSymbols_numeralConst {k : ℕ} (v : ℕ) :
-    encodeArithmeticTermSymbols
-      ((Semiterm.Operator.numeral ℒₒᵣ v).const : ArithmeticSemiterm ℕ k) =
-      numeralEnc v := by
-  by_cases h : v = 0
-  · subst h; rfl
-  · rw [numeralEnc, if_neg h, encodeArithmeticTermSymbols_numeral v h]
-
-/-- Numerals of a poly-fueled value stream are emittable, zero included: the two tag runs
-are `repeatTag` blocks, and the zero case is selected by the same `ifZero` dispatch the
-runtime uses.
-
-Kind `P` (proved).  Provenance: (a) derived in-project. -/
-private lemma numeralEnc_polySegStream {cv : Nat.Partrec.Code} {v : ℕ → ℕ}
-    (hv : PolyFueled cv v) : PolySegStream (fun n => numeralEnc (v n)) := by
-  have hpred : PolyFueled _ (fun n => v n - 1) :=
-    (subc_polyFueled.comp (hv.pair (PolyFueled.const 1))).of_eq fun n => by
-      simp only [Nat.unpair_pair]
-  have hpos : PolySegStream (fun n => List.replicate (v n - 1) 7 ++
-      List.replicate (v n) 6) :=
-    (PolySegStream.repeatTag 7 hpred).append (PolySegStream.repeatTag 6 hv)
-  refine ((PolySegStream.constList [5]).ifZero hpos hv).of_eq fun n => ?_
-  by_cases h : v n = 0
-  · rw [if_pos h, numeralEnc, if_pos h]
-  · rw [if_neg h, numeralEnc, if_neg h]
-
 /-- The day-numeral instance of the emission hypothesis the general lemmas below take:
 the unary numeral for `n`, at every arity.
 
@@ -125,14 +93,6 @@ private lemma polySegStream_numeralConst (m : ℕ) :
       ((Semiterm.Operator.numeral ℒₒᵣ n).const : ArithmeticSemiterm ℕ m)) :=
   (numeralEnc_polySegStream PolyFueled.id).of_eq fun n =>
     (encodeArithmeticTermSymbols_numeralConst (k := m) n).symm
-
-/-- The same, machine metered: the day numeral's own run, crossed at the write-out
-bridge. -/
-private lemma machineTokenStream_numeralConst (m : ℕ) :
-    MachineTokenStream (fun n => encodeArithmeticTermSymbols
-      ((Semiterm.Operator.numeral ℒₒᵣ n).const : ArithmeticSemiterm ℕ m)) :=
-  BigTokenStream.toMachine
-    (BigTokenStream.ofPolySegStream (polySegStream_numeralConst m))
 
 /-! ## The substitution invariant
 
@@ -319,7 +279,7 @@ Lean-opaque and possibly `Classical.choice`-obtained — and an arbitrary closed
 emittable.  The cost is the fixed skeleton of `γ` plus one copy of `τ n`'s run for each of
 the finitely many occurrences of the substituted slot.
 
-Kind `P` (proved).  Provenance: (a) derived in-project from `polySegStream_formula`. -/
+Kind `P` (proved).  Provenance: (a) derived in-project from `emission_formula`. -/
 lemma polyArithmeticFormulaSeq_subst_arg (γ : ArithmeticSemisentence 2)
     (τ : ℕ → Semiterm.Const ℒₒᵣ)
     (henc : ∀ l : ℕ, PolySegStream (fun n =>
@@ -642,7 +602,7 @@ The one-variable analogue of `polyArithmeticFormulaSeq_subst_arg`, and equally i
 to what `σ` is: the emitter writes `σ`'s fixed skeleton plus one copy of `τ n`'s run per
 substituted slot.
 
-Kind `P` (proved).  Provenance: (a) derived in-project from `polySegStream_formula`. -/
+Kind `P` (proved).  Provenance: (a) derived in-project from `emission_formula`. -/
 lemma polyArithmeticFormulaSeq_schemaArgBody (σ : ArithmeticSemisentence 1)
     (τ : ℕ → Semiterm.Const ℒₒᵣ)
     (henc : ∀ l : ℕ, PolySegStream (fun n =>
@@ -694,12 +654,6 @@ lemma compile_schemaArgSource (σ : ArithmeticSemisentence 1)
       Semiformula.exs (Rewriting.emb (schemaArgBody σ t) :
         ArithmeticSemiformula ℕ 1) := by
   simp [schemaArgSource, ArithSource.compile]
-
-/-- The day-numeral instance of `compile_schemaArgSource`. -/
-lemma compile_schemaDaySource (σ : ArithmeticSemisentence 1) (n : ℕ) :
-    ArithSource.compile (schemaDaySource σ n) =
-      Semiformula.exs (Rewriting.emb (schemaDayBody σ n) : ArithmeticSemiformula ℕ 1) :=
-  compile_schemaArgSource σ (Semiterm.Operator.numeral ℒₒᵣ n)
 
 /-- The claim sources at a certified closed-term family are source-metered: one `∃` node
 over the substituted schema leaf. -/

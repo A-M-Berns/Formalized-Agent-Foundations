@@ -187,11 +187,8 @@ instance : RepresentsComputations 𝗣𝗔 := representsComputations_of_peanoMin
 
 /-! ## Non-vacuity -/
 
-example : RepresentsComputations 𝗜𝚺₁ := inferInstance
-
-example : RepresentsComputations 𝗣𝗔 := inferInstance
-
-/-- The class's own consistency observation is therefore not vacuous either. -/
+/-- The class is inhabited at the theories named above, so its own consistency
+observation is not vacuous. -/
 example : Entailment.Consistent 𝗜𝚺₁ := RepresentsComputations.consistent 𝗜𝚺₁
 
 end LogicalInduction

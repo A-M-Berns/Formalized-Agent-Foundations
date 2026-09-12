@@ -24,7 +24,7 @@ follow.
   `Properties/Pseudorandomness.lean`, discharged in
   `Construction/Statistics/SettlementClock.lean`) and by
   `HistoricalVerifiedMaturitySchedule.check_poly` (`Framework/ROI.lean`).
-* `PrefixPatchCompile.clockedTokens_polySegStream` — the raw token stream a clocked
+* `ClockedEmission.clockedTokens_polySegStream` — the raw token stream a clocked
   trader program emits under `ecClock a k` is a `PolySegStream`.  This is what
   `Framework/Emission/RpnEmission.lean` and the conditioning and settlement witnesses
   (`Construction/Conditioning/Compiler.lean`, `Construction/Conditioning/PricePass.lean`,
@@ -801,6 +801,24 @@ lemma dovetailFound_eq_true_iff (c : Nat.Partrec.Code) (i n : ℕ) :
     dovetailFound c i n = true ↔ ∃ j ≤ n, acceptsWithin c n (Nat.pair i j) = true := by
   simp [dovetailFound, boundedAny_eq_true_iff, dovetailStep]
 
+/-- Acceptance is monotone in the clock: `evaln` is. -/
+lemma acceptsWithin_mono (c : Nat.Partrec.Code) {F F' x : ℕ} (h : F ≤ F')
+    (ha : acceptsWithin c F x = true) : acceptsWithin c F' x = true := by
+  cases hev : Nat.Partrec.Code.evaln F c x with
+  | none => simp [acceptsWithin, codeEvalnNat, hev] at ha
+  | some out =>
+      have hm : Nat.Partrec.Code.evaln F' c x = some out :=
+        Nat.Partrec.Code.evaln_mono h hev
+      simp only [acceptsWithin, codeEvalnNat, Nat.unpair_pair, hev, decide_eq_true_iff] at ha
+      simp [acceptsWithin, codeEvalnNat, hm, ha]
+
+/-- The dovetail only ever gains witnesses as the budget grows. -/
+lemma dovetailFound_mono (c : Nat.Partrec.Code) {i n : ℕ}
+    (h : dovetailFound c i n = true) : dovetailFound c i (n + 1) = true := by
+  rw [dovetailFound_eq_true_iff] at h ⊢
+  obtain ⟨j, hj, ha⟩ := h
+  exact ⟨j, by omega, acceptsWithin_mono c (Nat.le_succ n) ha⟩
+
 section Dovetail
 
 -- The `dd:fuel` elaboration safeguard; see the module docstring.
@@ -841,7 +859,7 @@ The evaluator clock `ecClock` carried by an `EfficientlyComputableTok` certifica
 together with the total length/token oracles of one clocked trader program and the proof
 that the resulting raw token stream is a `PolySegStream`. -/
 
-namespace PrefixPatchCompile
+namespace ClockedEmission
 
 -- The `dd:fuel` elaboration safeguard; see the module docstring.
 attribute [local irreducible] Nat.sqrt
@@ -950,7 +968,7 @@ lemma clockedTokens_polySegStream (lengthCode tokenCode : Nat.Partrec.Code)
     fun n i hi => clockedRawToken_eq lengthCode tokenCode a k n i
       (by rwa [clockedRawLength_eq lengthCode tokenCode a k n])⟩
 
-end PrefixPatchCompile
+end ClockedEmission
 
 /-! ## The digit-model inclusion (`dd:fuel`) -/
 
@@ -965,7 +983,7 @@ theorem EfficientlyComputableTok.toDigit {Tr : Trader}
     (h : EfficientlyComputableTok Tr) : EfficientlyComputableDigit Tr := by
   obtain ⟨lc, tc, a, k, hTr⟩ := h
   have hdig := PolySegStream.digitizeStream
-    (PrefixPatchCompile.clockedTokens_polySegStream lc tc a k)
+    (ClockedEmission.clockedTokens_polySegStream lc tc a k)
   refine ecDigit_of_rawSegStream Tr hdig (fun n => ?_)
   rw [undigitize_digitize, ← hTr]
   rfl

@@ -42,20 +42,12 @@ paper-facing carrier is `AffineCombination.PolySequence.peraffkno`, consumed by
 `Construction/Quotation/Packages.lean`.
 
 Also exported are the transport utilities `AffineCombination.addConst` /
-`PolySequence.addConst`, used by seven modules including `Framework/Emission/Computable.lean` and
-the conditioning and perturbation witnesses, and the cross-day bounds
+`PolySequence.addConst`, used by `Framework/Emission/Computable.lean` and the conditioning
+and perturbation witnesses among others, and the cross-day bounds
 `BoundedAffinePrices.futureLow_le_price` / `price_le_futureHigh`.
 
 The sentence-level special case `Aₙ := φₙ` is `thm:perkno`, and lives in
 `Properties/TimelyLearning.lean`.
-**The criterion binder below is `def:lic` at the paper's own quantifier.**  Every result here that consumes an
-exploiting trader takes `[IsLogicalInductor P DP]`, and the trader is certified at `EfficientlyComputable`:
-it is assembled from `AffineCombination.PolySequence`'s machine-metered emission fields
-through `PolySequence.buyBelowTrader_ec` (`Properties/AffineCoherence.lean`), which has no
-fuel-class form: the bridge `BigSpliceStream.toMachine` runs fuel to machine, and no map
-back is proved or claimed.  The
-calibration is stated at `def:ec` in `Framework/Affine.lean`, and the `_unconditional`
-endpoints discharge the criterion through `LIA_is_logical_inductor`.
 
 -/
 
@@ -514,7 +506,7 @@ lemma PolySequence.persistenceEntrySum_rank {As : ℕ → AffineCombination}
     (h : PolySequence As)
     (start : ℕ) (low δ : ℚ) (k : ℕ) :
     (persistenceEntrySum As start low δ k).rank ≤ k :=
-  sumEF_rank fun n hn => h.persistenceEntry_rank start low δ hn
+  sumEF_rank fun _ hn => h.persistenceEntry_rank start low δ hn
 
 /-- The unnormalized constant term reads only prices posted on or before day `k`. -/
 lemma PolySequence.persistenceRawConst_rank {As : ℕ → AffineCombination}
@@ -572,16 +564,14 @@ noncomputable def PolySequence.persistencePortfolioPoly {As : ℕ → AffineComb
   have hcount := h.persistenceTermCount_poly
   have hmember := h.persistenceMember_poly
   have hoffset := h.persistenceOffset_poly
-  let memberPF := hmember
-  let offsetPF := hoffset
-  let canonicalPF := memberPF.pair offsetPF
+  have canonical := hmember.pair hoffset
   have hentry := (persistenceEntry_serialize As h start low δ).comp
     (f := fun z : ℕ => Nat.pair z.unpair.1 (persistenceMember h z.unpair.1 z.unpair.2))
-    (UnaryRuler.unpairFst.pair memberPF)
+    (UnaryRuler.unpairFst.pair hmember)
   have hcoeff := h.coefficient_poly.comp
     (f := fun z : ℕ => Nat.pair (persistenceMember h z.unpair.1 z.unpair.2)
       (persistenceOffset h z.unpair.1 z.unpair.2))
-    canonicalPF
+    canonical
   have hnorm := (persistenceNorm_polySeg As h start low δ).comp
     (f := fun z : ℕ => z.unpair.1) (UnaryRuler.unpairFst)
   have hcoefficient := MachineSpliceStream.serialize_mul hnorm
@@ -605,7 +595,7 @@ noncomputable def PolySequence.persistencePortfolioPoly {As : ℕ → AffineComb
   · exact MachineSentenceCodes.of_eq (h.sentence_poly.comp
       (f := fun z : ℕ => Nat.pair (persistenceMember h z.unpair.1 z.unpair.2)
         (persistenceOffset h z.unpair.1 z.unpair.2))
-      canonicalPF)
+      canonical)
       (fun z => by simp [persistenceSentence])
   · intro k
     simp only [persistencePortfolio, EF.rank, persistenceNorm]
@@ -915,12 +905,10 @@ lemma persistencePortfolio_value {As : ℕ → AffineCombination}
         (fun p => p.1.denote V * w p.2)).sum =
       N * ((List.range (k + 1)).map (fun n => e n * (As n).value V w)).sum
   rw [hterms]
-  have hcombine : ∀ l : List ℕ,
+  have hcombine :
       ((List.range (k + 1)).map (fun n => e n * (As n).const.denote V)).sum +
           ((List.range (k + 1)).map (fun n => e n * termValue n)).sum =
         ((List.range (k + 1)).map (fun n => e n * (As n).value V w)).sum := by
-    intro l
-    clear l
     induction List.range (k + 1) with
     | nil => simp
     | cons n l ih =>
@@ -928,7 +916,7 @@ lemma persistencePortfolio_value {As : ℕ → AffineCombination}
         rw [← ih]
         simp only [value, termValue]
         ring
-  rw [← mul_add, hcombine (List.range (k + 1))]
+  rw [← mul_add, hcombine]
 
 /-- Day-`m` market price of the day-`k` portfolio: the normalized entry-weighted sum of
 the prefix members' own day-`m` prices. -/
@@ -1281,23 +1269,7 @@ lemma PolySequence.noPersistenceUnderpricing_of_boundedMagnitude
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     NoPreemptiveUnderpricing
       (affineFutureLow As P) (fun n => (As n).value P (limitingBelief P)) := by
-  obtain ⟨B, hB⟩ := hmag
-  obtain ⟨C, hC⟩ := exists_rat_gt (max B 0)
-  have hC0 : 0 < (C : ℝ) := lt_of_le_of_lt (le_max_right B 0) hC
-  let q : ℚ := 1 / C
-  have hq0 : 0 < (q : ℝ) := by
-    dsimp only [q]
-    rw [Rat.cast_div, Rat.cast_one]
-    exact one_div_pos.mpr hC0
-  have hscaledMag : ∀ n,
-      ((As n).scale (.const q)).magnitude P ≤ 1 := by
-    intro n
-    rw [scale_magnitude, EF.denote_const, abs_of_pos hq0]
-    have hn : (As n).magnitude P < (C : ℝ) :=
-      (hB n).trans_lt ((le_max_left B 0).trans_lt hC)
-    have hdiv : (As n).magnitude P / (C : ℝ) ≤ 1 :=
-      (div_le_one hC0).mpr hn.le
-    simpa [q, div_eq_mul_inv, mul_comm] using hdiv
+  obtain ⟨q, hq0, hscaledMag⟩ := AffineCombination.exists_rat_unitScale hmag
   have hscaled := (h.scaleRat q).noPersistenceUnderpricing P DP
     (hbounded.scaleRat q) hscaledMag hworld
   intro a b hab hfuture hcurrent

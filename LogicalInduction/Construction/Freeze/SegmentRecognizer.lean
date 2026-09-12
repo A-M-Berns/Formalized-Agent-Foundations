@@ -1,14 +1,13 @@
 import LogicalInduction.Construction.Freeze.SegmentAutomaton
 import LogicalInduction.Construction.Freeze.SegmentCounter
 import LogicalInduction.Construction.Freeze.PayloadAutomaton
-import LogicalInduction.Construction.Freeze.FiberTest
 
 /-!
 # The freeze's run recognizer, with no condition on the target
 
 Renders `app:ifp` (tex:6018): the unconditional polynomial-time decision of "this word's run
-denotes `ψ`", for every target.  `PatAuto.ifParse_mem_FP` decides the same question only for
-a `NoReserved` target, and that condition is not decoration: a reserved atom is *also*
+denotes `ψ`", for every target.  A single-token spelling characterization would reach only a
+`NoReserved` target, and that condition is not decoration: a reserved atom is *also*
 spelled by a structured paper-prime block, whose unary length field must be matched against
 the payload's own token count, and no finite-state device decides an `aⁿbⁿ` constraint.
 
@@ -80,7 +79,7 @@ Paper node: `app:ifp` -/
 lemma segMatch_iff_accepts (H : PatAuto.HoleGuards) (p : List PatSeg) (b : List ℕ) :
     SegMatch p b ↔
       (SegAuto.segAuto H payRec p).Accepts b = true ∧ (SegCtr.segCtr p).Accepts b = true := by
-  rw [SegCtr.segMatch_iff_relaxed_and_ctr PayAuto.nineteen_not_mem_of_parse p b,
+  rw [SegCtr.segMatch_iff_relaxed_and_ctr p b,
     SegAuto.segAuto_accepts H payRec p b]
 
 /-! ## The nest over a target's patterns -/

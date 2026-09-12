@@ -204,7 +204,7 @@ lemma exclW_nonneg (P : History) (φ ψ : Sentence) (σ ε : ℚ) (hε : 0 < ε)
   set G := (σ:ℝ) * (gapEF φ ψ n).denote P with hG
   by_cases h : G + (-(ε:ℝ)/2) ≤ 0
   · rw [max_eq_left h]; simp
-  · push_neg at h
+  · push Not at h
     have hεr : (0:ℝ) < (ε:ℝ) := by exact_mod_cast hε
     exact mul_nonneg (le_max_left _ _) (by nlinarith [h, hεr])
 
@@ -438,7 +438,7 @@ lemma hystH_incr_imp (hδ : 0 < (δ : ℝ)) {k : ℕ}
     (h : hystH φ a b δ P k < hystH φ a b δ P (k + 1)) : P k φ < (a : ℝ) + δ := by
   refine buyInd_pos_imp hδ ?_
   by_contra hb
-  push_neg at hb
+  push Not at hb
   have hb0 := (buyInd_mem φ a δ k P).1
   have hbz : (buyIndEF φ a δ k).denote P = 0 := le_antisymm hb hb0
   obtain ⟨ih0, ih1⟩ := hystH_mem φ a b δ P k
@@ -455,7 +455,7 @@ lemma hystH_decr_imp (hδ : 0 < (δ : ℝ)) {k : ℕ}
     (h : hystH φ a b δ P (k + 1) < hystH φ a b δ P k) : (b : ℝ) - δ < P k φ := by
   refine sellInd_pos_imp hδ ?_
   by_contra hs
-  push_neg at hs
+  push Not at hs
   have hs0 := (sellInd_mem φ b δ k P).1
   have hsz : (sellIndEF φ b δ k).denote P = 0 := le_antisymm hs hs0
   have hle : hystH φ a b δ P k ≤ hystH φ a b δ P (k + 1) := by
@@ -523,13 +523,6 @@ noncomputable def hystBpos (φ : Sentence) (a b δ : ℚ) (P : History) (n : ℕ
 noncomputable def hystBneg (φ : Sentence) (a b δ : ℚ) (P : History) (n : ℕ) : ℝ :=
   ∑ i ∈ Finset.range (n + 1), max (-(hystDelta φ a b δ P i)) 0
 
-/-- `x⁺ - x⁻ = x` in the `max`-form used by the affine serialization proofs.
-(Mathlib's `posPart_sub_negPart` is the same fact in `⁺`/`⁻` notation.) -/
-lemma max_sub_max_neg (x : ℝ) : max x 0 - max (-x) 0 = x := by
-  rcases le_total x 0 with h | h
-  · rw [max_eq_right h, max_eq_left (by linarith : (0:ℝ) ≤ -x)]; ring
-  · rw [max_eq_left h, max_eq_right (by linarith : -x ≤ (0:ℝ))]; ring
-
 lemma hystDelta_sum (φ a b δ) (P : History) (n : ℕ) :
     ∑ i ∈ Finset.range (n + 1), hystDelta φ a b δ P i = hystH φ a b δ P (n + 1) := by
   rw [show (∑ i ∈ Finset.range (n + 1), hystDelta φ a b δ P i)
@@ -541,7 +534,7 @@ lemma hystBpos_eq (φ a b δ) (P : History) (n : ℕ) :
   have : hystBpos φ a b δ P n - hystBneg φ a b δ P n
       = ∑ i ∈ Finset.range (n + 1), hystDelta φ a b δ P i := by
     rw [hystBpos, hystBneg, ← Finset.sum_sub_distrib]
-    exact Finset.sum_congr rfl (fun i _ => max_sub_max_neg _)
+    exact Finset.sum_congr rfl (fun i _ => posPart_sub_negPart _)
   rw [hystDelta_sum] at this
   linarith
 

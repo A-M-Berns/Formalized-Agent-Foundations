@@ -358,7 +358,7 @@ deferred-day price against the target probability,
 
 The threshold `p` is P-generable (`def:ece`), exactly as in the paper: the emitter recovers
 a program for `p` from the feature presentation by parsing the emitted serialization
-(`BigSpliceStream.feature_primrec`) and evaluating it against this market
+(`MachineSpliceStream.feature_primrec`) and evaluating it against this market
 (`PGenerableRat.computable`).
 
 What the quote code needs of the tolerance `δ` is *computability*, not efficiency: the
@@ -382,6 +382,7 @@ noncomputable def paperConfidenceQuoteCode (f : DeferralFunction)
       (hquote.pair (hp.computable (paperMarketComputation T)))) : _)
   RationalQuoteCode.ofComputable T hval (fun _ => ratCtsInd_mem_Icc _ _ _)
 
+omit [𝗣𝗔⁻ ⪯ T] [Entailment.Consistent T] in
 /-- Cast identity for the confidence value against the real market. -/
 lemma paperConfidence_value_cast (f : DeferralFunction) (φ : ℕ → Sentence)
     (δ p : ℕ → ℚ) (n : ℕ) :
@@ -390,7 +391,6 @@ lemma paperConfidence_value_cast (f : DeferralFunction) (φ : ℕ → Sentence)
         (Encodable.encode (φ n))) (p n) : ℚ) : ℝ) := by
   rw [(paperMarketComputation T).quote_exact (f n) (φ n), ratCtsInd_cast]
 
-set_option maxHeartbeats 1000000 in
 /-- The interval quote code for `thm:ref`: one Boolean decider names the fact
 `a n < Pₙ(φ n) < b n`, computed from the market program's exact rational quote.  This is
 the introspection target sentence, constructed with no caller-supplied truth relation.
@@ -605,6 +605,7 @@ The slack certificate is inhabited at both ends: by the mesh product above for a
 source, and by the indicator product below at `slack = 0`, which is the exact condition the
 certificate generalizes. -/
 
+omit [Entailment.Consistent T] in
 /-- **N±.** The indicator-source product inhabits the `thm:ccee` certificate at zero slack,
 so the slack field is a genuine weakening of an inhabited condition rather than a
 replacement of it.
@@ -650,10 +651,8 @@ carried *in place of* the `[𝗣𝗔⁻ ⪯ T]` of the section above, not beside
 note.  The elaborated signature therefore carries no redundant pair.
 The tolerance width the interior construction needs is *not* a premise: the paper states no
 `δ` at this node, and `width` occurs nowhere in the conclusion, so the endpoint discharges it
-internally at the paper's own tolerance sequence `2⁻ⁿ`
-(`digitRatCodes_two_pow_inv`, crossed to the machine class by `DigitRatCodes.toMachine`;
-`machineRatCodes_two_pow_inv` is the same witness named in
-`Framework/Machine/Witnesses.lean`, which this module does not import).
+internally at the paper's own tolerance sequence `2⁻ⁿ`, the named machine-class witness
+`machineRatCodes_two_pow_inv` (`Framework/Machine/Witnesses.lean`).
 Paper node: `thm:lp` -/
 theorem lic_paradox_resistance_ofDiagonal_unconditional [𝗜𝚺₁ ⪯ T]
     (p : ℚ) (hp0 : 0 < p) (hp1 : p < 1) :
@@ -664,7 +663,7 @@ theorem lic_paradox_resistance_ofDiagonal_unconditional [𝗜𝚺₁ ⪯ T]
   haveI := paperLIA T
   lic_paradox_resistance_ofDiagonal (paperQuotationPresentation T) (liaHistory (paperDP T))
     (paperMarketComputation T) p hp0 hp1
-    (fun n => (((2 ^ n : ℕ) : ℚ))⁻¹) (DigitRatCodes.toMachine digitRatCodes_two_pow_inv)
+    (fun n => (((2 ^ n : ℕ) : ℚ))⁻¹) machineRatCodes_two_pow_inv
     (fun n => by positivity)
     (Filter.Tendsto.congr (fun n => by push_cast; rw [inv_pow])
       (tendsto_pow_atTop_nhds_zero_of_lt_one (by norm_num) (by norm_num :

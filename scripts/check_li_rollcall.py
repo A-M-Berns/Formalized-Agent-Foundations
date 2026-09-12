@@ -167,6 +167,184 @@ def declaration_signatures():
     return sigs, file_vars
 
 
+# ---------------------------------------------------------------------------
+# Shared readers for the metering checkers
+#
+# `check_li_census.py` and `check_li_class_claims.py` both need to know which
+# boundary structure carries which field at which metering class, and which of
+# those a canonical endpoint reaches.  Both live here so the census and the prose
+# linter cannot be reading two different pictures of the same source.
+# ---------------------------------------------------------------------------
+
+def strip_comments(text):
+    """Blank Lean comments while preserving every character position.
+
+    Comments are replaced by spaces (newlines kept), so a caller may still report
+    `file:line` against the stripped text.  Nested `/- … -/` is handled, `--` runs to
+    end of line, and string literals are blanked too — a docstring naming
+    `BigSentenceCodes.toMachine` as a producer route must not read as a field type,
+    which is exactly the mistake an unstripped scan makes (six structures looked like
+    fuel-metered hits under one, and every one was a docstring).
+    """
+    out = list(text)
+    i, n, depth = 0, len(text), 0
+    while i < n:
+        if depth == 0:
+            if text[i] == '"':
+                out[i] = " "
+                i += 1
+                while i < n and text[i] != '"':
+                    if text[i] == "\\":
+                        out[i] = " "
+                        i += 1
+                        if i < n:
+                            out[i] = " " if text[i] != "\n" else "\n"
+                            i += 1
+                        continue
+                    out[i] = " " if text[i] != "\n" else "\n"
+                    i += 1
+                if i < n:
+                    out[i] = " "
+                    i += 1
+                continue
+            if text.startswith("/-", i):
+                depth = 1
+                out[i] = out[i + 1] = " "
+                i += 2
+                continue
+            if text.startswith("--", i):
+                while i < n and text[i] != "\n":
+                    out[i] = " "
+                    i += 1
+                continue
+            i += 1
+        else:
+            if text.startswith("/-", i):
+                depth += 1
+                out[i] = out[i + 1] = " "
+                i += 2
+                continue
+            if text.startswith("-/", i):
+                depth -= 1
+                out[i] = out[i + 1] = " "
+                i += 2
+                continue
+            out[i] = " " if text[i] != "\n" else "\n"
+            i += 1
+    return "".join(out)
+
+
+STRUCT_RE = re.compile(
+    r"^(?:@\[[^\]]*\]\s*)?"
+    r"(?:private\s+|protected\s+|noncomputable\s+|scoped\s+)*"
+    r"(?:structure|class)\s+([A-Za-z_][A-Za-z0-9_.']*)"
+)
+FIELD_RE = re.compile(r"^(\s+)([a-zA-Z_][A-Za-z0-9_'!?]*)\s*(?:\([^)]*\)\s*)*:\s*(.*)$")
+
+
+def boundary_structures():
+    """Every `structure`/`class` under `LogicalInduction/`, with its fields' types.
+
+    Returns `name -> {'path', 'line', 'fields': {field: (type text, line)}}`, keyed by
+    the fully qualified name and by every dotted suffix of it, so a caller may look a
+    structure up under whichever spelling the prose or the audit inventory uses.
+
+    Comments are stripped before parsing.  Without that, a module docstring containing
+    the words "class of the form" parses as a `class` declaration and the paragraph
+    under it as its fields.
+    """
+    out = {}
+    for path in lean_files():
+        lines = strip_comments(read(path)).splitlines()
+        stack = []
+        cur = None
+        for idx, line in enumerate(lines):
+            m = re.match(r"^namespace\s+(\S+)", line)
+            if m:
+                stack.append(m.group(1))
+                cur = None
+                continue
+            if re.match(r"^section\b", line):
+                stack.append(None)
+                cur = None
+                continue
+            if re.match(r"^end\b", line):
+                if stack:
+                    stack.pop()
+                cur = None
+                continue
+            m = STRUCT_RE.match(line)
+            if m:
+                opened = [s for s in stack if s]
+                full = ".".join(opened + [m.group(1)]) if opened else m.group(1)
+                cur = {"path": path, "line": idx + 1, "fields": {}, "name": full}
+                out.setdefault(full, cur)
+                cur = out[full]
+                continue
+            if cur is None:
+                continue
+            if not line.strip():
+                continue
+            if not line.startswith(" "):
+                cur = None
+                continue
+            fm = FIELD_RE.match(line)
+            if not fm:
+                continue
+            indent, field, ty = len(fm.group(1)), fm.group(2), fm.group(3)
+            j = idx + 1
+            while j < len(lines) and lines[j].strip():
+                nxt = lines[j]
+                if len(nxt) - len(nxt.lstrip()) > indent:
+                    ty += " " + nxt.strip()
+                    j += 1
+                else:
+                    break
+            cur["fields"].setdefault(field, (ty, idx + 1))
+    # Register dotted suffixes, the way `declaration_signatures` does.
+    for full in list(out):
+        parts = full.split(".")
+        for k in range(1, len(parts)):
+            out.setdefault(".".join(parts[k:]), out[full])
+    return out
+
+
+def mentions(name, text):
+    """Does `text` mention the declaration `name`, ignoring any namespace prefix?"""
+    base = name.rsplit(".", 1)[-1]
+    return re.search(r"(?<![A-Za-z0-9_.'])(?:[A-Za-z0-9_.']*\.)?"
+                     + re.escape(base) + r"(?![A-Za-z0-9_'])", text) is not None
+
+
+def occurrences(name, text):
+    base = name.rsplit(".", 1)[-1]
+    return len(re.findall(r"(?<![A-Za-z0-9_.'])(?:[A-Za-z0-9_.']*\.)?"
+                          + re.escape(base) + r"(?![A-Za-z0-9_'])", text))
+
+
+def reachable_structures(sig, structs):
+    """The boundary structures a signature binds, transitively through their fields.
+
+    `sig` is a comment-stripped signature; `structs` is `boundary_structures()`.  The
+    result is a set of fully qualified structure names.  Transitivity matters: an
+    endpoint that binds a presentation structure inherits every metering class that
+    structure's fields — and their fields' structures — are stated at.
+    """
+    canonical = {d["name"] for d in structs.values()}
+    seen = set()
+    frontier = [n for n in canonical if mentions(n, sig)]
+    while frontier:
+        s = frontier.pop()
+        if s in seen:
+            continue
+        seen.add(s)
+        body = " ".join(ty for ty, _ in structs[s]["fields"].values())
+        for t in canonical:
+            if t not in seen and mentions(t, body):
+                frontier.append(t)
+    return seen
+
+
 def isigma1_endpoints(canon):
     sigs, file_vars = declaration_signatures()
     found = set()

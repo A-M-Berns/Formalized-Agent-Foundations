@@ -1,7 +1,6 @@
 import LogicalInduction.Construction.Conditioning.Compiler
 import LogicalInduction.Framework.Emission.FreezeTransducer
 import LogicalInduction.Framework.Emission.RpnEmission
-import LogicalInduction.Framework.Compactness
 
 /-!
 # The conditioning price pass in the RPN symbol model
@@ -449,7 +448,6 @@ escape payload (`6` / `7`), and its structured paper-prime payload (`8` / `9`). 
 are the step-shape hypotheses the generic walk lemmas take, and the price and trade
 families instantiate them. -/
 
-set_option maxHeartbeats 1600000 in
 /-- The step inside a price run, in offset-counter form. -/
 lemma rpnCondStep_price (c r t : ℕ) :
     rpnCondStep (rcPack 1 (c + 1) r) t =
@@ -461,7 +459,6 @@ lemma rpnCondStep_price (c r t : ℕ) :
   split_ifs <;> simp only [rcPack, Nat.pair_eq_pair, true_and, and_true] <;>
     first | omega | (exfalso; assumption)
 
-set_option maxHeartbeats 1600000 in
 /-- The step on an escape payload inside a price run. -/
 lemma rpnCondStep_priceEsc (c r t : ℕ) :
     rpnCondStep (rcPack 6 (c + 1) r) t =
@@ -472,7 +469,6 @@ lemma rpnCondStep_priceEsc (c r t : ℕ) :
   split_ifs <;> simp only [rcPack, Nat.pair_eq_pair, true_and, and_true] <;>
     first | omega | (exfalso; assumption)
 
-set_option maxHeartbeats 1600000 in
 /-- The step on a structured paper-prime payload inside a price run. -/
 lemma rpnCondStep_priceStr (c r t : ℕ) :
     rpnCondStep (rcPack 8 (c + 1) r) t =
@@ -483,7 +479,6 @@ lemma rpnCondStep_priceStr (c r t : ℕ) :
   split_ifs <;> simp only [rcPack, Nat.pair_eq_pair, true_and, and_true] <;>
     first | omega | (exfalso; assumption)
 
-set_option maxHeartbeats 1600000 in
 /-- The step inside a trade run, in offset-counter form. -/
 lemma rpnCondStep_trade (c r t : ℕ) :
     rpnCondStep (rcPack 4 (c + 1) r) t =
@@ -495,7 +490,6 @@ lemma rpnCondStep_trade (c r t : ℕ) :
   split_ifs <;> simp only [rcPack, Nat.pair_eq_pair, true_and, and_true] <;>
     first | omega | (exfalso; assumption)
 
-set_option maxHeartbeats 1600000 in
 /-- The step on an escape payload inside a trade run. -/
 lemma rpnCondStep_tradeEsc (c r t : ℕ) :
     rpnCondStep (rcPack 7 (c + 1) r) t =
@@ -506,6 +500,9 @@ lemma rpnCondStep_tradeEsc (c r t : ℕ) :
   split_ifs <;> simp only [rcPack, Nat.pair_eq_pair, true_and, and_true] <;>
     first | omega | (exfalso; assumption)
 
+-- The last mode of the cascade: `split_ifs` reaches it through all nineteen preceding
+-- tag tests, and the `whnf` of the resulting `Nat.pair` literals exceeds the default
+-- heartbeat budget.  The five normal forms above compile at the default.
 set_option maxHeartbeats 1600000 in
 /-- The step on a structured paper-prime payload inside a trade run. -/
 lemma rpnCondStep_tradeStr (c r t : ℕ) :
@@ -699,11 +696,11 @@ lemma unRpn_price_rewrite_chunk {b blk : List ℕ} {φ ψn : Sentence}
   simp [rawConditionalPriceTokens, rawMinTokens, rawMulTokens, rawMaxTokens,
     rawSafeRecipTokens, rawPriceTokens, rawConstTokens, rawLowerSafeRecipTokens]
 
-/-! ## Per-position views
+/-! ## The control state by position
 
-The emission certificate reads the transducer per position: control state before
-index `j`, the buffered run recovered *by position* (the last `rcLen` tokens), and the
-per-position segment whose concatenation is the transducer output. -/
+The frame pass and the structural-acceptance gate read the automaton *by position*:
+`rpnCondControlAt` is the control state before source-token index `j`, and
+`rpnCondControlAt_eq_foldl` identifies it with the fold over the prefix. -/
 
 /-- Control state before source-token index `j` (mirror of
 `EF.freezeTokenControlAt`). -/
@@ -717,88 +714,6 @@ lemma rpnCondControlAt_eq_foldl (tf : ℕ → ℕ) (n : ℕ) : ∀ j,
   | j + 1 => by
       rw [rpnCondControlAt, rpnCondControlAt_eq_foldl tf n j, vpre_succ,
         List.foldl_append, List.foldl_cons, List.foldl_nil]
-
-lemma rcLen_controlAt_le (tf : ℕ → ℕ) (n : ℕ) : ∀ j,
-    rcLen (rpnCondControlAt tf n j) ≤ j
-  | 0 => by simp [rpnCondControlAt]
-  | j + 1 => by
-      rcases rcLen_step (rpnCondControlAt tf n j) (tf (Nat.pair n j)) with h | h <;>
-        rw [rpnCondControlAt, h] <;>
-        [omega; exact Nat.succ_le_succ (rcLen_controlAt_le tf n j)]
-
-/-- The buffered run before index `j`, recovered by position: the `rcLen` tokens
-immediately preceding `j`. -/
-def rpnCondWindow (tf : ℕ → ℕ) (n j : ℕ) : List ℕ :=
-  (List.range (rcLen (rpnCondControlAt tf n j))).map fun i =>
-    tf (Nat.pair n (j - rcLen (rpnCondControlAt tf n j) + i))
-
-@[simp] lemma rpnCondWindow_zero (tf : ℕ → ℕ) (n : ℕ) :
-    rpnCondWindow tf n 0 = [] := by
-  simp [rpnCondWindow, rpnCondControlAt]
-
-/-- One source-token segment of the price rewrite. -/
-def rpnConditionSegment (tf : ℕ → ℕ) (emit : List ℕ → ℕ → List ℕ) (z : ℕ) :
-    List ℕ :=
-  if rcMode (rpnCondControlAt tf z.unpair.1 z.unpair.2) = 2 then
-    emit (rpnCondWindow tf z.unpair.1 z.unpair.2) (tf z)
-  else [tf z]
-
-/-- The streaming buffer tracks the position window. -/
-lemma rpnCondBuf_window (tf : ℕ → ℕ) (n j : ℕ) :
-    rpnCondBuf (rpnCondControlAt tf n j) (rpnCondWindow tf n j)
-        (tf (Nat.pair n j)) = rpnCondWindow tf n (j + 1) := by
-  have hstep : rpnCondStep (rpnCondControlAt tf n j) (tf (Nat.pair n j)) =
-      rpnCondControlAt tf n (j + 1) := rfl
-  rw [rpnCondBuf, hstep]
-  rcases rcLen_step (rpnCondControlAt tf n j) (tf (Nat.pair n j)) with h | h <;>
-    rw [hstep] at h
-  · rw [if_pos h, rpnCondWindow, h]
-    simp
-  · rw [if_neg (by omega)]
-    have hle := rcLen_controlAt_le tf n j
-    rw [rpnCondWindow, rpnCondWindow, h, List.range_succ, List.map_append]
-    congr 1
-    · refine List.map_congr_left fun i _ => ?_
-      congr 2
-      omega
-    · simp only [List.map_cons, List.map_nil]
-      have harg : j + 1 - (rcLen (rpnCondControlAt tf n j) + 1) +
-          rcLen (rpnCondControlAt tf n j) = j := by omega
-      rw [harg]
-
-/-- **Range form of the price rewrite**: over the per-position view of any stream, the
-transducer's final state is the position control, its buffer the position window, and
-its output the concatenation of the per-position segments. -/
-lemma rpnConditionRun_range (tf : ℕ → ℕ) (emit : List ℕ → ℕ → List ℕ)
-    (n count : ℕ) :
-    rpnConditionRun emit (rcPack 0 0 0, [])
-        ((List.range count).map fun j => tf (Nat.pair n j)) =
-      ((rpnCondControlAt tf n count, rpnCondWindow tf n count),
-        (List.range count).flatMap fun j =>
-          rpnConditionSegment tf emit (Nat.pair n j)) := by
-  induction count with
-  | zero => simp [rpnCondControlAt]
-  | succ count ih =>
-      rw [List.range_succ, List.map_append, rpnConditionRun_append, ih]
-      simp only [List.map_cons, List.map_nil,
-        List.flatMap_append, List.flatMap_cons, List.flatMap_nil,
-        List.append_nil]
-      rw [show rpnConditionRun emit
-          (rpnCondControlAt tf n count, rpnCondWindow tf n count)
-          [tf (Nat.pair n count)] =
-        ((rpnCondStep (rpnCondControlAt tf n count) (tf (Nat.pair n count)),
-          rpnCondBuf (rpnCondControlAt tf n count) (rpnCondWindow tf n count)
-            (tf (Nat.pair n count))),
-          (if rcMode (rpnCondControlAt tf n count) = 2 then
-            emit (rpnCondWindow tf n count) (tf (Nat.pair n count))
-          else [tf (Nat.pair n count)]) ++ []) from rfl]
-      rw [rpnCondBuf_window,
-        show rpnCondStep (rpnCondControlAt tf n count) (tf (Nat.pair n count)) =
-          rpnCondControlAt tf n (count + 1) from rfl]
-      simp only [List.append_nil]
-      refine congrArg₂ Prod.mk rfl (congrArg₂ (· ++ ·) rfl ?_)
-      rw [rpnConditionSegment]
-      simp only [Nat.unpair_pair]
 
 /-! ## The guarded rewrite (specification)
 
@@ -820,8 +735,9 @@ def rpnGuardedConditionTokens (emit : List ℕ → ℕ → List ℕ) (n : ℕ)
 /-! ## Scalar components of the step (the fueled decomposition)
 
 The packed step splits into three scalar functions of `(mode, counter, runLen, token)`
-whose branch tests are single equalities/inequalities — the shape the `ifzSel`
-cascades arithmetize.  All token tests factor through the clamp `min t 8`. -/
+whose branch tests are single equalities/inequalities — the shape a fueled or machine
+cascade arithmetizes.  Every token test is an equality against a grammar tag at most
+`19`, so all three factor through the clamp `min t 20` (`rpnCondStep_clamp`). -/
 
 /-- The next mode of `rpnCondStep`, as a function of the current mode, counter and
 token.  `rpnCondStep_components` reassembles the three scalars into the packed step. -/
@@ -878,18 +794,22 @@ def rcLenF (m c r t : ℕ) : ℕ :=
     if t = 19 then (if c ≤ 1 then 0 else r + 1) else r + 1
   else 0
 
+-- `split_ifs` splits `rpnCondStep`'s tag cascade against `rcModeF`'s own two-level
+-- cascade, so the branch counts multiply; that is past the default heartbeat budget.
 set_option maxHeartbeats 2000000 in
 lemma rcMode_step_eq (st t : ℕ) :
     rcMode (rpnCondStep st t) = rcModeF (rcMode st) (rcCnt st) t := by
   rw [rpnCondStep, rcModeF]
   split_ifs <;> simp only [rcMode_pack] <;> omega
 
+-- The same two multiplied-out cascades as `rcMode_step_eq`.
 set_option maxHeartbeats 2000000 in
 lemma rcCnt_step_eq (st t : ℕ) :
     rcCnt (rpnCondStep st t) = rcCntF (rcMode st) (rcCnt st) t := by
   rw [rpnCondStep, rcCntF]
   split_ifs <;> simp only [rcCnt_pack] <;> omega
 
+-- The same two multiplied-out cascades as `rcMode_step_eq`.
 set_option maxHeartbeats 2000000 in
 lemma rcLen_step_eq (st t : ℕ) :
     rcLen (rpnCondStep st t) = rcLenF (rcMode st) (rcCnt st) (rcLen st) t := by
@@ -903,301 +823,6 @@ lemma rpnCondStep_components (st t : ℕ) :
       (rcLenF (rcMode st) (rcCnt st) (rcLen st) t) := by
   conv_lhs => rw [rcPack_surjective (rpnCondStep st t)]
   rw [rcMode_step_eq, rcCnt_step_eq, rcLen_step_eq]
-
-/-! ## Control bounds (for the polynomially bounded scan state) -/
-
-lemma rcMode_controlAt_le (tf : ℕ → ℕ) (n : ℕ) : ∀ j,
-    rcMode (rpnCondControlAt tf n j) ≤ 9
-  | 0 => by simp [rpnCondControlAt]
-  | j + 1 => by
-      rw [rpnCondControlAt]
-      exact rcMode_step_le _ _
-
-lemma rcCnt_controlAt_le (tf : ℕ → ℕ) (n : ℕ) : ∀ j,
-    rcCnt (rpnCondControlAt tf n j) ≤ j + 1
-  | 0 => by simp [rpnCondControlAt]
-  | j + 1 => by
-      rw [rpnCondControlAt]
-      exact le_trans (rcCnt_step_le _ _)
-        (Nat.succ_le_succ (rcCnt_controlAt_le tf n j))
-
-lemma rpnCondControlAt_le (tf : ℕ → ℕ) (n j : ℕ) :
-    rpnCondControlAt tf n j ≤ Nat.pair 9 (Nat.pair (j + 1) j) := by
-  conv_lhs => rw [rcPack_surjective (rpnCondControlAt tf n j)]
-  rw [rcPack]
-  calc Nat.pair (rcMode (rpnCondControlAt tf n j))
-        (Nat.pair (rcCnt (rpnCondControlAt tf n j))
-          (rcLen (rpnCondControlAt tf n j))) ≤
-      Nat.pair 9 (Nat.pair (rcCnt (rpnCondControlAt tf n j))
-        (rcLen (rpnCondControlAt tf n j))) :=
-        pair_le_pair_left' _ (rcMode_controlAt_le tf n j)
-    _ ≤ Nat.pair 9 (Nat.pair (j + 1) j) :=
-        pair_le_pair_right' _
-          (le_trans (pair_le_pair_left' _ (rcCnt_controlAt_le tf n j))
-            (pair_le_pair_right' _ (rcLen_controlAt_le tf n j)))
-
-/-! ## Fueled `if` combinators -/
-
-private lemma polyFueled_ifz {c₁ c₂ c₃ : Code} {A B T : ℕ → ℕ}
-    (hA : PolyFueled c₁ A) (hB : PolyFueled c₂ B) (hT : PolyFueled c₃ T) :
-    ∃ c, PolyFueled c (fun z => if T z = 0 then A z else B z) :=
-  ⟨_, (ifzSel_polyFueled.comp ((hA.pair hB).pair hT)).of_eq fun z => by
-    simp only [Nat.unpair_pair, ifzSelFn]⟩
-
-/-- Dispatch on an equality test `X z = k`.  Both passes branch on one, so this is the
-shared dispatcher rather than a private helper of either. -/
-lemma polyFueled_ifEq {cx c₁ c₂ : Code} {X A B : ℕ → ℕ}
-    (hX : PolyFueled cx X) (k : ℕ)
-    (hA : PolyFueled c₁ A) (hB : PolyFueled c₂ B) :
-    ∃ c, PolyFueled c (fun z => if X z = k then A z else B z) := by
-  obtain ⟨cad, had⟩ := addc_polyFueled
-  have hT : PolyFueled _ (fun z => (X z - k) + (k - X z)) :=
-    (had.comp ((subc_polyFueled.comp (hX.pair (PolyFueled.const k))).pair
-      (subc_polyFueled.comp ((PolyFueled.const k).pair hX)))).of_eq fun z => by
-        simp only [Nat.unpair_pair]
-  obtain ⟨c, hc⟩ := polyFueled_ifz hA hB hT
-  exact ⟨c, hc.of_eq fun z => by
-    by_cases hk : X z = k
-    · rw [if_pos (by omega), if_pos hk]
-    · rw [if_neg (by omega), if_neg hk]⟩
-
-/-- Dispatch on the counter test `X z ≤ 1`. -/
-private lemma polyFueled_ifLeOne {cx c₁ c₂ : Code} {X A B : ℕ → ℕ}
-    (hX : PolyFueled cx X) (hA : PolyFueled c₁ A) (hB : PolyFueled c₂ B) :
-    ∃ c, PolyFueled c (fun z => if X z ≤ 1 then A z else B z) := by
-  have hT : PolyFueled _ (fun z => X z - 1) :=
-    (subc_polyFueled.comp (hX.pair (PolyFueled.const 1))).of_eq fun z => by
-      simp only [Nat.unpair_pair]
-  obtain ⟨c, hc⟩ := polyFueled_ifz hA hB hT
-  exact ⟨c, hc.of_eq fun z => by
-    by_cases hk : X z ≤ 1
-    · rw [if_pos (by omega), if_pos hk]
-    · rw [if_neg (by omega), if_neg hk]⟩
-
-/-! ## Fueled component trees -/
-
-lemma rcModeF_polyFueled {cm cc ct : Code} {m c t : ℕ → ℕ}
-    (hm : PolyFueled cm m) (hc : PolyFueled cc c) (ht : PolyFueled ct t) :
-    ∃ code, PolyFueled code (fun z => rcModeF (m z) (c z) (t z)) := by
-  obtain ⟨_, hm0i⟩ := polyFueled_ifEq ht 7 (PolyFueled.const 5) (PolyFueled.const 0)
-  obtain ⟨_, hm0h⟩ := polyFueled_ifEq ht 6 (PolyFueled.const 4) hm0i
-  obtain ⟨_, hm0g⟩ := polyFueled_ifEq ht 1 (PolyFueled.const 3) hm0h
-  obtain ⟨_, hm0⟩ := polyFueled_ifEq ht 0 (PolyFueled.const 1) hm0g
-  obtain ⟨_, hle12⟩ := polyFueled_ifLeOne hc (PolyFueled.const 2) (PolyFueled.const 1)
-  obtain ⟨_, hm1d⟩ := polyFueled_ifEq ht 4 (PolyFueled.const 1) hle12
-  obtain ⟨_, hm1c⟩ := polyFueled_ifEq ht 3 (PolyFueled.const 1) hm1d
-  obtain ⟨_, hm1b⟩ := polyFueled_ifEq ht 2 (PolyFueled.const 1) hm1c
-  obtain ⟨_, hm1⟩ := polyFueled_ifEq ht 1 (PolyFueled.const 6) hm1b
-  obtain ⟨_, hle04⟩ := polyFueled_ifLeOne hc (PolyFueled.const 0) (PolyFueled.const 4)
-  obtain ⟨_, hm4d⟩ := polyFueled_ifEq ht 4 (PolyFueled.const 4) hle04
-  obtain ⟨_, hm4c⟩ := polyFueled_ifEq ht 3 (PolyFueled.const 4) hm4d
-  obtain ⟨_, hm4b⟩ := polyFueled_ifEq ht 2 (PolyFueled.const 4) hm4c
-  obtain ⟨_, hm4⟩ := polyFueled_ifEq ht 1 (PolyFueled.const 7) hm4b
-  obtain ⟨_, hm6⟩ := polyFueled_ifEq ht 0 (PolyFueled.const 8) hle12
-  obtain ⟨_, hm8⟩ := polyFueled_ifEq ht 19 hle12 (PolyFueled.const 8)
-  obtain ⟨_, hm7⟩ := polyFueled_ifEq ht 0 (PolyFueled.const 9) hle04
-  obtain ⟨_, hm9⟩ := polyFueled_ifEq ht 19 hle04 (PolyFueled.const 9)
-  obtain ⟨_, hT9⟩ := polyFueled_ifEq hm 9 hm9 (PolyFueled.const 0)
-  obtain ⟨_, hT7⟩ := polyFueled_ifEq hm 7 hm7 hT9
-  obtain ⟨_, hT4⟩ := polyFueled_ifEq hm 4 hm4 hT7
-  obtain ⟨_, hT8⟩ := polyFueled_ifEq hm 8 hm8 hT4
-  obtain ⟨_, hT6⟩ := polyFueled_ifEq hm 6 hm6 hT8
-  obtain ⟨_, hT1⟩ := polyFueled_ifEq hm 1 hm1 hT6
-  obtain ⟨code, hT0⟩ := polyFueled_ifEq hm 0 hm0 hT1
-  exact ⟨code, hT0.of_eq fun z => by rw [rcModeF]⟩
-
-lemma rcCntF_polyFueled {cm cc ct : Code} {m c t : ℕ → ℕ}
-    (hm : PolyFueled cm m) (hc : PolyFueled cc c) (ht : PolyFueled ct t) :
-    ∃ code, PolyFueled code (fun z => rcCntF (m z) (c z) (t z)) := by
-  obtain ⟨cad, had⟩ := addc_polyFueled
-  have hsucc : PolyFueled _ (fun z => c z + 1) :=
-    (had.comp (hc.pair (PolyFueled.const 1))).of_eq fun z => by
-      simp only [Nat.unpair_pair]
-  have hpred : PolyFueled _ (fun z => c z - 1) :=
-    (subc_polyFueled.comp (hc.pair (PolyFueled.const 1))).of_eq fun z => by
-      simp only [Nat.unpair_pair]
-  obtain ⟨_, hm0i⟩ := polyFueled_ifEq ht 6 (PolyFueled.const 1) (PolyFueled.const 0)
-  obtain ⟨_, hm0⟩ := polyFueled_ifEq ht 0 (PolyFueled.const 1) hm0i
-  obtain ⟨_, hleC⟩ := polyFueled_ifLeOne hc (PolyFueled.const 0) hpred
-  obtain ⟨_, hm1d⟩ := polyFueled_ifEq ht 4 hsucc hleC
-  obtain ⟨_, hm1c⟩ := polyFueled_ifEq ht 3 hsucc hm1d
-  obtain ⟨_, hm1b⟩ := polyFueled_ifEq ht 2 hsucc hm1c
-  obtain ⟨_, hm1⟩ := polyFueled_ifEq ht 1 hc hm1b
-  obtain ⟨_, hm6c⟩ := polyFueled_ifEq ht 0 hc hleC
-  obtain ⟨_, hm8c⟩ := polyFueled_ifEq ht 19 hleC hc
-  obtain ⟨_, hT9⟩ := polyFueled_ifEq hm 9 hm8c (PolyFueled.const 0)
-  obtain ⟨_, hT7⟩ := polyFueled_ifEq hm 7 hm6c hT9
-  obtain ⟨_, hT4⟩ := polyFueled_ifEq hm 4 hm1 hT7
-  obtain ⟨_, hT8⟩ := polyFueled_ifEq hm 8 hm8c hT4
-  obtain ⟨_, hT6⟩ := polyFueled_ifEq hm 6 hm6c hT8
-  obtain ⟨_, hT1⟩ := polyFueled_ifEq hm 1 hm1 hT6
-  obtain ⟨code, hT0⟩ := polyFueled_ifEq hm 0 hm0 hT1
-  exact ⟨code, hT0.of_eq fun z => by rw [rcCntF]⟩
-
-lemma rcLenF_polyFueled {cm cc cr ct : Code} {m c r t : ℕ → ℕ}
-    (hm : PolyFueled cm m) (hc : PolyFueled cc c) (hr : PolyFueled cr r)
-    (ht : PolyFueled ct t) :
-    ∃ code, PolyFueled code (fun z => rcLenF (m z) (c z) (r z) (t z)) := by
-  obtain ⟨cad, had⟩ := addc_polyFueled
-  have hsucc : PolyFueled _ (fun z => r z + 1) :=
-    (had.comp (hr.pair (PolyFueled.const 1))).of_eq fun z => by
-      simp only [Nat.unpair_pair]
-  obtain ⟨_, hleR⟩ := polyFueled_ifLeOne hc (PolyFueled.const 0) hsucc
-  obtain ⟨_, hm4d⟩ := polyFueled_ifEq ht 4 hsucc hleR
-  obtain ⟨_, hm4c⟩ := polyFueled_ifEq ht 3 hsucc hm4d
-  obtain ⟨_, hm4b⟩ := polyFueled_ifEq ht 2 hsucc hm4c
-  obtain ⟨_, hm4⟩ := polyFueled_ifEq ht 1 hsucc hm4b
-  obtain ⟨_, hm7r⟩ := polyFueled_ifEq ht 0 hsucc hleR
-  obtain ⟨_, hm9r⟩ := polyFueled_ifEq ht 19 hleR hsucc
-  obtain ⟨_, hT9⟩ := polyFueled_ifEq hm 9 hm9r (PolyFueled.const 0)
-  obtain ⟨_, hT7⟩ := polyFueled_ifEq hm 7 hm7r hT9
-  obtain ⟨_, hT4⟩ := polyFueled_ifEq hm 4 hm4 hT7
-  obtain ⟨_, hT8⟩ := polyFueled_ifEq hm 8 hsucc hT4
-  obtain ⟨_, hT6⟩ := polyFueled_ifEq hm 6 hsucc hT8
-  obtain ⟨_, hT1⟩ := polyFueled_ifEq hm 1 hsucc hT6
-  obtain ⟨code, hT0⟩ := polyFueled_ifEq hm 0 (PolyFueled.const 0) hT1
-  exact ⟨code, hT0.of_eq fun z => by rw [rcLenF]⟩
-
-/-! ## The control scan
-
-Over any digit `PolySegStream`, the packed control state at each token position of
-the undigitized stream is poly-fueled (input `⟨n, j⟩`): the state is polynomially
-bounded (counter and run length are at most the position), and every branch test of
-the step factors through the token clamp. -/
-
-lemma rpnCondScan {s : ℕ → List ℕ} (h : PolySegStream s) :
-    ∃ c, PolyFueled c (fun z =>
-      rpnCondControlAt (fun w => (undigitize (s w.unpair.1)).getD w.unpair.2 0)
-        z.unpair.1 z.unpair.2) := by
-  obtain ⟨-, hbig⟩ := h.undigitizeTokens
-  obtain ⟨ctc, htc⟩ := hbig.clampVal (PolyFueled.const 19)
-  -- Step input `⟨n, ⟨j, prev⟩⟩`.
-  have hn := PolyFueled.left
-  have hj := PolyFueled.left.comp PolyFueled.right
-  have hprev := PolyFueled.right.comp PolyFueled.right
-  have htok := htc.comp (hn.pair hj)
-  have hmode : PolyFueled _ (fun z : ℕ => rcMode (z.unpair.2.unpair.2)) :=
-    PolyFueled.left.comp hprev
-  have hcnt : PolyFueled _ (fun z : ℕ => rcCnt (z.unpair.2.unpair.2)) :=
-    PolyFueled.left.comp (PolyFueled.right.comp hprev)
-  have hlen : PolyFueled _ (fun z : ℕ => rcLen (z.unpair.2.unpair.2)) :=
-    PolyFueled.right.comp (PolyFueled.right.comp hprev)
-  obtain ⟨cM, hMF⟩ := rcModeF_polyFueled hmode hcnt htok
-  obtain ⟨cC, hCF⟩ := rcCntF_polyFueled hmode hcnt htok
-  obtain ⟨cL, hLF⟩ := rcLenF_polyFueled hmode hcnt hlen htok
-  have hstep := hMF.pair (hCF.pair hLF)
-  set tf : ℕ → ℕ := fun w => (undigitize (s w.unpair.1)).getD w.unpair.2 0 with htf
-  have hbound : IsPolyBounded (fun w : ℕ =>
-      rpnCondControlAt tf w.unpair.1 w.unpair.2) := by
-    have hmaj : IsPolyBounded (fun w : ℕ =>
-        Nat.pair 9 (Nat.pair (w.unpair.2 + 1) w.unpair.2)) :=
-      ((IsPolyBounded.linear 9).of_le fun _ => by omega).pair
-        (isPolyBounded_snd.add_one.pair isPolyBounded_snd)
-    exact hmaj.of_le fun w => rpnCondControlAt_le tf w.unpair.1 w.unpair.2
-  refine ⟨_, PolyFueled.prec (PolyFueled.const 0) hstep
-    (st := fun n j => rpnCondControlAt tf n j)
-    (fun n => rfl)
-    (fun n j => ?_) hbound⟩
-  show rpnCondControlAt tf n (j + 1) = _
-  rw [show rpnCondControlAt tf n (j + 1) =
-    rpnCondStep (rpnCondControlAt tf n j) (tf (Nat.pair n j)) from rfl,
-    ← rpnCondStep_clamp, rpnCondStep_components]
-  simp only [htf, Nat.unpair_pair, rcPack, Nat.reduceAdd]
-
-/-! ## The day-guard flag -/
-
-/-- `1` iff some price-day position below the cursor carries a day token exceeding
-`n` (mirror of `ConditioningCompile.bigDayFlagAt` over the run-aware automaton). -/
-def rpnBigDayFlagAt (tf : ℕ → ℕ) (n : ℕ) : ℕ → ℕ
-  | 0 => 0
-  | j + 1 =>
-      if rcMode (rpnCondControlAt tf n j) = 2 ∧ n < tf (Nat.pair n j) then 1
-      else rpnBigDayFlagAt tf n j
-
-lemma rpnBigDayFlagAt_le_one (tf : ℕ → ℕ) (n : ℕ) : ∀ j,
-    rpnBigDayFlagAt tf n j ≤ 1
-  | 0 => by simp [rpnBigDayFlagAt]
-  | j + 1 => by
-      rw [rpnBigDayFlagAt]
-      split
-      · exact le_refl 1
-      · exact rpnBigDayFlagAt_le_one tf n j
-
-lemma rpnBigDayFlagAt_eq_zero_iff (tf : ℕ → ℕ) (n J : ℕ) :
-    rpnBigDayFlagAt tf n J = 0 ↔
-      ∀ j < J, rcMode (rpnCondControlAt tf n j) = 2 → tf (Nat.pair n j) ≤ n := by
-  induction J with
-  | zero => simp [rpnBigDayFlagAt]
-  | succ J ih =>
-      rw [rpnBigDayFlagAt]
-      by_cases hc : rcMode (rpnCondControlAt tf n J) = 2 ∧ n < tf (Nat.pair n J)
-      · rw [if_pos hc]
-        constructor
-        · omega
-        · intro hall
-          exact absurd (hall J (by omega) hc.1) (by omega)
-      · rw [if_neg hc, ih]
-        constructor
-        · intro hall j hj hm
-          rcases Nat.lt_or_ge j J with h | h
-          · exact hall j h hm
-          · have hjJ : j = J := by omega
-            subst hjJ
-            by_contra hlt
-            exact hc ⟨hm, by omega⟩
-        · intro hall j hj hm
-          exact hall j (by omega) hm
-
-/-- The guard flag is poly-fueled over any digit `PolySegStream` (input `⟨n, j⟩`). -/
-lemma rpnBigDayFlagScan {s : ℕ → List ℕ} (h : PolySegStream s) :
-    ∃ c, PolyFueled c (fun z =>
-      rpnBigDayFlagAt (fun w => (undigitize (s w.unpair.1)).getD w.unpair.2 0)
-        z.unpair.1 z.unpair.2) := by
-  obtain ⟨cs, hscan⟩ := rpnCondScan h
-  obtain ⟨cd, hclamp⟩ := h.dayClampTokens
-  obtain ⟨cad, had⟩ := addc_polyFueled
-  -- Step input `⟨n, ⟨j, prev⟩⟩`.
-  have hn := PolyFueled.left
-  have hj := PolyFueled.left.comp PolyFueled.right
-  have hprev := PolyFueled.right.comp PolyFueled.right
-  have hmz := PolyFueled.left.comp (hscan.comp (hn.pair hj))
-  have hdz := hclamp.comp (hn.pair hj)
-  have heq2 := had.comp ((subc_polyFueled.comp (hmz.pair (PolyFueled.const 2))).pair
-    (subc_polyFueled.comp ((PolyFueled.const 2).pair hmz)))
-  have hexcess := subc_polyFueled.comp (hdz.pair hn)
-  have hinner := ifzSel_polyFueled.comp ((hexcess.pair (PolyFueled.const 0)).pair heq2)
-  have hstep := ifzSel_polyFueled.comp ((hprev.pair (PolyFueled.const 1)).pair hinner)
-  set tf : ℕ → ℕ := fun w => (undigitize (s w.unpair.1)).getD w.unpair.2 0 with htf
-  refine ⟨_, PolyFueled.prec (PolyFueled.const 0) hstep
-    (st := fun n j => rpnBigDayFlagAt tf n j)
-    (fun n => rfl)
-    (fun n j => ?_)
-    ((IsPolyBounded.linear 1).of_le fun z =>
-      le_trans (rpnBigDayFlagAt_le_one _ _ _) (by omega))⟩
-  simp only [Nat.unpair_pair, ifzSelFn]
-  rw [rpnBigDayFlagAt]
-  have htfj : tf (Nat.pair n j) = (undigitize (s n)).getD j 0 := by
-    rw [htf]
-    simp only [Nat.unpair_pair]
-  rw [← htfj]
-  rw [show (Nat.unpair (rpnCondControlAt tf n j)).1 =
-    rcMode (rpnCondControlAt tf n j) from rfl]
-  by_cases hm : rcMode (rpnCondControlAt tf n j) = 2
-  · have heq2z : rcMode (rpnCondControlAt tf n j) - 2 +
-        (2 - rcMode (rpnCondControlAt tf n j)) = 0 := by omega
-    rw [if_pos heq2z]
-    by_cases hd : n < tf (Nat.pair n j)
-    · rw [if_pos ⟨hm, hd⟩, Nat.min_eq_right (by omega : n + 1 ≤ tf (Nat.pair n j)),
-        if_neg (by omega : ¬ n + 1 - n = 0)]
-    · rw [if_neg (by tauto :
-          ¬ (rcMode (rpnCondControlAt tf n j) = 2 ∧ n < tf (Nat.pair n j))),
-        Nat.min_eq_left (by omega : tf (Nat.pair n j) ≤ n + 1),
-        if_pos (by omega : tf (Nat.pair n j) - n = 0)]
-  · rw [if_neg (by tauto :
-        ¬ (rcMode (rpnCondControlAt tf n j) = 2 ∧ n < tf (Nat.pair n j))),
-      if_neg (by omega : ¬ rcMode (rpnCondControlAt tf n j) - 2 +
-        (2 - rcMode (rpnCondControlAt tf n j)) = 0),
-      if_pos rfl]
 
 /-! ## The trade-run exit count
 
@@ -1216,43 +841,6 @@ def rpnTradeCountAt (tf : ℕ → ℕ) (n : ℕ) : ℕ → ℕ
           rcMode (rpnCondControlAt tf n (j + 1)) = 0 then
         rpnTradeCountAt tf n j + 1
       else rpnTradeCountAt tf n j
-
-lemma rpnTradeCountAt_le (tf : ℕ → ℕ) (n : ℕ) : ∀ j, rpnTradeCountAt tf n j ≤ j
-  | 0 => by simp [rpnTradeCountAt]
-  | j + 1 => by
-      rw [rpnTradeCountAt]
-      have := rpnTradeCountAt_le tf n j
-      split <;> omega
-
-/-! ## The emission certificate
-
-The digit stream of the guarded symbol-level price rewrite of any digit
-`PolySegStream` is itself a `PolySegStream`, given a polynomially emittable condition
-block stream: copied tokens are re-rendered digit blocks, the buffered run is copied
-by position (`concatVar` over the recorded run length), the condition blocks are drawn
-at the clamped day, and flagged days emit nothing. -/
-
-/-- The digitized rewrite segment splits around its copies and splices. -/
-lemma digitize_rpnConditionEmit (blk : List ℕ) (ε : ℚ) (buf : List ℕ) (D : ℕ) :
-    digitize (rpnConditionEmit blk ε buf D) =
-      tokenBlock D ++
-      digitize [1, Encodable.encode (-1 : ℚ), 1, Encodable.encode (-1 : ℚ),
-        1, Encodable.encode (1 : ℚ), 3, 1, Encodable.encode (-1 : ℚ), 0, 3] ++
-      digitize buf ++ digitize blk ++
-      tokenBlock D ++
-      digitize [1, Encodable.encode (1 / ε : ℚ), 1, Encodable.encode (1 / ε : ℚ), 0] ++
-      digitize blk ++
-      tokenBlock D ++
-      digitize [3, 5, 3, 3, 3, 4, 3, 8] := by
-  simp [rpnConditionEmit, digitize]
-
-/-- The digitized position window is a run of copied digit blocks. -/
-lemma digitize_rpnCondWindow (tf : ℕ → ℕ) (n j : ℕ) :
-    digitize (rpnCondWindow tf n j) =
-      (List.range (rcLen (rpnCondControlAt tf n j))).flatMap fun i =>
-        tokenBlock (tf (Nat.pair n
-          (j - rcLen (rpnCondControlAt tf n j) + i))) := by
-  rw [rpnCondWindow, digitize, List.flatMap_map]
 
 /-! ## Parse localization
 
@@ -3058,18 +2646,6 @@ lemma strategyOfTokens_unRpn_trades_eq_nil_of_rpnBigDay (n : ℕ) (ts : List ℕ
         rw [hdec] at hdecode
         exact absurd hdecode (by simp)
 
-/-- The empty stream decodes to the empty validated strategy. -/
-lemma strategyOfTokens_nil_trades (n : ℕ) :
-    (strategyOfTokens n ([] : List ℕ)).trades = [] := by
-  have hdec : deserializeTrades ([] : List ℕ) = some [] := rfl
-  unfold strategyOfTokens
-  split
-  · rfl
-  · next trades hdecode =>
-      rw [hdec] at hdecode
-      obtain rfl := Option.some.inj hdecode
-      simp
-
 /-- **The guarded price-pass strategy-level equality**: the contraction of the
 guarded symbol-level price rewrite decodes to the retained-condition-price
 translation of the contraction's strategy — on every stream, including under a
@@ -3087,7 +2663,7 @@ lemma strategyOfTokens_rpnGuardedConditionTokens_trades
   split_ifs with hguard
   · rw [unRpn_rpnConditionRun blocks ψ hblocks ε ts.length ts le_rfl]
     exact strategyOfTokens_conditionPriceTokenRun_trades ψ ε n (unRpn ts)
-  · push_neg at hguard
+  · push Not at hguard
     obtain ⟨j, hj, hm, hday⟩ := hguard
     rw [unRpn_nil, strategyOfTokens_nil_trades,
       strategyOfTokens_unRpn_trades_eq_nil_of_rpnBigDay n ts j hj hm hday]

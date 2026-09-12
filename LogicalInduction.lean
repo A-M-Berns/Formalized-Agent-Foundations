@@ -85,7 +85,7 @@ list is exhaustive; a label appearing nowhere below is not in use.
   still metered in this calculus on the emission side is deliberate, binds no endpoint, and
   is named at the `def:ec` row of `scripts/coverage-classification.md`. **`dd:fuel` is a
   certification device everywhere, including on the two premises that are not emission
-  premises**: `DeferralFunction.graph_fp` (`def:deferralfunc`, tex:1243) and
+  premises**: `DeferralFunction.graph_fp` (`def:deferralfunc`, tex:1244) and
   `FeedbackTruth.FeedbackTruthComputation.computes` (`thm:wub`, tex:1251) render the paper's
   own *output-sensitive* clocks — runtime polynomial in the value returned, not in the day —
   at the machine model, by handing the machine the **unary pair** whose length carries the
@@ -242,14 +242,18 @@ list is exhaustive; a label appearing nowhere below is not in use.
   `def:ec` or of `def:lic`.** There is one efficient-trader class, `EfficientlyComputable`
   (`def:ec`), and one criterion, `IsLogicalInductor` (`def:lic`); `PolyFueledTrader` beside
   them is the `dd:fuel` certificate, and the marker on it is `PolyFueled`, not `Machine`.
-  The prefix survives only on the **data** classes that meter *write-out* on an ordinary
-  machine — `MachineSentenceCodes`, `MachineSpliceStream`, `MachineTokenStream`,
-  `MachineDigits`, `MachineRatCodes`, `MachineMachineCodes`, `MachineArithmeticSourceSeq`,
-  `LUV.MachineThresholdCodes(Seq)`, and the count class `UnaryRuler` beside them — where it
-  contrasts with the certification calculus's own renderings of the same data (`Big*`,
-  `Digit*`, `Poly*`, `Rpn*`), each with live producers and a `.toMachine` bridge. Both
-  readings are legitimate there and neither is a criterion. `Framework/Efficiency.lean`
-  points here.
+  On the **emission data classes** — those that meter *write-out* on an ordinary machine:
+  `MachineSentenceCodes`, `MachineSpliceStream`, `MachineTokenStream`, `MachineDigits`,
+  `MachineRatCodes`, `MachineMachineCodes`, `MachineArithmeticSourceSeq`,
+  `LUV.MachineThresholdCodes(Seq)`, and the count class `UnaryRuler` beside them — the
+  prefix contrasts with the certification calculus's own renderings of the same data
+  (`Big*`, `Digit*`, `Poly*`, `Rpn*`), each with live producers and a `.toMachine` bridge.
+  Both readings are legitimate there and neither is a criterion. Three declarations outside
+  that family carry the prefix for the same reason at the level of an object rather than a
+  class: `CondStep.MachineSentenceBlocks` (the block discipline read off a machine word),
+  `MachineTheoryInconsistent` (the machine-decided inconsistency predicate of `thm:incons`)
+  and `MachineTraderProgram` (a trader named by a machine description and a clock).
+  `Framework/Efficiency.lean` points here.
 
 `scripts/coverage-classification.md` records, per paper label, which of these forms the
 strongest endpoint actually reaches.

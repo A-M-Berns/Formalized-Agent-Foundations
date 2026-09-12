@@ -105,7 +105,6 @@ section
 -- `Nat.sqrt` is kept opaque through this section (see `notes/lean-gotchas.md`).
 attribute [local irreducible] Nat.sqrt
 
-set_option maxHeartbeats 1000000 in
 /-- The comparison fiber `⟨n, ⌜r⌝⟩ ↦ (r < value n)` of a computable rational sequence is a
 computable predicate: rational order is `ratLE_prim`, the threshold decode is
 `decodedQuotationRat_prim`, and the sequence itself is the hypothesis. -/
@@ -244,15 +243,6 @@ lemma MarketComputation.expectQuote_mem_Icc {P : History} (market : MarketComput
     0 ≤ market.expectQuote X n ∧ market.expectQuote X n ≤ 1 :=
   market.expectQuoteAt_mem_Icc X n n
 
-/-- The natural-cast rational sequence is primitive recursive (closed encode form
-`⌜(n:ℚ)⌝ = pair (n+n) 1`). -/
-lemma ratNatCast_prim : Primrec fun n : ℕ => (n : ℚ) := by
-  refine Primrec.encode_iff.mp ?_
-  have h : Primrec fun n : ℕ => Nat.pair (n + n) 1 :=
-    Primrec₂.natPair.comp (Primrec.nat_add.comp Primrec.id Primrec.id) (Primrec.const 1)
-  exact h.of_eq fun n => by rw [encode_rat_natCast, two_mul]
-
-set_option maxHeartbeats 1000000 in
 /-- **`expectQuoteAt` is computable** (uncurried over `⟨idx, day⟩`).  Threshold codes come
 from the LUV sequence's token-metered block stream, via the whole-value naming program
 `RpnSentenceCodes.primrec` extracts from it; each cell quote from the market program, the
@@ -375,9 +365,9 @@ lemma ratCtsInd_computable :
 
 /-! ### Rational sequences recovered from their emitted codes -/
 
-/-- A poly-coded rational sequence is computable (decode the emitted code).  A convenience
-corollary of the write-out form below, through `DigitRatCodes.ofPolyRatCodes`
-and `DigitRatCodes.toMachine`. -/
+/-- A poly-coded rational sequence is computable: the poly-fueled emitter is primitive
+recursive on its own (`PolyFueled.primrec`), so the value is read back by decoding the code
+it emits.  It does not route through the write-out form below. -/
 lemma PolyRatCodes.computable {q : ℕ → ℚ} (h : PolyRatCodes q) : Computable q := by
   obtain ⟨c, hc⟩ := h
   exact (Computable.option_getD (Computable.decode.comp hc.primrec.to_comp)
@@ -564,7 +554,7 @@ lemma meshProductLUV_valuesAt {DP : DeductiveProcess} {T : ArithmeticTheory}
   have hAle : ∀ j : ℕ, A j → (j : ℝ) ≤ cN := by
     intro j hj
     by_contra hcon
-    push_neg at hcon
+    push Not at hcon
     refine (hcthr ((j : ℚ) / ((n + 1 : ℕ) : ℚ))).2 ?_ hj
     rw [hthrR, lt_div_iff₀ hNR]
     exact hcon
@@ -581,7 +571,7 @@ lemma meshProductLUV_valuesAt {DP : DeductiveProcess} {T : ArithmeticTheory}
     intro j
     refine ⟨fun hj => ?_, hJ₀lt j⟩
     by_contra hcon
-    push_neg at hcon
+    push Not at hcon
     refine hJ₀not (hAlow J₀ (lt_of_lt_of_le ?_ (hAle j hj)))
     rcases eq_or_lt_of_le hcon with heq | hlt
     · exfalso
@@ -600,7 +590,7 @@ lemma meshProductLUV_valuesAt {DP : DeductiveProcess} {T : ArithmeticTheory}
     · have hJeq : J = J₀ := min_eq_left hle
       rw [hJeq]
       by_contra hcon
-      push_neg at hcon
+      push Not at hcon
       exact hJ₀not (hAlow J₀ hcon)
     · have hJeq : J = n + 1 := min_eq_right (le_of_lt hgt)
       rw [hJeq]
@@ -636,7 +626,7 @@ lemma meshProductLUV_valuesAt {DP : DeductiveProcess} {T : ArithmeticTheory}
         exact_mod_cast this
       have hJpos : 0 < J := by
         by_contra hcon
-        push_neg at hcon
+        push Not at hcon
         have hJ0 : J = 0 := Nat.le_zero.mp hcon
         have hzero : x * (J : ℝ) / ((n : ℝ) + 1) = 0 := by rw [hJ0]; simp
         linarith
@@ -672,7 +662,7 @@ lemma meshProductLUV_valuesAt {DP : DeductiveProcess} {T : ArithmeticTheory}
       have hjJ : j < J := (hAJ j hjN).mp hleft
       have hxge : (r : ℝ) * ((n : ℝ) + 1) / ((j : ℝ) + 1) ≤ x := by
         by_contra hcon
-        push_neg at hcon
+        push Not at hcon
         refine hxthr (r * ((n + 1 : ℕ) : ℚ) / ((j + 1 : ℕ) : ℚ)) |>.2 ?_ hright
         push_cast
         exact hcon

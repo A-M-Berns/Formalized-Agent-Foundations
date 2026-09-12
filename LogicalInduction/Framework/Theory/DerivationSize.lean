@@ -130,8 +130,6 @@ the marker token that separates the numeral from the following material.  So `id
 and `idxLen 1 = 2` — this is a digit count plus one, not a digit count. -/
 def idxLen (n : ℕ) : ℕ := Nat.size n + 1
 
-lemma one_le_idxLen (n : ℕ) : 1 ≤ idxLen n := Nat.le_add_left 1 _
-
 lemma lt_two_pow_idxLen (n : ℕ) : n < 2 ^ idxLen n :=
   lt_of_lt_of_le (Nat.lt_size_self n) (Nat.pow_le_pow_right (by norm_num) (Nat.le_succ _))
 
@@ -476,7 +474,7 @@ lemma le_G_fSize (n : ℕ) : n ≤ G (fSize n) := by
 
 private lemma lt_of_testBit {s i : ℕ} (h : s.testBit i = true) : i < s := by
   by_contra hc
-  push_neg at hc
+  push Not at hc
   have hlt : s < 2 ^ i := lt_of_le_of_lt hc Nat.lt_two_pow_self
   rw [Nat.testBit_lt_two_pow hlt] at h
   exact Bool.noConfusion h
@@ -525,8 +523,8 @@ lemma le_G_dSize (n : ℕ) : n ≤ G (dSize n) := by
     | 0 => exact Nat.zero_le _
     | (m + 1) =>
       rw [dSize]
-      by_cases h0 : arg 1 m = 0
-      · rw [if_pos h0, show 1 + sSize (arg 0 m) + fSize (tail 2 m)
+      split_ifs with h0 h1 hz h2 h3 h4 h5 h67 h8 h9
+      · rw [show 1 + sSize (arg 0 m) + fSize (tail 2 m)
               = (sSize (arg 0 m) + fSize (tail 2 m)) + 1 by omega]
         refine node_bound (j := 2) (by omega) ?_ ?_
         · intro i hi
@@ -534,108 +532,85 @@ lemma le_G_dSize (n : ℕ) : n ≤ G (dSize n) := by
           · exact seq_le_Bd (by omega)
           · exact tag_le_Bd (by omega)
         · exact sub_le_Bd (le_G_fSize (tail 2 m)) (by omega)
-      · rw [if_neg h0]
-        by_cases h1 : arg 1 m = 1
-        · rw [if_pos h1]
-          by_cases hz : tail 2 m = 0
-          · rw [if_pos hz, show 1 + sSize (arg 0 m) = sSize (arg 0 m) + 1 by omega]
-            refine node_bound (j := 2) (by omega) ?_ (by rw [hz]; exact Nat.zero_le _)
-            intro i hi
-            interval_cases i
-            · exact seq_le_Bd le_rfl
-            · exact tag_le_Bd (by omega)
-          · rw [if_neg hz]
-            exact self_le_G (m + 1)
-        · rw [if_neg h1]
-          by_cases h2 : arg 1 m = 2
-          · rw [if_pos h2, show 1 + sSize (arg 0 m) + fSize (arg 2 m) + fSize (arg 3 m)
-                  + dSize (arg 4 m) + dSize (tail 5 m)
-                = (sSize (arg 0 m) + fSize (arg 2 m) + fSize (arg 3 m)
-                  + dSize (arg 4 m) + dSize (tail 5 m)) + 1 by omega]
-            refine node_bound (j := 5) (by omega) ?_ ?_
-            · intro i hi
-              interval_cases i
-              · exact seq_le_Bd (by omega)
-              · exact tag_le_Bd (by omega)
-              · exact sub_le_Bd (le_G_fSize (arg 2 m)) (by omega)
-              · exact sub_le_Bd (le_G_fSize (arg 3 m)) (by omega)
-              · exact sub_le_Bd (ih _ (arg_lt_succ 4 m)) (by omega)
-            · exact sub_le_Bd (ih _ (tail_lt_succ 5 m)) (by omega)
-          · rw [if_neg h2]
-            by_cases h3 : arg 1 m = 3
-            · rw [if_pos h3, show 1 + sSize (arg 0 m) + fSize (arg 2 m) + fSize (arg 3 m)
-                    + dSize (tail 4 m)
-                  = (sSize (arg 0 m) + fSize (arg 2 m) + fSize (arg 3 m)
-                    + dSize (tail 4 m)) + 1 by omega]
-              refine node_bound (j := 4) (by omega) ?_ ?_
-              · intro i hi
-                interval_cases i
-                · exact seq_le_Bd (by omega)
-                · exact tag_le_Bd (by omega)
-                · exact sub_le_Bd (le_G_fSize (arg 2 m)) (by omega)
-                · exact sub_le_Bd (le_G_fSize (arg 3 m)) (by omega)
-              · exact sub_le_Bd (ih _ (tail_lt_succ 4 m)) (by omega)
-            · rw [if_neg h3]
-              by_cases h4 : arg 1 m = 4
-              · rw [if_pos h4, show 1 + sSize (arg 0 m) + fSize (arg 2 m) + dSize (tail 3 m)
-                      = (sSize (arg 0 m) + fSize (arg 2 m) + dSize (tail 3 m)) + 1 by omega]
-                refine node_bound (j := 3) (by omega) ?_ ?_
-                · intro i hi
-                  interval_cases i
-                  · exact seq_le_Bd (by omega)
-                  · exact tag_le_Bd (by omega)
-                  · exact sub_le_Bd (le_G_fSize (arg 2 m)) (by omega)
-                · exact sub_le_Bd (ih _ (tail_lt_succ 3 m)) (by omega)
-              · rw [if_neg h4]
-                by_cases h5 : arg 1 m = 5
-                · rw [if_pos h5, show 1 + sSize (arg 0 m) + fSize (arg 2 m) + tSize (arg 3 m)
-                        + dSize (tail 4 m)
-                      = (sSize (arg 0 m) + fSize (arg 2 m) + tSize (arg 3 m)
-                        + dSize (tail 4 m)) + 1 by omega]
-                  refine node_bound (j := 4) (by omega) ?_ ?_
-                  · intro i hi
-                    interval_cases i
-                    · exact seq_le_Bd (by omega)
-                    · exact tag_le_Bd (by omega)
-                    · exact sub_le_Bd (le_G_fSize (arg 2 m)) (by omega)
-                    · exact sub_le_Bd (le_G_tSize (arg 3 m)) (by omega)
-                  · exact sub_le_Bd (ih _ (tail_lt_succ 4 m)) (by omega)
-                · rw [if_neg h5]
-                  by_cases h67 : arg 1 m = 6 ∨ arg 1 m = 7
-                  · rw [if_pos h67, show 1 + sSize (arg 0 m) + dSize (tail 2 m)
-                          = (sSize (arg 0 m) + dSize (tail 2 m)) + 1 by omega]
-                    refine node_bound (j := 2) (by omega) ?_ ?_
-                    · intro i hi
-                      interval_cases i
-                      · exact seq_le_Bd (by omega)
-                      · exact tag_le_Bd (by rcases h67 with h | h <;> omega)
-                    · exact sub_le_Bd (ih _ (tail_lt_succ 2 m)) (by omega)
-                  · rw [if_neg h67]
-                    by_cases h8 : arg 1 m = 8
-                    · rw [if_pos h8, show 1 + sSize (arg 0 m) + fSize (arg 2 m)
-                            + dSize (arg 3 m) + dSize (tail 4 m)
-                          = (sSize (arg 0 m) + fSize (arg 2 m) + dSize (arg 3 m)
-                            + dSize (tail 4 m)) + 1 by omega]
-                      refine node_bound (j := 4) (by omega) ?_ ?_
-                      · intro i hi
-                        interval_cases i
-                        · exact seq_le_Bd (by omega)
-                        · exact tag_le_Bd (by omega)
-                        · exact sub_le_Bd (le_G_fSize (arg 2 m)) (by omega)
-                        · exact sub_le_Bd (ih _ (arg_lt_succ 3 m)) (by omega)
-                      · exact sub_le_Bd (ih _ (tail_lt_succ 4 m)) (by omega)
-                    · rw [if_neg h8]
-                      by_cases h9 : arg 1 m = 9
-                      · rw [if_pos h9, show 1 + sSize (arg 0 m) + fSize (tail 2 m)
-                              = (sSize (arg 0 m) + fSize (tail 2 m)) + 1 by omega]
-                        refine node_bound (j := 2) (by omega) ?_ ?_
-                        · intro i hi
-                          interval_cases i
-                          · exact seq_le_Bd (by omega)
-                          · exact tag_le_Bd (by omega)
-                        · exact sub_le_Bd (le_G_fSize (tail 2 m)) (by omega)
-                      · rw [if_neg h9]
-                        exact self_le_G (m + 1)
+      · rw [show 1 + sSize (arg 0 m) = sSize (arg 0 m) + 1 by omega]
+        refine node_bound (j := 2) (by omega) ?_ (by rw [hz]; exact Nat.zero_le _)
+        intro i hi
+        interval_cases i
+        · exact seq_le_Bd le_rfl
+        · exact tag_le_Bd (by omega)
+      · exact self_le_G (m + 1)
+      · rw [show 1 + sSize (arg 0 m) + fSize (arg 2 m) + fSize (arg 3 m)
+              + dSize (arg 4 m) + dSize (tail 5 m)
+            = (sSize (arg 0 m) + fSize (arg 2 m) + fSize (arg 3 m)
+              + dSize (arg 4 m) + dSize (tail 5 m)) + 1 by omega]
+        refine node_bound (j := 5) (by omega) ?_ ?_
+        · intro i hi
+          interval_cases i
+          · exact seq_le_Bd (by omega)
+          · exact tag_le_Bd (by omega)
+          · exact sub_le_Bd (le_G_fSize (arg 2 m)) (by omega)
+          · exact sub_le_Bd (le_G_fSize (arg 3 m)) (by omega)
+          · exact sub_le_Bd (ih _ (arg_lt_succ 4 m)) (by omega)
+        · exact sub_le_Bd (ih _ (tail_lt_succ 5 m)) (by omega)
+      · rw [show 1 + sSize (arg 0 m) + fSize (arg 2 m) + fSize (arg 3 m) + dSize (tail 4 m)
+            = (sSize (arg 0 m) + fSize (arg 2 m) + fSize (arg 3 m)
+              + dSize (tail 4 m)) + 1 by omega]
+        refine node_bound (j := 4) (by omega) ?_ ?_
+        · intro i hi
+          interval_cases i
+          · exact seq_le_Bd (by omega)
+          · exact tag_le_Bd (by omega)
+          · exact sub_le_Bd (le_G_fSize (arg 2 m)) (by omega)
+          · exact sub_le_Bd (le_G_fSize (arg 3 m)) (by omega)
+        · exact sub_le_Bd (ih _ (tail_lt_succ 4 m)) (by omega)
+      · rw [show 1 + sSize (arg 0 m) + fSize (arg 2 m) + dSize (tail 3 m)
+            = (sSize (arg 0 m) + fSize (arg 2 m) + dSize (tail 3 m)) + 1 by omega]
+        refine node_bound (j := 3) (by omega) ?_ ?_
+        · intro i hi
+          interval_cases i
+          · exact seq_le_Bd (by omega)
+          · exact tag_le_Bd (by omega)
+          · exact sub_le_Bd (le_G_fSize (arg 2 m)) (by omega)
+        · exact sub_le_Bd (ih _ (tail_lt_succ 3 m)) (by omega)
+      · rw [show 1 + sSize (arg 0 m) + fSize (arg 2 m) + tSize (arg 3 m) + dSize (tail 4 m)
+            = (sSize (arg 0 m) + fSize (arg 2 m) + tSize (arg 3 m)
+              + dSize (tail 4 m)) + 1 by omega]
+        refine node_bound (j := 4) (by omega) ?_ ?_
+        · intro i hi
+          interval_cases i
+          · exact seq_le_Bd (by omega)
+          · exact tag_le_Bd (by omega)
+          · exact sub_le_Bd (le_G_fSize (arg 2 m)) (by omega)
+          · exact sub_le_Bd (le_G_tSize (arg 3 m)) (by omega)
+        · exact sub_le_Bd (ih _ (tail_lt_succ 4 m)) (by omega)
+      · rw [show 1 + sSize (arg 0 m) + dSize (tail 2 m)
+            = (sSize (arg 0 m) + dSize (tail 2 m)) + 1 by omega]
+        refine node_bound (j := 2) (by omega) ?_ ?_
+        · intro i hi
+          interval_cases i
+          · exact seq_le_Bd (by omega)
+          · exact tag_le_Bd (by rcases h67 with h | h <;> omega)
+        · exact sub_le_Bd (ih _ (tail_lt_succ 2 m)) (by omega)
+      · rw [show 1 + sSize (arg 0 m) + fSize (arg 2 m) + dSize (arg 3 m) + dSize (tail 4 m)
+            = (sSize (arg 0 m) + fSize (arg 2 m) + dSize (arg 3 m)
+              + dSize (tail 4 m)) + 1 by omega]
+        refine node_bound (j := 4) (by omega) ?_ ?_
+        · intro i hi
+          interval_cases i
+          · exact seq_le_Bd (by omega)
+          · exact tag_le_Bd (by omega)
+          · exact sub_le_Bd (le_G_fSize (arg 2 m)) (by omega)
+          · exact sub_le_Bd (ih _ (arg_lt_succ 3 m)) (by omega)
+        · exact sub_le_Bd (ih _ (tail_lt_succ 4 m)) (by omega)
+      · rw [show 1 + sSize (arg 0 m) + fSize (tail 2 m)
+            = (sSize (arg 0 m) + fSize (tail 2 m)) + 1 by omega]
+        refine node_bound (j := 2) (by omega) ?_ ?_
+        · intro i hi
+          interval_cases i
+          · exact seq_le_Bd (by omega)
+          · exact tag_le_Bd (by omega)
+        · exact sub_le_Bd (le_G_fSize (tail 2 m)) (by omega)
+      · exact self_le_G (m + 1)
 
 /-! ## What the measure counts
 
@@ -677,11 +652,6 @@ lemma mem_iff_testBit (i s : ℕ) : i ∈ s ↔ s.testBit i = true := by
     · exact Nat.le_of_lt h
   · rw [Nat.mul_comm]
     exact lt_mul_div_succ s (Nat.two_pow_pos i)
-
-/-- Every member of a sequent contributes its own symbols, stated at Foundation's
-membership. -/
-lemma fSize_le_sSize_of_mem {s i : ℕ} (h : i ∈ s) : fSize i ≤ sSize s :=
-  fSize_le_sSize ((mem_iff_testBit i s).mp h)
 
 /-! ### The derivation equations
 
@@ -814,6 +784,9 @@ lemma dSize_pos {d : ℕ} (h : 0 < d) : 0 < dSize d := by
   split_ifs <;> omega
 
 
+-- The `open LO … Bootstrapping` above is dropped here by closing and reopening the
+-- namespace, so that `pl`, `pr` and `arg` in the primitive-recursion half below resolve to
+-- this file's definitions rather than Foundation's.
 end LogicalInduction
 
 namespace LogicalInduction
@@ -1290,18 +1263,6 @@ The `Computable` forms are what the §4.10 decider consumes. -/
 /-- **`G` is computable.** -/
 lemma G_computable : Computable G := G_primrec.to_comp
 
-/-- **The symbol count of a term code is computable.** -/
-lemma tSize_computable : Computable tSize := tSize_primrec.to_comp
-
-/-- **The symbol count of a term-vector code is computable.** -/
-lemma tvSize_computable : Computable tvSize := tvSize_primrec.to_comp
-
-/-- **The symbol count of a formula code is computable.** -/
-lemma fSize_computable : Computable fSize := fSize_primrec.to_comp
-
-/-- **The symbol count of a sequent code is computable.** -/
-lemma sSize_computable : Computable sSize := sSize_primrec.to_comp
-
 /-- **The symbol count of a derivation code is computable.** -/
 lemma dSize_computable : Computable dSize := dSize_primrec.to_comp
 
@@ -1340,6 +1301,8 @@ private lemma scan_eq (a : ℕ) : ∀ n : ℕ,
         rw [if_neg hn]
         exact if_congr hnex rfl rfl
 
+-- The search is a `Nat.rec` over a `Computable₂` step, and its witness is assembled
+-- through four levels of product projection; that composition exceeds the default budget.
 set_option maxHeartbeats 1000000 in
 /-- **A bounded existential over a computable predicate is computable.**  With a computable
 bound `b`, deciding "some `d ≤ b a` satisfies `p a d`" is a genuine algorithm. -/

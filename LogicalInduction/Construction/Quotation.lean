@@ -63,8 +63,8 @@ each paying a different price, and both are here so the trade is visible.
   `productAtom n r` for `⌜Xₙ · Wₙ > r⌝` with a decidable defining schema entered stagewise.
   Exact for an arbitrary threshold-only source, but over a different inductor — `LIA` on the
   extended process — so it diagnoses the mesh slack rather than superseding the mesh
-  endpoint.  What it adds on the substitution theme is the tag-`3` freshness layer —
-  `sentenceAtomCodes_productAtom`, the `productTag` freshness lemmas (`ProductAtomFresh`,
+  endpoint.  What it adds on the substitution theme is the tag-`3` freshness layer — the
+  `productTag` freshness lemmas (`ProductAtomFresh`,
   `eventAtom_atomCodes_ne_productTag`, `theoremDP_atomCodes_ne_productTag`) and
   `productExtensionWorld_agree` — over the general propositional-substitution utilities
   `sentenceAtomCodes` and `PCWorld.holds_congr_atomCodes`, which are stated upstream in

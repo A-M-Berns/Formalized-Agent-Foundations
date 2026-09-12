@@ -264,19 +264,6 @@ lemma wstep_encode (p : CtrProgram) (s : ℕ × ℕ) (hs : s.1 ≤ p.Q) (t : ℕ
 
 /-! ## The `Complexity.FP` presentation -/
 
-private def cliBlk (v : List Bool) : List Bool := fstBlock (sndBlock v)
-private def tokBlk (v : List Bool) : List Bool := sndBlock (sndBlock v)
-
-private lemma cliBlk_pair (W cli tok : List Bool) : cliBlk (pair W (pair cli tok)) = cli := by
-  rw [cliBlk, sndBlock_pair, fstBlock_pair]
-
-private lemma tokBlk_pair (W cli tok : List Bool) : tokBlk (pair W (pair cli tok)) = tok := by
-  rw [tokBlk, sndBlock_pair, sndBlock_pair]
-
-private lemma cliBlk_mem_FP : cliBlk ∈ FP := mem_FP_comp sndBlock_mem_FP fstBlock_mem_FP
-
-private lemma tokBlk_mem_FP : tokBlk ∈ FP := mem_FP_comp sndBlock_mem_FP sndBlock_mem_FP
-
 private lemma applyW_mem_FP (a : CAct) {D : List Bool → List Bool} (hD : D ∈ FP) :
     (fun z => a.applyW (D z)) ∈ FP := by
   cases a
@@ -284,29 +271,29 @@ private lemma applyW_mem_FP (a : CAct) {D : List Bool → List Bool} (hD : D ∈
   · simpa [CAct.applyW] using appendFn_mem_FP hD (constFn_mem_FP [true])
   · simpa [CAct.applyW] using takeLenFn_mem_FP (tail_mem_FP hD) hD
 
-private lemma dropCli_mem_FP {p : CtrProgram} : (fun v => (cliBlk v).drop (p.Q + 1)) ∈ FP := by
-  have h := dropLenFn_mem_FP (constFn_mem_FP (List.replicate (p.Q + 1) true)) cliBlk_mem_FP
+private lemma dropCli_mem_FP {p : CtrProgram} : (fun v => (midBlock v).drop (p.Q + 1)) ∈ FP := by
+  have h := dropLenFn_mem_FP (constFn_mem_FP (List.replicate (p.Q + 1) true)) midBlock_mem_FP
   simpa using h
 
-private lemma takeCli_mem_FP {p : CtrProgram} : (fun v => (cliBlk v).take (p.Q + 1)) ∈ FP := by
-  have h := takeLenFn_mem_FP (constFn_mem_FP (List.replicate (p.Q + 1) true)) cliBlk_mem_FP
+private lemma takeCli_mem_FP {p : CtrProgram} : (fun v => (midBlock v).take (p.Q + 1)) ∈ FP := by
+  have h := takeLenFn_mem_FP (constFn_mem_FP (List.replicate (p.Q + 1) true)) midBlock_mem_FP
   simpa using h
 
-lemma leafW_mem_FP (p : CtrProgram) (i t : ℕ) : (fun v => leafW p i t (cliBlk v)) ∈ FP := by
+lemma leafW_mem_FP (p : CtrProgram) (i t : ℕ) : (fun v => leafW p i t (midBlock v)) ∈ FP := by
   have hD := dropCli_mem_FP (p := p)
   have hbr : ∀ z : Bool, (fun v => ctrlWord p (p.ctrl i t z)
-      ++ (p.act i t z).applyW ((cliBlk v).drop (p.Q + 1))) ∈ FP := fun z =>
+      ++ (p.act i t z).applyW ((midBlock v).drop (p.Q + 1))) ∈ FP := fun z =>
     appendFn_mem_FP (constFn_mem_FP _) (applyW_mem_FP _ hD)
-  have h := ifEqLen_mem_FP cliBlk_mem_FP (p.Q + 1) (hbr true) (hbr false)
-  have heq : (fun v => if (cliBlk v).length = p.Q + 1 then
-        ctrlWord p (p.ctrl i t true) ++ (p.act i t true).applyW ((cliBlk v).drop (p.Q + 1))
+  have h := ifEqLen_mem_FP midBlock_mem_FP (p.Q + 1) (hbr true) (hbr false)
+  have heq : (fun v => if (midBlock v).length = p.Q + 1 then
+        ctrlWord p (p.ctrl i t true) ++ (p.act i t true).applyW ((midBlock v).drop (p.Q + 1))
       else
         ctrlWord p (p.ctrl i t false)
-          ++ (p.act i t false).applyW ((cliBlk v).drop (p.Q + 1)))
-      = fun v => leafW p i t (cliBlk v) := by
+          ++ (p.act i t false).applyW ((midBlock v).drop (p.Q + 1)))
+      = fun v => leafW p i t (midBlock v) := by
     funext v
     rw [leafW]
-    by_cases hv : (cliBlk v).length = p.Q + 1
+    by_cases hv : (midBlock v).length = p.Q + 1
     · rw [if_pos hv, decide_eq_true hv]
     · rw [if_neg hv, decide_eq_false hv]
   rwa [heq] at h
@@ -314,18 +301,18 @@ lemma leafW_mem_FP (p : CtrProgram) (i t : ℕ) : (fun v => leafW p i t (cliBlk 
 /-- The inner nest: dispatch on the token's value against each literal below the alphabet
 bound, falling through to the merged class `A + 1`. -/
 def tokNestC (p : CtrProgram) (i : ℕ) : List ℕ → List Bool → List Bool
-  | [], v => leafW p i (p.A + 1) (cliBlk v)
-  | t :: ts, v => if NumEqBits t (tokBlk v) then leafW p i t (cliBlk v)
+  | [], v => leafW p i (p.A + 1) (midBlock v)
+  | t :: ts, v => if NumEqBits t (lastBlock v) then leafW p i t (midBlock v)
                   else tokNestC p i ts v
 
 lemma tokNestC_eq (p : CtrProgram) (i : ℕ) (W cli : List Bool) (cur : List ℕ)
     (hcur : ∀ d ∈ cur, d < 4) : ∀ (l : List ℕ), (∀ t ∈ l, t ≤ p.A) →
       tokNestC p i l (pair W (pair cli (digitsToBits cur)))
         = leafW p i (if digitVal cur ∈ l then digitVal cur else p.A + 1) cli
-  | [], _ => by rw [tokNestC, cliBlk_pair]; simp
+  | [], _ => by rw [tokNestC, midBlock_pair]; simp
   | (t :: l), hl => by
       have hle : ∀ t' ∈ l, t' ≤ p.A := fun t' ht' => hl t' (List.mem_cons_of_mem _ ht')
-      rw [tokNestC, tokBlk_pair, cliBlk_pair]
+      rw [tokNestC, lastBlock_pair, midBlock_pair]
       by_cases h : NumEqBits t (digitsToBits cur)
       · have hv : digitVal cur = t := (numEqBits_spec t cur hcur).mp h
         rw [if_pos h, if_pos (by rw [hv]; exact List.mem_cons_self ..), hv]
@@ -340,7 +327,7 @@ lemma tokNestC_eq (p : CtrProgram) (i : ℕ) (W cli : List Bool) (cur : List ℕ
             · exact hm hc)]
 
 lemma length_tokNestC_le (p : CtrProgram) (i : ℕ) : ∀ (l : List ℕ) (v : List Bool),
-    (tokNestC p i l v).length ≤ (cliBlk v).length + p.Q + 2
+    (tokNestC p i l v).length ≤ (midBlock v).length + p.Q + 2
   | [], v => by rw [tokNestC]; exact length_leafW_le p i _ _
   | (t :: l), v => by
       rw [tokNestC]
@@ -351,13 +338,13 @@ lemma length_tokNestC_le (p : CtrProgram) (i : ℕ) : ∀ (l : List ℕ) (v : Li
 lemma tokNestC_mem_FP (p : CtrProgram) (i : ℕ) : ∀ l : List ℕ,
     (fun v => tokNestC p i l v) ∈ FP
   | [] => by
-      have heq : (fun v => tokNestC p i [] v) = fun v => leafW p i (p.A + 1) (cliBlk v) := by
+      have heq : (fun v => tokNestC p i [] v) = fun v => leafW p i (p.A + 1) (midBlock v) := by
         funext v; rw [tokNestC]
       rw [heq]; exact leafW_mem_FP p i _
   | (t :: l) => by
       have hrec := tokNestC_mem_FP p i l
-      have h := ifNumEq_mem_FP tokBlk_mem_FP t (leafW_mem_FP p i t) hrec
-      have heq : (fun v => if NumEqBits t (tokBlk v) then leafW p i t (cliBlk v)
+      have h := ifNumEq_mem_FP lastBlock_mem_FP t (leafW_mem_FP p i t) hrec
+      have heq : (fun v => if NumEqBits t (lastBlock v) then leafW p i t (midBlock v)
             else tokNestC p i l v) = fun v => tokNestC p i (t :: l) v := by
         funext v; rw [tokNestC]
       rwa [heq] at h
@@ -366,23 +353,23 @@ lemma tokNestC_mem_FP (p : CtrProgram) (i : ℕ) : ∀ l : List ℕ,
 def stNestC (p : CtrProgram) : List ℕ → List Bool → List Bool
   | [], v => tokNestC p (p.Q + 1) (List.range (p.A + 1)) v
   | i :: is, v =>
-      if (cliBlk v).take (p.Q + 1) = ctrlWord p i then
+      if (midBlock v).take (p.Q + 1) = ctrlWord p i then
         tokNestC p i (List.range (p.A + 1)) v
       else stNestC p is v
 
 /-- **The outer nest computes exactly the decode `ctrlSel` describes.**  The two recursions
 branch on the same condition, so the agreement is structural. -/
 lemma stNestC_eq (p : CtrProgram) : ∀ (l : List ℕ) (v : List Bool),
-    stNestC p l v = tokNestC p (ctrlSel p l (cliBlk v)) (List.range (p.A + 1)) v
+    stNestC p l v = tokNestC p (ctrlSel p l (midBlock v)) (List.range (p.A + 1)) v
   | [], v => by rw [stNestC, ctrlSel]
   | (i :: l), v => by
       rw [stNestC, ctrlSel]
-      by_cases h : (cliBlk v).take (p.Q + 1) = ctrlWord p i
+      by_cases h : (midBlock v).take (p.Q + 1) = ctrlWord p i
       · rw [if_pos h, if_pos h]
       · rw [if_neg h, if_neg h, stNestC_eq p l v]
 
 lemma length_stNestC_le (p : CtrProgram) : ∀ (l : List ℕ) (v : List Bool),
-    (stNestC p l v).length ≤ (cliBlk v).length + p.Q + 2
+    (stNestC p l v).length ≤ (midBlock v).length + p.Q + 2
   | [], v => by rw [stNestC]; exact length_tokNestC_le p _ _ v
   | (i :: l), v => by
       rw [stNestC]
@@ -400,7 +387,7 @@ lemma stNestC_mem_FP (p : CtrProgram) : ∀ l : List ℕ, (fun v => stNestC p l 
       have hrec := stNestC_mem_FP p l
       have h := eqConstFn_mem_FP (ctrlWord p i) (takeCli_mem_FP (p := p))
         (tokNestC_mem_FP p i (List.range (p.A + 1))) hrec
-      have heq : (fun v => if (cliBlk v).take (p.Q + 1) = ctrlWord p i then
+      have heq : (fun v => if (midBlock v).take (p.Q + 1) = ctrlWord p i then
             tokNestC p i (List.range (p.A + 1)) v else stNestC p l v)
           = fun v => stNestC p (i :: l) v := by funext v; rw [stNestC]
       rwa [heq] at h
@@ -482,11 +469,11 @@ def ctrMachine (p : CtrProgram) : RunAuto.BlockMachine where
   stepW_FP := stNestC_mem_FP p _
   stepW_len := fun W cli tok => by
     have h := length_stNestC_le p (List.range (p.Q + 1)) (pair W (pair cli tok))
-    rw [cliBlk_pair] at h
+    rw [midBlock_pair] at h
     omega
   stepW_spec := by
     intro W cli cur hcur
-    rw [stNestC_eq, cliBlk_pair,
+    rw [stNestC_eq, midBlock_pair,
       tokNestC_eq p (ctrlSel p (List.range (p.Q + 1)) cli) W cli cur hcur
         (List.range (p.A + 1))
         (by intro t ht; simp only [List.mem_range] at ht; omega),

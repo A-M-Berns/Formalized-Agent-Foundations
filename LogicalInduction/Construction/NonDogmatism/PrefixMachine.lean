@@ -65,18 +65,6 @@ unconditional.
 
 The fixed code is thus the elementary instance and the universal one the paper-strength
 instance; neither subsumes the other, and both are kept.
-**The criterion binder below is `def:lic` at the paper's own quantifier.**  Every result here that consumes an
-exploiting trader takes `[IsLogicalInductor P DP]`, and the Occam trader is certified at
-`EfficientlyComputable` (`obTrader_ec`, `Properties/OccamBounds.lean`), and no map
-back from `MachineSpliceStream` to `BigSpliceStream` is proved or claimed, so it has no
-fuel-class form.  The data premises are at the machine classes too: this file
-discharges
-`PrefixMachinePresentation.sentence_codes` (now `MachineSentenceCodes`) and
-`OccamThresholdEmission`'s two fields (now `MachineRatCodes`) from the very same
-constructed fuel certificates, crossing at the boundary by
-`MachineSentenceCodes.ofPolySentenceCodes` and `DigitRatCodes.ofPolyRatCodes` +
-`.toMachine`, so nothing about the constructions changed.  The `_unconditional` endpoints
-discharge the criterion through `LIA_is_logical_inductor`.
 
 -/
 
@@ -542,25 +530,6 @@ poly-size input, so the iterated state stays `≤ 2(x+1)` and needs no clamp.  H
 `approx_poly` is *derived* from `sentence_poly` (`approx_polyRat_of_sentence`), and the
 residual operational input collapses to the single sentence-code emitter. -/
 
-/-- Code equations of Foundation's `Formula.toNat` on `Sentence` (`α = ℕ`, `encode = id`
-on atoms).  All are definitional. -/
-lemma encode_falsum' : Encodable.encode (Formula.falsum : Sentence) = 1 := rfl
-
-lemma encode_atom' (a : ℕ) :
-    Encodable.encode (Formula.atom a : Sentence) = Nat.pair 1 a + 1 := rfl
-
-lemma encode_imp' (φ ψ : Sentence) :
-    Encodable.encode (Formula.imp φ ψ) =
-      Nat.pair 2 (Nat.pair (Encodable.encode φ) (Encodable.encode ψ)) + 1 := rfl
-
-lemma encode_and' (φ ψ : Sentence) :
-    Encodable.encode (Formula.and φ ψ) =
-      Nat.pair 3 (Nat.pair (Encodable.encode φ) (Encodable.encode ψ)) + 1 := rfl
-
-lemma encode_or' (φ ψ : Sentence) :
-    Encodable.encode (Formula.or φ ψ) =
-      Nat.pair 4 (Nat.pair (Encodable.encode φ) (Encodable.encode ψ)) + 1 := rfl
-
 /-- One code-level un-negation step on a state `⟨cur, cnt⟩`: if `cur` is the code of a
 negation `ψ 🡒 ⊥` (tag `2`, right child the code `1` of `⊥`), move to
 `⟨code of ψ, cnt + 1⟩`; otherwise stay.  Branchless `ifzSelFn` form, chosen to match its
@@ -591,7 +560,7 @@ lemma dcStep_of_stay {m : ℕ} (cnt : ℕ)
 lemma dcStep_encode_neg (φ : Sentence) (cnt : ℕ) :
     dcStep (Nat.pair (Encodable.encode (Formula.imp φ Formula.falsum)) cnt) =
       Nat.pair (Encodable.encode φ) (cnt + 1) := by
-  rw [encode_imp', encode_falsum']
+  rw [encode_imp, encode_falsum]
   have hm : Nat.pair 2 (Nat.pair (Encodable.encode φ) 1) + 1 - 1 =
       Nat.pair 2 (Nat.pair (Encodable.encode φ) 1) := by omega
   rw [dcStep_of_neg cnt (by omega) (by rw [hm, Nat.unpair_pair])
@@ -603,21 +572,21 @@ lemma dcStep_encode_of_negDepth_zero (φ : Sentence) (h : negDepth φ = 0) (cnt 
   rintro ⟨h1, h2, h3⟩
   cases φ with
   | atom a =>
-      rw [encode_atom', Nat.add_sub_cancel, Nat.unpair_pair] at h2
+      rw [encode_atom, Nat.add_sub_cancel, Nat.unpair_pair] at h2
       omega
   | falsum =>
-      rw [encode_falsum'] at h2
+      rw [encode_falsum] at h2
       simp at h2
   | and φ ψ =>
-      rw [encode_and', Nat.add_sub_cancel, Nat.unpair_pair] at h2
+      rw [encode_and, Nat.add_sub_cancel, Nat.unpair_pair] at h2
       omega
   | or φ ψ =>
-      rw [encode_or', Nat.add_sub_cancel, Nat.unpair_pair] at h2
+      rw [encode_or, Nat.add_sub_cancel, Nat.unpair_pair] at h2
       omega
   | imp φ ψ =>
-      simp only [encode_imp', Nat.add_sub_cancel, Nat.unpair_pair] at h3
+      simp only [encode_imp, Nat.add_sub_cancel, Nat.unpair_pair] at h3
       have hψ : ψ = Formula.falsum :=
-        Encodable.encode_injective (by rw [h3, encode_falsum'])
+        Encodable.encode_injective (by rw [h3, encode_falsum])
       subst hψ
       rw [negDepth_imp_falsum] at h
       omega
@@ -683,7 +652,7 @@ lemma negDepth_le_encode (φ : Sentence) : negDepth φ ≤ Encodable.encode φ :
   | imp φ ψ ihφ _ =>
       cases ψ with
       | falsum =>
-          rw [negDepth_imp_falsum, encode_imp', encode_falsum']
+          rw [negDepth_imp_falsum, encode_imp, encode_falsum]
           have h1 : Encodable.encode φ ≤ Nat.pair (Encodable.encode φ) 1 :=
             Nat.left_le_pair _ _
           have h2 : Nat.pair (Encodable.encode φ) 1 ≤
@@ -789,8 +758,6 @@ lemma two_pow_size_le {y : ℕ} (hy : 0 < y) : 2 ^ y.size ≤ 2 * y := by
   have hs : y.size - 1 + 1 = y.size := by omega
   have hp : 2 ^ y.size = 2 ^ (y.size - 1) * 2 := by rw [← hs, pow_succ, hs]
   omega
-
-lemma p2s_le (x : ℕ) : p2s x ≤ 2 * (x + 1) := two_pow_size_le (Nat.succ_pos x)
 
 /-- One step of the halving-driven doubling on a state `⟨cur, pow⟩`: while `cur > 0`,
 halve `cur` and double `pow`; once `cur = 0`, stay.  The doubling is clocked by the
@@ -956,20 +923,20 @@ lemma validCode_encode : ∀ φ : Sentence, validCode (Encodable.encode φ) = tr
   intro φ
   induction φ with
   | atom a =>
-      rw [encode_atom', validCode_pair_tag]
+      rw [encode_atom, validCode_pair_tag]
       norm_num
   | falsum =>
       rw [show Encodable.encode (Formula.falsum : Sentence) = Nat.pair 0 0 + 1 from rfl,
         validCode_pair_tag]
       norm_num
   | and φ ψ ihφ ihψ =>
-      rw [encode_and', validCode_pair_tag]
+      rw [encode_and, validCode_pair_tag]
       norm_num [Nat.unpair_pair, ihφ, ihψ]
   | or φ ψ ihφ ihψ =>
-      rw [encode_or', validCode_pair_tag]
+      rw [encode_or, validCode_pair_tag]
       norm_num [Nat.unpair_pair, ihφ, ihψ]
   | imp φ ψ ihφ ihψ =>
-      rw [encode_imp', validCode_pair_tag]
+      rw [encode_imp, validCode_pair_tag]
       norm_num [Nat.unpair_pair, ihφ, ihψ]
 
 /-- Every accepted code is canonical. -/
@@ -993,7 +960,7 @@ lemma of_validCode : ∀ n, validCode n = true → ∃ φ : Sentence, Encodable.
       · rw [if_neg h0] at h
         by_cases h1 : e.unpair.1 = 1
         · refine ⟨Formula.atom e.unpair.2, ?_⟩
-          rw [encode_atom', ← h1, Nat.pair_unpair]
+          rw [encode_atom, ← h1, Nat.pair_unpair]
         · rw [if_neg h1] at h
           by_cases h4 : e.unpair.1 ≤ 4
           · rw [if_pos h4] at h
@@ -1010,11 +977,11 @@ lemma of_validCode : ∀ n, validCode n = true → ∃ φ : Sentence, Encodable.
             have htag : e.unpair.1 = 2 ∨ e.unpair.1 = 3 ∨ e.unpair.1 = 4 := by omega
             rcases htag with h2 | h3 | h4'
             · exact ⟨Formula.imp φ₁ φ₂,
-                by rw [encode_imp', hφ₁, hφ₂, hpc, ← h2, Nat.pair_unpair]⟩
+                by rw [encode_imp, hφ₁, hφ₂, hpc, ← h2, Nat.pair_unpair]⟩
             · exact ⟨Formula.and φ₁ φ₂,
-                by rw [encode_and', hφ₁, hφ₂, hpc, ← h3, Nat.pair_unpair]⟩
+                by rw [encode_and, hφ₁, hφ₂, hpc, ← h3, Nat.pair_unpair]⟩
             · exact ⟨Formula.or φ₁ φ₂,
-                by rw [encode_or', hφ₁, hφ₂, hpc, ← h4', Nat.pair_unpair]⟩
+                by rw [encode_or, hφ₁, hφ₂, hpc, ← h4', Nat.pair_unpair]⟩
           · rw [if_neg h4] at h
             exact absurd h (by simp)
 
@@ -1027,7 +994,7 @@ lemma encode_prefixSentenceEnum (n : ℕ) :
     rw [prefixSentenceEnum_encode, if_pos hv]
   · rw [prefixSentenceEnum_of_not_canonical
       (fun φ he => hv (by rw [← he]; exact validCode_encode φ)),
-      encode_atom', if_neg hv]
+      encode_atom, if_neg hv]
 
 /-- The canonicity bit, arithmetized: `0` on canonical codes, `1` on fallback indices. -/
 def invalidBit (n : ℕ) : ℕ := if validCode n then 0 else 1
@@ -1288,111 +1255,6 @@ lemma all_validCode_eq_all_one (L : List ℕ) (h : ∀ m ∈ L, m ≤ 1) :
       · simp [validCode_zero]
       · simp [validCode_one]
 
-/-! ### Runtime `sqrt` and `size` -/
-
-section RuntimeArith
-
--- `Nat.unpair` reduction loops `whnf` on `Nat.sqrt` inside the `Primcodable` instances for
--- the product types appearing in the assemblies below, so `Nat.sqrt` is kept opaque here.
-attribute [local irreducible] Nat.sqrt
-
-/-- One step of the counting square root: bump the count while `(j+1)² ≤ a`. -/
-lemma sqrtc_polyFueled : ∃ c, PolyFueled c Nat.sqrt := by
-  obtain ⟨cad, had⟩ := addc_polyFueled
-  obtain ⟨cm, hm⟩ := mul_polyFueled
-  have aPF := PolyFueled.left
-  have jPF := PolyFueled.left.comp PolyFueled.right
-  have prevPF := PolyFueled.right.comp PolyFueled.right
-  have j1PF := jPF.succ_comp
-  have sqPF := (hm.comp (j1PF.pair j1PF)).of_eq
-    (f' := fun z => (z.unpair.2.unpair.1 + 1) * (z.unpair.2.unpair.1 + 1))
-    (fun z => by simp only [Nat.unpair_pair])
-  have tPF := subc_polyFueled.comp (sqPF.pair aPF)
-  have indPF := ifzSel_polyFueled.comp ((PolyFueled.const (Nat.pair 1 0)).pair tPF)
-  have gPF := had.comp (prevPF.pair indPF)
-  have hst : IsPolyBounded (fun m => min m.unpair.2 (Nat.sqrt m.unpair.1)) :=
-    isPolyBounded_snd.of_le (fun m => Nat.min_le_left _ _)
-  have hprec := PolyFueled.prec (PolyFueled.const 0) gPF
-    (st := fun a j => min j (Nat.sqrt a))
-    (fun a => by simp)
-    (fun a j => by
-      simp only [Nat.unpair_pair, ifzSelFn]
-      have hiff : (j + 1) * (j + 1) ≤ a ↔ j + 1 ≤ Nat.sqrt a := Nat.le_sqrt.symm
-      by_cases hc : (j + 1) * (j + 1) - a = 0
-      · have : j + 1 ≤ Nat.sqrt a := hiff.mp (by omega)
-        rw [if_pos hc]
-        omega
-      · have : ¬ (j + 1 ≤ Nat.sqrt a) := fun hcon => hc (by
-          have := hiff.mpr hcon
-          omega)
-        rw [if_neg hc]
-        omega)
-    hst
-  refine ⟨_, (hprec.comp (PolyFueled.id.pair PolyFueled.id)).of_eq (fun a => ?_)⟩
-  simp only [Nat.unpair_pair]
-  exact Nat.min_eq_right (Nat.sqrt_le_self a)
-
-/-- One step of the halving `size` scan: bump the count while the quotient is nonzero. -/
-def szStep (p : ℕ) : ℕ :=
-  ifzSelFn (Nat.pair p (Nat.pair (p.unpair.1 / 2) (p.unpair.2 + 1))) p.unpair.1
-
-lemma szStep_spec (a j : ℕ) :
-    szStep (Nat.pair (a / 2 ^ j) (min j a.size)) =
-      Nat.pair (a / 2 ^ (j + 1)) (min (j + 1) a.size) := by
-  by_cases hc : a / 2 ^ j = 0
-  · have hlt : a < 2 ^ j := by
-      rw [Nat.div_eq_zero_iff] at hc
-      have : (0:ℕ) < 2 ^ j := Nat.pow_pos (by norm_num)
-      omega
-    have hs : a.size ≤ j := Nat.size_le.mpr hlt
-    have h1 : a / 2 ^ (j + 1) = 0 :=
-      Nat.div_eq_of_lt (lt_of_lt_of_le hlt (Nat.pow_le_pow_right (by norm_num) (by omega)))
-    rw [szStep, ifzSelFn]
-    simp only [Nat.unpair_pair, hc, if_true]
-    rw [h1, Nat.min_eq_right hs, Nat.min_eq_right (by omega)]
-  · have h2j : 2 ^ j ≤ a := by
-      rw [Nat.div_eq_zero_iff] at hc
-      have : (0:ℕ) < 2 ^ j := Nat.pow_pos (by norm_num)
-      omega
-    have hjs : j < a.size := by
-      by_contra hcon
-      have := Nat.size_le.mp (le_of_not_gt hcon)
-      omega
-    rw [szStep, ifzSelFn]
-    simp only [Nat.unpair_pair]
-    rw [if_neg hc, Nat.div_div_eq_div_mul, ← pow_succ,
-      Nat.min_eq_left (by omega), Nat.min_eq_left (by omega)]
-
-lemma sizec_polyFueled : ∃ c, PolyFueled c Nat.size := by
-  obtain ⟨cdm, hdm⟩ := divmodc_polyFueled 2 (by norm_num)
-  have prevPF := PolyFueled.right.comp PolyFueled.right
-  have curPF := PolyFueled.left.comp prevPF
-  have cntPF := PolyFueled.right.comp prevPF
-  have halfPF := (PolyFueled.left.comp (hdm.comp curPF)).of_eq
-    (f' := fun z => z.unpair.2.unpair.2.unpair.1 / 2)
-    (fun z => by simp only [Nat.unpair_pair])
-  have gPF : PolyFueled _ (fun z => szStep (z.unpair.2.unpair.2)) :=
-    (ifzSel_polyFueled.comp ((prevPF.pair (halfPF.pair cntPF.succ_comp)).pair curPF)).of_eq
-      (fun z => by simp only [Nat.unpair_pair, szStep])
-  have hst : IsPolyBounded (fun m =>
-      Nat.pair (m.unpair.1 / 2 ^ m.unpair.2) (min m.unpair.2 m.unpair.1.size)) := by
-    apply (isPolyBounded_fst.pair isPolyBounded_snd).of_le
-    intro m
-    exact le_trans (pair_le_pair_left' _ (Nat.div_le_self _ _))
-      (pair_le_pair_right' _ (Nat.min_le_left _ _))
-  have hprec := PolyFueled.prec (PolyFueled.id.pair (PolyFueled.const 0)) gPF
-    (st := fun a j => Nat.pair (a / 2 ^ j) (min j a.size))
-    (fun a => by simp)
-    (fun a j => by
-      simp only [Nat.unpair_pair]
-      exact (szStep_spec a j).symm)
-    hst
-  refine ⟨_, (PolyFueled.right.comp
-    (hprec.comp (PolyFueled.id.pair PolyFueled.id))).of_eq (fun a => ?_)⟩
-  simp only [Nat.unpair_pair]
-  exact Nat.min_eq_right (Nat.size_le.mpr (Nat.lt_pow_self (by norm_num)))
-
-end RuntimeArith
 
 /-! ### The packed level transform
 
@@ -1496,14 +1358,23 @@ lemma innerOut_bridge (B B' : ℕ) (hB : 0 < B) (L : List ℕ) (hd : ∀ v ∈ L
 
 /-! ### Runtime slot children -/
 
-lemma chL_polyFueled : ∃ c, PolyFueled c chL := by
+/-- The two slot-child projections differ only in which component of the payload pair the
+`≤ 4` branch selects, so the tag dispatch is assembled once here and instantiated twice. -/
+private lemma chSel_polyFueled {csel : Nat.Partrec.Code} {sel : ℕ → ℕ}
+    (hsel : PolyFueled csel sel) :
+    ∃ c, PolyFueled c (fun m =>
+      if m = 0 then 0
+      else if (m - 1).unpair.1 = 0 then (if (m - 1).unpair.2 = 0 then 1 else 0)
+      else if (m - 1).unpair.1 = 1 then 1
+      else if (m - 1).unpair.1 ≤ 4 then sel (m - 1).unpair.2
+      else 0) := by
   have ePF : PolyFueled _ (fun m => m - 1) :=
     predc_polyFueled.of_eq (fun m => Nat.pred_eq_sub_one)
   have idxPF := PolyFueled.left.comp ePF
   have cPF := PolyFueled.right.comp ePF
-  have c1PF := PolyFueled.left.comp cPF
+  have selPF := hsel.comp cPF
   have A0 := ifzSel_polyFueled.comp ((PolyFueled.const (Nat.pair 1 0)).pair cPF)
-  have A3 := ifzSel_polyFueled.comp ((c1PF.pair (PolyFueled.const 0)).pair
+  have A3 := ifzSel_polyFueled.comp ((selPF.pair (PolyFueled.const 0)).pair
     (subc_polyFueled.comp (idxPF.pair (PolyFueled.const 4))))
   have A2 := ifzSel_polyFueled.comp (((PolyFueled.const 1).pair A3).pair
     (subc_polyFueled.comp (idxPF.pair (PolyFueled.const 1))))
@@ -1512,7 +1383,6 @@ lemma chL_polyFueled : ∃ c, PolyFueled c chL := by
     ((((PolyFueled.const 0).pair A1)).pair PolyFueled.id)
   refine ⟨_, top.of_eq (fun m => ?_)⟩
   simp only [Nat.unpair_pair, ifzSelFn]
-  rw [chL]
   by_cases h0 : m = 0
   · rw [if_pos h0, if_pos h0]
   · rw [if_neg h0, if_neg h0]
@@ -1526,35 +1396,11 @@ lemma chL_polyFueled : ∃ c, PolyFueled c chL := by
         · rw [if_pos (by omega : (m - 1).unpair.1 - 4 = 0), if_pos h4]
         · rw [if_neg (by omega : ¬ (m - 1).unpair.1 - 4 = 0), if_neg h4]
 
-lemma chR_polyFueled : ∃ c, PolyFueled c chR := by
-  have ePF : PolyFueled _ (fun m => m - 1) :=
-    predc_polyFueled.of_eq (fun m => Nat.pred_eq_sub_one)
-  have idxPF := PolyFueled.left.comp ePF
-  have cPF := PolyFueled.right.comp ePF
-  have c2PF := PolyFueled.right.comp cPF
-  have A0 := ifzSel_polyFueled.comp ((PolyFueled.const (Nat.pair 1 0)).pair cPF)
-  have A3 := ifzSel_polyFueled.comp ((c2PF.pair (PolyFueled.const 0)).pair
-    (subc_polyFueled.comp (idxPF.pair (PolyFueled.const 4))))
-  have A2 := ifzSel_polyFueled.comp (((PolyFueled.const 1).pair A3).pair
-    (subc_polyFueled.comp (idxPF.pair (PolyFueled.const 1))))
-  have A1 := ifzSel_polyFueled.comp ((A0.pair A2).pair idxPF)
-  have top := ifzSel_polyFueled.comp
-    ((((PolyFueled.const 0).pair A1)).pair PolyFueled.id)
-  refine ⟨_, top.of_eq (fun m => ?_)⟩
-  simp only [Nat.unpair_pair, ifzSelFn]
-  rw [chR]
-  by_cases h0 : m = 0
-  · rw [if_pos h0, if_pos h0]
-  · rw [if_neg h0, if_neg h0]
-    by_cases h1 : (m - 1).unpair.1 = 0
-    · rw [if_pos h1, if_pos h1]
-    · rw [if_neg h1, if_neg h1]
-      by_cases h2 : (m - 1).unpair.1 = 1
-      · rw [if_pos (by omega : (m - 1).unpair.1 - 1 = 0), if_pos h2]
-      · rw [if_neg (by omega : ¬ (m - 1).unpair.1 - 1 = 0), if_neg h2]
-        by_cases h4 : (m - 1).unpair.1 ≤ 4
-        · rw [if_pos (by omega : (m - 1).unpair.1 - 4 = 0), if_pos h4]
-        · rw [if_neg (by omega : ¬ (m - 1).unpair.1 - 4 = 0), if_neg h4]
+lemma chL_polyFueled : ∃ c, PolyFueled c chL :=
+  chSel_polyFueled (sel := fun p => p.unpair.1) PolyFueled.left
+
+lemma chR_polyFueled : ∃ c, PolyFueled c chR :=
+  chSel_polyFueled (sel := fun p => p.unpair.2) PolyFueled.right
 
 /-- The inner loop as a `prec`: input `⟨⟨⟨b, b'⟩, ⟨CAP, P⟩⟩, k⟩` (bases `b+1`, `b'+1`),
 state `⟨P / (b+1)^k, innerOutC (b+1) (b'+1) CAP P k⟩`. -/
@@ -2124,7 +1970,7 @@ Paper node: `thm:ob` -/
 theorem prefixSentenceEnum_polySentenceCodes : PolySentenceCodes prefixSentenceEnum :=
   sentencePoly_of_invalidBit invalidBit_polyFueled
 
-/-- The derived weight emission, now unconditional.
+/-- The derived weight emission, with no side condition left to discharge.
 Paper node: `thm:ob` -/
 theorem prefixApprox_polyRatCodes : PolyRatCodes prefixApprox :=
   approx_polyRat_of_sentence prefixSentenceEnum_polySentenceCodes

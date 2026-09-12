@@ -197,7 +197,10 @@ arithmetic, has formalized nothing we didn't already assume.
    mid-flight; elaboration/type errors are not. Small compiling commits over large
    broken ones. The checked gates are `lake build AxiomAudit` (endpoint inventory:
    axiom cleanliness + Tier-2 field freeze) plus `scripts/check-paper-nodes.sh`,
-   `scripts/check_endpoint_coverage.py`, and `scripts/lint_paper_labels.py`.
+   `scripts/check_endpoint_coverage.py`, `scripts/lint_paper_labels.py`,
+   `scripts/check_li_census.py` (every printed census and module count recomputed from
+   the source) and `scripts/check_li_class_claims.py` (no prose may name a metering
+   class as a hypothesis of an endpoint that does not take it).
 
 4. **Provenance is written at proof time, by the person who knows they cheated.**
    Record the proof kind and provenance in the theorem's docstring as you go, never

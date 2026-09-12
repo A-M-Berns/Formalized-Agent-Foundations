@@ -701,7 +701,7 @@ lemma mul {x y : ℕ → ℕ} (hx : BigDigits x) (hy : BigDigits y) :
       simp only [Nat.unpair_pair]
       rw [conv4Partial_succ])
     ⟨9, 1, fun z => by
-      try simp only []
+      simp only []
       have h1 := conv4Partial_le (x z.unpair.1.unpair.1) (y z.unpair.1.unpair.1)
         z.unpair.1.unpair.2 z.unpair.2
       have h2 := Nat.unpair_right_le z
@@ -727,7 +727,7 @@ lemma mul {x y : ℕ → ℕ} (hx : BigDigits x) (hy : BigDigits y) :
       simp only [Nat.unpair_pair]
       rw [mulCarry4_succ])
     ⟨3, 1, fun z => by
-      try simp only []
+      simp only []
       have h1 := mulCarry4_le (x z.unpair.1) (y z.unpair.1) z.unpair.2
       have h2 := Nat.unpair_right_le z
       rw [pow_one]
@@ -1329,6 +1329,16 @@ Each scan iterates `PolyFueled.prec` over the digit index of an emitted stream, 
 small packed state.  The specs are phrased over the *virtual prefix* — the digits the
 emitter itself produces — so the `prec` step equations hold unconditionally, and the
 final evaluation at the emitted length rewrites to the actual stream. -/
+
+/-- Any list is the range-map of its own `getD` view — the virtual-prefix form of a list
+that is already given, rather than emitted. -/
+lemma list_eq_rangeMap_getD (l : List ℕ) :
+    l = (List.range l.length).map fun j => l.getD j 0 := by
+  apply List.ext_getElem
+  · simp
+  · intro i h1 h2
+    simp only [List.getElem_map, List.getElem_range]
+    exact (List.getD_eq_getElem l 0 (by simpa using h2)).symm
 
 /-- The first `i` digits the emitter produces for day `n`. -/
 def vpre (tokenFn : ℕ → ℕ) (n i : ℕ) : List ℕ :=

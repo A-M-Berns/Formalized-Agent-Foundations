@@ -10,13 +10,14 @@ Renders §4.6 *Non-Dogmatism*, `thm:obu` (Uniform Non-Dogmatism).
 `RepeatsEveryMember` is the paper's triangular repetition preprocessing, stated
 independently of any market.
 
-The varying-sentence scale ladder is `obuBuySig` / `obuShares` / `obuCoef`: rung `j` buys
-from the currently enumerated sentence whenever its price falls below `1/j³`, spends at
-most `1/j²` over its lifetime (`obuShares_sum_le_one`), and permanently disarms after one
-full trigger (`armChain`). `obuTrader` is the summed ladder and `obuTrader_exploits` is its
-economics: a world satisfying the whole enumerated theory values every purchased share at
-one, so the ladder is bounded below by `−2` (via `sum_inv_sq_le_two`) while a single rung
-firing already yields profit `j − 1`.
+The varying-sentence scale ladder is the `Properties/Support/Exploitation.lean` ladder at
+the trigger family `obuBuySig`: rung `j` buys from the currently enumerated sentence
+whenever its price falls below `1/j³`, spends at most `1/j²` over its lifetime, and
+permanently disarms after one full trigger (`armChain`). `obuTrader` is that ladder and
+`obuTrader_exploits` supplies its trigger guarantee to `ladderTrader_exploits`: a world
+satisfying the whole enumerated theory values every purchased share at one, so the ladder is
+bounded below by `−2` (via `sum_inv_sq_le_two`) while a single rung firing already yields
+profit `j − 1`.
 
 The token-emission half — `obuArmBlock`, `serialize_armChain_obuBuy`, `serialize_obuCoef`,
 `serialize_obuLadderEF`, `obuChunkSeg_spliceStream` — proves
@@ -75,267 +76,50 @@ lemma obuBuySig_eq_one (φ : ℕ → Sentence) (P : History)
     (obuBuySig φ j i).denote P = 1 :=
   ndBuySig_eq_one (φ i) P hj hlive h
 
-/-- Per-unit day-`n` purchase made by varying-sentence rung `j`. -/
-noncomputable def obuShares (φ : ℕ → Sentence) (P : History) (j n : ℕ) : ℝ :=
-  (armChain (obuBuySig φ j) n).denote P * (obuBuySig φ j n).denote P
-
-lemma obuShares_nonneg (φ : ℕ → Sentence) (P : History) (j n : ℕ) :
-    0 ≤ obuShares φ P j n :=
-  mul_nonneg (armChain_mem _ P (fun i ↦ obuBuySig_mem φ P j i) n).1
-    (obuBuySig_mem φ P j n).1
-
-lemma obuShares_pos_sig {φ : ℕ → Sentence} {P : History} {j n : ℕ}
-    (h : 0 < obuShares φ P j n) : 0 < (obuBuySig φ j n).denote P := by
-  rcases (obuBuySig_mem φ P j n).1.lt_or_eq with hs | hs
-  · exact hs
-  · rw [obuShares, ← hs, mul_zero] at h
-    exact absurd h (lt_irrefl 0)
-
-/-- Rung `j`'s purchases over `[j, N)` total `1 − armChain N`: the arm chain is exactly the
-share of the rung's single unit budget still unspent. -/
-lemma obuShares_sum (φ : ℕ → Sentence) (P : History)
-    {j N : ℕ} (h : j ≤ N) :
-    ∑ n ∈ Finset.Ico j N, obuShares φ P j n =
-      1 - (armChain (obuBuySig φ j) N).denote P := by
-  simp only [obuShares]
-  rw [armChain_shares_sum (obuBuySig φ j) P h,
-    armChain_denote_of_le (obuBuySig φ j) P
-      (fun i hi ↦ obuBuySig_denote_pad φ P hi) j le_rfl]
-
-/-- Rung `j` buys at most one share over its whole lifetime, which is what makes the
-ladder's total spend summable. -/
-lemma obuShares_sum_le_one (φ : ℕ → Sentence) (P : History)
-    {j N : ℕ} (h : j ≤ N) :
-    ∑ n ∈ Finset.Ico j N, obuShares φ P j n ≤ 1 := by
-  rw [obuShares_sum φ P h]
-  have := (armChain_mem (obuBuySig φ j) P
-    (fun i ↦ obuBuySig_mem φ P j i) N).1
-  linarith
-
 /-- Day-`n` coefficient of varying-sentence rung `j`. -/
 def obuCoef (φ : ℕ → Sentence) (j n : ℕ) : EF :=
-  .mul (.const (j : ℚ))
-    (.mul (armChain (obuBuySig φ j) n) (obuBuySig φ j n))
-
-lemma obuCoef_denote (φ : ℕ → Sentence) (P : History) (j n : ℕ) :
-    (obuCoef φ j n).denote P = (j : ℝ) * obuShares φ P j n := by
-  simp only [obuCoef, EF.denote_mul, EF.denote_const, Pi.mul_apply, obuShares]
-  push_cast
-  ring
-
-lemma obuCoef_rank (φ : ℕ → Sentence) (j n : ℕ) :
-    (obuCoef φ j n).rank ≤ n := by
-  have h1 := armChain_rank (obuBuySig φ j)
-    (fun i ↦ (obuBuySig_rank φ j i).le) n
-  have h2 := (obuBuySig_rank φ j n).le
-  simp only [obuCoef, EF.rank, max_le_iff]
-  omega
+  ladderCoef (fun j => (j : ℚ)) (obuBuySig φ) j n
 
 /-- Sum of all live rungs on day `n`. -/
-def obuLadderEF (φ : ℕ → Sentence) (n : ℕ) : ℕ → EF
-  | 0 => .const 0
-  | (m + 1) => .add (obuLadderEF φ n m) (obuCoef φ (m + 1) n)
+def obuLadderEF (φ : ℕ → Sentence) (n m : ℕ) : EF :=
+  ladderEF (fun j => (j : ℚ)) (obuBuySig φ) n m
 
-lemma obuLadderEF_denote (φ : ℕ → Sentence) (P : History) (n : ℕ) : ∀ m,
-    (obuLadderEF φ n m).denote P =
-      ∑ k ∈ Finset.range m, ((k + 1 : ℕ) : ℝ) * obuShares φ P (k + 1) n
-  | 0 => by simp [obuLadderEF]
-  | (m + 1) => by
-      rw [obuLadderEF]
-      simp only [EF.denote_add, Pi.add_apply]
-      rw [obuLadderEF_denote φ P n m, Finset.sum_range_succ, obuCoef_denote]
-
-lemma obuLadderEF_rank (φ : ℕ → Sentence) (n : ℕ) : ∀ m,
-    (obuLadderEF φ n m).rank ≤ n
-  | 0 => by simp [obuLadderEF]
-  | (m + 1) => by
-      have h1 := obuLadderEF_rank φ n m
-      have h2 := obuCoef_rank φ (m + 1) n
-      simp only [obuLadderEF, EF.rank, max_le_iff]
-      omega
-
-/-- The varying-sentence scale-ladder trader used by Uniform Non-Dogmatism. -/
-def obuTrader (φ : ℕ → Sentence) : Trader where
-  strat n := {
-    trades := [(obuLadderEF φ n n, φ n)]
-    rank_le := by
-      intro p hp
-      simp only [List.mem_singleton] at hp
-      subst hp
-      exact obuLadderEF_rank φ n n }
-
-@[simp] lemma obuTrader_value (φ : ℕ → Sentence) (P : History)
-    (w : Valuation) (n : ℕ) :
-    ((obuTrader φ).strat n).value P w =
-      (obuLadderEF φ n n).denote P * (w (φ n) - P n (φ n)) := by
-  simp [obuTrader, Strategy.value]
-
-lemma obuTrader_netWorth (φ : ℕ → Sentence) (P : History)
-    (v : PCWorld) (m : ℕ) :
-    (obuTrader φ).netWorth P v m =
-      ∑ n ∈ Finset.range (m + 1), ∑ k ∈ Finset.range n,
-        ((k + 1 : ℕ) : ℝ) * obuShares φ P (k + 1) n *
-          (v.payout (φ n) - P n (φ n)) := by
-  simp only [Trader.netWorth, obuTrader_value, obuLadderEF_denote, Finset.sum_mul]
-
-/-! ## The exploitation argument -/
-
-/-- Swap the day/rung triangle in the ladder's finite accounting sum. -/
-private lemma obu_sum_range_triangle_comm (f : ℕ → ℕ → ℝ) (N : ℕ) :
-    ∑ n ∈ Finset.range N, ∑ k ∈ Finset.range n, f k n =
-      ∑ k ∈ Finset.range N, ∑ n ∈ Finset.Ico (k + 1) N, f k n := by
-  simp only [Finset.range_eq_Ico]
-  exact (Finset.sum_Ico_Ico_comm' 0 N (fun k n ↦ f k n)).symm
-
-/-- The `−1/j²` floor on what rung `j` can lose on a single day, in any world. Summing it
-over the ladder with `sum_inv_sq_le_two` gives the `−2` lower bound. -/
-lemma obuTerm_ge (φ : ℕ → Sentence) (P : History) (v : PCWorld)
-    {j : ℕ} (hj : 1 ≤ j) (n : ℕ) :
-    -(obuShares φ P j n * (1 / (j : ℝ) ^ 2)) ≤
-      (j : ℝ) * obuShares φ P j n * (v.payout (φ n) - P n (φ n)) := by
-  have hb := obuShares_nonneg φ P j n
-  rcases hb.lt_or_eq with hb' | hb'
-  · have hprice := obuBuySig_pos_imp φ P hj (obuShares_pos_sig hb')
-    have hpay : 0 ≤ v.payout (φ n) := by rw [PCWorld.payout]; split <;> norm_num
-    have hj1 : (1 : ℝ) ≤ (j : ℝ) := by exact_mod_cast hj
-    have hjb : 0 < (j : ℝ) * obuShares φ P j n := mul_pos (by linarith) hb'
-    have hge : -(1 / (j : ℝ) ^ 3) ≤ v.payout (φ n) - P n (φ n) := by linarith
-    calc
-      -(obuShares φ P j n * (1 / (j : ℝ) ^ 2)) =
-          (j : ℝ) * obuShares φ P j n * (-(1 / (j : ℝ) ^ 3)) := by
-            rw [← ndWeight_mul hj]
-            ring
-      _ ≤ _ := mul_le_mul_of_nonneg_left hge hjb.le
-  · rw [← hb']
-    norm_num
-
-/-- In a world satisfying the whole enumerated theory every purchased share is worth one,
-so no rung ever loses money. -/
-lemma obuTerm_nonneg (φ : ℕ → Sentence) (P : History) (v : PCWorld)
-    (hv : ∀ i, v.Holds (φ i)) {j : ℕ} (hj : 1 ≤ j) (n : ℕ) :
-    0 ≤ (j : ℝ) * obuShares φ P j n * (v.payout (φ n) - P n (φ n)) := by
-  have hb := obuShares_nonneg φ P j n
-  rcases hb.lt_or_eq with hb' | hb'
-  · have hprice := obuBuySig_pos_imp φ P hj (obuShares_pos_sig hb')
-    have hpay : v.payout (φ n) = 1 := by rw [PCWorld.payout, if_pos (hv n)]
-    have hle := ndCube_le_one hj
-    have hj1 : (1 : ℝ) ≤ (j : ℝ) := by exact_mod_cast hj
-    rw [hpay]
-    exact mul_nonneg (mul_nonneg (by linarith) hb'.le) (by linarith)
-  · rw [← hb']
-    norm_num
-
-/-- In such a world a day's purchase at rung `j` gains at least `j·shares·(1 − 1/j³)`, so a
-single full trigger already yields profit `j − 1`. -/
-lemma obuTerm_profit (φ : ℕ → Sentence) (P : History) (v : PCWorld)
-    (hv : ∀ i, v.Holds (φ i)) {j : ℕ} (hj : 1 ≤ j) (n : ℕ) :
-    (j : ℝ) * obuShares φ P j n * (1 - 1 / (j : ℝ) ^ 3) ≤
-      (j : ℝ) * obuShares φ P j n * (v.payout (φ n) - P n (φ n)) := by
-  have hpay : v.payout (φ n) = 1 := by rw [PCWorld.payout, if_pos (hv n)]
-  rw [hpay]
-  have hb := obuShares_nonneg φ P j n
-  rcases hb.lt_or_eq with hb' | hb'
-  · have hprice := obuBuySig_pos_imp φ P hj (obuShares_pos_sig hb')
-    have hj1 : (1 : ℝ) ≤ (j : ℝ) := by exact_mod_cast hj
-    exact mul_le_mul_of_nonneg_left (by linarith)
-      (mul_nonneg (by linarith) hb'.le)
-  · rw [← hb']
-    norm_num
+/-- The varying-sentence scale-ladder trader used by Uniform Non-Dogmatism: the scale ladder
+of `Properties/Support/Exploitation.lean` at the trigger family that reads each day's own
+enumerated member. -/
+def obuTrader (φ : ℕ → Sentence) : Trader :=
+  ladderTrader (fun j => (j : ℚ)) (obuBuySig φ) φ
+    (fun j i => (obuBuySig_rank φ j i).le)
 
 /-- The varying ladder exploits if every rung receives one full trigger and
-every finite deductive stage has a world satisfying the whole enumerated theory. -/
+every finite deductive stage has a world satisfying the whole enumerated theory.  The ladder
+economics are `ladderTrader_exploits`; this lane supplies the trigger's guarantee — a share
+of `φ n` is only bought below `1/j³`, where a world satisfying the whole enumeration pays
+`1`. -/
 lemma obuTrader_exploits
     (P : History) (DP : DeductiveProcess) (φ : ℕ → Sentence)
     (hjoint : ∀ n, ∃ v : PCWorld,
       v.ConsistentWith (DP.D n) ∧ ∀ i, v.Holds (φ i))
     (hfire : ∀ j, 1 ≤ j → ∃ n, j ≤ n ∧ P n (φ n) < ((ndThr j : ℚ) : ℝ)) :
     (obuTrader φ).Exploits P DP := by
-  refine exploits_of_bddBelow_of_unbounded _ _ _ 2 ?_ ?_
-  · rintro x ⟨m, v, hv, rfl⟩
-    rw [obuTrader_netWorth, obu_sum_range_triangle_comm]
-    have hk : ∀ k ∈ Finset.range (m + 1),
-        -((1 : ℝ) / ((k + 1 : ℕ) : ℝ) ^ 2) ≤
-          ∑ n ∈ Finset.Ico (k + 1) (m + 1),
-            ((k + 1 : ℕ) : ℝ) * obuShares φ P (k + 1) n *
-              (v.payout (φ n) - P n (φ n)) := by
-      intro k hkm
-      have hj : 1 ≤ k + 1 := by omega
-      have hsum := obuShares_sum_le_one φ P
-        (j := k + 1) (N := m + 1)
-        (by simp only [Finset.mem_range] at hkm; omega)
-      have hw2 : (0 : ℝ) ≤ 1 / ((k + 1 : ℕ) : ℝ) ^ 2 := by positivity
-      calc
-        -((1 : ℝ) / ((k + 1 : ℕ) : ℝ) ^ 2) ≤
-            -((∑ n ∈ Finset.Ico (k + 1) (m + 1), obuShares φ P (k + 1) n) *
-              (1 / ((k + 1 : ℕ) : ℝ) ^ 2)) := by
-                have h1 := mul_le_mul_of_nonneg_right hsum hw2
-                rw [one_mul] at h1
-                linarith
-        _ = ∑ n ∈ Finset.Ico (k + 1) (m + 1),
-              -(obuShares φ P (k + 1) n *
-                (1 / ((k + 1 : ℕ) : ℝ) ^ 2)) := by
-              rw [Finset.sum_neg_distrib, ← Finset.sum_mul]
-        _ ≤ _ := Finset.sum_le_sum (fun n _ ↦ obuTerm_ge φ P v hj n)
-    calc
-      (-2 : ℝ) ≤ -∑ k ∈ Finset.range (m + 1),
-          (1 : ℝ) / ((k + 1 : ℕ) : ℝ) ^ 2 := by
-            have := sum_inv_sq_le_two (m + 1)
-            linarith
-      _ = ∑ k ∈ Finset.range (m + 1),
-          -((1 : ℝ) / ((k + 1 : ℕ) : ℝ) ^ 2) := by
-            rw [Finset.sum_neg_distrib]
-      _ ≤ _ := Finset.sum_le_sum hk
-  · intro B
-    obtain ⟨j', hj'⟩ := exists_nat_gt B
-    have hj : 1 ≤ j' + 1 := by omega
-    obtain ⟨n₀, hn₀, hdip⟩ := hfire (j' + 1) hj
-    obtain ⟨v, hv, hvφ⟩ := hjoint n₀
-    refine ⟨(obuTrader φ).netWorth P v n₀, ⟨n₀, v, hv, rfl⟩, ?_⟩
-    rw [obuTrader_netWorth, obu_sum_range_triangle_comm]
-    have hterm : ∀ k ∈ Finset.range (n₀ + 1),
-        0 ≤ ∑ n ∈ Finset.Ico (k + 1) (n₀ + 1),
-          ((k + 1 : ℕ) : ℝ) * obuShares φ P (k + 1) n *
-            (v.payout (φ n) - P n (φ n)) :=
-      fun k _ ↦ Finset.sum_nonneg
-        (fun n _ ↦ obuTerm_nonneg φ P v hvφ (by omega) n)
-    have hjmem : j' ∈ Finset.range (n₀ + 1) := Finset.mem_range.mpr (by omega)
-    have harm0 : (armChain (obuBuySig φ (j' + 1)) (n₀ + 1)).denote P = 0 := by
-      rw [armChain_denote_succ, obuBuySig_eq_one φ P hj hn₀ hdip]
-      ring
-    have hsum1 : ∑ n ∈ Finset.Ico (j' + 1) (n₀ + 1),
-        obuShares φ P (j' + 1) n = 1 := by
-      rw [obuShares_sum φ P (by omega), harm0, sub_zero]
-    have hj1 : (1 : ℝ) ≤ ((j' + 1 : ℕ) : ℝ) := by exact_mod_cast hj
-    have hslice : ((j' + 1 : ℕ) : ℝ) - 1 ≤
-        ∑ n ∈ Finset.Ico (j' + 1) (n₀ + 1),
-          ((j' + 1 : ℕ) : ℝ) * obuShares φ P (j' + 1) n *
-            (v.payout (φ n) - P n (φ n)) := by
-      calc
-        ((j' + 1 : ℕ) : ℝ) - 1 ≤
-            ((j' + 1 : ℕ) : ℝ) *
-              (1 - 1 / ((j' + 1 : ℕ) : ℝ) ^ 3) := by
-                have hsq : 1 / ((j' + 1 : ℕ) : ℝ) ^ 2 ≤ 1 := by
-                  rw [div_le_one (by positivity)]
-                  nlinarith
-                nlinarith [ndWeight_mul (j := j' + 1) hj]
-        _ = ∑ n ∈ Finset.Ico (j' + 1) (n₀ + 1),
-              ((j' + 1 : ℕ) : ℝ) * obuShares φ P (j' + 1) n *
-                (1 - 1 / ((j' + 1 : ℕ) : ℝ) ^ 3) := by
-              have hfac : ∑ n ∈ Finset.Ico (j' + 1) (n₀ + 1),
-                    ((j' + 1 : ℕ) : ℝ) * obuShares φ P (j' + 1) n *
-                      (1 - 1 / ((j' + 1 : ℕ) : ℝ) ^ 3) =
-                  (((j' + 1 : ℕ) : ℝ) *
-                    (1 - 1 / ((j' + 1 : ℕ) : ℝ) ^ 3)) *
-                    ∑ n ∈ Finset.Ico (j' + 1) (n₀ + 1),
-                      obuShares φ P (j' + 1) n := by
-                rw [Finset.mul_sum]
-                exact Finset.sum_congr rfl (fun n _ ↦ by ring)
-              rw [hfac, hsum1, mul_one]
-        _ ≤ _ := Finset.sum_le_sum
-          (fun n _ ↦ obuTerm_profit φ P v hvφ hj n)
-    have hB : B < ((j' + 1 : ℕ) : ℝ) - 1 := by push_cast; linarith
-    have hsingle := Finset.single_le_sum hterm hjmem
+  refine ladderTrader_exploits (pay := fun v n => v.payout (φ n) - P n (φ n))
+    (Good := fun v => ∀ i, v.Holds (φ i)) _ (fun j i => obuBuySig_mem φ P j i)
+    (fun j i hi => obuBuySig_denote_pad φ P hi)
+    (fun v j n => by push_cast; ring) ?_ ?_ ?_
+  · intro v j n hj hpos
+    have hprice := obuBuySig_pos_imp φ P hj hpos
+    have hpay : 0 ≤ v.payout (φ n) := by rw [PCWorld.payout]; split <;> norm_num
     linarith
+  · intro v hv j n hj hpos
+    have hprice := obuBuySig_pos_imp φ P hj hpos
+    have hpay : v.payout (φ n) = 1 := by rw [PCWorld.payout, if_pos (hv n)]
+    rw [hpay]
+    linarith
+  · intro j hj
+    obtain ⟨n₀, hn₀, hdip⟩ := hfire j hj
+    obtain ⟨v, hv, hvφ⟩ := hjoint n₀
+    exact ⟨n₀, hn₀, obuBuySig_eq_one φ P hj hn₀ hdip, v, hv, hvφ⟩
+
 
 /-! ## Uniform token emission -/
 
@@ -360,61 +144,62 @@ lemma serialize_obuCoef (φ : ℕ → Sentence) (j n : ℕ) :
       [1, Encodable.encode ((j : ℚ))] ++
         (armChain (obuBuySig φ j) n).serialize ++
         (obuBuySig φ j n).serialize ++ [3, 3] := by
-  simp [obuCoef, EF.serialize, List.append_assoc]
+  simp [obuCoef, ladderCoef, EF.serialize, List.append_assoc]
 
 lemma serialize_obuLadderEF (φ : ℕ → Sentence) (n : ℕ) : ∀ m,
     (obuLadderEF φ n m).serialize =
       [1, Encodable.encode ((0 : ℚ))] ++
         (List.range m).flatMap
           (fun j' ↦ (obuCoef φ (j' + 1) n).serialize ++ [2])
-  | 0 => by simp [obuLadderEF, EF.serialize]
+  | 0 => by simp [obuLadderEF, ladderEF, EF.serialize]
   | (m + 1) => by
-      rw [obuLadderEF]
+      rw [obuLadderEF, ladderEF]
       simp only [EF.serialize]
-      rw [serialize_obuLadderEF φ n m, List.range_succ,
+      rw [show ladderEF (fun j => (j : ℚ)) (obuBuySig φ) n m = obuLadderEF φ n m from rfl,
+        show ladderCoef (fun j => (j : ℚ)) (obuBuySig φ) (m + 1) n
+            = obuCoef φ (m + 1) n from rfl,
+        serialize_obuLadderEF φ n m, List.range_succ,
         List.flatMap_append, List.flatMap_singleton]
       simp [List.append_assoc]
 
 /-- Spliced varying-sentence buy-signal emitter: the sentence slot draws blocks from
-a `MachineSentenceCodes` certificate, admitting deep enumerations.  The two rational
-constants arrive value-metered and are written out through `BigDigits.of_polyFueled` and
-`BigDigits.toMachine`; the day index is the reindexer's own ruler. -/
+a `MachineSentenceCodes` certificate, admitting deep enumerations, and the two rational
+constants from `MachineDigits` writers.  Every premise is at the machine class the
+conclusion is; a caller holding fuel certificates crosses by `BigDigits.of_polyFueled` and
+`BigDigits.toMachine`. -/
 lemma obuBuySig_spliceStream_comp
     {φ : ℕ → Sentence} (hφ : MachineSentenceCodes φ)
-    {af δf : ℕ → ℚ} {cj : Nat.Partrec.Code} {jf : ℕ → ℕ}
-    (hj : PolyFueled cj jf)
-    (ha : ∃ c, PolyFueled c (fun m ↦ Encodable.encode (af m + δf m)))
-    (hd : ∃ c, PolyFueled c (fun m ↦ Encodable.encode (1 / δf m))) :
+    {af δf : ℕ → ℚ} {jf : ℕ → ℕ}
+    (hj : UnaryRuler jf)
+    (ha : MachineDigits (fun m ↦ Encodable.encode (af m + δf m)))
+    (hd : MachineDigits (fun m ↦ Encodable.encode (1 / δf m))) :
     MachineSpliceStream (fun m ↦
-      (buyIndEF (φ (jf m)) (af m) (δf m) (jf m)).serialize) := by
-  obtain ⟨ca, hca⟩ := ha
-  obtain ⟨cd, hcd⟩ := hd
-  have hjr : UnaryRuler jf := UnaryRuler.of_polyFueled hj
-  exact MachineSpliceStream.serialize_clip01 (MachineSpliceStream.serialize_mul
+      (buyIndEF (φ (jf m)) (af m) (δf m) (jf m)).serialize) :=
+  MachineSpliceStream.serialize_clip01 (MachineSpliceStream.serialize_mul
     (MachineSpliceStream.serialize_add
-      (MachineSpliceStream.serialize_const_write
-        (BigDigits.toMachine (BigDigits.of_polyFueled hca)))
+      (MachineSpliceStream.serialize_const_write ha)
       (MachineSpliceStream.serialize_mul (MachineSpliceStream.serialize_const (-1))
-        (MachineSpliceStream.serialize_price hφ hjr
-          (MachineDigits.ofUnaryRuler hjr))))
-    (MachineSpliceStream.serialize_const_write
-      (BigDigits.toMachine (BigDigits.of_polyFueled hcd))))
+        (MachineSpliceStream.serialize_price hφ hj
+          (MachineDigits.ofUnaryRuler hj))))
+    (MachineSpliceStream.serialize_const_write hd))
 
 /-- Spliced arm-update block. -/
 lemma obuArmBlock_spliceStream (φ : ℕ → Sentence) (hφ : MachineSentenceCodes φ) :
     MachineSpliceStream
       (fun x ↦ obuArmBlock φ (x.unpair.1.unpair.2 + 1) x.unpair.2) := by
+  obtain ⟨_, hsum⟩ := encode_thrSum_polyFueled
+    (PolyFueled.right.comp PolyFueled.left) PolyFueled.right
+  obtain ⟨_, hrecip⟩ := encode_thrRecip_polyFueled
+    (PolyFueled.right.comp PolyFueled.left) PolyFueled.right
   have hbuy : MachineSpliceStream (fun x ↦
       (obuBuySig φ (x.unpair.1.unpair.2 + 1) x.unpair.2).serialize) := by
     simpa only [obuBuySig, ndBuySig] using
       obuBuySig_spliceStream_comp hφ
         (af := fun x ↦ ndThr (x.unpair.1.unpair.2 + 1))
         (δf := fun x ↦ ndPadThr (x.unpair.1.unpair.2 + 1) x.unpair.2)
-        PolyFueled.right
-        (encode_thrSum_polyFueled
-          (PolyFueled.right.comp PolyFueled.left) PolyFueled.right)
-        (encode_thrRecip_polyFueled
-          (PolyFueled.right.comp PolyFueled.left) PolyFueled.right)
+        (UnaryRuler.of_polyFueled PolyFueled.right)
+        (BigDigits.toMachine (BigDigits.of_polyFueled hsum))
+        (BigDigits.toMachine (BigDigits.of_polyFueled hrecip))
   exact (MachineSpliceStream.serialize_oneMinus hbuy).append
     (MachineSpliceStream.tag 3 (by norm_num))
 
@@ -435,15 +220,17 @@ lemma obuChunkSeg_spliceStream
       (MachineDigits.const (Encodable.encode ((1 : ℚ))))
   have segC := (obuArmBlock_spliceStream φ hφ).concatVar
     (UnaryRuler.unpairFst)
+  obtain ⟨_, hsum⟩ := encode_thrSum_polyFueled PolyFueled.right PolyFueled.left
+  obtain ⟨_, hrecip⟩ := encode_thrRecip_polyFueled PolyFueled.right PolyFueled.left
   have segD : MachineSpliceStream (fun m ↦
       (obuBuySig φ (m.unpair.2 + 1) m.unpair.1).serialize) := by
     simpa only [obuBuySig, ndBuySig] using
       obuBuySig_spliceStream_comp hφ
         (af := fun m ↦ ndThr (m.unpair.2 + 1))
         (δf := fun m ↦ ndPadThr (m.unpair.2 + 1) m.unpair.1)
-        PolyFueled.left
-        (encode_thrSum_polyFueled PolyFueled.right PolyFueled.left)
-        (encode_thrRecip_polyFueled PolyFueled.right PolyFueled.left)
+        (UnaryRuler.of_polyFueled PolyFueled.left)
+        (BigDigits.toMachine (BigDigits.of_polyFueled hsum))
+        (BigDigits.toMachine (BigDigits.of_polyFueled hrecip))
   have segE : MachineSpliceStream (fun _ : ℕ ↦ [3, 3, 2]) :=
     ((MachineSpliceStream.tag 3 (by norm_num)).append
       (MachineSpliceStream.tag 3 (by norm_num))).append

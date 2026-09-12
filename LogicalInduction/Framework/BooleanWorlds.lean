@@ -38,7 +38,7 @@ closed (`isClosed_consistentWith`), and affine sublevel sets are closed
 (`isClosed_affineValue_le`). `eventually_affineValue_gt_of_theory` is the uniform form §4.5
 needs: a strict bound holding in every completed-theory world holds in every plausible world
 from some finite stage on, by a compact-product argument over
-`affineCompactConstraint`. `exists_consistentWithTheory` is the §4-local spelling of
+`affineCompactConstraint`. The compactness step itself is
 `DeductiveProcess.exists_consistentWithTheory` (`Framework/Compactness.lean`).
 
 The toolkit is consumed by `Properties/Support/SettlementDecision.lean` (the finite-world
@@ -117,6 +117,110 @@ lemma PCWorld.holds_congr_atomCodes {v v' : PCWorld} :
       rw [hφ, hψ]
 
 end AtomCodes
+
+/-! ## Bit strings of a fixed length
+
+The finite enumeration every bounded world check runs over.  It is stated at `List Bool`
+rather than at `Fin n → Bool` so that the compiled checks stay functions of `Primcodable`
+arguments, and it is here rather than in a lane file because three lanes consume it: the
+settlement decision procedure, the universal prefix machine's prefix test, and the strict
+separator classes. -/
+
+/-- Every Boolean list of a given length. -/
+def allBitLists : ℕ → List (List Bool)
+  | 0 => [[]]
+  | n + 1 => (allBitLists n).flatMap (fun l => [false :: l, true :: l])
+
+lemma mem_allBitLists : ∀ (n : ℕ) (l : List Bool), l ∈ allBitLists n ↔ l.length = n
+  | 0, l => by
+      simp only [allBitLists, List.mem_singleton]
+      exact ⟨fun h => by rw [h]; rfl, fun h => List.length_eq_zero_iff.mp h⟩
+  | n + 1, l => by
+      simp only [allBitLists, List.mem_flatMap, List.mem_cons,
+        List.not_mem_nil, or_false]
+      constructor
+      · rintro ⟨t, ht, rfl | rfl⟩ <;>
+          simp [(mem_allBitLists n t).1 ht]
+      · intro h
+        cases l with
+        | nil => simp at h
+        | cons b t =>
+            refine ⟨t, (mem_allBitLists n t).2 (by simpa using h), ?_⟩
+            cases b <;> simp
+
+/-- The enumeration lists each string once, so a `Finset` may be read off it. -/
+lemma allBitLists_nodup (n : ℕ) : (allBitLists n).Nodup := by
+  induction n with
+  | zero => simp [allBitLists]
+  | succ n ih =>
+      rw [allBitLists]
+      refine List.nodup_flatMap.2 ⟨fun σ _ ↦ by simp, List.Pairwise.imp ?_ ih⟩
+      intro a b hab
+      simp only [Function.onFun, List.disjoint_left, List.mem_cons,
+        List.not_mem_nil, or_false]
+      rintro x (rfl | rfl) <;> rintro (h | h) <;> simp_all
+
+/-- The enumeration is primitive recursive: one `Nat.rec` over the doubling step. -/
+lemma allBitLists_prim : Primrec allBitLists := by
+  have hcons : Primrec₂ (fun (_ : ℕ × List (List Bool)) (l : List Bool) =>
+      [false :: l, true :: l]) :=
+    Primrec₂.mk (Primrec.list_cons.comp
+      (Primrec.list_cons.comp (Primrec.const false) Primrec.snd)
+      (Primrec.list_cons.comp (Primrec.list_cons.comp (Primrec.const true) Primrec.snd)
+        (Primrec.const ([] : List (List Bool)))))
+  have hstep : Primrec₂ (fun (_ : ℕ) (l : List (List Bool)) =>
+      l.flatMap (fun w => [false :: w, true :: w])) :=
+    Primrec₂.mk (Primrec.list_flatMap Primrec.snd hcons)
+  refine (Primrec.nat_rec₁ ([[]] : List (List Bool)) hstep).of_eq (fun k => ?_)
+  induction k with
+  | zero => rfl
+  | succ k ih => rw [allBitLists, ← ih]
+
+/-! ### The prefix relation, decidably
+
+`List.IsPrefix` has a `DecidableEq`-driven decision procedure in Mathlib but no
+computability certificate, and every lane that *runs* a prefix test needs one.  It is one
+bounded search over `allBitLists`: `u <+: v` iff some bit string of length `|v| - |u|`
+extends `u` to `v`. -/
+
+/-- A prefix is an extension by a string of the length difference. -/
+lemma prefix_iff_mem_allBitLists (u v : List Bool) :
+    u <+: v ↔ ∃ w ∈ allBitLists (v.length - u.length), u ++ w = v := by
+  constructor
+  · rintro ⟨w, rfl⟩
+    exact ⟨w, (mem_allBitLists _ w).mpr (by simp), rfl⟩
+  · rintro ⟨w, -, rfl⟩
+    exact List.prefix_append _ _
+
+/-- **The prefix relation on bit strings is primitive recursive.** -/
+lemma isPrefix_prim : PrimrecRel (fun u v : List Bool => u <+: v) := by
+  have hR : PrimrecRel (fun (w : List Bool) (p : List Bool × List Bool) => p.1 ++ w = p.2) :=
+    Primrec.eq.comp (Primrec.list_append.comp (Primrec.fst.comp Primrec.snd) Primrec.fst)
+      (Primrec.snd.comp Primrec.snd)
+  have hL : Primrec (fun p : List Bool × List Bool =>
+      allBitLists (p.2.length - p.1.length)) :=
+    allBitLists_prim.comp (Primrec.nat_sub.comp (Primrec.list_length.comp Primrec.snd)
+      (Primrec.list_length.comp Primrec.fst))
+  have h := (PrimrecRel.exists_mem_list hR).comp₂
+    (Primrec₂.mk (f := fun u v : List Bool => allBitLists (v.length - u.length)) hL)
+    (Primrec₂.mk (f := fun u v : List Bool => (u, v)) (Primrec.fst.pair Primrec.snd))
+  exact h.of_eq (fun u v => (prefix_iff_mem_allBitLists u v).symm)
+
+/-- The Boolean reading, for compilers that *run* the prefix test: `decide (u <+: v)` is a
+primitive recursive `Bool`-valued function of the pair. -/
+lemma isPrefixB_prim : Primrec fun p : List Bool × List Bool => decide (p.1 <+: p.2) := by
+  obtain ⟨_, h⟩ := isPrefix_prim
+  exact h.of_eq fun p => by simp
+
+/-- Two opposite one-symbol extensions of the same node cannot both be prefixes of one
+string. -/
+lemma concat_prefix_conflict {α : Type*} {σ l : List α} {a b : α} (hab : a ≠ b)
+    (h0 : σ ++ [a] <+: l) (h1 : σ ++ [b] <+: l) : False := by
+  obtain ⟨t₀, ht₀⟩ := h0
+  obtain ⟨t₁, ht₁⟩ := h1
+  rw [List.append_assoc] at ht₀ ht₁
+  have h := List.append_cancel_left (ht₀.trans ht₁.symm)
+  exact hab (List.cons.inj h).1
 
 /-! ## Boolean worlds and finite-support payouts -/
 
@@ -396,13 +500,5 @@ lemma eventually_affineValue_gt_of_theory
     simpa [affineCompactConstraint] using hnone
   have := hall b.toPCWorld hbtheory
   exact (not_lt_of_ge hbvalue) this
-
-/-- Nonempty finite-stage plausible sets have a world in their nested intersection, i.e.
-a world consistent with the completed theory. The compactness argument itself lives in
-`Framework/Compactness.lean`; this is the §4.5-local spelling of it. -/
-lemma exists_consistentWithTheory (DP : DeductiveProcess)
-    (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
-    ∃ v : PCWorld, v.ConsistentWithTheory DP :=
-  DP.exists_consistentWithTheory hworld
 
 end LogicalInduction

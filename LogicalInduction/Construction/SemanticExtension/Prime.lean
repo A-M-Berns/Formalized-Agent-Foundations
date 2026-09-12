@@ -10,7 +10,7 @@ The compact-name layer for the semantic extension of the market language, togeth
 representation-boundary result that fixes what a name may be allowed to mean.  The name layer
 is not a paper node — it supplies the atom namespace the rest of the lane prices against, and
 feeds `thm:ccee`'s exact-product route.  The boundary result is: the strengthened obstruction
-`no_nonvacuous_worldValued_presented_of_rpn` carries `thm:ccee`, and is inventoried in
+`no_nonvacuous_worldValued_presented_of_machine` carries `thm:ccee`, and is inventoried in
 `AxiomAudit.lean`, because it is what says why that node's exact route admits sources through
 proof-carrying gates rather than universally.
 
@@ -37,17 +37,17 @@ tag-`0` semantic-source schema.  No non-vacuous fixed process can wrap every suc
 `PresentedLUVSeq` while identifying the wrapper's thresholds with the original thresholds in
 all completed worlds.
 
-The two objects of proof are `semanticDiagonalLUVSeq` — thresholds are the *negations* of the
-schema-`n` leaf at index `n` — and `semanticValuedDiagonalLUVSeq`, a genuine indicator-style
-`[0,1]` LUV with value `1` when the distinguished proposition is false.  Both are certified
-`LUV.MachineThresholdCodeSeq`, so neither is excluded by the paper-facing premise.  The
-obstruction is `no_nonvacuous_universal_presented_of_rpn`: an unrestricted fixed-process
-`presented_of_rpn` plus stage-wise non-vacuity is inconsistent, the contradiction occurring at
-the presentation's own schema index `Xhat.thresholdSchema.unpair.2`.
+The object of proof is `semanticValuedDiagonalLUVSeq`, a genuine indicator-style `[0,1]` LUV
+with value `1` when the distinguished proposition is false.  It is certified
+`LUV.MachineThresholdCodeSeq`, so it is not excluded by the paper-facing premise, and it
+*also* satisfies closed CCEE's completed-world valuedness premise.  The obstruction is
+`no_nonvacuous_worldValued_presented_of_machine`: an unrestricted fixed-process
+`presented_of_machine` plus stage-wise non-vacuity is inconsistent, the contradiction
+occurring at the presentation's own schema index `Xhat.thresholdSchema.unpair.2`
+(`not_reflected_of_negates_own_schema` is the shared diagonal step).
 
 That is why every downstream admission gate in this directory is proof-carrying or
-entailment-checked rather than universal.  `no_nonvacuous_worldValued_presented_of_rpn` is the
-strengthened form: it rules out even a world-valued wrapper.
+entailment-checked rather than universal.
 
 ## What this module puts on the consumer surface
 
@@ -56,13 +56,14 @@ five of its declarations as the §4.8 presented-LUV vocabulary a client states a
 source in — `PresentedLUVSeq` with its `gt_eq` simp lemma, the handle-named family
 `semanticHandleLUVSeq` with its `def:ec` certificate
 `semanticHandleLUVSeq_machineThresholdCodeSeq`, and the obstruction
-`no_nonvacuous_worldValued_presented_of_rpn` — and `APITests/LogicalInduction.lean` exercises
+`no_nonvacuous_worldValued_presented_of_machine` — and `APITests/LogicalInduction.lean` exercises
 all five.
 
 -/
 
 namespace LogicalInduction
 
+section
 open LO LO.Propositional LO.FirstOrder LO.FirstOrder.Arithmetic
 
 /-! ## The compact handle -/
@@ -75,13 +76,6 @@ def semanticPrimeCode (schema input : ℕ) : ℕ :=
 def semanticPrimeSentence (schema input : ℕ) : Sentence :=
   Formula.atom (semanticPrimeCode schema input)
 
-/-- Distinct schema/input pairs have distinct public names. -/
-lemma semanticPrimeCode_injective :
-    Function.Injective (fun p : ℕ × ℕ => semanticPrimeCode p.1 p.2) := by
-  rintro ⟨s₁, i₁⟩ ⟨s₂, i₂⟩ h
-  simp only [semanticPrimeCode, Nat.pair_eq_pair] at h
-  exact Prod.ext h.2.1 h.2.2
-
 /-- Naming a handle is primitive recursive in its schema and input, which is what lets a
 fixed process enumerate handle sentences (`Construction/SemanticExtension/Source.lean`). -/
 lemma semanticPrimeSentence_encode_prim : Primrec fun p : ℕ × ℕ =>
@@ -92,14 +86,10 @@ lemma semanticPrimeSentence_encode_prim : Primrec fun p : ℕ × ℕ =>
 
 /-! ## The schema language -/
 
-/-- Leaf schema names occupy the tag-`0` branch of the self-describing schema language. -/
+/-- Leaf schema names occupy the tag-`0` branch of the self-describing schema language:
+`semanticSourceSchema code` names the emitted-source program `code`.  Tag `1` is the product
+constructor and tag `2` the quotation aliases, so no handle gets two meanings. -/
 def semanticSourceSchema (base : ℕ) : ℕ := Nat.pair 0 base
-
-/-- Generic emitted-source programs share the tag-`0` leaf branch: `semanticEmitterSchema code`
-names the emitted-source program `code`.  Tag `1` is the product constructor and tag `2` the
-quotation aliases, so no handle gets two meanings (`semanticEmitterSchema_ne_quote`). -/
-def semanticEmitterSchema (code : ℕ) : ℕ :=
-  semanticSourceSchema code
 
 /-- Quotation aliases occupy the tag-`2` branch of the schema language:
 `semanticQuoteSchema code` names the universal quotation selector `code`
@@ -108,24 +98,11 @@ def semanticEmitterSchema (code : ℕ) : ℕ :=
 def semanticQuoteSchema (code : ℕ) : ℕ :=
   Nat.pair 2 code
 
-@[simp] lemma semanticEmitterSchema_source (code : ℕ) :
-    (semanticEmitterSchema code).unpair.1 = 0 := by
-  simp [semanticEmitterSchema, semanticSourceSchema]
-
-@[simp] lemma semanticQuoteSchema_source (code : ℕ) :
-    (semanticQuoteSchema code).unpair.1 = 2 := by
-  simp [semanticQuoteSchema]
-
-/-- Emitted-source programs and quotation aliases never share a schema selector: this is the
-disjointness the schema language rests on. -/
-lemma semanticEmitterSchema_ne_quote (emitter quote : ℕ) :
-    semanticEmitterSchema emitter ≠ semanticQuoteSchema quote := by
-  intro h
-  simp [semanticEmitterSchema, semanticQuoteSchema, semanticSourceSchema,
-    Nat.pair_eq_pair] at h
+@[simp] lemma semanticSourceSchema_source (code : ℕ) :
+    (semanticSourceSchema code).unpair.1 = 0 := by
+  simp [semanticSourceSchema]
 
 /-! ## Handle-named LUV families -/
-
 /-- The ordinary `LUV` family named by one compact semantic schema. -/
 def semanticHandleLUVSeq (schema n : ℕ) : LUV where
   gt r := semanticPrimeSentence schema (Nat.pair n (Encodable.encode r))
@@ -190,21 +167,21 @@ structure PresentedLUVSeq where
       (Nat.pair n (Encodable.encode r))
 
 /-- **`PresentedLUVSeq` is inhabited unconditionally.**  Every emitter schema names a
-family: the handle sequence `semanticHandleLUVSeq (semanticEmitterSchema e)` is a family of
+family: the handle sequence `semanticHandleLUVSeq (semanticSourceSchema e)` is a family of
 logically uncertain variables whose thresholds *are* their own handles by definition, so the
 naming identity is `rfl` and the emission certificate is
 `semanticHandleLUVSeq_machineThresholdCodeSeq`.  The selector lies in the tag-`0` leaf branch
-by `semanticEmitterSchema_source`.
+by `semanticSourceSchema_source`.
 
 Kind `N+` non-vacuity witness; provenance (a) derived in-project.
 
 What this does **not** establish is that a presented family reflects an arbitrary source:
-that is exactly what `no_nonvacuous_worldValued_presented_of_rpn` refutes below for a
+that is exactly what `no_nonvacuous_worldValued_presented_of_machine` refutes below for a
 non-vacuous process. -/
 def presentedLUVSeq (e : ℕ) : PresentedLUVSeq where
-  thresholdSchema := semanticEmitterSchema e
-  source_schema := semanticEmitterSchema_source e
-  toLUV := semanticHandleLUVSeq (semanticEmitterSchema e)
+  thresholdSchema := semanticSourceSchema e
+  source_schema := semanticSourceSchema_source e
+  toLUV := semanticHandleLUVSeq (semanticSourceSchema e)
   threshold_codes := semanticHandleLUVSeq_machineThresholdCodeSeq _
   threshold_named := fun _ _ => rfl
 
@@ -217,33 +194,28 @@ namespace PresentedLUVSeq
 
 end PresentedLUVSeq
 
-end LogicalInduction
+end
 
-namespace LogicalInduction
-
+section
 open LO LO.Propositional
 
 private lemma natPair_zero_zero : Nat.pair 0 0 = 0 := by rfl
 
-private lemma encodeRat_zero : Encodable.encode (0 : ℚ) = Nat.pair 0 1 := by rfl
-
-attribute [local irreducible] Nat.sqrt
-
 /-! ## The canonical naming program -/
 
 /-- A canonical total naming program can be selected directly from the existing
-`RpnThresholdCodeSeq` certificate.  No extra named-code premise is needed. -/
-noncomputable def rpnThresholdSourceCode {X : ℕ → LUV}
+`LUV.MachineThresholdCodeSeq` certificate.  No extra named-code premise is needed. -/
+noncomputable def machineThresholdSourceCode {X : ℕ → LUV}
     (hX : LUV.MachineThresholdCodeSeq X) : Nat.Partrec.Code :=
   Classical.choose hX.exists_code
 
 /-- Exact specification of the selected naming program on the certificate's packed
 `⟨n,⟨k,i⟩⟩` inputs. -/
-lemma rpnThresholdSourceCode_spec {X : ℕ → LUV}
+lemma machineThresholdSourceCode_spec {X : ℕ → LUV}
     (hX : LUV.MachineThresholdCodeSeq X) (m : ℕ) :
     Encodable.encode ((X m.unpair.1).gt
       ((m.unpair.2.unpair.2 : ℚ) / (m.unpair.2.unpair.1 : ℚ))) ∈
-      (rpnThresholdSourceCode hX).eval m :=
+      (machineThresholdSourceCode hX).eval m :=
   Classical.choose_spec hX.exists_code m
 
 /-! ## The source-language separation invariant -/
@@ -253,43 +225,6 @@ def SemanticPrimeFreshLUVSeq (X : ℕ → LUV) : Prop :=
   ∀ n r, SemanticPrimeFreshSentence ((X n).gt r)
 
 /-! ## The threshold diagonal -/
-
-/-- At index `n`, negate the semantic leaf belonging to the `n`th source schema.  Whichever
-tag-`0` schema a proposed presentation chooses, the source attacks it at one index. -/
-def semanticDiagonalLUVSeq (n : ℕ) : LUV where
-  gt r := ∼semanticPrimeSentence (semanticSourceSchema n)
-    (Nat.pair n (Encodable.encode r))
-
-@[simp] lemma semanticDiagonalLUVSeq_gt (n : ℕ) (r : ℚ) :
-    (semanticDiagonalLUVSeq n).gt r =
-      ∼semanticPrimeSentence (semanticSourceSchema n)
-        (Nat.pair n (Encodable.encode r)) := rfl
-
-/-- The diagonal family is already efficiently codeable in the stronger whole-value
-interface.  Thus it is not excluded by the paper-facing `RpnThresholdCodeSeq` premise. -/
-lemma semanticDiagonalLUVSeq_polyThresholdCodeSeq :
-    LUV.PolyThresholdCodeSeq semanticDiagonalLUVSeq := by
-  have hn := PolyFueled.left
-  have hk := PolyFueled.left.comp PolyFueled.right
-  have hi := PolyFueled.right.comp PolyFueled.right
-  obtain ⟨cmesh, meshPF⟩ := encode_natDiv_polyFueled hi hk
-  have schemaPF := (PolyFueled.const 0).pair hn
-  have atomPF := ((PolyFueled.const 1).pair
-    ((PolyFueled.const semanticPrimeTag).pair
-      (schemaPF.pair (hn.pair meshPF)))).succ_comp
-  have negPF := ((PolyFueled.const 2).pair
-    (atomPF.pair (PolyFueled.const 1))).succ_comp
-  refine ⟨_, negPF.of_eq (fun m => ?_)⟩
-  conv_rhs =>
-    rw [semanticDiagonalLUVSeq_gt, semanticPrimeSentence, semanticPrimeCode,
-      semanticSourceSchema, encode_negAtom, natPair_zero_zero, Nat.zero_add]
-
-/-- The same diagonal family satisfies the exact source premise proposed for
-`presented_of_rpn`. -/
-lemma semanticDiagonalLUVSeq_machineThresholdCodeSeq :
-    LUV.MachineThresholdCodeSeq semanticDiagonalLUVSeq :=
-  RpnSentenceCodes.toMachine (LUV.RpnThresholdCodeSeq.ofPolyThresholdCodeSeq
-    semanticDiagonalLUVSeq_polyThresholdCodeSeq)
 
 /-- **The diagonal argument.**  A source whose threshold at `0` negates the schema-`n` leaf
 at index `n` cannot be reflected by any `PresentedLUVSeq` in a completed world: the
@@ -314,33 +249,7 @@ lemma not_reflected_of_negates_own_schema (DP : DeductiveProcess) (Xhat : Presen
   · exact (h.mp hp) hp
   · exact hp (h.mpr hp)
 
-/-- No completed world can validate threshold reflection between the diagonal source and
-any `PresentedLUVSeq`.  The contradiction occurs at the presentation's own schema index. -/
-lemma semanticDiagonal_not_reflected (DP : DeductiveProcess) (Xhat : PresentedLUVSeq) :
-    ¬ (∃ v : PCWorld, v.ConsistentWithTheory DP ∧
-      ∀ n r,
-        (v.Holds ((Xhat.toLUV n).gt r) ↔
-          v.Holds ((semanticDiagonalLUVSeq n).gt r))) :=
-  not_reflected_of_negates_own_schema DP Xhat (fun _ => rfl)
-
-/-- Therefore an unrestricted, fixed-process `presented_of_rpn` theorem plus non-vacuity
-is inconsistent.  Any successful bridge must restore the paper's language-separation fact
-(for example as a type-level source-language invariant); parser computability alone cannot
-prove it from `RpnThresholdCodeSeq`. -/
-lemma no_nonvacuous_universal_presented_of_rpn (DP : DeductiveProcess)
-    (presented_of_rpn : ∀ (X : ℕ → LUV), LUV.MachineThresholdCodeSeq X →
-      ∃ Xhat : PresentedLUVSeq,
-        ∀ n r (v : PCWorld), v.ConsistentWithTheory DP →
-          (v.Holds ((Xhat.toLUV n).gt r) ↔ v.Holds ((X n).gt r))) :
-    ¬ ∃ v : PCWorld, v.ConsistentWithTheory DP := by
-  rintro ⟨v, hv⟩
-  obtain ⟨Xhat, hreflect⟩ := presented_of_rpn semanticDiagonalLUVSeq
-    semanticDiagonalLUVSeq_machineThresholdCodeSeq
-  exact semanticDiagonal_not_reflected DP Xhat
-    ⟨v, hv, fun n r => hreflect n r v hv⟩
-
 /-! ## The world-valued diagonal -/
-
 /-- The distinguished proposition attacked by the valued diagonal at index `n`. -/
 def semanticValuedDiagonalProp (n : ℕ) : Sentence :=
   semanticPrimeSentence (semanticSourceSchema n)
@@ -462,18 +371,20 @@ with a non-vacuous fixed process.  This is why `thm:ccee`'s exact-product route 
 sources through proof-carrying gates rather than universally.
 Kind `P` (proved); provenance (a) derived in-project.
 Paper node: `thm:ccee` -/
-lemma no_nonvacuous_worldValued_presented_of_rpn (DP : DeductiveProcess)
-    (presented_of_rpn : ∀ (X : ℕ → LUV), LUV.MachineThresholdCodeSeq X →
+lemma no_nonvacuous_worldValued_presented_of_machine (DP : DeductiveProcess)
+    (presented_of_machine : ∀ (X : ℕ → LUV), LUV.MachineThresholdCodeSeq X →
       (∀ n (v : PCWorld), v.ConsistentWithTheory DP → ∃ x, v.ValuesAt (X n) x) →
       ∃ Xhat : PresentedLUVSeq,
         ∀ n r (v : PCWorld), v.ConsistentWithTheory DP →
           (v.Holds ((Xhat.toLUV n).gt r) ↔ v.Holds ((X n).gt r))) :
     ¬ ∃ v : PCWorld, v.ConsistentWithTheory DP := by
   rintro ⟨v, hv⟩
-  obtain ⟨Xhat, hreflect⟩ := presented_of_rpn semanticValuedDiagonalLUVSeq
+  obtain ⟨Xhat, hreflect⟩ := presented_of_machine semanticValuedDiagonalLUVSeq
     semanticValuedDiagonalLUVSeq_machineThresholdCodeSeq
     (semanticValuedDiagonalLUVSeq_source_valued DP)
   exact semanticValuedDiagonal_not_reflected DP Xhat
     ⟨v, hv, fun n r => hreflect n r v hv⟩
+
+end
 
 end LogicalInduction

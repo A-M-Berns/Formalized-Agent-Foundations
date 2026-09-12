@@ -30,10 +30,7 @@ clauses are stated against every completed base-theory world.
 * `CertifiedSourceLUVSeq DP` is the paper-facing source package: efficient threshold codes, a
   total emitter program, pre-extension vocabulary ownership (`SemanticPrimeFreshLUVSeq`), and
   the cut certificate.  Unlike `PresentedLUVSeq` it assumes no semantic-prime reflection.
-* `thresholdSchema` gives the compact self-describing schema number that stores both programs,
-  and `toPresented` wraps the family under it as a `PresentedLUVSeq`, using the handle family
-  `semanticHandleLUVSeq` and its certificate from
-  `Construction/SemanticExtension/Prime.lean`.
+* `thresholdSchema` gives the compact self-describing schema number that stores both programs.
 * `semanticFreshIncreasing_no_cutCertificate` is the admission test's negative side: the
   malformed fresh increasing family of `Construction/SemanticExtension/Product.lean` carries no cut
   certificate over any non-vacuous base process.
@@ -50,25 +47,26 @@ old-language ownership test `semanticPrimeFreshSentenceB` with its
 `semanticSourceCutLawAtFuel`, which reconstructs the requested cut law (below, above or
 downward), and `semanticSourceCheckedLawAtFuel`, which additionally demands that the
 certificate name a decoded base stage actually containing it; soundness is
-`semanticSourceCheckedLawAtFuel_mem` / `_source` / `semanticSourceCheckedDownward_spec`, and
-completeness for genuine certified packages is the
-`certified_{below,above,downward}_eventually_checked` family.
+`semanticSourceCheckedLawAtFuel_mem` / `_source` / `semanticSourceCheckedDownward_spec`.
 
 Admission is by successively larger finite query prefixes, never by finitely observing an
-infinite certificate: `semanticSourcePrefixValidAtFuel` with its `_prim` / `_mono` / `_fresh`
-/ `_downward` accessors, and `certifiedSourcePrefix_eventually_valid` for completeness.
-Timeouts, malformed output, invalid queries and non-source schemas all return `none`, which
-is what makes the gate safe to run universally over program codes.
+infinite certificate: `semanticSourcePrefixValidAtFuel` with its `_prim` / `_mono` /
+`_downward` accessors.  Timeouts, malformed output, invalid queries and non-source schemas
+all return `none`, which is what makes the gate safe to run universally over program codes.
+Completeness of the gate is proved for the class the endpoint actually admits — the renamed
+old-language sources of `Construction/SemanticExtension/LanguageCopy.lean`, whose entailment
+certificates are built rather than assumed (`liftedMachineSourcePrefix_eventually_valid`).
 
 ## The universal interpreter
 
 `semanticSourceDefinitionJob`, `semanticSourceDefSentence` (one bounded definition clause),
-`semanticSourceStageList`, `semanticSourceDP` and the canonical extension world
+`semanticSourceDP` and the canonical extension world
 `semanticSourceExtensionWorld` form the single fixed universal source process.  Its main
-results are `semanticSourceDP_computable`; `semanticSourceDP_hworld`, which exhibits an
-explicit completed world over *every* base world, so no consistency premise hides in source
-reflection; `semanticSourceSentenceAtFuel_reflected`; and the two transport lemmas
-`certifiedSource_threshold_reflected` and `certifiedSource_valuesAt_iff`.
+results are `semanticSourceDP_computable` and `semanticSourceSentenceAtFuel_reflected`; the
+completed world over an arbitrary base world is assembled one layer further out, by
+`semanticRegistryProductExtensionWorld_holds_sourceDef`
+(`Construction/SemanticExtension/Registry.lean`), so no consistency premise hides in source
+reflection.
 
 The separation of concerns it rests on: the process is a conservative definitional
 interpreter for old-language emitter output, and nothing more.  Malformed but fresh emitters
@@ -93,6 +91,8 @@ The results here are consumed by `Construction/SemanticExtension/LanguageCopy.le
 -/
 
 namespace LogicalInduction
+
+section
 
 /-! ## Executable cut certificates
 
@@ -172,7 +172,7 @@ handle families of `Construction/SemanticExtension/Prime.lean` supply `threshold
 `cut_certificate : SourceCutCertificate DP toLUV`, asks every world consistent with the
 completed theory to rationally cut every member of the family, at a `DP` the caller chooses;
 the naive universal route to it is *refuted* by
-`no_nonvacuous_worldValued_presented_of_rpn` (`Prime.lean`), so an inhabitant would have to
+`no_nonvacuous_worldValued_presented_of_machine` (`Prime.lean`), so an inhabitant would have to
 name a specific process with the cut property and prove it.  Everything stated over this
 structure is therefore conditional on the caller supplying one; the interface is
 proof-carrying by design, and this note is the reason it is not accompanied by an `N+`
@@ -202,26 +202,9 @@ lemma source_valued (X : CertifiedSourceLUVSeq DP) (n : ℕ) (v : PCWorld)
 /-- The self-describing source schema stores both executable programs: efficient threshold
 emission and cut-certificate stage lookup. -/
 noncomputable def thresholdSchema (X : CertifiedSourceLUVSeq DP) : ℕ :=
-  semanticEmitterSchema (Nat.pair
+  semanticSourceSchema (Nat.pair
     (Encodable.encode X.emitterCode)
     (Encodable.encode X.cut_certificate.stageCode))
-
-@[simp] lemma thresholdSchema_source (X : CertifiedSourceLUVSeq DP) :
-    X.thresholdSchema.unpair.1 = 0 := by
-  simp [thresholdSchema]
-
-/-- Canonical compact wrapper.  Reflection is deliberately outside this object's scope: it
-is the business of the universal verifier and process below. -/
-noncomputable def toPresented (X : CertifiedSourceLUVSeq DP) : PresentedLUVSeq where
-  thresholdSchema := X.thresholdSchema
-  source_schema := X.thresholdSchema_source
-  toLUV := semanticHandleLUVSeq X.thresholdSchema
-  threshold_codes := semanticHandleLUVSeq_machineThresholdCodeSeq X.thresholdSchema
-  threshold_named := fun _ _ => rfl
-
-@[simp] lemma toPresented_gt (X : CertifiedSourceLUVSeq DP) (n : ℕ) (r : ℚ) :
-    ((X.toPresented.toLUV n).gt r) =
-      semanticPrimeSentence X.thresholdSchema (Nat.pair n (Encodable.encode r)) := rfl
 
 end CertifiedSourceLUVSeq
 
@@ -240,13 +223,12 @@ lemma semanticFreshIncreasing_no_cutCertificate (DP : DeductiveProcess)
     simp [semanticFreshIncreasingLUVSeq_gt, PCWorld.Holds,
       LO.Propositional.Formula.Boolean.val]
   have hzero := hcut.downward 0 1 (by norm_num) hone
-  simpa [semanticFreshIncreasingLUVSeq_gt, PCWorld.Holds,
-    LO.Propositional.Formula.Boolean.val] using hzero
+  simp [semanticFreshIncreasingLUVSeq_gt, PCWorld.Holds,
+    LO.Propositional.Formula.Boolean.val] at hzero
 
-end LogicalInduction
+end
 
-namespace LogicalInduction
-
+section
 open LO LO.Propositional
 
 attribute [local irreducible] Nat.sqrt
@@ -261,24 +243,25 @@ def semanticSourceEmitterCode (schema : ℕ) : Nat.Partrec.Code :=
 def semanticSourceCertificateCode (schema : ℕ) : Nat.Partrec.Code :=
   Denumerable.ofNat Nat.Partrec.Code schema.unpair.2.unpair.2
 
-@[simp] lemma certified_thresholdSchema_emitterCode {DP : DeductiveProcess}
-    (X : CertifiedSourceLUVSeq DP) :
-    semanticSourceEmitterCode X.thresholdSchema = X.emitterCode := by
-  simp [semanticSourceEmitterCode, CertifiedSourceLUVSeq.thresholdSchema,
-    semanticEmitterSchema, semanticSourceSchema]
-
-@[simp] lemma certified_thresholdSchema_certificateCode {DP : DeductiveProcess}
-    (X : CertifiedSourceLUVSeq DP) :
-    semanticSourceCertificateCode X.thresholdSchema = X.cut_certificate.stageCode := by
-  simp [semanticSourceCertificateCode, CertifiedSourceLUVSeq.thresholdSchema,
-    semanticEmitterSchema, semanticSourceSchema]
-
 /-! ## Bounded source execution -/
-
 /-- Run and decode a schema's threshold emitter for bounded fuel. -/
 def semanticSourceSentenceAtFuel (schema input fuel : ℕ) : Option Sentence :=
   (Nat.Partrec.Code.evaln fuel (semanticSourceEmitterCode schema) input).bind
     (Encodable.decode (α := Sentence))
+
+/-- Emission is monotone in the interpreter's fuel. -/
+lemma semanticSourceSentenceAtFuel_mono {schema input fuel fuel' : ℕ}
+    (hff : fuel ≤ fuel') {phi : Sentence}
+    (h : semanticSourceSentenceAtFuel schema input fuel = some phi) :
+    semanticSourceSentenceAtFuel schema input fuel' = some phi := by
+  unfold semanticSourceSentenceAtFuel at h ⊢
+  cases he : Nat.Partrec.Code.evaln fuel (semanticSourceEmitterCode schema) input with
+  | none => simp [he] at h
+  | some out =>
+      have he' := Nat.Partrec.Code.evaln_mono hff (Option.mem_def.mpr he)
+      rw [show Nat.Partrec.Code.evaln fuel' (semanticSourceEmitterCode schema) input =
+        some out from he']
+      simpa [he] using h
 
 /-- Run a schema's cut-certificate program for bounded fuel. -/
 def semanticSourceStageIndexAtFuel (schema job fuel : ℕ) : Option ℕ :=
@@ -367,18 +350,6 @@ lemma freshImpSourceSentence_eq_some_of_fresh {φr φs : Sentence}
   simp [freshImpSourceSentence, (semanticPrimeFreshSentenceB_eq_true φr).2 hφr,
     (semanticPrimeFreshSentenceB_eq_true φs).2 hφs]
 
-private lemma sentenceNeg_prim : Primrec fun φ : Sentence => ∼φ := by
-  apply Primrec.encode_iff.mp
-  exact (Primrec.succ.comp (Primrec₂.natPair.comp (Primrec.const 2)
-    (Primrec₂.natPair.comp Primrec.encode (Primrec.const 1)))).of_eq fun _ => rfl
-
-private lemma sentenceImp_prim : Primrec₂ fun φ ψ : Sentence => φ 🡒 ψ := by
-  apply Primrec₂.encode_iff.mp
-  exact (Primrec.succ.comp (Primrec₂.natPair.comp (Primrec.const 2)
-    (Primrec₂.natPair.comp
-      (Primrec.encode.comp Primrec.fst)
-      (Primrec.encode.comp Primrec.snd)))).to₂.of_eq fun _ _ => rfl
-
 private lemma freshSourceSentence_prim : Primrec freshSourceSentence := by
   have hp : PrimrecPred fun φ : Sentence => semanticPrimeFreshSentenceB φ = true :=
     Primrec.eq.comp semanticPrimeFreshSentenceB_prim (Primrec.const true)
@@ -407,9 +378,6 @@ private lemma freshImpSourceSentence_prim : Primrec₂ freshImpSourceSentence :=
 
 /-! ## Reconstructing a cut law -/
 
-/-- Decode a rational payload, using the repository's harmless zero default. -/
-private abbrev sourceRat (z : ℕ) : ℚ := decodedQuotationRat z
-
 /-- Reconstruct the cut law requested by `job`, using bounded calls to the named emitter.
 
 The result includes only syntactically valid bound/downward queries, and every decoded
@@ -419,22 +387,22 @@ def semanticSourceCutLawAtFuel (schema job fuel : ℕ) : Option Sentence :=
   let payload := job.unpair.2
   let n := payload.unpair.1
   if tag = 0 then
-    let r := sourceRat payload.unpair.2
+    let r := decodedQuotationRat payload.unpair.2
     if r < 0 then do
       let φ ← semanticSourceSentenceAtFuel schema
         (Nat.pair n (Encodable.encode r)) fuel
       freshSourceSentence φ
     else none
   else if tag = 1 then
-    let r := sourceRat payload.unpair.2
+    let r := decodedQuotationRat payload.unpair.2
     if 1 < r then do
       let φ ← semanticSourceSentenceAtFuel schema
         (Nat.pair n (Encodable.encode r)) fuel
       freshNegSourceSentence φ
     else none
   else if tag = 2 then
-    let r := sourceRat payload.unpair.2.unpair.1
-    let s := sourceRat payload.unpair.2.unpair.2
+    let r := decodedQuotationRat payload.unpair.2.unpair.1
+    let s := decodedQuotationRat payload.unpair.2.unpair.2
     if r < s then do
       let φr ← semanticSourceSentenceAtFuel schema
         (Nat.pair n (Encodable.encode r)) fuel
@@ -484,14 +452,14 @@ lemma semanticSourceCutLawAtFuel_prim : Primrec fun p : (ℕ × ℕ) × ℕ =>
     Primrec.snd.comp (Primrec.unpair.comp hjob)
   let hn : Primrec fun p : P => p.1.2.unpair.2.unpair.1 :=
     Primrec.fst.comp (Primrec.unpair.comp hpayload)
-  let hr : Primrec fun p : P => sourceRat p.1.2.unpair.2.unpair.2 :=
+  let hr : Primrec fun p : P => decodedQuotationRat p.1.2.unpair.2.unpair.2 :=
     decodedQuotationRat_prim.comp (Primrec.snd.comp (Primrec.unpair.comp hpayload))
   let hdownPayload : Primrec fun p : P => p.1.2.unpair.2.unpair.2 :=
     Primrec.snd.comp (Primrec.unpair.comp hpayload)
-  let hdr : Primrec fun p : P => sourceRat p.1.2.unpair.2.unpair.2.unpair.1 :=
+  let hdr : Primrec fun p : P => decodedQuotationRat p.1.2.unpair.2.unpair.2.unpair.1 :=
     decodedQuotationRat_prim.comp
       (Primrec.fst.comp (Primrec.unpair.comp hdownPayload))
-  let hds : Primrec fun p : P => sourceRat p.1.2.unpair.2.unpair.2.unpair.2 :=
+  let hds : Primrec fun p : P => decodedQuotationRat p.1.2.unpair.2.unpair.2.unpair.2 :=
     decodedQuotationRat_prim.comp
       (Primrec.snd.comp (Primrec.unpair.comp hdownPayload))
   have sourceAt {q : P → ℚ} (hq : Primrec q) :
@@ -508,31 +476,31 @@ lemma semanticSourceCutLawAtFuel_prim : Primrec fun p : (ℕ × ℕ) × ℕ =>
   have hbelowOut : Primrec fun p : P =>
       (semanticSourceSentenceAtFuel p.1.1
         (Nat.pair p.1.2.unpair.2.unpair.1
-          (Encodable.encode (sourceRat p.1.2.unpair.2.unpair.2))) p.2).bind
+          (Encodable.encode (decodedQuotationRat p.1.2.unpair.2.unpair.2))) p.2).bind
         freshSourceSentence :=
     Primrec.option_bind hsourceR
       ((freshSourceSentence_prim.comp Primrec.snd).to₂)
   have haboveOut : Primrec fun p : P =>
       (semanticSourceSentenceAtFuel p.1.1
         (Nat.pair p.1.2.unpair.2.unpair.1
-          (Encodable.encode (sourceRat p.1.2.unpair.2.unpair.2))) p.2).bind
+          (Encodable.encode (decodedQuotationRat p.1.2.unpair.2.unpair.2))) p.2).bind
         freshNegSourceSentence :=
     Primrec.option_bind hsourceR
       ((freshNegSourceSentence_prim.comp Primrec.snd).to₂)
   have hdownOut : Primrec fun p : P =>
       (semanticSourceSentenceAtFuel p.1.1
         (Nat.pair p.1.2.unpair.2.unpair.1
-          (Encodable.encode (sourceRat p.1.2.unpair.2.unpair.2.unpair.1))) p.2).bind
+          (Encodable.encode (decodedQuotationRat p.1.2.unpair.2.unpair.2.unpair.1))) p.2).bind
         fun φr =>
           (semanticSourceSentenceAtFuel p.1.1
             (Nat.pair p.1.2.unpair.2.unpair.1
-              (Encodable.encode (sourceRat p.1.2.unpair.2.unpair.2.unpair.2))) p.2).bind
+              (Encodable.encode (decodedQuotationRat p.1.2.unpair.2.unpair.2.unpair.2))) p.2).bind
             fun φs => freshImpSourceSentence φr φs := by
     let Q := P × Sentence
     have hsourceDSQ : Primrec fun q : Q =>
         semanticSourceSentenceAtFuel q.1.1.1
           (Nat.pair q.1.1.2.unpair.2.unpair.1
-            (Encodable.encode (sourceRat q.1.1.2.unpair.2.unpair.2.unpair.2))) q.1.2 :=
+            (Encodable.encode (decodedQuotationRat q.1.1.2.unpair.2.unpair.2.unpair.2))) q.1.2 :=
       hsourceDS.comp Primrec.fst
     have hcombine : Primrec₂ fun (q : Q) (φs : Sentence) =>
         freshImpSourceSentence q.2 φs :=
@@ -541,23 +509,23 @@ lemma semanticSourceCutLawAtFuel_prim : Primrec fun p : (ℕ × ℕ) × ℕ =>
     have hinner : Primrec₂ fun (p : P) (φr : Sentence) =>
         (semanticSourceSentenceAtFuel p.1.1
           (Nat.pair p.1.2.unpair.2.unpair.1
-            (Encodable.encode (sourceRat p.1.2.unpair.2.unpair.2.unpair.2))) p.2).bind
+            (Encodable.encode (decodedQuotationRat p.1.2.unpair.2.unpair.2.unpair.2))) p.2).bind
           fun φs => freshImpSourceSentence φr φs :=
       (Primrec.option_bind hsourceDSQ hcombine).to₂
     exact Primrec.option_bind hsourceDR hinner
   have htagEq (k : ℕ) : PrimrecPred fun p : P => p.1.2.unpair.1 = k :=
     Primrec.eq.comp htag (Primrec.const k)
   have hbelowValid : PrimrecPred fun p : P =>
-      sourceRat p.1.2.unpair.2.unpair.2 < 0 :=
+      decodedQuotationRat p.1.2.unpair.2.unpair.2 < 0 :=
     (ratLE_prim.comp (Primrec.const 0) hr).not.of_eq fun p => by
       simp only [not_le]
   have haboveValid : PrimrecPred fun p : P =>
-      1 < sourceRat p.1.2.unpair.2.unpair.2 :=
+      1 < decodedQuotationRat p.1.2.unpair.2.unpair.2 :=
     (ratLE_prim.comp hr (Primrec.const 1)).not.of_eq fun p => by
       simp only [not_le]
   have hdownValid : PrimrecPred fun p : P =>
-      sourceRat p.1.2.unpair.2.unpair.2.unpair.1 <
-        sourceRat p.1.2.unpair.2.unpair.2.unpair.2 :=
+      decodedQuotationRat p.1.2.unpair.2.unpair.2.unpair.1 <
+        decodedQuotationRat p.1.2.unpair.2.unpair.2.unpair.2 :=
     (ratLE_prim.comp hds hdr).not.of_eq fun p => by
       simp only [not_le]
   have hbelow := Primrec.ite hbelowValid hbelowOut (Primrec.const none)
@@ -693,7 +661,7 @@ lemma semanticSourceCheckedDownward_spec {DP : DeductiveProcess}
   subst law'
   unfold semanticSourceCutLawAtFuel at hcut
   simp only [sourceCutDownwardJob, Nat.unpair_pair, if_neg (by decide : ¬(2 : ℕ) = 0),
-    if_neg (by decide : ¬(2 : ℕ) = 1), if_pos rfl,
+    if_neg (by decide : ¬(2 : ℕ) = 1),
     decodedQuotationRat_encode, if_pos hrs] at hcut
   obtain ⟨φr, hφr, hcut⟩ := Option.bind_eq_some_iff.mp hcut
   obtain ⟨φs, hφs, hcut⟩ := Option.bind_eq_some_iff.mp hcut
@@ -718,151 +686,6 @@ lemma evaln_decode_sentence_eventually (code : Nat.Partrec.Code)
   rw [show code.evaln fuel input = some (Encodable.encode φ) from hfuel]
   simp
 
-/-- Every valid lower-bound certificate query of a genuine source eventually passes the
-fixed executable checker. -/
-lemma certified_below_eventually_checked {DP : DeductiveProcess}
-    (base : DeductiveProcessComputation DP) (X : CertifiedSourceLUVSeq DP)
-    (n : ℕ) (r : ℚ) (hr : (r : ℝ) < 0) :
-    ∃ fuel, semanticSourceCheckedLawAtFuel base X.thresholdSchema
-      (sourceCutBelowJob n r) fuel = some ((X.toLUV n).gt r) := by
-  obtain ⟨fe, he⟩ := evaln_decode_sentence_eventually X.emitterCode
-    (Nat.pair n (Encodable.encode r)) ((X.toLUV n).gt r) (X.emitter_spec n r)
-  obtain ⟨k, hkCode, hkLaw⟩ := X.cut_certificate.below n r hr
-  obtain ⟨fc, hc⟩ := Nat.Partrec.Code.evaln_complete.mp hkCode
-  obtain ⟨fs, hs⟩ := base.stageAtFuel_complete k
-  let fuel := max fe (max fc fs)
-  have he' : semanticSourceSentenceAtFuel X.thresholdSchema
-      (Nat.pair n (Encodable.encode r)) fuel = some ((X.toLUV n).gt r) := by
-    rw [semanticSourceSentenceAtFuel, certified_thresholdSchema_emitterCode]
-    obtain ⟨out, hout, hdecode⟩ := Option.bind_eq_some_iff.mp he
-    exact Option.bind_eq_some_iff.mpr ⟨out,
-      Nat.Partrec.Code.evaln_mono (Nat.le_max_left _ _) hout, hdecode⟩
-  have hc' : semanticSourceStageIndexAtFuel X.thresholdSchema
-      (sourceCutBelowJob n r) fuel = some k := by
-    rw [semanticSourceStageIndexAtFuel, certified_thresholdSchema_certificateCode]
-    exact Nat.Partrec.Code.evaln_mono (le_trans (Nat.le_max_left _ _)
-      (Nat.le_max_right _ _)) hc
-  have hs' : base.stageAtFuel fuel k = some (DP.D k) :=
-    base.stageAtFuel_mono (le_trans (Nat.le_max_right _ _)
-      (Nat.le_max_right _ _)) hs
-  have hrq : r < 0 := by exact_mod_cast hr
-  have hfresh : semanticPrimeFreshSentenceB ((X.toLUV n).gt r) = true :=
-    (semanticPrimeFreshSentenceB_eq_true _).2 (X.old_language n r)
-  refine ⟨fuel, ?_⟩
-  rw [semanticSourceCheckedLawAtFuel, if_pos X.thresholdSchema_source]
-  have hcut : semanticSourceCutLawAtFuel X.thresholdSchema
-      (sourceCutBelowJob n r) fuel = some ((X.toLUV n).gt r) := by
-    simp [semanticSourceCutLawAtFuel, sourceCutBelowJob,
-      decodedQuotationRat_encode, hrq, he', hfresh, freshSourceSentence]
-  rw [hcut, hc']
-  change (base.stageAtFuel fuel k).bind
-    (fun stage => if (X.toLUV n).gt r ∈ stage then some ((X.toLUV n).gt r) else none) =
-      some ((X.toLUV n).gt r)
-  rw [hs']
-  simp [hkLaw]
-
-/-- Every valid upper-bound certificate query of a genuine source eventually passes the
-fixed executable checker. -/
-lemma certified_above_eventually_checked {DP : DeductiveProcess}
-    (base : DeductiveProcessComputation DP) (X : CertifiedSourceLUVSeq DP)
-    (n : ℕ) (r : ℚ) (hr : 1 < (r : ℝ)) :
-    ∃ fuel, semanticSourceCheckedLawAtFuel base X.thresholdSchema
-      (sourceCutAboveJob n r) fuel = some (∼(X.toLUV n).gt r) := by
-  obtain ⟨fe, he⟩ := evaln_decode_sentence_eventually X.emitterCode
-    (Nat.pair n (Encodable.encode r)) ((X.toLUV n).gt r) (X.emitter_spec n r)
-  obtain ⟨k, hkCode, hkLaw⟩ := X.cut_certificate.above n r hr
-  obtain ⟨fc, hc⟩ := Nat.Partrec.Code.evaln_complete.mp hkCode
-  obtain ⟨fs, hs⟩ := base.stageAtFuel_complete k
-  let fuel := max fe (max fc fs)
-  have he' : semanticSourceSentenceAtFuel X.thresholdSchema
-      (Nat.pair n (Encodable.encode r)) fuel = some ((X.toLUV n).gt r) := by
-    rw [semanticSourceSentenceAtFuel, certified_thresholdSchema_emitterCode]
-    obtain ⟨out, hout, hdecode⟩ := Option.bind_eq_some_iff.mp he
-    exact Option.bind_eq_some_iff.mpr ⟨out,
-      Nat.Partrec.Code.evaln_mono (Nat.le_max_left _ _) hout, hdecode⟩
-  have hc' : semanticSourceStageIndexAtFuel X.thresholdSchema
-      (sourceCutAboveJob n r) fuel = some k := by
-    rw [semanticSourceStageIndexAtFuel, certified_thresholdSchema_certificateCode]
-    exact Nat.Partrec.Code.evaln_mono (le_trans (Nat.le_max_left _ _)
-      (Nat.le_max_right _ _)) hc
-  have hs' : base.stageAtFuel fuel k = some (DP.D k) :=
-    base.stageAtFuel_mono (le_trans (Nat.le_max_right _ _)
-      (Nat.le_max_right _ _)) hs
-  have hrq : 1 < r := by exact_mod_cast hr
-  have hfresh : semanticPrimeFreshSentenceB ((X.toLUV n).gt r) = true :=
-    (semanticPrimeFreshSentenceB_eq_true _).2 (X.old_language n r)
-  refine ⟨fuel, ?_⟩
-  rw [semanticSourceCheckedLawAtFuel, if_pos X.thresholdSchema_source]
-  have hcut : semanticSourceCutLawAtFuel X.thresholdSchema
-      (sourceCutAboveJob n r) fuel = some (∼(X.toLUV n).gt r) := by
-    simp [semanticSourceCutLawAtFuel, sourceCutAboveJob,
-      decodedQuotationRat_encode, hrq, he', hfresh, freshNegSourceSentence]
-  rw [hcut, hc']
-  change (base.stageAtFuel fuel k).bind
-    (fun stage => if (∼(X.toLUV n).gt r) ∈ stage then some (∼(X.toLUV n).gt r) else none) =
-      some (∼(X.toLUV n).gt r)
-  rw [hs']
-  simp [hkLaw]
-
-/-- Every valid downward-closure certificate query of a genuine source eventually passes
-the fixed executable checker. -/
-lemma certified_downward_eventually_checked {DP : DeductiveProcess}
-    (base : DeductiveProcessComputation DP) (X : CertifiedSourceLUVSeq DP)
-    (n : ℕ) (r s : ℚ) (hrs : r < s) :
-    ∃ fuel, semanticSourceCheckedLawAtFuel base X.thresholdSchema
-      (sourceCutDownwardJob n r s) fuel =
-        some ((X.toLUV n).gt s 🡒 (X.toLUV n).gt r) := by
-  obtain ⟨fer, her⟩ := evaln_decode_sentence_eventually X.emitterCode
-    (Nat.pair n (Encodable.encode r)) ((X.toLUV n).gt r) (X.emitter_spec n r)
-  obtain ⟨fes, hes⟩ := evaln_decode_sentence_eventually X.emitterCode
-    (Nat.pair n (Encodable.encode s)) ((X.toLUV n).gt s) (X.emitter_spec n s)
-  obtain ⟨k, hkCode, hkLaw⟩ := X.cut_certificate.downward n r s hrs
-  obtain ⟨fc, hc⟩ := Nat.Partrec.Code.evaln_complete.mp hkCode
-  obtain ⟨fst, hst⟩ := base.stageAtFuel_complete k
-  let fuel := max fer (max fes (max fc fst))
-  have her' : semanticSourceSentenceAtFuel X.thresholdSchema
-      (Nat.pair n (Encodable.encode r)) fuel = some ((X.toLUV n).gt r) := by
-    rw [semanticSourceSentenceAtFuel, certified_thresholdSchema_emitterCode]
-    obtain ⟨out, hout, hdecode⟩ := Option.bind_eq_some_iff.mp her
-    exact Option.bind_eq_some_iff.mpr ⟨out,
-      Nat.Partrec.Code.evaln_mono (Nat.le_max_left _ _) hout, hdecode⟩
-  have hes' : semanticSourceSentenceAtFuel X.thresholdSchema
-      (Nat.pair n (Encodable.encode s)) fuel = some ((X.toLUV n).gt s) := by
-    rw [semanticSourceSentenceAtFuel, certified_thresholdSchema_emitterCode]
-    obtain ⟨out, hout, hdecode⟩ := Option.bind_eq_some_iff.mp hes
-    exact Option.bind_eq_some_iff.mpr ⟨out,
-      Nat.Partrec.Code.evaln_mono (le_trans (Nat.le_max_left _ _)
-        (Nat.le_max_right _ _)) hout, hdecode⟩
-  have hc' : semanticSourceStageIndexAtFuel X.thresholdSchema
-      (sourceCutDownwardJob n r s) fuel = some k := by
-    rw [semanticSourceStageIndexAtFuel, certified_thresholdSchema_certificateCode]
-    exact Nat.Partrec.Code.evaln_mono
-      (le_trans (le_trans (Nat.le_max_left _ _) (Nat.le_max_right _ _))
-        (Nat.le_max_right _ _)) hc
-  have hst' : base.stageAtFuel fuel k = some (DP.D k) :=
-    base.stageAtFuel_mono
-      (le_trans (le_trans (Nat.le_max_right _ _) (Nat.le_max_right _ _))
-        (Nat.le_max_right _ _)) hst
-  have hfreshr : semanticPrimeFreshSentenceB ((X.toLUV n).gt r) = true :=
-    (semanticPrimeFreshSentenceB_eq_true _).2 (X.old_language n r)
-  have hfreshs : semanticPrimeFreshSentenceB ((X.toLUV n).gt s) = true :=
-    (semanticPrimeFreshSentenceB_eq_true _).2 (X.old_language n s)
-  refine ⟨fuel, ?_⟩
-  rw [semanticSourceCheckedLawAtFuel, if_pos X.thresholdSchema_source]
-  have hcut : semanticSourceCutLawAtFuel X.thresholdSchema
-      (sourceCutDownwardJob n r s) fuel =
-        some ((X.toLUV n).gt s 🡒 (X.toLUV n).gt r) := by
-    simp [semanticSourceCutLawAtFuel, sourceCutDownwardJob,
-      decodedQuotationRat_encode, hrs, her', hes', hfreshr, hfreshs,
-      freshImpSourceSentence]
-  rw [hcut, hc']
-  change (base.stageAtFuel fuel k).bind
-    (fun stage => if ((X.toLUV n).gt s 🡒 (X.toLUV n).gt r) ∈ stage then
-      some ((X.toLUV n).gt s 🡒 (X.toLUV n).gt r) else none) =
-        some ((X.toLUV n).gt s 🡒 (X.toLUV n).gt r)
-  rw [hst']
-  simp [hkLaw]
-
 /-! ## Finite-prefix admission
 
 The universal product process cannot safely activate an entire schema after finitely
@@ -870,7 +693,6 @@ observing an infinite cut certificate.  Instead it activates successively larger
 query prefixes.  Each prefix checks every source formula for old-language ownership, both
 bounds where applicable, and downward closure between every pair of thresholds in the
 prefix. -/
-
 /-- Has a fresh decoded source formula for this query appeared by the supplied clock? -/
 def semanticSourceFreshSeen (schema n z fuel : ℕ) : Bool :=
   (List.range (fuel + 1)).any fun f =>
@@ -914,24 +736,6 @@ def semanticSourcePrefixValidAtFuel {DP : DeductiveProcess}
   (List.range (limit + 1)).all fun n =>
     (List.range (limit + 1)).all fun zr =>
       semanticSourceThresholdPrefixValidAtFuel base schema limit fuel n zr
-
-/-- The bounded-search `Primrec` combinator: a disjunction over an inclusive index range
-whose bound and test are primitive recursive is primitive recursive. -/
-lemma listRangeAny_prim {α : Type} [Primcodable α]
-    {bound : α → ℕ} {test : α → ℕ → Bool}
-    (hbound : Primrec bound) (htest : Primrec₂ test) :
-    Primrec fun a => (List.range (bound a + 1)).any (test a) := by
-  have hrange : Primrec fun a => List.range (bound a + 1) :=
-    Primrec.list_range.comp
-      (Primrec.nat_add.comp hbound (Primrec.const 1))
-  have hstep : Primrec₂ fun (a : α) (q : ℕ × Bool) => test a q.1 || q.2 :=
-    (Primrec.dom_bool₂ (· || ·)).comp₂
-      (htest.comp₂ Primrec₂.left (Primrec.fst.comp₂ Primrec₂.right))
-      (Primrec.snd.comp₂ Primrec₂.right)
-  exact (Primrec.list_foldr hrange (Primrec.const false) hstep).of_eq fun a => by
-    induction List.range (bound a + 1) with
-    | nil => rfl
-    | cons x xs ih => simp [List.any, ih]
 
 /-- The bounded-check `Primrec` combinator: the conjunction counterpart of
 `listRangeAny_prim`. -/
@@ -998,7 +802,6 @@ lemma semanticSourceLawSeen_prim {DP : DeductiveProcess}
     Primrec.option_isSome.comp₂ hcheck
   exact listRangeAny_prim Primrec.snd htest
 
-set_option maxHeartbeats 2000000 in
 lemma semanticSourceDownwardPrefixValidAtFuel_prim {DP : DeductiveProcess}
     (base : DeductiveProcessComputation DP) :
     Primrec fun p : ((((ℕ × ℕ) × ℕ) × ℕ) × ℕ) =>
@@ -1046,7 +849,6 @@ lemma semanticSourceDownwardPrefixValidAtFuel_prim {DP : DeductiveProcess}
     exact (Primrec.ite hlt hseen (Primrec.const true)).to₂
   exact listRangeAll_prim hlimit htest
 
-set_option maxHeartbeats 2000000 in
 lemma semanticSourceThresholdPrefixValidAtFuel_prim {DP : DeductiveProcess}
     (base : DeductiveProcessComputation DP) :
     Primrec fun p : ((((ℕ × ℕ) × ℕ) × ℕ) × ℕ) =>
@@ -1114,7 +916,6 @@ lemma semanticSourceThresholdPrefixValidAtFuel_prim {DP : DeductiveProcess}
     (Primrec.dom_bool₂ (· && ·)).comp ha hb
   exact hand (hand (hand hfresh hbelow) habove) hdown |>.of_eq fun _ => rfl
 
-set_option maxHeartbeats 2000000 in
 lemma semanticSourcePrefixValidAtFuel_prim {DP : DeductiveProcess}
     (base : DeductiveProcessComputation DP) :
     Primrec fun p : (ℕ × ℕ) × ℕ =>
@@ -1212,46 +1013,6 @@ lemma listAll_eventually_of_mono {l : List ℕ} {test : ℕ → ℕ → Bool}
         intro y hy
         exact hmono y (Nat.le_max_right _ _) (hfs y hy)⟩
 
-lemma certifiedSourceFreshSeen_eventually {DP : DeductiveProcess}
-    (X : CertifiedSourceLUVSeq DP) (n z : ℕ) :
-    ∃ fuel, semanticSourceFreshSeen X.thresholdSchema n z fuel = true := by
-  let r := decodedQuotationRat z
-  obtain ⟨fuel, hemit⟩ := evaln_decode_sentence_eventually X.emitterCode
-    (Nat.pair n (Encodable.encode r)) ((X.toLUV n).gt r) (X.emitter_spec n r)
-  have hemit' : semanticSourceSentenceAtFuel X.thresholdSchema
-      (Nat.pair n (Encodable.encode r)) fuel = some ((X.toLUV n).gt r) := by
-    simpa [semanticSourceSentenceAtFuel, certified_thresholdSchema_emitterCode] using hemit
-  exact ⟨fuel, (semanticSourceFreshSeen_iff X.thresholdSchema n z fuel).2
-    ⟨fuel, le_rfl, (X.toLUV n).gt r, hemit', X.old_language n r⟩⟩
-
-lemma certifiedSourceBelowSeen_eventually {DP : DeductiveProcess}
-    (base : DeductiveProcessComputation DP) (X : CertifiedSourceLUVSeq DP)
-    (n : ℕ) (r : ℚ) (hr : (r : ℝ) < 0) :
-    ∃ fuel, semanticSourceLawSeen base X.thresholdSchema
-      (sourceCutBelowJob n r) fuel = true := by
-  obtain ⟨fuel, h⟩ := certified_below_eventually_checked base X n r hr
-  exact ⟨fuel, (semanticSourceLawSeen_iff base X.thresholdSchema
-    (sourceCutBelowJob n r) fuel).2 ⟨fuel, le_rfl, (X.toLUV n).gt r, h⟩⟩
-
-lemma certifiedSourceAboveSeen_eventually {DP : DeductiveProcess}
-    (base : DeductiveProcessComputation DP) (X : CertifiedSourceLUVSeq DP)
-    (n : ℕ) (r : ℚ) (hr : 1 < (r : ℝ)) :
-    ∃ fuel, semanticSourceLawSeen base X.thresholdSchema
-      (sourceCutAboveJob n r) fuel = true := by
-  obtain ⟨fuel, h⟩ := certified_above_eventually_checked base X n r hr
-  exact ⟨fuel, (semanticSourceLawSeen_iff base X.thresholdSchema
-    (sourceCutAboveJob n r) fuel).2 ⟨fuel, le_rfl, ∼(X.toLUV n).gt r, h⟩⟩
-
-lemma certifiedSourceDownwardSeen_eventually {DP : DeductiveProcess}
-    (base : DeductiveProcessComputation DP) (X : CertifiedSourceLUVSeq DP)
-    (n : ℕ) (r s : ℚ) (hrs : r < s) :
-    ∃ fuel, semanticSourceLawSeen base X.thresholdSchema
-      (sourceCutDownwardJob n r s) fuel = true := by
-  obtain ⟨fuel, h⟩ := certified_downward_eventually_checked base X n r s hrs
-  exact ⟨fuel, (semanticSourceLawSeen_iff base X.thresholdSchema
-    (sourceCutDownwardJob n r s) fuel).2
-      ⟨fuel, le_rfl, (X.toLUV n).gt s 🡒 (X.toLUV n).gt r, h⟩⟩
-
 lemma semanticSourceDownwardPrefixValidAtFuel_mono {DP : DeductiveProcess}
     (base : DeductiveProcessComputation DP)
     {schema limit n zr fuel fuel' : ℕ} (hff : fuel ≤ fuel')
@@ -1262,32 +1023,7 @@ lemma semanticSourceDownwardPrefixValidAtFuel_mono {DP : DeductiveProcess}
   have hz := h zs hzs
   by_cases hrs : decodedQuotationRat zr < decodedQuotationRat zs
   · simpa [hrs] using semanticSourceLawSeen_mono base hff (by simpa [hrs] using hz)
-  · simpa [hrs]
-
-lemma certifiedSourceDownwardPrefix_eventually {DP : DeductiveProcess}
-    (base : DeductiveProcessComputation DP) (X : CertifiedSourceLUVSeq DP)
-    (limit n zr : ℕ) :
-    ∃ fuel, semanticSourceDownwardPrefixValidAtFuel base X.thresholdSchema
-      limit fuel n zr = true := by
-  let test : ℕ → ℕ → Bool := fun zs fuel =>
-    if decodedQuotationRat zr < decodedQuotationRat zs then
-      semanticSourceLawSeen base X.thresholdSchema
-        (sourceCutDownwardJob n (decodedQuotationRat zr) (decodedQuotationRat zs)) fuel
-    else true
-  have hmono : ∀ zs {fuel fuel'}, fuel ≤ fuel' → test zs fuel = true →
-      test zs fuel' = true := by
-    intro zs fuel fuel' hff h
-    by_cases hrs : decodedQuotationRat zr < decodedQuotationRat zs
-    · simpa [test, hrs] using semanticSourceLawSeen_mono base hff (by simpa [test, hrs] using h)
-    · simp [test, hrs]
-  have heventual : ∀ zs ∈ List.range (limit + 1), ∃ fuel, test zs fuel = true := by
-    intro zs _
-    by_cases hrs : decodedQuotationRat zr < decodedQuotationRat zs
-    · obtain ⟨fuel, h⟩ := certifiedSourceDownwardSeen_eventually base X n _ _ hrs
-      exact ⟨fuel, by simpa [test, hrs] using h⟩
-    · exact ⟨0, by simp [test, hrs]⟩
-  simpa [semanticSourceDownwardPrefixValidAtFuel, test] using
-    (listAll_eventually_of_mono hmono heventual)
+  · simp [hrs]
 
 lemma semanticSourceThresholdPrefixValidAtFuel_mono {DP : DeductiveProcess}
     (base : DeductiveProcessComputation DP)
@@ -1317,102 +1053,6 @@ lemma semanticSourcePrefixValidAtFuel_mono {DP : DeductiveProcess}
   exact semanticSourceThresholdPrefixValidAtFuel_mono base hff
     (List.all_eq_true.mp (h n hn) zr hzr)
 
-lemma certifiedSourceThresholdPrefix_eventually {DP : DeductiveProcess}
-    (base : DeductiveProcessComputation DP) (X : CertifiedSourceLUVSeq DP)
-    (limit n zr : ℕ) :
-    ∃ fuel, semanticSourceThresholdPrefixValidAtFuel base X.thresholdSchema
-      limit fuel n zr = true := by
-  let r := decodedQuotationRat zr
-  obtain ⟨ffresh, hfresh⟩ := certifiedSourceFreshSeen_eventually X n zr
-  obtain ⟨fbelow, hbelow⟩ : ∃ fuel,
-      (if r < 0 then semanticSourceLawSeen base X.thresholdSchema
-        (sourceCutBelowJob n r) fuel else true) = true := by
-    by_cases hr : r < 0
-    · have hrR : (r : ℝ) < 0 := by exact_mod_cast hr
-      obtain ⟨fuel, h⟩ := certifiedSourceBelowSeen_eventually base X n r hrR
-      exact ⟨fuel, by simpa [hr] using h⟩
-    · exact ⟨0, by simp [hr]⟩
-  obtain ⟨fabove, habove⟩ : ∃ fuel,
-      (if 1 < r then semanticSourceLawSeen base X.thresholdSchema
-        (sourceCutAboveJob n r) fuel else true) = true := by
-    by_cases hr : 1 < r
-    · have hrR : 1 < (r : ℝ) := by exact_mod_cast hr
-      obtain ⟨fuel, h⟩ := certifiedSourceAboveSeen_eventually base X n r hrR
-      exact ⟨fuel, by simpa [hr] using h⟩
-    · exact ⟨0, by simp [hr]⟩
-  obtain ⟨fdown, hdown⟩ := certifiedSourceDownwardPrefix_eventually base X limit n zr
-  let fuel := max ffresh (max fbelow (max fabove fdown))
-  have hffresh : ffresh ≤ fuel := by simp [fuel]
-  have hffbelow : fbelow ≤ fuel := by simp [fuel]
-  have hffabove : fabove ≤ fuel := by simp [fuel]
-  have hffdown : fdown ≤ fuel := by simp [fuel]
-  have hfresh' := semanticSourceFreshSeen_mono hffresh hfresh
-  have hbelow' : (if r < 0 then semanticSourceLawSeen base X.thresholdSchema
-      (sourceCutBelowJob n r) fuel else true) = true := by
-    by_cases hr : r < 0
-    · simp only [if_pos hr]
-      exact semanticSourceLawSeen_mono base hffbelow (by simpa [hr] using hbelow)
-    · simp [hr]
-  have habove' : (if 1 < r then semanticSourceLawSeen base X.thresholdSchema
-      (sourceCutAboveJob n r) fuel else true) = true := by
-    by_cases hr : 1 < r
-    · simp only [if_pos hr]
-      exact semanticSourceLawSeen_mono base hffabove (by simpa [hr] using habove)
-    · simp [hr]
-  have hdown' := semanticSourceDownwardPrefixValidAtFuel_mono base hffdown hdown
-  refine ⟨fuel, ?_⟩
-  rw [semanticSourceThresholdPrefixValidAtFuel]
-  simp only [Bool.and_eq_true]
-  exact ⟨⟨⟨hfresh', hbelow'⟩, habove'⟩, hdown'⟩
-
-/-- Every finite prefix of every certified source is eventually admitted by the fixed
-executable registry. -/
-lemma certifiedSourcePrefix_eventually_valid {DP : DeductiveProcess}
-    (base : DeductiveProcessComputation DP) (X : CertifiedSourceLUVSeq DP)
-    (limit : ℕ) :
-    ∃ fuel, semanticSourcePrefixValidAtFuel base X.thresholdSchema limit fuel = true := by
-  let row : ℕ → ℕ → Bool := fun n fuel =>
-    (List.range (limit + 1)).all fun zr =>
-      semanticSourceThresholdPrefixValidAtFuel base X.thresholdSchema limit fuel n zr
-  have hrowMono : ∀ n {fuel fuel'}, fuel ≤ fuel' → row n fuel = true →
-      row n fuel' = true := by
-    intro n fuel fuel' hff h
-    simp only [row, List.all_eq_true] at h ⊢
-    intro zr hzr
-    exact semanticSourceThresholdPrefixValidAtFuel_mono base hff (h zr hzr)
-  have hrowEventually : ∀ n ∈ List.range (limit + 1), ∃ fuel, row n fuel = true := by
-    intro n _
-    obtain ⟨fuel, hfuel⟩ := listAll_eventually_of_mono
-      (l := List.range (limit + 1))
-      (test := fun zr fuel => semanticSourceThresholdPrefixValidAtFuel
-        base X.thresholdSchema limit fuel n zr)
-      (fun zr _ _ hff h => semanticSourceThresholdPrefixValidAtFuel_mono base hff h)
-      (by
-        intro zr _
-        exact certifiedSourceThresholdPrefix_eventually base X limit n zr)
-    exact ⟨fuel, by simpa [row] using hfuel⟩
-  obtain ⟨fuel, hfuel⟩ := listAll_eventually_of_mono
-    (l := List.range (limit + 1)) (test := row) hrowMono hrowEventually
-  refine ⟨fuel, ?_⟩
-  rw [semanticSourcePrefixValidAtFuel, List.all_eq_true]
-  intro n hn
-  exact List.all_eq_true.mp hfuel n hn
-
-/-- Prefix validity exposes freshness for every admitted source query: the accessor for the
-freshness conjunct, paired with `semanticSourcePrefixValidAtFuel_downward` below. -/
-lemma semanticSourcePrefixValidAtFuel_fresh {DP : DeductiveProcess}
-    (base : DeductiveProcessComputation DP) {schema limit fuel n z : ℕ}
-    (hvalid : semanticSourcePrefixValidAtFuel base schema limit fuel = true)
-    (hn : n ≤ limit) (hz : z ≤ limit) :
-    semanticSourceFreshSeen schema n z fuel = true := by
-  rw [semanticSourcePrefixValidAtFuel, List.all_eq_true] at hvalid
-  have hnmem : n ∈ List.range (limit + 1) := by simp [hn]
-  have hzmem : z ∈ List.range (limit + 1) := by simp [hz]
-  have h := List.all_eq_true.mp (hvalid n hnmem) z hzmem
-  rw [semanticSourceThresholdPrefixValidAtFuel] at h
-  simp only [Bool.and_eq_true] at h
-  exact h.1.1.1
-
 /-- Prefix validity exposes every applicable pairwise downward law. -/
 lemma semanticSourcePrefixValidAtFuel_downward {DP : DeductiveProcess}
     (base : DeductiveProcessComputation DP) {schema limit fuel n zr zs : ℕ}
@@ -1433,10 +1073,9 @@ lemma semanticSourcePrefixValidAtFuel_downward {DP : DeductiveProcess}
   have hz := List.all_eq_true.mp hlast zs hzsmem
   simpa [hrs] using hz
 
-end LogicalInduction
+end
 
-namespace LogicalInduction
-
+section
 open LO LO.Propositional LO.FirstOrder LO.FirstOrder.Arithmetic
 
 attribute [local irreducible] Nat.sqrt
@@ -1463,48 +1102,13 @@ def semanticSourceDefSentence (e : ℕ) : Sentence :=
     | none => ⊤
   else ⊤
 
-/-- Stage `k` as a list: every definition clause with index at most `k`, newest first. -/
-def semanticSourceStageList : ℕ → List Sentence
-  | 0 => [semanticSourceDefSentence 0]
-  | k + 1 => semanticSourceDefSentence (k + 1) :: semanticSourceStageList k
-
-lemma mem_semanticSourceStageList {e k : ℕ} (h : e ≤ k) :
-    semanticSourceDefSentence e ∈ semanticSourceStageList k := by
-  induction k with
-  | zero => simp [semanticSourceStageList, Nat.le_zero.mp h]
-  | succ k ih =>
-      rcases Nat.lt_or_ge e (k + 1) with hlt | hge
-      · exact List.mem_cons_of_mem _ (ih (Nat.lt_succ_iff.mp hlt))
-      · have he : e = k + 1 := le_antisymm h hge
-        simp [semanticSourceStageList, he]
-
-lemma semanticSourceStageList_exists {φ : Sentence} {k : ℕ}
-    (h : φ ∈ semanticSourceStageList k) :
-    ∃ e, φ = semanticSourceDefSentence e := by
-  induction k with
-  | zero => exact ⟨0, by simpa [semanticSourceStageList] using h⟩
-  | succ k ih =>
-      rcases List.mem_cons.mp h with h | h
-      · exact ⟨k + 1, h⟩
-      · exact ih h
-
 /-! ## The process, and its program -/
 
 /-- The single universal source process.  It contains no chosen source, market, weight,
-or deferral data. -/
-def semanticSourceDP : DeductiveProcess where
-  D k := (semanticSourceStageList k).toFinset
-  mono k := by
-    intro φ hφ
-    simp only [List.mem_toFinset] at hφ ⊢
-    exact List.mem_cons_of_mem _ hφ
-
-private lemma semanticSourceImp_prim : Primrec₂ fun φ ψ : Sentence => φ 🡒 ψ := by
-  apply Primrec₂.encode_iff.mp
-  exact (Primrec.succ.comp (Primrec₂.natPair.comp (Primrec.const 2)
-    (Primrec₂.natPair.comp
-      (Primrec.encode.comp Primrec.fst)
-      (Primrec.encode.comp Primrec.snd)))).to₂.of_eq fun _ _ => rfl
+or deferral data; every definition clause with index at most `k` is published at stage `k`
+(`prefixProcess`, `Construction/DeductiveDovetail.lean`). -/
+def semanticSourceDP : DeductiveProcess :=
+  prefixProcess semanticSourceDefSentence
 
 lemma semanticSourceDefSentence_prim : Primrec semanticSourceDefSentence := by
   have hschema : Primrec fun e : ℕ => e.unpair.1 := Primrec.fst.comp Primrec.unpair
@@ -1542,10 +1146,10 @@ lemma semanticSourceDefSentence_prim : Primrec semanticSourceDefSentence := by
       hleaf.comp Primrec.fst
     have hforward : Primrec fun q : Q =>
         q.2 🡒 semanticPrimeSentence q.1.unpair.1 q.1.unpair.2.unpair.1 :=
-      semanticSourceImp_prim.comp Primrec.snd hleafQ
+      sentenceImp_prim.comp Primrec.snd hleafQ
     have hbackward : Primrec fun q : Q =>
         semanticPrimeSentence q.1.unpair.1 q.1.unpair.2.unpair.1 🡒 q.2 :=
-      semanticSourceImp_prim.comp hleafQ Primrec.snd
+      sentenceImp_prim.comp hleafQ Primrec.snd
     exact (Primrec.ite hfresh (Primrec.ite hdir hforward hbackward)
       (Primrec.const (⊤ : Sentence))).to₂.of_eq fun _ _ => rfl
   have hdecoded : Primrec fun e : ℕ =>
@@ -1569,28 +1173,9 @@ lemma semanticSourceDefSentence_prim : Primrec semanticSourceDefSentence := by
     fun e => by simp [semanticSourceDefSentence]
 
 /-- The universal source interpreter is a computable deductive process. -/
-lemma semanticSourceDP_computable : ComputableDeductiveProcess semanticSourceDP := by
-  have hlist : Computable semanticSourceStageList := by
-    have hstep : Computable fun p : ℕ × List Sentence =>
-        semanticSourceDefSentence (p.1 + 1) :: p.2 :=
-      Computable.list_cons.comp
-        (semanticSourceDefSentence_prim.to_comp.comp
-          (Primrec.succ.to_comp.comp Computable.fst)) Computable.snd
-    refine (Computable.nat_rec Computable.id
-      (Computable.const [semanticSourceDefSentence 0])
-      (hstep.comp₂ Computable.snd.to₂)).of_eq (fun k => ?_)
-    induction k with
-    | zero => rfl
-    | succ k ih => simpa [semanticSourceStageList] using ih
-  have hkey : Computable fun k => Encodable.encode
-      ((sentenceDedup (semanticSourceStageList k)).insertionSort sentenceCodeLE) :=
-    Computable.encode.comp
-      ((sentenceInsertionSort_prim.comp sentenceDedup_prim).to_comp.comp hlist)
-  obtain ⟨code, hcode⟩ := Nat.Partrec.Code.exists_code.mp
-    (Partrec.nat_iff.mp hkey)
-  refine ⟨code, fun k => ?_⟩
-  rw [hcode]
-  exact Part.mem_some_iff.mpr (encode_toFinset_eq (semanticSourceStageList k))
+lemma semanticSourceDP_computable : ComputableDeductiveProcess semanticSourceDP :=
+  ComputableDeductiveProcess.ofEncodePrim
+    (prefixProcess_encode_prim semanticSourceDefSentence_prim)
 
 /-! ## The canonical extension world -/
 
@@ -1639,6 +1224,15 @@ lemma semanticSourceExtensionWorld_leaf (v₀ : PCWorld)
   change semanticSourceExtensionWorld v₀ (semanticPrimeCode schema input) ↔ _
   simp [semanticSourceExtensionWorld, semanticPrimeCode, hschema]
 
+/-- A leaf outside the source namespace is read the same way in the source extension. -/
+lemma semanticSourceExtensionWorld_leaf_other (v₀ : PCWorld)
+    (schema input : ℕ) (hschema : schema.unpair.1 ≠ 0) :
+    (semanticSourceExtensionWorld v₀).Holds (semanticPrimeSentence schema input) ↔
+      v₀.Holds (semanticPrimeSentence schema input) := by
+  change semanticSourceExtensionWorld v₀ (semanticPrimeCode schema input) ↔
+    v₀ (semanticPrimeCode schema input)
+  simp [semanticSourceExtensionWorld, semanticPrimeCode, hschema]
+
 lemma semanticSourceExtensionWorld_leaf_iff (v₀ : PCWorld)
     (schema input fuel : ℕ) (hschema : schema.unpair.1 = 0) {φ : Sentence}
     (hemit : semanticSourceSentenceAtFuel schema input fuel = some φ)
@@ -1679,104 +1273,21 @@ lemma semanticSourceExtensionWorld_downward_of_seen {DP : DeductiveProcess}
 
 /-! ## Explicit non-vacuity -/
 
-/-- Every source-definition clause is true in the canonical extension world. -/
-lemma semanticSourceExtensionWorld_holds_defSentence (v₀ : PCWorld) (e : ℕ) :
-    (semanticSourceExtensionWorld v₀).Holds (semanticSourceDefSentence e) := by
-  unfold semanticSourceDefSentence
-  by_cases hschema : e.unpair.1.unpair.1 = 0
-  · rw [if_pos hschema]
-    cases hemit : (semanticSourceSentenceAtFuel e.unpair.1 e.unpair.2.unpair.1
-        e.unpair.2.unpair.2.unpair.2) with
-    | none =>
-        change (semanticSourceExtensionWorld v₀).Holds (⊤ : Sentence)
-        exact PCWorld.holds_top _
-    | some φ =>
-        change (semanticSourceExtensionWorld v₀).Holds
-          (if semanticPrimeFreshSentenceB φ then
-            if e.unpair.2.unpair.2.unpair.1 = 0 then
-              φ 🡒 semanticPrimeSentence e.unpair.1 e.unpair.2.unpair.1
-            else semanticPrimeSentence e.unpair.1 e.unpair.2.unpair.1 🡒 φ
-          else ⊤)
-        by_cases hfreshB : semanticPrimeFreshSentenceB φ = true
-        · rw [if_pos hfreshB]
-          have hfresh : SemanticPrimeFreshSentence φ :=
-            (semanticPrimeFreshSentenceB_eq_true φ).1 hfreshB
-          have hleaf := semanticSourceExtensionWorld_leaf_iff v₀
-            e.unpair.1 e.unpair.2.unpair.1 e.unpair.2.unpair.2.unpair.2
-            hschema hemit hfresh
-          have hformula := semanticSourceExtensionWorld_holds_fresh v₀ hfresh
-          by_cases hdir : e.unpair.2.unpair.2.unpair.1 = 0
-          · rw [if_pos hdir]
-            intro h
-            exact hleaf.mpr (hformula.mp h)
-          · rw [if_neg hdir]
-            intro h
-            exact hformula.mpr (hleaf.mp h)
-        · rw [if_neg hfreshB]
-          exact PCWorld.holds_top _
-  · rw [if_neg hschema]
-    exact PCWorld.holds_top _
-
-/-- The fixed universal source process has an explicit completed world over every base
-world; no consistency premise is hidden in source reflection. -/
-lemma semanticSourceDP_hworld (v₀ : PCWorld) :
-    (semanticSourceExtensionWorld v₀).ConsistentWithTheory semanticSourceDP := by
-  intro k φ hφ
-  obtain ⟨e, rfl⟩ := semanticSourceStageList_exists (List.mem_toFinset.mp hφ)
-  exact semanticSourceExtensionWorld_holds_defSentence v₀ e
-
 /-! ## The theorem-plus-source process
 
 The union offered to clients as a named package: a canonical process, its certified program,
 and its explicit completed world.  Nothing downstream prices against it, by the design
 decision recorded in the module header. -/
-
-/-- Conservative combination with any base process whose stages stay in the old language. -/
-lemma semanticSourceExtensionWorld_consistentWith_union
-    (B : DeductiveProcess) (v₀ : PCWorld)
-    (hBfresh : ∀ k φ, φ ∈ B.D k → SemanticPrimeFreshSentence φ)
-    (hv₀ : v₀.ConsistentWithTheory B) :
-    (semanticSourceExtensionWorld v₀).ConsistentWithTheory
-      (B.union semanticSourceDP) := by
-  intro k
-  refine ((semanticSourceExtensionWorld v₀).consistentWith_union_iff
-    B semanticSourceDP k).mpr ⟨?_, semanticSourceDP_hworld v₀ k⟩
-  intro φ hφ
-  exact (semanticSourceExtensionWorld_holds_fresh v₀ (hBfresh k φ hφ)).mpr
-    (hv₀ k φ hφ)
-
-/-- The canonical source-aware theory process is fixed from `T` alone. -/
-noncomputable def theoremSemanticSourceDP (T : ArithmeticTheory) [T.Δ₁]
-    [Entailment.Consistent T] : DeductiveProcess :=
-  (theoremDP T).union semanticSourceDP
-
-/-- The certified program for `theoremSemanticSourceDP`, the union of `theoremDP`'s own
-program and `semanticSourceDP`'s. -/
-noncomputable def theoremSemanticSourceDPComputation (T : ArithmeticTheory)
-    [T.Δ₁] [Entailment.Consistent T] :
-    DeductiveProcessComputation (theoremSemanticSourceDP T) :=
-  ((theoremDP_computable T).nonemptyComputation.some).union
-    semanticSourceDP_computable.nonemptyComputation.some
-
 lemma theoremDP_semanticPrimeFresh (T : ArithmeticTheory) [T.Δ₁]
     [Entailment.Consistent T] (k : ℕ) (φ : Sentence) (hφ : φ ∈ (theoremDP T).D k) :
     SemanticPrimeFreshSentence φ := by
-  simp only [theoremDP, theoremStage, Finset.mem_image, Finset.mem_filter,
-    Finset.mem_range] at hφ
+  simp only [theoremDP, dovetailProcess_D, mem_dovetailStage] at hφ
   obtain ⟨e, _, rfl⟩ := hφ
   exact eventAtom_atomCodes_ne_semanticPrimeTag e
 
-/-- Explicit non-vacuity of the fixed theorem-plus-source process. -/
-lemma theoremSemanticSourceDP_hworld (T : ArithmeticTheory) [T.Δ₁] [𝗣𝗔⁻ ⪯ T]
-    [Entailment.Consistent T] :
-    (semanticSourceExtensionWorld (provabilityWorld T)).ConsistentWithTheory
-      (theoremSemanticSourceDP T) :=
-  semanticSourceExtensionWorld_consistentWith_union (theoremDP T)
-    (provabilityWorld T) (theoremDP_semanticPrimeFresh T) (theoremDP_hworld T)
-
 lemma semanticSourceDefSentence_mem_stage (e : ℕ) :
     semanticSourceDefSentence e ∈ semanticSourceDP.D e :=
-  List.mem_toFinset.mpr (mem_semanticSourceStageList (le_refl e))
+  self_mem_prefixProcess _ (le_refl e)
 
 lemma holds_semanticSourceDefSentence {v : PCWorld}
     (hv : v.ConsistentWithTheory semanticSourceDP) (e : ℕ) :
@@ -1821,28 +1332,6 @@ lemma semanticSourceSentenceAtFuel_reflected {v : PCWorld}
     simp [hfreshB] at h
     exact h
 
-/-- Every proof-carrying paper source has exact threshold reflection through its canonical
-compact wrapper. -/
-lemma certifiedSource_threshold_reflected {DP : DeductiveProcess}
-    (X : CertifiedSourceLUVSeq DP) (n : ℕ) (r : ℚ) (v : PCWorld)
-    (hv : v.ConsistentWithTheory semanticSourceDP) :
-    v.Holds ((X.toPresented.toLUV n).gt r) ↔ v.Holds ((X.toLUV n).gt r) := by
-  obtain ⟨fuel, hfuel⟩ := evaln_decode_sentence_eventually X.emitterCode
-    (Nat.pair n (Encodable.encode r)) ((X.toLUV n).gt r) (X.emitter_spec n r)
-  apply semanticSourceSentenceAtFuel_reflected hv X.thresholdSchema
-    (Nat.pair n (Encodable.encode r)) fuel X.thresholdSchema_source
-  · simpa [semanticSourceSentenceAtFuel, certified_thresholdSchema_emitterCode] using hfuel
-  · exact X.old_language n r
-
-/-- Exact threshold reflection transfers the repository's `ValuesAt` relation both ways. -/
-lemma certifiedSource_valuesAt_iff {DP : DeductiveProcess}
-    (X : CertifiedSourceLUVSeq DP) (n : ℕ) (x : ℝ) (v : PCWorld)
-    (hv : v.ConsistentWithTheory semanticSourceDP) :
-    v.ValuesAt (X.toPresented.toLUV n) x ↔ v.ValuesAt (X.toLUV n) x := by
-  constructor
-  · rintro ⟨hx0, hx1, hx⟩
-    exact ⟨hx0, hx1, fun r => by rw [← certifiedSource_threshold_reflected X n r v hv]; exact hx r⟩
-  · rintro ⟨hx0, hx1, hx⟩
-    exact ⟨hx0, hx1, fun r => by rw [certifiedSource_threshold_reflected X n r v hv]; exact hx r⟩
+end
 
 end LogicalInduction

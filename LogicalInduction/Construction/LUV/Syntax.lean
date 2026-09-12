@@ -43,14 +43,6 @@ metered on `EF.serialize` through the write-out classes, while the threshold fam
 metered by write-out at `LUV.MachineThresholdCodeSeq`.  `LUVCombinationSyntax` is inhabited at a
 genuinely index-varying sequence by `ordinaryLUVCombinationSyntax`
 (`Construction/Quotation/MarketQuoteCodes.lean`).
-**The criterion binder below is `def:lic` at the paper's own quantifier.**  Every result here that consumes an
-exploiting trader takes `[IsLogicalInductor P DP]`, and the trader is certified at `EfficientlyComputable`:
-it is assembled from `AffineCombination.PolySequence`'s machine-metered emission fields
-through `PolySequence.buyBelowTrader_ec` (`Properties/AffineCoherence.lean`), which has no
-fuel-class form: the bridge `BigSpliceStream.toMachine` runs fuel to machine, and no map
-back is proved or claimed.  The
-calibration is stated at `def:ec` in `Framework/Affine.lean`, and the `_unconditional`
-endpoints discharge the criterion through `LIA_is_logical_inductor`.
 
 -/
 
@@ -1392,18 +1384,6 @@ namespace LUVCombination.BoundedSequence
 
 open Filter Topology
 
-/-- The `def:blcp` `L¹` bound in the form the mesh theorems consume it: a nonnegative
-rational bounding every member's share norm. -/
-private lemma exists_rat_shareNorm_bound {As : ℕ → LUVCombination} {P : History}
-    (h : LUVCombination.BoundedSequence As P) :
-    ∃ b : ℚ, (0 : ℝ) ≤ (b : ℝ) ∧ ∀ n, (As n).shareNorm P ≤ (b : ℝ) := by
-  obtain ⟨B, hB⟩ := h.bounded
-  obtain ⟨b, hbB⟩ := exists_rat_gt (max B 0)
-  refine ⟨b, (le_max_right B 0).trans hbB.le, fun n ↦ ?_⟩
-  have h1 : (As n).shareNorm P ≤ (As n).l1Norm P :=
-    le_add_of_nonneg_left (abs_nonneg _)
-  exact h1.trans ((hB n).trans ((le_max_left B 0).trans hbB.le))
-
 /-- Appendix `lem:mesh` with the mesh-softmax operational witness discharged from the
 compact LUV syntax.  Proof kind `C`; every hypothesis is type `(a)`.
 Paper node: `lem:mesh` -/
@@ -1415,7 +1395,7 @@ theorem mesh_independence_ofSyntax
     (hvalued : LUVCombination.WorldValued As DP)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     Tendsto (LUVCombination.meshTailError As P) atTop (𝓝 0) := by
-  obtain ⟨b, hb, hshare⟩ := exists_rat_shareNorm_bound h
+  obtain ⟨b, hb, hshare⟩ := h.exists_rat_shareBound
   exact h.mesh_independence (S.meshSoftmaxOperationalWitness h
       (fun n φ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n φ))
     hvalued b hb hshare hworld
@@ -1434,7 +1414,7 @@ theorem exppolymax_ofSyntax
         liminf (futureHigh As P) atTop ∧
       limsup (fun n => (As n).expect P n) atTop =
         limsup (futureLow As P) atTop := by
-  obtain ⟨b, hb, hshare⟩ := exists_rat_shareNorm_bound h
+  obtain ⟨b, hb, hshare⟩ := h.exists_rat_shareBound
   exact h.exppolymax (S.meshSoftmaxOperationalWitness h
       (fun n φ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n φ))
     hvalued b hb hshare hworld
@@ -1457,7 +1437,7 @@ theorem expcoh_ofSyntax
           limsup (fun n => (As n).expectInf P) atTop ∧
         limsup (fun n => (As n).expectInf P) atTop ≤
           limsup (completedHigh As P DP) atTop) := by
-  obtain ⟨b, hb, hshare⟩ := exists_rat_shareNorm_bound h
+  obtain ⟨b, hb, hshare⟩ := h.exists_rat_shareBound
   exact h.expcoh (S.meshSoftmaxOperationalWitness h
       (fun n φ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n φ))
     hvalued S.threshold_code b hb hshare hworld
@@ -1476,7 +1456,7 @@ theorem perexpkno_ofSyntax
         liminf (fun n => (As n).expectInf P) atTop ∧
       limsup (futureHigh As P) atTop =
         limsup (fun n => (As n).expectInf P) atTop := by
-  obtain ⟨b, hb, hshare⟩ := exists_rat_shareNorm_bound h
+  obtain ⟨b, hb, hshare⟩ := h.exists_rat_shareBound
   exact h.perexpkno (S.meshSoftmaxOperationalWitness h
       (fun n φ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n φ))
     hvalued S.threshold_code b hb hshare hworld

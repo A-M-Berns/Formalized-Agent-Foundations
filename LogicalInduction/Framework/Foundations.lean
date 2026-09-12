@@ -26,7 +26,9 @@ Days are indexed from `0` here and from `ℕ⁺` in the paper (tex:556), so day 
 the paper's day `n+1`; ranks and price features follow the convention uniformly.
 
 The two `example`s pin the substrate facts `def:ec` relies on, and
-`decode_sentence_eq_ofNat'` / `encode_sentence_eq_toNat'` identify the `Encodable` coding
+`decode_sentence_eq_ofNat` / `encode_sentence_eq_toNat` identify the `Encodable` coding, and
+`encode_falsum` / `encode_atom` / `encode_imp` / `encode_and` / `encode_or` (with the derived
+`encode_negAtom` / `encode_top`) give the constructor codes in closed pairing form
 with Foundation's own `Formula.ofNat` / `Formula.toNat` definitionally, which is what lets a
 code-level matcher be written in Foundation's terms and read back as a `Sentence` code
 (`Construction/Freeze/Prefix.lean`, `Construction/Freeze/CanonicalCodes.lean`).
@@ -51,13 +53,52 @@ example : DecidableEq Sentence := inferInstance
 example : Encodable Sentence := inferInstance
 
 /-- The `Sentence` decoder is Foundation's `Formula.ofNat`, definitionally. -/
-lemma decode_sentence_eq_ofNat' (n : ℕ) :
+lemma decode_sentence_eq_ofNat (n : ℕ) :
     (Encodable.decode n : Option Sentence) =
       LO.Propositional.Formula.ofNat n := rfl
 
 /-- The `Sentence` encoder is Foundation's `Formula.toNat`, definitionally. -/
-lemma encode_sentence_eq_toNat' (φ : Sentence) :
+lemma encode_sentence_eq_toNat (φ : Sentence) :
     Encodable.encode φ = LO.Propositional.Formula.toNat φ := rfl
+
+/-! ### The constructor codes
+
+The five `Formula` constructors' Gödel codes in closed pairing form, each `rfl` through
+Foundation's `toNat`.  Every compiler that dispatches on a sentence's code — the prefix
+machine's validity test, the deductive-process atom encoders, the emission lanes — reads
+them off here rather than restating them. -/
+
+/-- `⌜⊥⌝ = 1`. -/
+lemma encode_falsum : Encodable.encode (LO.Propositional.Formula.falsum : Sentence) = 1 := rfl
+
+/-- `⌜atom a⌝ = ⟪1, a⟫ + 1`. -/
+lemma encode_atom (a : ℕ) :
+    Encodable.encode (LO.Propositional.Formula.atom a : Sentence) = Nat.pair 1 a + 1 := rfl
+
+/-- `⌜φ 🡒 ψ⌝ = ⟪2, ⟪⌜φ⌝, ⌜ψ⌝⟫⟫ + 1`. -/
+lemma encode_imp (φ ψ : Sentence) :
+    Encodable.encode (LO.Propositional.Formula.imp φ ψ) =
+      Nat.pair 2 (Nat.pair (Encodable.encode φ) (Encodable.encode ψ)) + 1 := rfl
+
+/-- `⌜φ ⋏ ψ⌝ = ⟪3, ⟪⌜φ⌝, ⌜ψ⌝⟫⟫ + 1`. -/
+lemma encode_and (φ ψ : Sentence) :
+    Encodable.encode (LO.Propositional.Formula.and φ ψ) =
+      Nat.pair 3 (Nat.pair (Encodable.encode φ) (Encodable.encode ψ)) + 1 := rfl
+
+/-- `⌜φ ⋎ ψ⌝ = ⟪4, ⟪⌜φ⌝, ⌜ψ⌝⟫⟫ + 1`. -/
+lemma encode_or (φ ψ : Sentence) :
+    Encodable.encode (LO.Propositional.Formula.or φ ψ) =
+      Nat.pair 4 (Nat.pair (Encodable.encode φ) (Encodable.encode ψ)) + 1 := rfl
+
+/-- `⌜∼atom m⌝`, the negated-atom code the deductive-process lanes publish. -/
+lemma encode_negAtom (m : ℕ) :
+    Encodable.encode (∼(LO.Propositional.Formula.atom m) : Sentence) =
+      Nat.pair 2 (Nat.pair (Nat.pair 1 m + 1) (Nat.pair 0 0 + 1)) + 1 := rfl
+
+/-- `⌜⊤⌝`, i.e. `⌜⊥ 🡒 ⊥⌝`. -/
+lemma encode_top :
+    Encodable.encode (⊤ : Sentence) =
+      Nat.pair 2 (Nat.pair (Nat.pair 0 0 + 1) (Nat.pair 0 0 + 1)) + 1 := rfl
 
 /-! ## Valuations and histories -/
 

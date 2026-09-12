@@ -68,10 +68,11 @@ growing forms discharge it themselves, by a case split on satisfiability and by
 propositional compactness respectively, which is why they match the paper's statement with
 no consistency hypothesis.
 
-Non-vacuity of the arbitrary-e.c.-sequence quantifier is witnessed by
-`machineSentenceCodes_atom` and the example beside it, at the injective atom family.  Every
-*public* declaration here is inventoried in `AxiomAudit.lean` (the one `private` lemma,
-`machineSentenceCodes_atom`, cannot be named from another file); the strength classification is the `thm:scon` row of
+Non-vacuity of the arbitrary-e.c.-sequence quantifier is witnessed by the example below, at
+the injective atom family, whose write-out certificate is `machineSentenceCodes_atom`
+(`Framework/Machine/Witnesses.lean`).  Every *public* declaration here is inventoried in
+`AxiomAudit.lean`; the three `private` lemmas are that family's growth facts, which cannot
+be named from another file.  The strength classification is the `thm:scon` row of
 `scripts/coverage-classification.md`.
 **The criterion binder below is `def:lic` at the paper's own quantifier throughout**, in and out: every endpoint
 takes `[IsLogicalInductor P DP]` and concludes `IsLogicalInductor`, which is
@@ -218,7 +219,7 @@ theorem lic_conditioned_fixed
         P DP (fixedConditionProcess ψ) C market hjointC
     simpa [C, fixedConditioningPresentation,
       DeductiveProcess.adjoinSentence] using hresult
-  · push_neg at hjoint
+  · push Not at hjoint
     obtain ⟨N, hN⟩ := hjoint
     refine isLogicalInductor_of_stage_unsatisfiable _ _
       ((conditionedMarketComputation market (fun _ => ψ)
@@ -270,7 +271,7 @@ theorem lic_conditioned_growing_ofProcessComputation
         ((PCWorld.consistentWith_union_iff w DP extra i).mp (hw i)).2
     exact lic_conditioned_eventual_ofMarketComputation
       P DP extra C market hjointC
-  · push_neg at hsat
+  · push Not at hsat
     obtain ⟨N, hN⟩ := hsat
     exact isLogicalInductor_of_stage_unsatisfiable _ _
       ((conditionedMarketComputation market C.condition
@@ -310,25 +311,13 @@ theorem lic_conditioned_growing_ofSequence
       (fun n => ⟨w, ((PCWorld.consistentWith_union_iff w DP (prefixProcess ψ) n).mp (hw n)).1,
         fun i => (C.holds_condition i w).2
           ((PCWorld.consistentWith_union_iff w DP (prefixProcess ψ) i).mp (hw i)).2⟩)
-  · push_neg at hsat
+  · push Not at hsat
     obtain ⟨N, hN⟩ := hsat
     exact isLogicalInductor_of_stage_unsatisfiable _ _
       ((conditionedMarketComputation market C.condition C.condition_codes).toComputable)
       C.combined_computable (N := N) hN
 
 /-! ## Non-vacuity of the e.c.-sequence quantifier -/
-
-/-- The atom family `i ↦ atom i` is a written-out sentence sequence (`def:ec`): its
-canonical Polish block is the single token `i + 5` (`rpn (atom i) = [i + 5]`), emitted by a
-constant-shift poly-fueled program, crossed to the machine class by
-`BigSentenceCodes.toMachine`. -/
-private lemma machineSentenceCodes_atom :
-    MachineSentenceCodes (fun i => (LO.Propositional.Formula.atom i : Sentence)) := by
-  obtain ⟨c, hc⟩ := PolyFueled.id.addConst 5
-  exact (BigSentenceCodes.ofRpnSentenceCodes
-    (RpnSentenceCodes.ofCanonical
-      ((PolySegStream.ofTokenStream (PolyTokenStream.polyTok hc)).of_eq
-        (fun i => rfl)))).toMachine
 
 /-- **Non-vacuity of the arbitrary-e.c.-sequence quantifier.**  A client instantiates
 `lic_conditioned_growing_ofSequence` at a genuinely growing sequence — the injective
@@ -459,9 +448,8 @@ private lemma atomPrefixCondition_ne_succ (n : ℕ) :
 process of the injective atom family `i ↦ atom i`: the adjoined stages grow strictly at
 *every* day, the day-`n` condition `atom 0 ⋏ ⋯ ⋏ atom n` is never the empty conjunction `⊤`,
 and it differs from day `n + 1`'s at every `n`.  The degenerate inhabitant of the compact
-interface (`compactConditioningProcessComputation_nonempty`, with `extra.D n = ∅`) is
-deliberately **not** used here: it would make `DP.union extra = DP` and the conclusion a
-restatement of the unconditioned theorem.
+interface — the constantly empty process — is deliberately **not** used here: it would make
+`DP.union extra = DP` and the conclusion a restatement of the unconditioned theorem.
 
 The condition is written in index order through `ConditioningPresentation.condition`, which
 is what makes growth at every day poly-writable.  The compact
@@ -488,7 +476,7 @@ lemma exists_growing_conditioned_inductor
   exact ⟨fun i => (Formula.atom i : Sentence), prefixProcess _,
     atomPrefixProcess_ssubset, atomPrefixCondition_ne_top, atomPrefixCondition_ne_succ,
     ConditioningCompile.lic_conditioned_growing_ofSequence _ (paperDP T) _
-      ConditioningCompile.machineSentenceCodes_atom⟩
+      machineSentenceCodes_atom⟩
 
 /-- The compact `deductiveStageCondition` interface is inhabited non-degenerately too:
 `growingConditionProcess`'s condition is never `⊤` and does change, once. -/

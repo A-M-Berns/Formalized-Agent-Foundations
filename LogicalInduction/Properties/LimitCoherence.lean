@@ -65,14 +65,6 @@ belief's approximate expectation as an average over completed-theory worlds (`th
 `measurable_pcWorld_holds` to know a share's payout is a measurable function of the world.
 `Properties/UniversalSemimeasure.lean` consumes `lic_limitingBelief_gaifman` together with
 `GaifmanCoherent.le_sum_of_covers`.
-**The criterion binder below is `def:lic` at the paper's own quantifier.**  Every result here that consumes an
-exploiting trader takes `[IsLogicalInductor P DP]`, and the trader is certified at `EfficientlyComputable`:
-it is assembled from `AffineCombination.PolySequence`'s machine-metered emission fields
-through `PolySequence.buyBelowTrader_ec` (`Properties/AffineCoherence.lean`), which has no
-fuel-class form: the bridge `BigSpliceStream.toMachine` runs fuel to machine, and no map
-back is proved or claimed.  The
-calibration is stated at `def:ec` in `Framework/Affine.lean`, and the `_unconditional`
-endpoints discharge the criterion through `LIA_is_logical_inductor`.
 
 -/
 
@@ -111,7 +103,7 @@ lemma eventually_eq_empty_of_antitone
     ∀ᶠ n in atTop, s n = ∅ := by
   have hempty : ∃ n, s n = ∅ := by
     by_contra h
-    push_neg at h
+    push Not at h
     have hnonempty : ∀ n, (s n).Nonempty := h
     have hi := IsCompact.nonempty_iInter_of_sequence_nonempty_isCompact_isClosed s
       (fun n => hanti (Nat.le_succ n)) hnonempty
@@ -566,7 +558,6 @@ lemma gaifmanFiniteMeasure_apply (L : Valuation) (hL : GaifmanCoherent L)
         simp [Set.indicator, hxs, (GaifmanCoherent.mem_Icc hL _).1]
     _ = ENNReal.ofReal (L (booleanEvent I S)) := congrArg ENNReal.ofReal hreal
 
-set_option maxHeartbeats 800000 in
 /-- The coherent finite-dimensional laws form a projective family. -/
 lemma gaifmanFiniteMeasure_isProjective (L : Valuation) (hL : GaifmanCoherent L) :
     IsProjectiveMeasureFamily (α := fun _ : ℕ => Bool) (gaifmanFiniteMeasure L hL) := by
@@ -639,31 +630,11 @@ lemma eval_eq_of_eq_on_atoms (v w : BoolPCWorld) (φ : Sentence)
   induction φ with
   | atom a => exact h a (by simp [sentenceAtoms])
   | falsum => rfl
-  | imp φ ψ ihφ ihψ =>
-      have hφ : ∀ a ∈ sentenceAtoms φ, v a = w a := by
-        intro a ha
-        exact h a (Finset.mem_union_left _ ha)
-      have hψ : ∀ a ∈ sentenceAtoms ψ, v a = w a := by
-        intro a ha
-        exact h a (Finset.mem_union_right _ ha)
-      simp only [BoolPCWorld.eval]
-      rw [ihφ hφ, ihψ hψ]
-  | and φ ψ ihφ ihψ =>
-      have hφ : ∀ a ∈ sentenceAtoms φ, v a = w a := by
-        intro a ha
-        exact h a (Finset.mem_union_left _ ha)
-      have hψ : ∀ a ∈ sentenceAtoms ψ, v a = w a := by
-        intro a ha
-        exact h a (Finset.mem_union_right _ ha)
-      simp only [BoolPCWorld.eval]
-      rw [ihφ hφ, ihψ hψ]
-  | or φ ψ ihφ ihψ =>
-      have hφ : ∀ a ∈ sentenceAtoms φ, v a = w a := by
-        intro a ha
-        exact h a (Finset.mem_union_left _ ha)
-      have hψ : ∀ a ∈ sentenceAtoms ψ, v a = w a := by
-        intro a ha
-        exact h a (Finset.mem_union_right _ ha)
+  | imp φ ψ ihφ ihψ | and φ ψ ihφ ihψ | or φ ψ ihφ ihψ =>
+      have hφ : ∀ a ∈ sentenceAtoms φ, v a = w a :=
+        fun a ha => h a (Finset.mem_union_left _ ha)
+      have hψ : ∀ a ∈ sentenceAtoms ψ, v a = w a :=
+        fun a ha => h a (Finset.mem_union_right _ ha)
       simp only [BoolPCWorld.eval]
       rw [ihφ hφ, ihψ hψ]
 

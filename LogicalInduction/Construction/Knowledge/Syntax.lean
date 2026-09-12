@@ -268,14 +268,6 @@ lemma sentenceAtomCodes_computationClaimSentence (c : ComputationClaim) :
   subst ha
   simp [ComputationClaim.godelCode]
 
-/-- Distinct claims are named by distinct propositional atoms: the separation fact a client
-reasoning about two claims at once needs. -/
-lemma computationClaimSentence_injective :
-    Function.Injective computationClaimSentence := by
-  intro a b h
-  apply ComputationClaim.godelCode_injective
-  injection h
-
 /-- The claim "`z` names a halting run", at the fixed unbounded universal schema. -/
 noncomputable def haltingClaim (z : ℕ) : ComputationClaim :=
   ⟨.halting, universalHaltingSchema, z⟩
@@ -312,30 +304,6 @@ def boundedHaltingClaimInput (machine : Nat.Partrec.Code) (input : ℕ)
     UniversalCodeHalts (haltingClaimInput machine input) ↔ CodeHalts machine input := by
   simp [UniversalCodeHalts, haltingClaimInput, CodeHalts,
     Nat.Partrec.Code.ofSource_sourceNat]
-
-/-- The four projections invert the packing. -/
-lemma boundedClaimInput_decode (machine : Nat.Partrec.Code) (input : ℕ)
-    (horizon : Nat.Partrec.Code) (day : ℕ) :
-    boundedClaimMachine (boundedHaltingClaimInput machine input horizon day) = machine ∧
-      boundedClaimInput (boundedHaltingClaimInput machine input horizon day) = input ∧
-      boundedClaimHorizon (boundedHaltingClaimInput machine input horizon day) = horizon ∧
-      boundedClaimDay (boundedHaltingClaimInput machine input horizon day) = day := by
-  refine ⟨?_, ?_, ?_, ?_⟩ <;>
-    simp [boundedClaimMachine, boundedClaimInput, boundedClaimHorizon, boundedClaimDay,
-      boundedHaltingClaimInput, Nat.Partrec.Code.ofSource_sourceNat]
-
-/-- The deferred claim is true exactly when the machine halts within the horizon
-program's *actual* value on the day. -/
-lemma universalBoundedHalts_claimInput (machine : Nat.Partrec.Code) (input : ℕ)
-    (horizon : Nat.Partrec.Code) (day steps : ℕ) (hsteps : steps ∈ horizon.eval day) :
-    UniversalBoundedHalts (boundedHaltingClaimInput machine input horizon day) ↔
-      CodeHaltsWithin machine input steps := by
-  obtain ⟨hm, hi, hh, hd⟩ := boundedClaimInput_decode machine input horizon day
-  simp only [UniversalBoundedHalts, hm, hi, hh, hd]
-  constructor
-  · rintro ⟨m, hmem, hrun⟩
-    rwa [Part.mem_unique hmem hsteps] at hrun
-  · exact fun h => ⟨steps, hsteps, h⟩
 
 /-! ## The whole-value naming classes — strictness foils, not the paper's class
 
@@ -566,7 +534,7 @@ lemma universalHaltingSchema_mentions_zero :
           (universalHaltingSchema/[(‘↑w’ : Semiterm ℒₒᵣ Empty 0)])
         ↔ universalHaltingSchema.Evalb ![w] := by
     intro w
-    simp [Semiformula.eval_substs, Matrix.constant_eq_singleton]
+    simp [Semiformula.eval_substs]
   have hsub := Semiformula.subst_eq_of_not_mentions hmem
     (‘↑z’ : Semiterm ℒₒᵣ Empty 0) (‘↑z'’ : Semiterm ℒₒᵣ Empty 0)
   rw [← key z, ← key z', hsub]

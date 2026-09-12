@@ -22,17 +22,19 @@ against.  Foundation's decoders recurse on strictly smaller codes, so every inst
 compiled by primitive-recursive strong recursion rather than by structural recursion on
 `Formula` or `EF`.  Beside them sit the arithmetic certificates the emission lanes name
 directly: `ratNum_prim`, `ratDen_prim`, `ratAdd_prim`, `ratSub_prim`, `ratMul_prim`,
-`ratDiv_prim`, `ratInv_prim`, `ratPow_prim`, `ratLE_prim`, `ratMax_prim` and their integer
+`ratDiv_prim`, `ratInv_prim`, `ratPow_prim`, `ratLE_prim`, `ratMax_prim`, `ratMin_prim`,
+`ratAbs_prim`, `ratNatCast_prim`, the two list sums `natListSum_prim` / `ratListSum_prim`,
+and their integer
 counterparts, the `EF` constructor certificates (`efConst_prim`, `efAdd_prim`, `efMul_prim`,
 `efMax_prim`, `efPrice_prim`, `efSafeRecip_prim`), and the two list utilities that put a
-finite set in canonical form (`listDedup`, `insertionSort_prim`).
+finite set in canonical form (`dedup_prim`, `insertionSort_prim`).
 
 ## The token decode
 
 `parseRpnC_prim`, `unRpn_prim`, `negFormulaCode_prim`,
-`parseStructuredArithmeticFormula_prim`, and the whole-value naming residues
-`RpnSentenceCodes.primrec` and `BigSentenceCodes.primrec`, each with its `.exists_code`
-corollary.  The parsers compiled here are the ones defined in `Framework/Criterion.lean` and
+`parseStructuredArithmeticFormula_prim`, and the whole-value naming residue — the shared
+parse read-off `sentenceCodes_primrec` and code extraction `exists_sentenceCode`, with
+`RpnSentenceCodes` and `BigSentenceCodes` instantiations.  The parsers compiled here are the ones defined in `Framework/Criterion.lean` and
 `Framework/Emission/RpnSentence.lean`, whose tags `20`, `21` and `22` expand `¬`, `⟹` and
 `⟺` into normal form internally and charge nothing for it (`dd:nnf`).  A written-out sentence
 sequence is reassembled into whole-value codes here, which is legitimate because primitive
@@ -194,49 +196,32 @@ private lemma formulaNormList_history (n : ℕ) :
       · simp [sentenceDecodeNorm, formulaNormList, formulaNormSucc, LO.Propositional.Formula.ofNat,
           LO.Propositional.Formula.toNat,
           Nat.pair, tag, h1]
+      -- The three binary connectives differ only in the tag numeral.
+      have hbin : ∀ t : ℕ, t = 2 ∨ t = 3 ∨ t = 4 → e.unpair.1 = t →
+          formulaNormList ((List.range (e + 1)).map fun k => sentenceDecodeNorm k) =
+            sentenceDecodeNorm (e + 1) := by
+        intro t ht htag
+        have hb := formulaBinaryNorm_history t payload (e + 1) hleft hright
+        rcases ht with rfl | rfl | rfl <;>
+          · simp only [formulaNormList, List.length_map, List.length_range,
+              formulaNormSucc, htag, ↓reduceIte]
+            rw [hb]
+            unfold sentenceDecodeNorm
+            simp only [LO.Propositional.Formula.ofNat, htag]
+            cases (@LO.Propositional.Formula.ofNat ℕ inferInstance
+                payload.unpair.1 : Option Sentence) <;>
+              cases (@LO.Propositional.Formula.ofNat ℕ inferInstance
+                payload.unpair.2 : Option Sentence) <;>
+              simp [LO.Propositional.Formula.toNat]
       by_cases h2 : tag = 2
-      · subst tag
-        have hb := formulaBinaryNorm_history 2 payload (e + 1) hleft hright
-        simp only [formulaNormList, List.length_map, List.length_range,
-          formulaNormSucc, h2, ↓reduceIte]
-        rw [hb]
-        unfold sentenceDecodeNorm
-        simp only [LO.Propositional.Formula.ofNat, h2]
-        cases (@LO.Propositional.Formula.ofNat ℕ inferInstance
-            payload.unpair.1 : Option Sentence) <;>
-          cases (@LO.Propositional.Formula.ofNat ℕ inferInstance
-            payload.unpair.2 : Option Sentence) <;>
-          simp [LO.Propositional.Formula.toNat]
+      · exact hbin 2 (Or.inl rfl) h2
       by_cases h3 : tag = 3
-      · subst tag
-        have hb := formulaBinaryNorm_history 3 payload (e + 1) hleft hright
-        simp only [formulaNormList, List.length_map, List.length_range,
-          formulaNormSucc, h3, ↓reduceIte]
-        rw [hb]
-        unfold sentenceDecodeNorm
-        simp only [LO.Propositional.Formula.ofNat, h3]
-        cases (@LO.Propositional.Formula.ofNat ℕ inferInstance
-            payload.unpair.1 : Option Sentence) <;>
-          cases (@LO.Propositional.Formula.ofNat ℕ inferInstance
-            payload.unpair.2 : Option Sentence) <;>
-          simp [LO.Propositional.Formula.toNat]
+      · exact hbin 3 (Or.inr (Or.inl rfl)) h3
       by_cases h4 : tag = 4
-      · subst tag
-        have hb := formulaBinaryNorm_history 4 payload (e + 1) hleft hright
-        simp only [formulaNormList, List.length_map, List.length_range,
-          formulaNormSucc, h4, ↓reduceIte]
-        rw [hb]
-        unfold sentenceDecodeNorm
-        simp only [LO.Propositional.Formula.ofNat, h4]
-        cases (@LO.Propositional.Formula.ofNat ℕ inferInstance
-            payload.unpair.1 : Option Sentence) <;>
-          cases (@LO.Propositional.Formula.ofNat ℕ inferInstance
-            payload.unpair.2 : Option Sentence) <;>
-          simp [LO.Propositional.Formula.toNat]
+      · exact hbin 4 (Or.inr (Or.inr rfl)) h4
       · have htag : 5 ≤ tag := by omega
-        simp [sentenceDecodeNorm, formulaNormList, formulaNormSucc, LO.Propositional.Formula.ofNat,
-
-          tag, h0, h1, h2, h3, h4]
+        simp [sentenceDecodeNorm, formulaNormList, formulaNormSucc,
+          LO.Propositional.Formula.ofNat, tag, h0, h1, h2, h3, h4]
 
 /-- Foundation's concrete Gödel encoding of propositional sentences is primitive-recursive.
 This is an encoding theorem only; it contains no semantic or logical-inductor premise. -/
@@ -292,7 +277,7 @@ private lemma coprimeBounded_iff (a b : ℕ) : coprimeBounded a b ↔ a.Coprime 
     intro k hka hkb
     have hnz : a ≠ 0 ∨ b ≠ 0 := by
       by_contra hnz
-      push_neg at hnz
+      push Not at hnz
       have := h 0 (by omega) (by simp [hnz.1]) (by simp [hnz.2])
       omega
     have hklt : k < max a b + 1 := by
@@ -959,6 +944,43 @@ lemma ratMax_prim : Primrec₂ fun q r : ℚ => max q r := by
   exact (Primrec.ite ratLE_prim Primrec₂.right Primrec₂.left).to₂.of_eq fun q r => by
     simp [max_def]
 
+/-- Rational absolute value is primitive recursive in the canonical encoding. -/
+lemma ratAbs_prim : Primrec fun q : ℚ => |q| := by
+  exact (ratMax_prim.comp Primrec.id (ratNeg_prim.comp Primrec.id)).of_eq
+    fun q => by simp [abs_eq_max_neg]
+
+/-- The cast `ℕ → ℚ` is primitive recursive: `⌜(n : ℚ)⌝ = ⟪2n, 1⟫`. -/
+lemma ratNatCast_prim : Primrec fun n : ℕ => (n : ℚ) := by
+  apply Primrec.encode_iff.mp
+  exact (Primrec₂.natPair.comp (Primrec.nat_mul.comp (Primrec.const 2) Primrec.id)
+    (Primrec.const 1)).of_eq fun n => (encode_rat_natCast n).symm
+
+/-- Mathlib's `Primrec` API has no `list_sum`; `List.sum` is a `foldr`. -/
+lemma natListSum_prim : Primrec fun l : List ℕ => l.sum := by
+  have h := Primrec.list_foldr (f := fun l : List ℕ => l) (g := fun _ : List ℕ => 0)
+    Primrec.id (Primrec.const 0)
+    (Primrec.nat_add.comp (Primrec.fst.comp Primrec.snd)
+      (Primrec.snd.comp Primrec.snd)).to₂
+  exact h.of_eq fun l => by
+    induction l with
+    | nil => rfl
+    | cons a t ih => simp [List.sum_cons, ← ih]
+
+/-- The rational twin of `natListSum_prim`. -/
+lemma ratListSum_prim : Primrec fun l : List ℚ => l.sum := by
+  have h := Primrec.list_foldr (α := List ℚ) Primrec.id (Primrec.const (0 : ℚ))
+    (ratAdd_prim.comp (Primrec.fst.comp Primrec.snd) (Primrec.snd.comp Primrec.snd)).to₂
+  refine h.of_eq fun l => ?_
+  simp only [id_eq]
+  induction l with
+  | nil => rfl
+  | cons a t ih => simp only [List.foldr_cons, List.sum_cons, ih]
+
+/-- Rational minimum is primitive recursive in the canonical encoding. -/
+lemma ratMin_prim : Primrec₂ fun q r : ℚ => min q r := by
+  exact (Primrec.ite ratLE_prim Primrec₂.left Primrec₂.right).to₂.of_eq fun q r => by
+    simp [min_def]
+
 /-- Exact rational division is primitive recursive in the canonical encoding. -/
 lemma ratDiv_prim : Primrec₂ fun q r : ℚ => q / r := by
   exact (ratMul_prim.comp₂ Primrec₂.left
@@ -976,6 +998,45 @@ lemma ratPow_prim : Primrec₂ fun q : ℚ => fun n : ℕ => q ^ n := by
       | zero => simp
       | succ n ih => simp [ih, pow_succ]
   exact hpow.to₂
+
+/-! ## Sentence constructors, and bounded search over an index range
+
+The two propositional constructors a definitional closure builds its clauses from, and the
+two bounded-search combinators its executable gates are written with.  They are stated here,
+beside the `Primcodable Sentence` instance, because every consumer in `Construction/` needs
+one or the other and none of them is specific to a lane. -/
+
+/-- Negating a sentence is primitive recursive in its code. -/
+lemma sentenceNeg_prim : Primrec fun φ : Sentence => ∼φ := by
+  apply Primrec.encode_iff.mp
+  exact (Primrec.succ.comp (Primrec₂.natPair.comp (Primrec.const 2)
+    (Primrec₂.natPair.comp Primrec.encode (Primrec.const 1)))).of_eq fun _ => rfl
+
+/-- Forming an implication is primitive recursive in the two codes. -/
+lemma sentenceImp_prim : Primrec₂ fun φ ψ : Sentence => φ 🡒 ψ := by
+  apply Primrec₂.encode_iff.mp
+  exact (Primrec.succ.comp (Primrec₂.natPair.comp (Primrec.const 2)
+    (Primrec₂.natPair.comp
+      (Primrec.encode.comp Primrec.fst)
+      (Primrec.encode.comp Primrec.snd)))).to₂.of_eq fun _ _ => rfl
+
+/-- The bounded-search `Primrec` combinator: a disjunction over an inclusive index range
+whose bound and test are primitive recursive is primitive recursive. -/
+lemma listRangeAny_prim {α : Type} [Primcodable α]
+    {bound : α → ℕ} {test : α → ℕ → Bool}
+    (hbound : Primrec bound) (htest : Primrec₂ test) :
+    Primrec fun a => (List.range (bound a + 1)).any (test a) := by
+  have hrange : Primrec fun a => List.range (bound a + 1) :=
+    Primrec.list_range.comp
+      (Primrec.nat_add.comp hbound (Primrec.const 1))
+  have hstep : Primrec₂ fun (a : α) (q : ℕ × Bool) => test a q.1 || q.2 :=
+    (Primrec.dom_bool₂ (· || ·)).comp₂
+      (htest.comp₂ Primrec₂.left (Primrec.fst.comp₂ Primrec₂.right))
+      (Primrec.snd.comp₂ Primrec₂.right)
+  exact (Primrec.list_foldr hrange (Primrec.const false) hstep).of_eq fun a => by
+    induction List.range (bound a + 1) with
+    | nil => rfl
+    | cons x xs ih => simp [List.any, ih]
 
 /-! ## Duplicate-free sentence lists
 
@@ -1751,50 +1812,22 @@ instance strategyPrimcodable (n : ℕ) : Primcodable (Strategy n) where
 
 /-! ## Exact finite-sentence-set encoding
 
-The canonical form of a finite set is its duplicate-free code-sorted list.  The two list
-utilities that produce it — last-occurrence deduplication and insertion sort — are compiled
-once over an arbitrary `Primcodable` element type and instantiated twice: at `Sentence`
-ordered by Gödel code here, and at `ℕ` ordered by `≤` in the Budgeter's atom compiler. -/
+The canonical form of a finite set is its duplicate-free code-sorted list: Mathlib's
+`List.dedup` followed by `List.insertionSort`.  Both are compiled here over an arbitrary
+`Primcodable` element type, and used at `Sentence` ordered by Gödel code and at `ℕ` ordered
+by `≤` in the Budgeter's atom compiler. -/
 
-/-- Remove duplicates from a list, keeping the last occurrence of each element. -/
-def listDedup {α : Type*} [DecidableEq α] (l : List α) : List α :=
-  l.foldr (fun a acc => if a ∈ acc then acc else a :: acc) []
-
-@[simp] private lemma listDedup_nil {α : Type*} [DecidableEq α] :
-    listDedup ([] : List α) = [] := rfl
-
-@[simp] private lemma listDedup_cons {α : Type*} [DecidableEq α] (a : α) (l : List α) :
-    listDedup (a :: l) = if a ∈ listDedup l then listDedup l else a :: listDedup l := rfl
-
-@[simp] private lemma mem_listDedup {α : Type*} [DecidableEq α] :
-    ∀ (l : List α) (a : α), a ∈ listDedup l ↔ a ∈ l := by
-  intro l
+/-- Mathlib's `List.dedup` *is* the last-occurrence `foldr`, which is the shape the
+`Primrec` closure lemmas apply to. -/
+private lemma dedup_eq_foldr {α : Type*} [DecidableEq α] (l : List α) :
+    l.dedup = l.foldr (fun a acc => if a ∈ acc then acc else a :: acc) [] := by
   induction l with
-  | nil => intro a; simp
-  | cons b l ih =>
-      intro a
-      by_cases h : b ∈ listDedup l
-      · have hbl : b ∈ l := (ih b).mp h
-        rw [listDedup_cons, if_pos h, ih a]
-        simp only [List.mem_cons]
-        constructor
-        · exact Or.inr
-        · rintro (rfl | ha)
-          · exact hbl
-          · exact ha
-      · simp [listDedup_cons, h, ih]
+  | nil => rfl
+  | cons a l ih => simp only [List.dedup_cons', List.foldr_cons, ih]
 
-lemma listDedup_nodup {α : Type*} [DecidableEq α] (l : List α) :
-    (listDedup l).Nodup := by
-  induction l with
-  | nil => simp
-  | cons a l ih =>
-      by_cases h : a ∈ listDedup l
-      · simpa [listDedup_cons, h] using ih
-      · simp [listDedup_cons, h, ih]
-
-lemma listDedup_prim {α : Type*} [Primcodable α] [DecidableEq α] :
-    Primrec (listDedup (α := α)) := by
+/-- Duplicate removal is primitive recursive. -/
+lemma dedup_prim {α : Type*} [Primcodable α] [DecidableEq α] :
+    Primrec (List.dedup (α := α)) := by
   have hmem : PrimrecRel fun (tail : List α) (a : α) => a ∈ tail :=
     (Primrec.eq.exists_mem_list).of_eq fun tail a => by simp
   have hstep : Primrec₂ fun (_ : List α) (p : α × List α) =>
@@ -1806,31 +1839,8 @@ lemma listDedup_prim {α : Type*} [Primcodable α] [DecidableEq α] :
       (Primrec.list_cons.comp
         (Primrec.fst.comp Primrec.snd)
         (Primrec.snd.comp Primrec.snd)) |>.to₂
-  exact (Primrec.list_foldr Primrec.id (Primrec.const []) hstep).of_eq fun _ => rfl
-
-/-- Remove duplicate sentences while preserving the last occurrence of each sentence. -/
-def sentenceDedup (l : List Sentence) : List Sentence :=
-  l.foldr (fun φ acc => if φ ∈ acc then acc else φ :: acc) []
-
-@[simp] lemma sentenceDedup_nil : sentenceDedup [] = [] := by rfl
-
-@[simp] lemma sentenceDedup_cons (a : Sentence) (l : List Sentence) :
-    sentenceDedup (a :: l) =
-      if a ∈ sentenceDedup l then sentenceDedup l else a :: sentenceDedup l := by
-  rfl
-
-@[simp] lemma mem_sentenceDedup : ∀ (l : List Sentence) (φ : Sentence),
-    φ ∈ sentenceDedup l ↔ φ ∈ l :=
-  mem_listDedup
-
-/-- The deduplicated list has no repeats. -/
-lemma sentenceDedup_nodup (l : List Sentence) :
-    (sentenceDedup l).Nodup :=
-  listDedup_nodup l
-
-/-- Sentence deduplication is primitive recursive. -/
-lemma sentenceDedup_prim : Primrec sentenceDedup :=
-  listDedup_prim.of_eq fun _ => rfl
+  exact (Primrec.list_foldr Primrec.id (Primrec.const []) hstep).of_eq
+    fun l => (dedup_eq_foldr l).symm
 
 /-- Insertion into a list sorted by a primitive-recursive order is primitive recursive. -/
 private lemma orderedInsert_prim {α : Type*} [Primcodable α] (r : α → α → Prop)
@@ -2448,7 +2458,6 @@ lemma strategyOfTokensTrades_prim : Primrec₂ fun n tokens =>
     exact (Primrec.ite hvalid Primrec.snd (Primrec.const [])).to₂
   exact ((Primrec.option_casesOn hdecode (Primrec.const []) hsome).to₂).of_eq
     fun n tokens => by
-      simp only []
       unfold strategyOfTokens
       split
       · simp_all
@@ -2470,6 +2479,41 @@ standard `Primrec` combinators. -/
 
 private abbrev PCtx :=
   (List (Option (ℕ × List ℕ)) × ℕ) × (ℕ × List ℕ)
+
+/-! ### The shared parser context
+
+The structured-payload parsers below are compiled by course-of-values recursion over the
+same context `PCtx` — the memo table, the fuel, the head token and the tail — so they share
+their accessors and their two memo lookups. -/
+
+/-- The memo table of a parser context. -/
+private lemma pctxPrev : Primrec fun x : PCtx => x.1.1 := Primrec.fst.comp Primrec.fst
+
+/-- The fuel of a parser context. -/
+private lemma pctxFuel : Primrec fun x : PCtx => x.1.2 := Primrec.snd.comp Primrec.fst
+
+/-- The head token of a parser context. -/
+private lemma pctxTok : Primrec fun x : PCtx => x.2.1 := Primrec.fst.comp Primrec.snd
+
+/-- The remaining tokens of a parser context. -/
+private lemma pctxRest : Primrec fun x : PCtx => x.2.2 := Primrec.snd.comp Primrec.snd
+
+/-- The memo lookup at the context's own fuel and tail. -/
+private lemma pctxLook : Primrec fun x : PCtx =>
+    ((x.1.1[Nat.pair x.1.2 (Encodable.encode x.2.2)]?).getD none) :=
+  Primrec.option_getD.comp
+    (Primrec.list_getElem?.comp pctxPrev
+      (Primrec₂.natPair.comp pctxFuel (Primrec.encode.comp pctxRest)))
+    (Primrec.const none)
+
+/-- The memo lookup after one sub-parse has consumed a prefix. -/
+private lemma pctxLook₂ : Primrec fun y : PCtx × (ℕ × List ℕ) =>
+    ((y.1.1.1[Nat.pair y.1.1.2 (Encodable.encode y.2.2)]?).getD none) :=
+  Primrec.option_getD.comp
+    (Primrec.list_getElem?.comp (pctxPrev.comp Primrec.fst)
+      (Primrec₂.natPair.comp (pctxFuel.comp Primrec.fst)
+        (Primrec.encode.comp (Primrec.snd.comp Primrec.snd))))
+    (Primrec.const none)
 
 private lemma structuredNatG_prim : Primrec structuredNatG := by
   have hfuel : Primrec fun prev : List (Option (ℕ × List ℕ)) =>
@@ -2560,12 +2604,8 @@ private lemma structuredTermG_prim : Primrec structuredTermG := by
       Denumerable.ofNat (List ℕ) p.1.length.unpair.2 :=
     (Primrec.ofNat (List ℕ)).comp
       (Primrec.snd.comp (Primrec.unpair.comp (Primrec.list_length.comp Primrec.fst)))
-  have hprev : Primrec fun x : PCtx => x.1.1 := Primrec.fst.comp Primrec.fst
-  have hfuel' : Primrec fun x : PCtx => x.1.2 := Primrec.snd.comp Primrec.fst
-  have ht : Primrec fun x : PCtx => x.2.1 := Primrec.fst.comp Primrec.snd
-  have hrest : Primrec fun x : PCtx => x.2.2 := Primrec.snd.comp Primrec.snd
   have hnat : Primrec fun x : PCtx => parseStructuredNat x.1.2 x.2.2 :=
-    parseStructuredNat_prim.comp hfuel' hrest
+    parseStructuredNat_prim.comp pctxFuel pctxRest
   have hvar (kind : ℕ) : Primrec fun x : PCtx =>
       (parseStructuredNat x.1.2 x.2.2).map fun p =>
         (Nat.pair kind p.1 + 1, p.2) := by
@@ -2574,20 +2614,7 @@ private lemma structuredTermG_prim : Primrec structuredTermG := by
       (Primrec.fst.comp Primrec.snd))).pair (Primrec.snd.comp Primrec.snd)
   have hconst (symbol : ℕ) : Primrec fun x : PCtx =>
       (some (arithmeticFuncCode 0 symbol 0, x.2.2) : Option (ℕ × List ℕ)) :=
-    Primrec.option_some.comp ((Primrec.const _).pair hrest)
-  have hlook1 : Primrec fun x : PCtx =>
-      ((x.1.1[Nat.pair x.1.2 (Encodable.encode x.2.2)]?).getD none) :=
-    Primrec.option_getD.comp
-      (Primrec.list_getElem?.comp hprev
-        (Primrec₂.natPair.comp hfuel' (Primrec.encode.comp hrest)))
-      (Primrec.const none)
-  have hlook2 : Primrec fun y : PCtx × (ℕ × List ℕ) =>
-      ((y.1.1.1[Nat.pair y.1.1.2 (Encodable.encode y.2.2)]?).getD none) :=
-    Primrec.option_getD.comp
-      (Primrec.list_getElem?.comp (hprev.comp Primrec.fst)
-        (Primrec₂.natPair.comp (hfuel'.comp Primrec.fst)
-          (Primrec.encode.comp (Primrec.snd.comp Primrec.snd))))
-      (Primrec.const none)
+    Primrec.option_some.comp ((Primrec.const _).pair pctxRest)
   have hout : Primrec fun z : (PCtx × (ℕ × List ℕ)) × (ℕ × List ℕ) =>
       (arithmeticFuncCode 2 (if z.1.1.2.1 = 7 then 0 else 1)
         (arithmeticVec2Code z.1.2.1 z.2.1), z.2.2) := by
@@ -2595,7 +2622,7 @@ private lemma structuredTermG_prim : Primrec structuredTermG := by
         if z.1.1.2.1 = 7 then 0 else 1 :=
       Primrec.ite
         (PrimrecRel.comp Primrec.eq
-          (ht.comp (Primrec.fst.comp Primrec.fst)) (Primrec.const 7))
+          (pctxTok.comp (Primrec.fst.comp Primrec.fst)) (Primrec.const 7))
         (Primrec.const 0) (Primrec.const 1)
     have hvec : Primrec fun z : (PCtx × (ℕ × List ℕ)) × (ℕ × List ℕ) =>
         arithmeticVec2Code z.1.2.1 z.2.1 := by
@@ -2617,9 +2644,9 @@ private lemma structuredTermG_prim : Primrec structuredTermG := by
         ((x.1.1[Nat.pair x.1.2 (Encodable.encode p.2)]?).getD none).map fun q =>
           (arithmeticFuncCode 2 (if x.2.1 = 7 then 0 else 1)
             (arithmeticVec2Code p.1 q.1), q.2) :=
-    Primrec.option_bind hlook1 (Primrec.option_map hlook2 hout.to₂).to₂
+    Primrec.option_bind pctxLook (Primrec.option_map pctxLook₂ hout.to₂).to₂
   have heqt : ∀ k : ℕ, PrimrecPred fun x : PCtx => x.2.1 = k := fun k =>
-    PrimrecRel.comp Primrec.eq ht (Primrec.const k)
+    PrimrecRel.comp Primrec.eq pctxTok (Primrec.const k)
   have hbody : Primrec fun x : PCtx =>
       if x.2.1 = 3 then
         (parseStructuredNat x.1.2 x.2.2).map fun p => (Nat.pair 0 p.1 + 1, p.2)
@@ -2668,7 +2695,7 @@ private lemma structuredTermG_prim : Primrec structuredTermG := by
   simp [structuredTermGCore, hf, hs]
 
 private lemma parseStructuredArithmeticTerm_prim :
-    Primrec₂ fun fuel ts => parseStructuredArithmeticTerm fuel 0 ts := by
+    Primrec₂ fun fuel ts => parseStructuredArithmeticTerm fuel ts := by
   have hF : Primrec₂ (fun (_ : Unit) => structuredTermF) :=
     Primrec.nat_strong_rec _ (structuredTermG_prim.comp Primrec.snd).to₂
       fun _ n => structuredTermG_spec n
@@ -2796,28 +2823,24 @@ private lemma structuredFormulaG_prim : Primrec structuredFormulaG := by
       Denumerable.ofNat (List ℕ) p.1.length.unpair.2 :=
     (Primrec.ofNat (List ℕ)).comp
       (Primrec.snd.comp (Primrec.unpair.comp (Primrec.list_length.comp Primrec.fst)))
-  have hprev : Primrec fun x : PCtx => x.1.1 := Primrec.fst.comp Primrec.fst
-  have hfuel' : Primrec fun x : PCtx => x.1.2 := Primrec.snd.comp Primrec.fst
-  have ht : Primrec fun x : PCtx => x.2.1 := Primrec.fst.comp Primrec.snd
-  have hrest : Primrec fun x : PCtx => x.2.2 := Primrec.snd.comp Primrec.snd
   have hconst (tag : ℕ) : Primrec fun x : PCtx =>
       (some (Nat.pair tag 0 + 1, x.2.2) : Option (ℕ × List ℕ)) :=
     Primrec.option_some.comp
       ((Primrec.succ.comp (Primrec₂.natPair.comp (Primrec.const tag)
-        (Primrec.const 0))).pair hrest)
+        (Primrec.const 0))).pair pctxRest)
   have hterm1 : Primrec fun x : PCtx =>
-      parseStructuredArithmeticTerm x.1.2 0 x.2.2 :=
-    parseStructuredArithmeticTerm_prim.comp hfuel' hrest
+      parseStructuredArithmeticTerm x.1.2 x.2.2 :=
+    parseStructuredArithmeticTerm_prim.comp pctxFuel pctxRest
   have hterm2 : Primrec fun y : PCtx × (ℕ × List ℕ) =>
-      parseStructuredArithmeticTerm y.1.1.2 0 y.2.2 :=
-    parseStructuredArithmeticTerm_prim.comp (hfuel'.comp Primrec.fst)
+      parseStructuredArithmeticTerm y.1.1.2 y.2.2 :=
+    parseStructuredArithmeticTerm_prim.comp (pctxFuel.comp Primrec.fst)
       (Primrec.snd.comp Primrec.snd)
   have hrelOut : Primrec fun z : (PCtx × (ℕ × List ℕ)) × (ℕ × List ℕ) =>
       (arithmeticRelCode (z.1.1.2.1 = 12 ∨ z.1.1.2.1 = 14)
         (if z.1.1.2.1 = 11 ∨ z.1.1.2.1 = 12 then 0 else 1)
         z.1.2.1 z.2.1, z.2.2) := by
     have htag : Primrec fun z : (PCtx × (ℕ × List ℕ)) × (ℕ × List ℕ) =>
-        z.1.1.2.1 := ht.comp (Primrec.fst.comp Primrec.fst)
+        z.1.1.2.1 := pctxTok.comp (Primrec.fst.comp Primrec.fst)
     have heqt : ∀ k : ℕ, PrimrecPred fun z :
         (PCtx × (ℕ × List ℕ)) × (ℕ × List ℕ) => z.1.1.2.1 = k := fun k =>
       PrimrecRel.comp Primrec.eq htag (Primrec.const k)
@@ -2845,29 +2868,16 @@ private lemma structuredFormulaG_prim : Primrec structuredFormulaG := by
           (Primrec₂.natPair.comp hsymbol hvec)))
     exact hcode.pair (Primrec.snd.comp Primrec.snd)
   have hrel : Primrec fun x : PCtx =>
-      (parseStructuredArithmeticTerm x.1.2 0 x.2.2).bind fun p =>
-        (parseStructuredArithmeticTerm x.1.2 0 p.2).map fun q =>
+      (parseStructuredArithmeticTerm x.1.2 x.2.2).bind fun p =>
+        (parseStructuredArithmeticTerm x.1.2 p.2).map fun q =>
           (arithmeticRelCode (x.2.1 = 12 ∨ x.2.1 = 14)
             (if x.2.1 = 11 ∨ x.2.1 = 12 then 0 else 1) p.1 q.1, q.2) :=
     Primrec.option_bind hterm1 (Primrec.option_map hterm2 hrelOut.to₂).to₂
-  have hlook1 : Primrec fun x : PCtx =>
-      ((x.1.1[Nat.pair x.1.2 (Encodable.encode x.2.2)]?).getD none) :=
-    Primrec.option_getD.comp
-      (Primrec.list_getElem?.comp hprev
-        (Primrec₂.natPair.comp hfuel' (Primrec.encode.comp hrest)))
-      (Primrec.const none)
-  have hlook2 : Primrec fun y : PCtx × (ℕ × List ℕ) =>
-      ((y.1.1.1[Nat.pair y.1.1.2 (Encodable.encode y.2.2)]?).getD none) :=
-    Primrec.option_getD.comp
-      (Primrec.list_getElem?.comp (hprev.comp Primrec.fst)
-        (Primrec₂.natPair.comp (hfuel'.comp Primrec.fst)
-          (Primrec.encode.comp (Primrec.snd.comp Primrec.snd))))
-      (Primrec.const none)
   have hbinOut : Primrec fun z : (PCtx × (ℕ × List ℕ)) × (ℕ × List ℕ) =>
       (Nat.pair (if z.1.1.2.1 = 15 then 4 else 5)
         (Nat.pair z.1.2.1 z.2.1) + 1, z.2.2) := by
     have htag : Primrec fun z : (PCtx × (ℕ × List ℕ)) × (ℕ × List ℕ) =>
-        z.1.1.2.1 := ht.comp (Primrec.fst.comp Primrec.fst)
+        z.1.1.2.1 := pctxTok.comp (Primrec.fst.comp Primrec.fst)
     have hkind : Primrec fun z : (PCtx × (ℕ × List ℕ)) × (ℕ × List ℕ) =>
         if z.1.1.2.1 = 15 then 4 else 5 :=
       Primrec.ite (PrimrecRel.comp Primrec.eq htag (Primrec.const 15))
@@ -2882,19 +2892,19 @@ private lemma structuredFormulaG_prim : Primrec structuredFormulaG := by
       ((x.1.1[Nat.pair x.1.2 (Encodable.encode x.2.2)]?).getD none).bind fun p =>
         ((x.1.1[Nat.pair x.1.2 (Encodable.encode p.2)]?).getD none).map fun q =>
           (Nat.pair (if x.2.1 = 15 then 4 else 5) (Nat.pair p.1 q.1) + 1, q.2) :=
-    Primrec.option_bind hlook1 (Primrec.option_map hlook2 hbinOut.to₂).to₂
+    Primrec.option_bind pctxLook (Primrec.option_map pctxLook₂ hbinOut.to₂).to₂
   have hquantOut : Primrec fun y : PCtx × (ℕ × List ℕ) =>
       (Nat.pair (if y.1.2.1 = 17 then 6 else 7) y.2.1 + 1, y.2.2) := by
     have hkind : Primrec fun y : PCtx × (ℕ × List ℕ) =>
         if y.1.2.1 = 17 then 6 else 7 :=
-      Primrec.ite (PrimrecRel.comp Primrec.eq (ht.comp Primrec.fst) (Primrec.const 17))
+      Primrec.ite (PrimrecRel.comp Primrec.eq (pctxTok.comp Primrec.fst) (Primrec.const 17))
         (Primrec.const 6) (Primrec.const 7)
     exact (Primrec.succ.comp (Primrec₂.natPair.comp hkind
       (Primrec.fst.comp Primrec.snd))).pair (Primrec.snd.comp Primrec.snd)
   have hquant : Primrec fun x : PCtx =>
       ((x.1.1[Nat.pair x.1.2 (Encodable.encode x.2.2)]?).getD none).map fun p =>
         (Nat.pair (if x.2.1 = 17 then 6 else 7) p.1 + 1, p.2) :=
-    Primrec.option_map hlook1 hquantOut.to₂
+    Primrec.option_map pctxLook hquantOut.to₂
   have hnegOut : Primrec fun y : PCtx × (ℕ × List ℕ) =>
       (negFormulaCode y.2.1, y.2.2) :=
     (negFormulaCode_prim.comp (Primrec.fst.comp Primrec.snd)).pair
@@ -2902,7 +2912,7 @@ private lemma structuredFormulaG_prim : Primrec structuredFormulaG := by
   have hneg : Primrec fun x : PCtx =>
       ((x.1.1[Nat.pair x.1.2 (Encodable.encode x.2.2)]?).getD none).map fun p =>
         (negFormulaCode p.1, p.2) :=
-    Primrec.option_map hlook1 hnegOut.to₂
+    Primrec.option_map pctxLook hnegOut.to₂
   have hnegP : Primrec fun z : (PCtx × (ℕ × List ℕ)) × (ℕ × List ℕ) =>
       negFormulaCode z.1.2.1 :=
     negFormulaCode_prim.comp (Primrec.fst.comp (Primrec.snd.comp Primrec.fst))
@@ -2928,7 +2938,7 @@ private lemma structuredFormulaG_prim : Primrec structuredFormulaG := by
       ((x.1.1[Nat.pair x.1.2 (Encodable.encode x.2.2)]?).getD none).bind fun p =>
         ((x.1.1[Nat.pair x.1.2 (Encodable.encode p.2)]?).getD none).map fun q =>
           (Nat.pair 5 (Nat.pair (negFormulaCode p.1) q.1) + 1, q.2) :=
-    Primrec.option_bind hlook1 (Primrec.option_map hlook2 himpOut.to₂).to₂
+    Primrec.option_bind pctxLook (Primrec.option_map pctxLook₂ himpOut.to₂).to₂
   have hiffOut : Primrec fun z : (PCtx × (ℕ × List ℕ)) × (ℕ × List ℕ) =>
       (Nat.pair 4
         (Nat.pair (Nat.pair 5 (Nat.pair (negFormulaCode z.1.2.1) z.2.1) + 1)
@@ -2942,15 +2952,15 @@ private lemma structuredFormulaG_prim : Primrec structuredFormulaG := by
           (Nat.pair 4
             (Nat.pair (Nat.pair 5 (Nat.pair (negFormulaCode p.1) q.1) + 1)
               (Nat.pair 5 (Nat.pair (negFormulaCode q.1) p.1) + 1)) + 1, q.2) :=
-    Primrec.option_bind hlook1 (Primrec.option_map hlook2 hiffOut.to₂).to₂
+    Primrec.option_bind pctxLook (Primrec.option_map pctxLook₂ hiffOut.to₂).to₂
   have heqt : ∀ k : ℕ, PrimrecPred fun x : PCtx => x.2.1 = k := fun k =>
-    PrimrecRel.comp Primrec.eq ht (Primrec.const k)
+    PrimrecRel.comp Primrec.eq pctxTok (Primrec.const k)
   have hbody : Primrec fun x : PCtx =>
       if x.2.1 = 9 then some (Nat.pair 2 0 + 1, x.2.2)
       else if x.2.1 = 10 then some (Nat.pair 3 0 + 1, x.2.2)
       else if x.2.1 = 11 ∨ x.2.1 = 12 ∨ x.2.1 = 13 ∨ x.2.1 = 14 then
-        (parseStructuredArithmeticTerm x.1.2 0 x.2.2).bind fun p =>
-          (parseStructuredArithmeticTerm x.1.2 0 p.2).map fun q =>
+        (parseStructuredArithmeticTerm x.1.2 x.2.2).bind fun p =>
+          (parseStructuredArithmeticTerm x.1.2 p.2).map fun q =>
             (arithmeticRelCode (x.2.1 = 12 ∨ x.2.1 = 14)
               (if x.2.1 = 11 ∨ x.2.1 = 12 then 0 else 1) p.1 q.1, q.2)
       else if x.2.1 = 15 ∨ x.2.1 = 16 then
@@ -2987,8 +2997,8 @@ private lemma structuredFormulaG_prim : Primrec structuredFormulaG := by
           if t = 9 then some (Nat.pair 2 0 + 1, rest)
           else if t = 10 then some (Nat.pair 3 0 + 1, rest)
           else if t = 11 ∨ t = 12 ∨ t = 13 ∨ t = 14 then
-            (parseStructuredArithmeticTerm p.2 0 rest).bind fun q =>
-              (parseStructuredArithmeticTerm p.2 0 q.2).map fun (r : ℕ × List ℕ) =>
+            (parseStructuredArithmeticTerm p.2 rest).bind fun q =>
+              (parseStructuredArithmeticTerm p.2 q.2).map fun (r : ℕ × List ℕ) =>
                 (arithmeticRelCode (t = 12 ∨ t = 14)
                   (if t = 11 ∨ t = 12 then 0 else 1) q.1 r.1, r.2)
           else if t = 15 ∨ t = 16 then
@@ -3033,7 +3043,7 @@ the source-text naming of formulas: `negSourceFormulaCode`
 (`Construction/Knowledge/SourceNumbering.lean`) recovers a formula's Godel code from the
 numeral naming its written run, and needs exactly this certificate. -/
 lemma parseStructuredArithmeticFormula_prim :
-    Primrec₂ fun fuel ts => parseStructuredArithmeticFormula fuel 0 ts := by
+    Primrec₂ fun fuel ts => parseStructuredArithmeticFormula fuel ts := by
   have hF : Primrec₂ (fun (_ : Unit) => structuredFormulaF) :=
     Primrec.nat_strong_rec _ (structuredFormulaG_prim.comp Primrec.snd).to₂
       fun _ n => structuredFormulaG_spec n
@@ -3099,7 +3109,7 @@ private lemma parseStructuredPaperPrimeC_prim : Primrec parseStructuredPaperPrim
   have hdrop : Primrec fun z : StructuredPrimeLenCtx => z.2.2.drop (z.2.1 + 1) :=
     Primrec.list_drop.comp (Primrec.succ.comp hn) hpayload
   have hformula : Primrec fun z : StructuredPrimeLenCtx =>
-      parseStructuredArithmeticFormula z.2.1 0 (z.2.2.take z.2.1) :=
+      parseStructuredArithmeticFormula z.2.1 (z.2.2.take z.2.1) :=
     parseStructuredArithmeticFormula_prim.comp hn htake
   have hresult : Primrec fun w : StructuredPrimeLenCtx × (ℕ × List ℕ) =>
       if w.2.2 = [] ∧ List.getD w.1.2.2 w.1.2.1 0 = 19 then
@@ -3133,7 +3143,7 @@ private lemma parseStructuredPaperPrimeC_prim : Primrec parseStructuredPaperPrim
     exact Primrec.ite (hempty.and hterm)
       (Primrec.option_some.comp (houtCode.pair houtRest)) (Primrec.const none)
   have hparsed : Primrec fun z : StructuredPrimeLenCtx =>
-      (parseStructuredArithmeticFormula z.2.1 0 (z.2.2.take z.2.1)).bind fun p =>
+      (parseStructuredArithmeticFormula z.2.1 (z.2.2.take z.2.1)).bind fun p =>
         if p.2 = [] ∧ List.getD z.2.2 z.2.1 0 = 19 then
           some (Nat.pair 1 (Nat.pair 5 (Nat.pair z.1.2.1 p.1)) + 1,
             z.2.2.drop (z.2.1 + 1))
@@ -3144,7 +3154,7 @@ private lemma parseStructuredPaperPrimeC_prim : Primrec parseStructuredPaperPrim
     Primrec.nat_le.comp hn (Primrec.list_length.comp hpayload)
   have hafterLength : Primrec fun z : StructuredPrimeLenCtx =>
       if z.2.1 ≤ z.2.2.length then
-        (parseStructuredArithmeticFormula z.2.1 0 (z.2.2.take z.2.1)).bind fun p =>
+        (parseStructuredArithmeticFormula z.2.1 (z.2.2.take z.2.1)).bind fun p =>
           if p.2 = [] ∧ List.getD z.2.2 z.2.1 0 = 19 then
             some (Nat.pair 1 (Nat.pair 5 (Nat.pair z.1.2.1 p.1)) + 1,
               z.2.2.drop (z.2.1 + 1))
@@ -3154,7 +3164,7 @@ private lemma parseStructuredPaperPrimeC_prim : Primrec parseStructuredPaperPrim
   have hlengthBody : Primrec fun y : StructuredPrimeHeadCtx =>
       (readStructuredLength y.2.2).bind fun p =>
         if p.1 ≤ p.2.length then
-          (parseStructuredArithmeticFormula p.1 0 (p.2.take p.1)).bind fun q =>
+          (parseStructuredArithmeticFormula p.1 (p.2.take p.1)).bind fun q =>
             if q.2 = [] ∧ List.getD p.2 p.1 0 = 19 then
               some (Nat.pair 1 (Nat.pair 5 (Nat.pair y.2.1 q.1)) + 1,
                 p.2.drop (p.1 + 1))
@@ -3167,7 +3177,7 @@ private lemma parseStructuredPaperPrimeC_prim : Primrec parseStructuredPaperPrim
       if y.2.1 ≤ 1 then
         (readStructuredLength y.2.2).bind fun p =>
           if p.1 ≤ p.2.length then
-            (parseStructuredArithmeticFormula p.1 0 (p.2.take p.1)).bind fun q =>
+            (parseStructuredArithmeticFormula p.1 (p.2.take p.1)).bind fun q =>
               if q.2 = [] ∧ List.getD p.2 p.1 0 = 19 then
                 some (Nat.pair 1 (Nat.pair 5 (Nat.pair y.2.1 q.1)) + 1,
                   p.2.drop (p.1 + 1))
@@ -3186,7 +3196,7 @@ private lemma parseStructuredPaperPrimeC_prim : Primrec parseStructuredPaperPrim
       simp only [Option.bind_some]
       by_cases hlen : p.1 ≤ p.2.length
       · simp only [hlen, if_true]
-        rcases hf : parseStructuredArithmeticFormula p.1 0 (p.2.take p.1) with
+        rcases hf : parseStructuredArithmeticFormula p.1 (p.2.take p.1) with
           _ | ⟨code, rest⟩
         · simp
         rcases rest with _ | ⟨r, rest⟩ <;> simp
@@ -3201,13 +3211,9 @@ private lemma parseG_prim : Primrec parseG := by
       Denumerable.ofNat (List ℕ) p.1.length.unpair.2 :=
     (Primrec.ofNat (List ℕ)).comp
       (Primrec.snd.comp (Primrec.unpair.comp (Primrec.list_length.comp Primrec.fst)))
-  have hprev : Primrec fun x : PCtx => x.1.1 := Primrec.fst.comp Primrec.fst
-  have hfuel' : Primrec fun x : PCtx => x.1.2 := Primrec.snd.comp Primrec.fst
-  have ht : Primrec fun x : PCtx => x.2.1 := Primrec.fst.comp Primrec.snd
-  have hrest : Primrec fun x : PCtx => x.2.2 := Primrec.snd.comp Primrec.snd
   have hbr0 : Primrec fun x : PCtx =>
       (some (Nat.pair 0 0 + 1, x.2.2) : Option (ℕ × List ℕ)) :=
-    Primrec.option_some.comp ((Primrec.const (Nat.pair 0 0 + 1)).pair hrest)
+    Primrec.option_some.comp ((Primrec.const (Nat.pair 0 0 + 1)).pair pctxRest)
   have hesc : Primrec fun x : PCtx =>
       match x.2.2 with
       | 0 :: payload => parseStructuredPaperPrimeC payload
@@ -3239,31 +3245,18 @@ private lemma parseG_prim : Primrec parseG := by
           y.2.2) :=
       Primrec.ite (PrimrecRel.comp Primrec.eq hc (Primrec.const 0))
         hstructured hsentenceCode
-    exact (Primrec.list_casesOn hrest (Primrec.const none) hcons.to₂).of_eq fun x => by
+    exact (Primrec.list_casesOn pctxRest (Primrec.const none) hcons.to₂).of_eq fun x => by
       rcases x.2.2 with _ | ⟨c, tail⟩
       · rfl
       rcases c with _ | c
       · rfl
       simp
-  have hlook1 : Primrec fun x : PCtx =>
-      ((x.1.1[Nat.pair x.1.2 (Encodable.encode x.2.2)]?).getD none) :=
-    Primrec.option_getD.comp
-      (Primrec.list_getElem?.comp hprev
-        (Primrec₂.natPair.comp hfuel' (Primrec.encode.comp hrest)))
-      (Primrec.const none)
-  have hlook2 : Primrec fun y : PCtx × (ℕ × List ℕ) =>
-      ((y.1.1.1[Nat.pair y.1.1.2 (Encodable.encode y.2.2)]?).getD none) :=
-    Primrec.option_getD.comp
-      (Primrec.list_getElem?.comp (hprev.comp Primrec.fst)
-        (Primrec₂.natPair.comp (hfuel'.comp Primrec.fst)
-          (Primrec.encode.comp (Primrec.snd.comp Primrec.snd))))
-      (Primrec.const none)
   have hout : Primrec fun z : (PCtx × (ℕ × List ℕ)) × (ℕ × List ℕ) =>
       (some (Nat.pair z.1.1.2.1 (Nat.pair z.1.2.1 z.2.1) + 1, z.2.2) :
         Option (ℕ × List ℕ)) :=
     Primrec.option_some.comp
       ((Primrec.succ.comp (Primrec₂.natPair.comp
-          (ht.comp (Primrec.fst.comp Primrec.fst))
+          (pctxTok.comp (Primrec.fst.comp Primrec.fst))
           (Primrec₂.natPair.comp
             (Primrec.fst.comp (Primrec.snd.comp Primrec.fst))
             (Primrec.fst.comp Primrec.snd)))).pair
@@ -3272,14 +3265,14 @@ private lemma parseG_prim : Primrec parseG := by
       ((x.1.1[Nat.pair x.1.2 (Encodable.encode x.2.2)]?).getD none).bind fun p =>
         ((x.1.1[Nat.pair x.1.2 (Encodable.encode p.2)]?).getD none).bind fun q =>
           some (Nat.pair x.2.1 (Nat.pair p.1 q.1) + 1, q.2) :=
-    Primrec.option_bind hlook1 (Primrec.option_bind hlook2 hout.to₂).to₂
+    Primrec.option_bind pctxLook (Primrec.option_bind pctxLook₂ hout.to₂).to₂
   have hatom : Primrec fun x : PCtx =>
       (some (Nat.pair 1 (x.2.1 - 5) + 1, x.2.2) : Option (ℕ × List ℕ)) :=
     Primrec.option_some.comp
       ((Primrec.succ.comp (Primrec₂.natPair.comp (Primrec.const 1)
-        (Primrec.nat_sub.comp ht (Primrec.const 5)))).pair hrest)
+        (Primrec.nat_sub.comp pctxTok (Primrec.const 5)))).pair pctxRest)
   have heqt : ∀ k : ℕ, PrimrecPred fun x : PCtx => x.2.1 = k := fun k =>
-    PrimrecRel.comp Primrec.eq ht (Primrec.const k)
+    PrimrecRel.comp Primrec.eq pctxTok (Primrec.const k)
   have hbody : Primrec fun x : PCtx =>
       if x.2.1 = 0 then some (Nat.pair 0 0 + 1, x.2.2)
       else if x.2.1 = 1 then
@@ -3546,15 +3539,13 @@ lemma unRpn_prim : Primrec unRpn := by
   exact h2.of_eq fun ts => by
     rw [unF, Nat.unpair_pair, Denumerable.ofNat_encode, ← unRpn_eq_unRpnTokensC]
 
-/-- A token-metered sentence sequence (`def:ec`) has primitive-recursive whole-value
-codes: its block stream is primitive recursive (`PolySegStream.primrec`) and the block
-parser decodes each segment.  Note the codes are **not** polynomially fueled — a deep
-sentence's pair code is value-exponential in its symbol count — so this is exactly the
-recursive-naming residue available at arithmetic quotation boundaries. -/
-lemma RpnSentenceCodes.primrec {φ : ℕ → Sentence} (h : RpnSentenceCodes φ) :
+/-- **The parse read-off.**  A primitive-recursive token stream whose every day parses
+completely to `φ n` has primitive-recursive whole-value sentence codes.  Which metering
+class supplies `Primrec s` is the only thing the three sentence-code classes differ in;
+this is the argument they share. -/
+lemma sentenceCodes_primrec {φ : ℕ → Sentence} {s : ℕ → List ℕ} (hsp : Primrec s)
+    (hp : ∀ n, parseRpn (s n).length (s n) = some (φ n, [])) :
     Primrec fun n => Encodable.encode (φ n) := by
-  obtain ⟨s, hs, hp⟩ := h
-  have hsp : Primrec s := hs.primrec
   have hparse : Primrec fun n => parseRpnC (s n).length (s n) :=
     parseRpnC_prim.comp (Primrec.list_length.comp hsp) hsp
   have hmap : Primrec fun n =>
@@ -3564,38 +3555,43 @@ lemma RpnSentenceCodes.primrec {φ : ℕ → Sentence} (h : RpnSentenceCodes φ)
   rw [parseRpnC_eq, hp n]
   rfl
 
-/-- The whole-value naming program extracted from a token-metered sentence sequence.
-Used where a *value* code is genuinely required (market quote tables keyed by sentence
-code), as opposed to token-metered emission. -/
-lemma RpnSentenceCodes.exists_code {φ : ℕ → Sentence} (h : RpnSentenceCodes φ) :
+/-- **The naming program.**  Primitive-recursive sentence codes name a partial-recursive
+code computing them.  This is where a *value* code is genuinely required — market quote
+tables keyed by sentence code — as opposed to metered emission. -/
+lemma exists_sentenceCode {φ : ℕ → Sentence}
+    (h : Primrec fun n => Encodable.encode (φ n)) :
     ∃ c : Nat.Partrec.Code, ∀ n, Encodable.encode (φ n) ∈ c.eval n := by
   obtain ⟨c, hc⟩ := Nat.Partrec.Code.exists_code.mp
-    (Nat.Partrec.of_primrec (Primrec.nat_iff.mp h.primrec))
+    (Nat.Partrec.of_primrec (Primrec.nat_iff.mp h))
   exact ⟨c, fun n => by rw [hc]; exact Part.mem_some _⟩
 
-/-- The write-out mirror of `RpnSentenceCodes.primrec`: a written-out sentence stream is
-primitive recursive, via `BigTokenStream.primrec`.  Primitive recursion carries no time
-budget, so reassembling an exponentially-named code here is legitimate — this is the route
-by which a market quote table keyed by sentence code accepts write-out data. -/
+/-- A token-metered sentence sequence (`def:ec`) has primitive-recursive whole-value
+codes.  Note the codes are **not** polynomially fueled — a deep sentence's pair code is
+value-exponential in its symbol count — so this is exactly the recursive-naming residue
+available at arithmetic quotation boundaries. -/
+lemma RpnSentenceCodes.primrec {φ : ℕ → Sentence} (h : RpnSentenceCodes φ) :
+    Primrec fun n => Encodable.encode (φ n) :=
+  let ⟨_, hs, hp⟩ := h
+  sentenceCodes_primrec hs.primrec hp
+
+/-- The whole-value naming program extracted from a token-metered sentence sequence. -/
+lemma RpnSentenceCodes.exists_code {φ : ℕ → Sentence} (h : RpnSentenceCodes φ) :
+    ∃ c : Nat.Partrec.Code, ∀ n, Encodable.encode (φ n) ∈ c.eval n :=
+  exists_sentenceCode h.primrec
+
+/-- The write-out mirror: a written-out sentence stream has primitive-recursive codes, via
+`BigTokenStream.primrec`.  Primitive recursion carries no time budget, so reassembling an
+exponentially-named code here is legitimate — this is the route by which a market quote
+table keyed by sentence code accepts write-out data. -/
 lemma BigSentenceCodes.primrec {φ : ℕ → Sentence} (h : BigSentenceCodes φ) :
-    Primrec fun n => Encodable.encode (φ n) := by
-  obtain ⟨s, hs, hp⟩ := h
-  have hsp : Primrec s := hs.primrec
-  have hparse : Primrec fun n => parseRpnC (s n).length (s n) :=
-    parseRpnC_prim.comp (Primrec.list_length.comp hsp) hsp
-  have hmap : Primrec fun n =>
-      (parseRpnC (s n).length (s n)).map Prod.fst :=
-    Primrec.option_map hparse (Primrec.fst.comp Primrec.snd).to₂
-  refine ((Primrec.option_getD.comp hmap (Primrec.const 0)).of_eq fun n => ?_)
-  rw [parseRpnC_eq, hp n]
-  rfl
+    Primrec fun n => Encodable.encode (φ n) :=
+  let ⟨_, hs, hp⟩ := h
+  sentenceCodes_primrec hs.primrec hp
 
 /-- The whole-value naming program extracted from a written-out sentence sequence. -/
 lemma BigSentenceCodes.exists_code {φ : ℕ → Sentence} (h : BigSentenceCodes φ) :
-    ∃ c : Nat.Partrec.Code, ∀ n, Encodable.encode (φ n) ∈ c.eval n := by
-  obtain ⟨c, hc⟩ := Nat.Partrec.Code.exists_code.mp
-    (Nat.Partrec.of_primrec (Primrec.nat_iff.mp h.primrec))
-  exact ⟨c, fun n => by rw [hc]; exact Part.mem_some _⟩
+    ∃ c : Nat.Partrec.Code, ∀ n, Encodable.encode (φ n) ∈ c.eval n :=
+  exists_sentenceCode h.primrec
 
 end RpnDecodePrimrec
 

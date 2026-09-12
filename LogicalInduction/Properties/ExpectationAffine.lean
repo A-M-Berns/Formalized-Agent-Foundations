@@ -26,12 +26,12 @@ of sentences; the constant case is the `Y n = Y`, `φ n = φ` instance.
 `linearityAffine a b X Y Z k` is the affine discrepancy `a·𝔼X + b·𝔼Y − 𝔼Z` at precision `k`.
 
 Each carries an explicit `AffineCombination.PolySequence` emission certificate built from
-the LUV threshold-code classes. The single-LUV certificates take the *write-out* class
-`LUV.BigThresholdCodes`, which is `def:ec`'s own metering: it bounds how many symbols the
-threshold sentences take to write and leaves their values alone. The day-indexed indicator
-certificate still takes the token-metered `LUV.RpnThresholdCodeSeq`; `dd:luv-arith` and the
-README's *LUV-threshold metering* note record why that is a rendering sensitivity rather
-than a narrowing of `def:ec`.
+the LUV threshold-code classes. The single-LUV certificates take `LUV.MachineThresholdCodes`
+and the day-indexed indicator certificate `LUV.MachineThresholdCodeSeq`
+(`Framework/Machine/ThresholdMachine.lean`): `def:ec`'s own metering, bounding how many
+symbols the threshold sentences take to write and leaving their values alone. A client
+holding the fuel-metered `LUV.BigThresholdCodes(Seq)` converts by `.toMachine`;
+`dd:luv-arith` and the README's *LUV-threshold metering* note record the metering.
 
 The world hypotheses are the *finite-precision* ones the trader argument actually consumes
 (`|𝔼ⱽ_{n+1}(X) − x| ≤ 1/(n+1)`), which are satisfiable at a finite stage unlike the full
@@ -49,14 +49,6 @@ and `lic_expectation_provind`, `_ofValuesAt`, `_le` (the dual, through the negat
 `Construction/LUV/{Endpoints,ArithmeticSource}.lean`.
 
 Limit vocabulary is `dd:asymp`'s and is never redefined here.
-**The criterion binder below is `def:lic` at the paper's own quantifier.**  Every result here that consumes an
-exploiting trader takes `[IsLogicalInductor P DP]`, and the trader is certified at `EfficientlyComputable`:
-it is assembled from `AffineCombination.PolySequence`'s machine-metered emission fields
-through `PolySequence.buyBelowTrader_ec` (`Properties/AffineCoherence.lean`), which has no
-fuel-class form: the bridge `BigSpliceStream.toMachine` runs fuel to machine, and no map
-back is proved or claimed.  The
-calibration is stated at `def:ec` in `Framework/Affine.lean`, and the `_unconditional`
-endpoints discharge the criterion through `LIA_is_logical_inductor`.
 
 -/
 
@@ -109,7 +101,7 @@ lemma expectAffine_value (X : LUV) (P : History) (w : Valuation) (n : ℕ) :
   congr 1
 
 /-- Uniform emission certificate for the growing threshold bundles of `X`. It consumes
-`BigThresholdCodes`, the write-out threshold-code class of `dd:luv-arith` — `def:ec`'s own
+`MachineThresholdCodes`, the threshold-code class of `dd:luv-arith` — `def:ec`'s own
 metering — which is what discharges the paper's "the LUV's threshold sentences are
 efficiently codeable" hypothesis. The certificate *is* the hypothesis: the class unfolds to
 exactly the `sentence_poly` field this builds. Consumed by
@@ -217,7 +209,7 @@ lemma indicatorAffineSeq_value (Y : ℕ → LUV) (φ : ℕ → Sentence) (P : Hi
   indicatorAffine_value _ _ P w (n + 1)
 
 /-- Uniform emission certificate for the day-indexed indicator discrepancies. It consumes
-the sequence-level threshold-code class `RpnThresholdCodeSeq` (`dd:luv-arith`) together with
+the sequence-level threshold-code class `MachineThresholdCodeSeq` (`dd:luv-arith`) together with
 sentence codes for `⟨φ⟩`, discharging both efficient-sequence hypotheses `thm:ei` states.
 Consumed by `lic_expectation_indicator`. -/
 noncomputable def indicatorAffineSeq_polySequence (Y : ℕ → LUV) (φ : ℕ → Sentence)
@@ -292,7 +284,7 @@ def linearityAffine (a b : ℚ) (X Y Z : LUV) (k : ℕ) : AffineCombination wher
         Z.gt (((j - k * 2 : ℕ) : ℚ) / (k : ℚ))))
 
 /-- Uniform emission certificate for the linearity discrepancy `a·𝔼X + b·𝔼Y − 𝔼Z`. It
-consumes one `BigThresholdCodes` per LUV (`dd:luv-arith`), which is what discharges
+consumes one `MachineThresholdCodes` per LUV (`dd:luv-arith`), which is what discharges
 `thm:loe`'s efficient-codeability hypothesis. Consumed by
 `lic_linearity_of_expectation`. -/
 noncomputable def linearityAffine_polySequence (a b : ℚ) (X Y Z : LUV)
@@ -301,10 +293,7 @@ noncomputable def linearityAffine_polySequence (a b : ℚ) (X Y Z : LUV)
     AffineCombination.PolySequence (linearityAffine a b X Y Z) := by
   let cinv := Classical.choose encode_inv_nat_polyFueled
   have hinv := Classical.choose_spec encode_inv_nat_polyFueled
-  let cmul2 := Classical.choose (mulc_polyFueled 2)
   have hmul2 := Classical.choose_spec (mulc_polyFueled 2)
-  let cmul3 := Classical.choose (mulc_polyFueled 3)
-  have hmul3 := Classical.choose_spec (mulc_polyFueled 3)
   have hn := PolyFueled.left
   have hj := PolyFueled.right
   have h2n := hmul2.comp hn

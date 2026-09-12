@@ -1,4 +1,5 @@
 import LogicalInduction.Construction.Statistics.SettlementClock
+import LogicalInduction.Construction.DeductiveDovetail
 import LogicalInduction.Construction.LIACompiler
 import LogicalInduction.Framework.Emission.WriteOut
 
@@ -22,7 +23,7 @@ decode", `v + 1` for "it decodes with value `v`" — and the encoding is load-be
 binary code with one decodable and one undecodable child the answer must be `0`, which a plain
 fold over child values could not distinguish from a genuine value of `0`.  (`formulaBinaryNorm`
 in `LIACompiler.lean` uses the same `left = 0 ∨ right = 0` guard for the same reason.)  The
-results are `atomBound_prim`, `evalBits_prim`, `stageSatBits_prim`, `allBitLists_prim` and
+results are `atomBound_prim`, `evalBits_prim`, `stageSatBits_prim` and
 `settlementAtomLimit_prim`, the `Primrec` leaves of the code recognizing `SettlementTestBool`.
 
 **The fuel layer over the market's quote table.**  `MarketComputation.totalQuote`,
@@ -31,7 +32,7 @@ guard is what makes the total table sound, and `AffineCombination.settlementChec
 conservative bounded check, sound and complete at sufficient fuel — is what
 `SettlementChecker.ofComputations` searches over with `rfindOpt`.
 
-**`def:ece` into `Computable`.**  `BigSpliceStream.feature_primrec` and
+**`def:ece` into `Computable`.**  `MachineSpliceStream.feature_primrec` and
 `PGenerableRat.computable`: the bridge an arithmetic quote code needs in order to emit
 `⌜· > q n⌝` from a market-dependent feature progression.  `AffineCombination.PolySequence`
 exposes each feature as a polynomially emitted serialization rather than an opaque `EF`, so
@@ -431,30 +432,6 @@ no `Finset` operation needs compiling.
 None of this is semantic: `mem_stageSort` pins `stageSatBits` to `∀ φ ∈ stage` regardless
 of the order, so the choice buys compilability only. -/
 
-/-- A stage's Gödel code is exactly the code of its sorted sentence list. -/
-lemma encode_eq_encode_stageSort (stage : Finset Sentence) :
-    Encodable.encode stage = Encodable.encode (stageSort stage) := rfl
-
-/-- A finite sentence set given as a list's `toFinset` has the code of the canonical
-sorted, duplicate-free list.  Every stage-encoding computability proof in the
-`Construction/` lanes reduces its stage encoder to this shape. -/
-lemma encode_toFinset_eq (l : List Sentence) :
-    Encodable.encode l.toFinset =
-      Encodable.encode ((sentenceDedup l).insertionSort sentenceCodeLE) := by
-  classical
-  let canonical := (sentenceDedup l).insertionSort sentenceCodeLE
-  have hnodup : canonical.Nodup :=
-    (List.perm_insertionSort sentenceCodeLE _).nodup_iff.mpr (sentenceDedup_nodup l)
-  have hsorted : canonical.Pairwise sentenceCodeLE :=
-    List.pairwise_insertionSort sentenceCodeLE _
-  have htoFinset : canonical.toFinset = l.toFinset := by
-    ext φ; simp [canonical, mem_sentenceDedup]
-  have hsort : l.toFinset.sort sentenceCodeLE = canonical := by
-    rw [← htoFinset]
-    exact (List.toFinset_sort (r := sentenceCodeLE) hnodup).mpr hsorted
-  rw [encode_eq_encode_stageSort l.toFinset]
-  exact congrArg Encodable.encode hsort
-
 lemma stageSort_prim : Primrec stageSort := by
   have h : Primrec fun stage : Finset Sentence =>
       (Encodable.decode (α := List Sentence) (Encodable.encode stage)).getD [] :=
@@ -482,29 +459,6 @@ lemma stageSatBits_prim : Primrec₂ stageSatBits := by
     (stageSort_prim.comp Primrec.fst) (Primrec.const true) hstep
   exact h.to₂.of_eq fun stage l => by
     simp only [stageSatBits, list_all_eq_foldr]
-
-/-! ### The world enumeration -/
-
-/-- **The bit-list enumeration is primitive recursive.**  A plain `Nat.rec` — this is the
-one leaf that needed no `Sentence` machinery at all. -/
-lemma allBitLists_prim : Primrec allBitLists := by
-  have hstep : Primrec₂ fun (_ : ℕ) (prev : List (List Bool)) =>
-      prev.flatMap (fun l => [false :: l, true :: l]) := by
-    have hg : Primrec₂ fun (_ : ℕ × List (List Bool)) (l : List Bool) =>
-        [false :: l, true :: l] :=
-      (Primrec.list_cons.comp
-        (Primrec.list_cons.comp (Primrec.const false) Primrec.snd)
-        (Primrec.list_cons.comp
-          (Primrec.list_cons.comp (Primrec.const true) Primrec.snd)
-          (Primrec.const []))).to₂
-    exact (Primrec.list_flatMap Primrec.snd hg).to₂
-  have h : Primrec (Nat.rec (motive := fun _ => List (List Bool)) [[]]
-      (fun _ prev => prev.flatMap (fun l => [false :: l, true :: l]))) :=
-    Primrec.nat_rec₁ _ hstep
-  exact h.of_eq fun n => by
-    induction n with
-    | zero => rfl
-    | succ k ih => simp only [allBitLists, ← ih]
 
 /-! ### The affine combination and its support bound -/
 
@@ -644,28 +598,17 @@ lemma settlementAtomLimit_eq_stageSort (A : AffineCombination) (stage : Finset S
   rw [AffineCombination.settlementAtomLimit,
     finset_sum_eq_stageSort_sum stage BoolPCWorld.atomBound]
 
-/-- Mathlib's `Primrec` API has no `list_sum`; `List.sum` is a `foldr`. -/
-private lemma list_sum_prim : Primrec (fun l : List ℕ => l.sum) := by
-  have h := Primrec.list_foldr (f := fun l : List ℕ => l) (g := fun _ : List ℕ => 0)
-    Primrec.id (Primrec.const 0)
-    (Primrec.nat_add.comp (Primrec.fst.comp Primrec.snd)
-      (Primrec.snd.comp Primrec.snd)).to₂
-  exact h.of_eq fun l => by
-    induction l with
-    | nil => rfl
-    | cons a t ih => simp [List.sum_cons, ← ih]
-
 /-- **The support bound is primitive recursive.** -/
 lemma settlementAtomLimit_prim :
     Primrec₂ AffineCombination.settlementAtomLimit := by
   have hstage : Primrec fun p : AffineCombination × Finset Sentence =>
       ((stageSort p.2).map BoolPCWorld.atomBound).sum :=
-    list_sum_prim.comp
+    natListSum_prim.comp
       (Primrec.list_map (stageSort_prim.comp Primrec.snd)
         (atomBound_prim.comp Primrec.snd).to₂)
   have hterms : Primrec fun p : AffineCombination × Finset Sentence =>
       (p.1.terms.map (fun q => BoolPCWorld.atomBound q.2)).sum :=
-    list_sum_prim.comp
+    natListSum_prim.comp
       (Primrec.list_map (affineTerms_prim.comp Primrec.fst)
         (atomBound_prim.comp (Primrec.snd.comp Primrec.snd)).to₂)
   exact (Primrec.nat_add.comp hstage hterms).to₂.of_eq fun A stage =>
@@ -864,21 +807,10 @@ Evaluation is genuinely unbounded — it dovetails the market program, whose run
 index does not bound — so the certificate is `Computable`, not `PolyFueled`.  That is
 exactly what a `Nat.Partrec.Code` quote code consumes. -/
 
-/-- A feature progression emitted as an RPN-spliceable serialization stream is primitive
-recursive as a whole-value function. -/
-lemma BigSpliceStream.feature_primrec {feature : ℕ → EF}
-    (h : BigSpliceStream fun n => (feature n).serialize) : Primrec feature := by
-  obtain ⟨s, hs, hcontract⟩ := h
-  have htokens : Primrec fun n => (feature n).serialize := by
-    exact (unRpn_prim.comp hs.primrec).of_eq fun n =>
-      (hcontract n).unRpn_eq
-  exact (efFromSerializedTokens_prim.comp htokens).of_eq fun n =>
-    efFromSerializedTokens_serialize (feature n)
-
-/-- The machine-metered twin: word for word the same argument, with
-`MachineTokenStream.primrec` (`Construction/MachineTraderEnumeration.lean`) in place of
-`BigTokenStream.primrec`.  This is the form `GeneratedRatFeature.polyTok` now has, and it
-is what `PGenerableRat.computable` below consumes. -/
+/-- A feature progression emitted as a machine-metered RPN-spliceable serialization stream
+is primitive recursive as a whole-value function.  This is the form
+`GeneratedRatFeature.polyTok` carries, and it is what `PGenerableRat.computable` below
+consumes. -/
 lemma MachineSpliceStream.feature_primrec {feature : ℕ → EF}
     (h : MachineSpliceStream fun n => (feature n).serialize) : Primrec feature := by
   obtain ⟨s, hs, hcontract⟩ := h
@@ -1184,7 +1116,8 @@ end
 
 /-! ### The bounded settlement check
 
-The analogue of `unitMaturityCheckAtFuel` (`Calibration.lean`) for settlement, and — unlike
+The analogue of `unitMaturityCheckAtFuel` (`Properties/Support/SettlementDecision.lean`)
+for settlement, and — unlike
 that one — carried through to a `Primrec`-backed code below.  It is conservative: any
 timeout (of the process program or of any market call) reads as `false`, so a `true` result
 always certifies the real test. -/

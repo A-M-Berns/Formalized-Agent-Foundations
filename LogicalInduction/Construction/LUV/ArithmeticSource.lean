@@ -250,21 +250,21 @@ lemma eval_compile {M : Type*} [Structure ℒₒᵣ M] {k : ℕ} (ε : ℕ → M
 `parseStructuredArithmeticFormula` reduce by evaluation, so each is `rfl`; stating them
 keeps the round-trip proof from rewriting inside an unreduced `if`-chain. -/
 
-private lemma parse_tag20 (fuel depth : ℕ) (rest : List ℕ) :
-    parseStructuredArithmeticFormula (fuel + 1) depth (20 :: rest) =
-      (parseStructuredArithmeticFormula fuel 0 rest).map fun p =>
+private lemma parse_tag20 (fuel : ℕ) (rest : List ℕ) :
+    parseStructuredArithmeticFormula (fuel + 1) (20 :: rest) =
+      (parseStructuredArithmeticFormula fuel rest).map fun p =>
         (negFormulaCode p.1, p.2) := rfl
 
-private lemma parse_tag21 (fuel depth : ℕ) (rest : List ℕ) :
-    parseStructuredArithmeticFormula (fuel + 1) depth (21 :: rest) =
-      (parseStructuredArithmeticFormula fuel 0 rest).bind fun p =>
-        (parseStructuredArithmeticFormula fuel 0 p.2).map fun q =>
+private lemma parse_tag21 (fuel : ℕ) (rest : List ℕ) :
+    parseStructuredArithmeticFormula (fuel + 1) (21 :: rest) =
+      (parseStructuredArithmeticFormula fuel rest).bind fun p =>
+        (parseStructuredArithmeticFormula fuel p.2).map fun q =>
           (Nat.pair 5 (Nat.pair (negFormulaCode p.1) q.1) + 1, q.2) := rfl
 
-private lemma parse_tag22 (fuel depth : ℕ) (rest : List ℕ) :
-    parseStructuredArithmeticFormula (fuel + 1) depth (22 :: rest) =
-      (parseStructuredArithmeticFormula fuel 0 rest).bind fun p =>
-        (parseStructuredArithmeticFormula fuel 0 p.2).map fun q =>
+private lemma parse_tag22 (fuel : ℕ) (rest : List ℕ) :
+    parseStructuredArithmeticFormula (fuel + 1) (22 :: rest) =
+      (parseStructuredArithmeticFormula fuel rest).bind fun p =>
+        (parseStructuredArithmeticFormula fuel p.2).map fun q =>
           (Nat.pair 4
             (Nat.pair (Nat.pair 5 (Nat.pair (negFormulaCode p.1) q.1) + 1)
               (Nat.pair 5 (Nat.pair (negFormulaCode q.1) p.1) + 1)) + 1, q.2) := rfl
@@ -275,10 +275,10 @@ connective tags are discharged by `negFormulaCode_spec`.
 
 *Proof kind:* `P` proved. -/
 lemma parseStructuredArithmeticFormula_sourceTokens {k : ℕ} (s : ArithSource k)
-    (tail : List ℕ) {fuel depth : ℕ} (hfuel : (sourceTokens s).length ≤ fuel) :
-    parseStructuredArithmeticFormula fuel depth (sourceTokens s ++ tail) =
+    (tail : List ℕ) {fuel : ℕ} (hfuel : (sourceTokens s).length ≤ fuel) :
+    parseStructuredArithmeticFormula fuel (sourceTokens s ++ tail) =
       some (Encodable.encode (compile s), tail) := by
-  induction s generalizing fuel tail depth with
+  induction s generalizing fuel tail with
   | leaf φ => exact parseStructuredArithmeticFormula_encode φ tail hfuel
   | and a b iha ihb =>
       cases fuel with
@@ -353,9 +353,9 @@ This is what makes a written name unambiguous as a *name of a sentence*, which i
 lemma compile_eq_of_sourceTokens_eq {k : ℕ} {s s' : ArithSource k}
     (h : sourceTokens s = sourceTokens s') : compile s = compile s' := by
   have h1 := parseStructuredArithmeticFormula_sourceTokens s []
-    (fuel := (sourceTokens s).length) (depth := 0) le_rfl
+    (fuel := (sourceTokens s).length) le_rfl
   have h2 := parseStructuredArithmeticFormula_sourceTokens s' []
-    (fuel := (sourceTokens s').length) (depth := 0) le_rfl
+    (fuel := (sourceTokens s').length) le_rfl
   rw [h] at h1
   rw [h1] at h2
   exact Encodable.encode_injective (by simpa using Option.some.inj h2)
@@ -565,8 +565,8 @@ lemma PolyArithmeticSourceSeq.bigDigits_sourceNat {k : ℕ} {s : ℕ → ArithSo
 `MachineArithmeticSourceSeq` is `PolyArithmeticSourceSeq` with the metering device changed
 and nothing else: the *same* emitted source run, certified by a `Complexity.FP` writer of
 the unary day rather than by a fuel-clocked digit emitter.  It is the class every consumer
-of a written formula family now binds, and the fuel class stays as its producer route
-(`PolyArithmeticSourceSeq.toMachine`) and as `def:ec`'s fuel-side calibration exhibit,
+of a written formula family binds, and the fuel class is its producer route
+(`PolyArithmeticSourceSeq.toMachine`) and `def:ec`'s fuel-side calibration exhibit,
 exactly as `BigDigits`/`MachineDigits` and `BigSentenceCodes`/`MachineSentenceCodes` are
 arranged.
 
@@ -721,7 +721,7 @@ lemma parseRpn_structuredPaperSourcePrimeBlock (positive : Bool) (s : ArithSourc
   parseRpn_structuredLeafBlock
     (by
       simpa using ArithSource.parseStructuredArithmeticFormula_sourceTokens
-        (depth := 0) s [] le_rfl)
+        s [] le_rfl)
     tail hfuel
 
 /-- The source leaf of an efficiently presented source family is efficiently emittable:
@@ -959,31 +959,40 @@ private lemma emb_subst_nil_comm {n : ℕ} (t : Semiterm ℒₒᵣ Empty 0) :
     · exact IsEmpty.elim inferInstance x
   rw [← Rew.comp_app, h, Rew.comp_app]
 
-private def encNumeral (v : ℕ) : List ℕ :=
-  encodeArithmeticTermSymbols
-    ((Semiterm.Operator.numeral ℒₒᵣ v).const : ArithmeticSemiterm ℕ 3)
+/-- Symbol list of Foundation's unary numeral for `v`, zero included: the zero numeral is
+the bare `zero` tag, and `v > 0` is the two tag runs `7`-then-`6` of lengths `v - 1` and
+`v`.  Arity-free, so the knowledge lane's claim emitters share it. -/
+def numeralEnc (v : ℕ) : List ℕ :=
+  if v = 0 then [5] else List.replicate (v - 1) 7 ++ List.replicate v 6
+
+/-- The numeral's symbol list at every arity. -/
+lemma encodeArithmeticTermSymbols_numeralConst {k : ℕ} (v : ℕ) :
+    encodeArithmeticTermSymbols
+      ((Semiterm.Operator.numeral ℒₒᵣ v).const : ArithmeticSemiterm ℕ k) =
+      numeralEnc v := by
+  by_cases h : v = 0
+  · subst h; rfl
+  · rw [numeralEnc, if_neg h, encodeArithmeticTermSymbols_numeral v h]
 
 private lemma enc_paperRatGtDef (r : ℚ) (hr : ¬ r < 0) :
     encodeArithmeticFormulaSymbols
       ((paperRatGtDef r : ArithmeticSemisentence 1) : ArithmeticSemiformula ℕ 1) =
-      ratGtPre ++ encNumeral r.num.natAbs ++ ratGtMid ++ encNumeral r.den := by
-  rw [paperRatGtDef, if_neg hr]
+      ratGtPre ++ numeralEnc r.num.natAbs ++ ratGtMid ++ numeralEnc r.den := by
+  rw [paperRatGtDef, if_neg hr,
+    ← encodeArithmeticTermSymbols_numeralConst (k := 3) r.num.natAbs,
+    ← encodeArithmeticTermSymbols_numeralConst (k := 3) r.den]
   simp [pairDef, encodeArithmeticFormulaSymbols, encodeArithmeticTermSymbols,
-    encodeStructuredNat, ratGtPre, ratGtMid, encNumeral,
+    encodeStructuredNat, ratGtPre, ratGtMid,
     Semiformula.Operator.lt_def, Semiformula.Operator.eq_def,
     Semiformula.Operator.le_def, Semiterm.Operator.operator,
     Semiterm.Operator.const, oringMul_term, oringAdd_term,
     oringNumZero_term, Matrix.fun_eq_vec_two, emb_subst_nil_comm]
 
-private lemma encNumeral_zero : encNumeral 0 = [5] := rfl
-
-private lemma encNumeral_of_ne_zero {v : ℕ} (hv : v ≠ 0) :
-    encNumeral v = List.replicate (v - 1) 7 ++ List.replicate v 6 :=
-  encodeArithmeticTermSymbols_numeral v hv
-
-/-- Numerals of a poly-fueled value stream are emittable, zero included. -/
-lemma encNumeral_polySegStream {cv : Code} {v : ℕ → ℕ} (hv : PolyFueled cv v) :
-    PolySegStream (fun n => encNumeral (v n)) := by
+/-- Numerals of a poly-fueled value stream are emittable, zero included: the two tag runs
+are `repeatTag` blocks, and the zero case is selected by the same `ifZero` dispatch the
+runtime uses. -/
+lemma numeralEnc_polySegStream {cv : Code} {v : ℕ → ℕ} (hv : PolyFueled cv v) :
+    PolySegStream (fun n => numeralEnc (v n)) := by
   have hpred : PolyFueled _ (fun n => v n - 1) :=
     (subc_polyFueled.comp (hv.pair (PolyFueled.const 1))).of_eq fun n => by
       simp only [Nat.unpair_pair]
@@ -992,8 +1001,8 @@ lemma encNumeral_polySegStream {cv : Code} {v : ℕ → ℕ} (hv : PolyFueled cv
     (PolySegStream.repeatTag 7 hpred).append (PolySegStream.repeatTag 6 hv)
   refine ((PolySegStream.constList [5]).ifZero hpos hv).of_eq fun n => ?_
   by_cases h : v n = 0
-  · rw [if_pos h, h, encNumeral_zero]
-  · rw [if_neg h, encNumeral_of_ne_zero h]
+  · rw [if_pos h, numeralEnc, if_pos h]
+  · rw [if_neg h, numeralEnc, if_neg h]
 
 /-- The threshold rational named by a `RpnThresholdCodeSeq` query index `⟨n, ⟨k, i⟩⟩`. -/
 def queryRat (m : ℕ) : ℚ :=
@@ -1090,9 +1099,9 @@ lemma paperRatGt_polySegStream :
   obtain ⟨cn, hnum⟩ := queryNum_polyFueled
   obtain ⟨cd, hden⟩ := queryDen_polyFueled
   refine (((PolySegStream.constList ratGtPre).append
-    (encNumeral_polySegStream hnum)).append
+    (numeralEnc_polySegStream hnum)).append
       ((PolySegStream.constList ratGtMid).append
-        (encNumeral_polySegStream hden))).of_eq fun m => ?_
+        (numeralEnc_polySegStream hden))).of_eq fun m => ?_
   rw [enc_paperRatGtDef _ (queryRat_nonneg m)]
   simp [List.append_assoc]
 
@@ -1316,7 +1325,7 @@ private lemma oringNumOne_term :
       Semiterm.func Language.One.one ![] := rfl
 
 /-- The numeral encoding in the normal form the frame computation leaves behind. -/
-private lemma encNumeral_norm (k v : ℕ) (hv : v ≠ 0) :
+private lemma numeralEnc_norm (k v : ℕ) (hv : v ≠ 0) :
     encodeArithmeticTermSymbols
       (((Rew.subst ![]) (Rew.emb (Semiterm.Operator.numeral ℒₒᵣ v).term)) :
         ArithmeticSemiterm ℕ k) =
@@ -1347,7 +1356,7 @@ private lemma enc_invFormula_numeral (v : ℕ) (hv : v ≠ 0) :
     Semiformula.Operator.le_def, Semiterm.Operator.operator,
     Semiterm.Operator.const, oringMul_term, oringAdd_term,
     oringNumOne_term, Matrix.fun_eq_vec_two,
-    emb_subst_nil_comm, encNumeral_norm _ v hv]
+    emb_subst_nil_comm, numeralEnc_norm _ v hv]
 
 /-- The same frame around the compact numeral's symbols. -/
 private lemma enc_invFormula_binNumeral (v : ℕ) :
@@ -1873,7 +1882,8 @@ lemma iffPaperLUVSeq_frontend [𝗜𝚺₁ ⪯ T] :
 
 /-- A client consuming the witness: the expectation-of-indicators endpoint (`thm:ei`) takes
 the threshold-code class as a hypothesis, and the `2⁻ⁿ` family discharges it outright. -/
-example (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP] [𝗜𝚺₁ ⪯ T]
+lemma lic_expectation_indicator_dyadicPaperLUVSeq
+    (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP] [𝗜𝚺₁ ⪯ T]
     (φ : ℕ → Sentence) (hφ : MachineSentenceCodes φ)
     (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (hY : ∀ n, (((dyadicPaperLUVSeq T).luv n).toLUV).IsIndicator (φ n) DP) :
@@ -1886,7 +1896,7 @@ example (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP] [𝗜𝚺
 `2⁻ⁿ`-valued one, with both representation hypotheses discharged from the frontend —
 the threshold-code class by `PaperLUV.machineThresholdCodes` and the world value by
 `PaperLUV.source_valued`.  Only the paper's own consistency premise remains. -/
-example (P : History) [𝗜𝚺₁ ⪯ T]
+lemma expect_converges_dyadicPaperLUV (P : History) [𝗜𝚺₁ ⪯ T]
     [IsLogicalInductor P (paperTheoryDP T)] (n : ℕ)
     (hcons : ∀ k, ∃ v : PCWorld, v.ConsistentWith ((paperTheoryDP T).D k)) :
     ∃ L : ℝ, ConvergesTo ((dyadicPaperLUV T n).toLUV.expectSeq P) L :=
@@ -1896,7 +1906,8 @@ example (P : History) [𝗜𝚺₁ ⪯ T]
 /-- A client at the capstone family: `thm:ei` consumes the threshold-code class, and the
 biconditional family — whose defining formulas are `O(n)` characters to write and `≥ 2ⁿ`
 Foundation nodes once compiled — discharges it outright. -/
-example (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP] [𝗜𝚺₁ ⪯ T]
+lemma lic_expectation_indicator_iffPaperLUVSeq
+    (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP] [𝗜𝚺₁ ⪯ T]
     (φ : ℕ → Sentence) (hφ : MachineSentenceCodes φ)
     (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (hY : ∀ n, (((iffPaperLUVSeq T).luv n).toLUV).IsIndicator (φ n) DP) :
@@ -1908,7 +1919,7 @@ example (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP] [𝗜𝚺
 /-- The single-LUV route at the capstone family: `thm:ec` applied at a literal paper LUV
 whose defining formula is exponentially larger than its name, with both representation
 hypotheses discharged from the frontend. -/
-example (P : History) [𝗜𝚺₁ ⪯ T]
+lemma expect_converges_iffPaperLUV (P : History) [𝗜𝚺₁ ⪯ T]
     [IsLogicalInductor P (paperTheoryDP T)] (n : ℕ)
     (hcons : ∀ k, ∃ v : PCWorld, v.ConsistentWith ((paperTheoryDP T).D k)) :
     ∃ L : ℝ, ConvergesTo ((iffPaperLUV T n).toLUV.expectSeq P) L :=

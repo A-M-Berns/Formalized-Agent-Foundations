@@ -13,9 +13,15 @@ all of them.
 
 This file inhabits each class by a **constructed** sequence that genuinely varies with the
 day, and states that variation as a lemma rather than leaving it to the reader. Each
-membership witness is paired with a `_nonconstant` companion saying the family is not
-`fun _ => c` for any `c`, which is the degenerate shape a non-vacuity claim can otherwise
-hide behind.
+*family* exhibited here has a `_nonconstant` companion saying it is not `fun _ => c` for any
+`c`, which is the degenerate shape a non-vacuity claim can otherwise hide behind. The
+companion is stated once per family, not once per witness: `machineTokenStream_atom` and
+`machineSentenceCodes_atom` are the same atom family read at two classes and share
+`machineSentenceCodes_atom_nonconstant`; `machineDigits_ratCode_two_pow_inv` is
+`machineRatCodes_two_pow_inv`'s flat code and shares
+`machineRatCodes_two_pow_inv_nonconstant`; and `machineTokenStream_marks` is the run
+`machineDigits_tokenListNat_marks` names, covered by
+`machineDigits_tokenListNat_marks_nonconstant`.
 
 ## What each witness exhibits
 
@@ -290,6 +296,7 @@ lemma machineDigits_tokenListNat_marks :
   MachineDigits.ofTokenListNat machineTokenStream_marks
     (fun n t ht => by rw [List.eq_of_mem_replicate ht]; norm_num)
 
+/-- The name of `n` marks is not a constant sequence: days `0` and `1` differ. -/
 lemma machineDigits_tokenListNat_marks_nonconstant (c : ℕ) :
     (fun n => tokenListNat (List.replicate n 1)) ≠ fun _ => c := by
   refine ne_const (a := 0) (b := 1) (fun h => ?_) c

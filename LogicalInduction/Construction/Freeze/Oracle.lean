@@ -148,7 +148,7 @@ lemma decodeBits_oracleOf : ∀ (entries : List TableEntry) (cur : List ℕ),
           [1, quoteRunOf entries (decodeBits bufW) (digitVal cur), 8] else []
   | [], cur, _, bufW => by
       rw [oracleOf, selRunOf, tableLookup]
-      simp [quoteRunOf, tableLookup]
+      simp
   | (e :: rest), cur, hcur, bufW => by
       have hiff := StructPat.parseRpn_iff_segMatch e.sentence (decodeBits bufW)
       rw [oracleOf, fstBlock_pair]
@@ -256,8 +256,9 @@ def runOracleOf (entries : List TableEntry) :
 /-! ## Matching the oracle to a market's table
 
 `runOracleOf` answers questions about *runs*; `FiniteSupportPatch` asks about
-*sentences*.  `parseRpn_iff_mem_spellings` is the bridge, and it is the only place the
-recognition side conditions are used. -/
+*sentences*.  `tableLookup_eq_on` is the bridge, and it is unconditional: `parseRpn` is a
+function, so a run that parses to `φ` fires exactly the rows whose sentence is `φ`, and no
+side condition survives at this level. -/
 
 /-- The table lookup, keyed by sentence rather than by run. -/
 def tableLookupOn (entries : List TableEntry) (φ : Sentence) (D : ℕ) : Option ℚ :=
@@ -368,12 +369,12 @@ def finiteSupportPatch_ofTable
     FiniteSupportPatch P S :=
   finiteSupportPatch_of_rewriter P S quote hexact
     (selCodeOf S) (quoteCodeOf quote)
-    (fun day code φ h => selCodeOf_decode day code h)
-    (fun day code φ h => quoteCodeOf_decode day code h)
+    (fun day code _ h => selCodeOf_decode day code h)
+    (fun day code _ h => quoteCodeOf_decode day code h)
     (FreezeStep.freezeStreamRewriter_of_runOracle (runOracleOf entries)
       (selCodeOf S) (quoteCodeOf quote)
-      (fun b _ hb D => selRunOf_bridge htab hb D)
-      (fun b _ hb D hs => quoteRunOf_bridge htab hb D hs))
+      (fun _ _ hb D => selRunOf_bridge htab hb D)
+      (fun _ _ hb D hs => quoteRunOf_bridge htab hb D hs))
 
 /-! ## A concrete table: the patch is not vacuous, and not degenerate
 
@@ -397,59 +398,65 @@ lemma atom_zero_noReserved : ∀ pol fc : ℕ, (0 : ℕ) ≠ Nat.pair 5 (Nat.pai
     split <;> omega
   omega
 
+/-- The sentence the worked example freezes: the unreserved atom `0`. -/
+def exampleSentence : Sentence := LO.Propositional.Formula.atom 0
+
 /-- A one-row frozen table, at an arbitrary quote value.
 
 The value is a parameter because `lic_iff_of_finiteSupportPerturbation_ofPatches` needs a
 patch for **each** of the two markets, and each patch carries its own table — that is how
 `P` and `P'` are allowed to differ on `S` while both are patchable. -/
 def exampleEntries (q : ℚ) : List TableEntry :=
-  [⟨0, LO.Propositional.Formula.atom 0, q⟩]
+  [⟨0, exampleSentence, q⟩]
 
-/-- The coordinate set it presents. -/
-def exampleS : Finset (ℕ × Sentence) := {(0, LO.Propositional.Formula.atom 0)}
+/-- The single moved coordinate of a one-row table: day `0` at the sentence `φ`. -/
+def pointS (φ : Sentence) : Finset (ℕ × Sentence) := {(0, φ)}
 
 /-- The quote it freezes. -/
 def exampleQuote (q : ℚ) : ℕ → Sentence → ℚ := fun _ _ => q
 
 /-- The coordinate set has a real member. -/
-lemma mem_exampleS : (0, LO.Propositional.Formula.atom 0) ∈ exampleS := by
-  simp [exampleS]
+lemma mem_pointS (φ : Sentence) : (0, φ) ∈ pointS φ := by
+  simp [pointS]
 
 /-- **The table is not empty** — this is what rules out the degenerate discharge.
 
 Kind `N+` non-vacuity witness.
 Paper node: `app:ifp` -/
-lemma exampleS_nonempty : exampleS.Nonempty :=
-  ⟨(0, LO.Propositional.Formula.atom 0), mem_exampleS⟩
+lemma pointS_nonempty (φ : Sentence) : (pointS φ).Nonempty :=
+  ⟨(0, φ), mem_pointS φ⟩
 
 lemma examplePresentation (q : ℚ) :
-    TablePresentation exampleS (exampleQuote q) (exampleEntries q) where
+    TablePresentation (pointS exampleSentence) (exampleQuote q) (exampleEntries q) where
   lookup_eq := by
     intro D φ
     rw [exampleEntries, tableLookupOn, tableLookupOn]
-    by_cases h : (0 : ℕ) = D ∧ (LO.Propositional.Formula.atom 0 : Sentence) = φ
+    by_cases h : (0 : ℕ) = D ∧ exampleSentence = φ
     · obtain ⟨rfl, rfl⟩ := h
-      rw [if_pos ⟨rfl, rfl⟩, if_pos (by simp [exampleS])]
+      rw [if_pos ⟨rfl, rfl⟩, if_pos (by simp [pointS])]
       rfl
     · rw [if_neg h, if_neg (by
         intro hc
-        simp only [exampleS, Finset.mem_singleton, Prod.ext_iff] at hc
+        simp only [pointS, Finset.mem_singleton, Prod.ext_iff] at hc
         exact h ⟨hc.1.symm, hc.2.symm⟩)]
 
 /-- **`FiniteSupportPatch` at a table with a real row.**
 
-`exampleS_nonempty` is the check that this is not the degenerate discharge: the coordinate
+`pointS_nonempty` is the check that this is not the degenerate discharge: the coordinate
 set contains `(0, atom 0)`, so `P` and `P'` may genuinely differ there — and since `q` is a
 parameter, the two markets get patches with *different* tables.
 
-Side conditions carried: the table's one sentence is `Recognizable`
-(`recognizable_atom`, `atom_zero_noReserved`) and the row presents `exampleS`/`exampleQuote`
-faithfully (`examplePresentation`).  The constant output budget is derived, not assumed.
+The only hypothesis is `hexact`, that `P` really is at the table's value on the row; the
+`TablePresentation` obligation is discharged here (`examplePresentation`), and the constant
+output budget is derived.  No syntactic condition on the frozen sentence is needed —
+`recognizable_atom` and `atom_zero_noReserved` below record that this one satisfies the
+recognizability conditions anyway.
 Paper node: `app:ifp` -/
 def finiteSupportPatch_example (q : ℚ) (P : History)
-    (hexact : ∀ d φ, (d, φ) ∈ exampleS → P d φ = ((exampleQuote q d φ : ℚ) : ℝ)) :
-    FiniteSupportPatch P exampleS :=
-  finiteSupportPatch_ofTable P exampleS (exampleQuote q) hexact
+    (hexact : ∀ d φ, (d, φ) ∈ pointS exampleSentence →
+      P d φ = ((exampleQuote q d φ : ℚ) : ℝ)) :
+    FiniteSupportPatch P (pointS exampleSentence) :=
+  finiteSupportPatch_ofTable P (pointS exampleSentence) (exampleQuote q) hexact
     (exampleEntries q) (examplePresentation q)
 
 /-- **Both markets of a genuine perturbation are patchable.**  `P` freezes at `q`, `P'` at
@@ -462,9 +469,12 @@ What this does *not* supply is the markets themselves: the theorem also wants
 constructed here.
 Paper node: `app:ifp` -/
 def finiteSupportPatch_pair (q q' : ℚ) (P P' : History)
-    (hexact : ∀ d φ, (d, φ) ∈ exampleS → P d φ = ((exampleQuote q d φ : ℚ) : ℝ))
-    (hexact' : ∀ d φ, (d, φ) ∈ exampleS → P' d φ = ((exampleQuote q' d φ : ℚ) : ℝ)) :
-    FiniteSupportPatch P exampleS × FiniteSupportPatch P' exampleS :=
+    (hexact : ∀ d φ, (d, φ) ∈ pointS exampleSentence →
+      P d φ = ((exampleQuote q d φ : ℚ) : ℝ))
+    (hexact' : ∀ d φ, (d, φ) ∈ pointS exampleSentence →
+      P' d φ = ((exampleQuote q' d φ : ℚ) : ℝ)) :
+    FiniteSupportPatch P (pointS exampleSentence) ×
+      FiniteSupportPatch P' (pointS exampleSentence) :=
   (finiteSupportPatch_example q P hexact,
     finiteSupportPatch_example q' P' hexact')
 
@@ -477,7 +487,8 @@ Every link with every hypothesis explicit:
 /-- **The corrected `thm:ifp`, instantiated at a table that moves a real price.**
 
 The remaining hypotheses are about the *markets*, not the freeze: `ComputableMarket` for
-each and tail agreement off `exampleS`.  No concrete such pair is constructed here, so this
+each and tail agreement off `pointS exampleSentence`.  No concrete such pair is
+constructed here, so this
 records that the freeze side is discharged — not that the theorem has been exhibited
 non-vacuous end to end.
 
@@ -485,11 +496,14 @@ Kind `N+` non-vacuity witness.  Provenance: (a) `finiteSupportPatch_example`.
 Paper node: `app:ifp` -/
 lemma lic_iff_example (q q' : ℚ) (P P' : History) (DP : DeductiveProcess)
     (hPcomp : ComputableMarket P) (hP'comp : ComputableMarket P')
-    (hagree : ∀ d φ, (d, φ) ∉ exampleS → P d φ = P' d φ)
-    (hexact : ∀ d φ, (d, φ) ∈ exampleS → P d φ = ((exampleQuote q d φ : ℚ) : ℝ))
-    (hexact' : ∀ d φ, (d, φ) ∈ exampleS → P' d φ = ((exampleQuote q' d φ : ℚ) : ℝ)) :
+    (hagree : ∀ d φ, (d, φ) ∉ pointS exampleSentence → P d φ = P' d φ)
+    (hexact : ∀ d φ, (d, φ) ∈ pointS exampleSentence →
+      P d φ = ((exampleQuote q d φ : ℚ) : ℝ))
+    (hexact' : ∀ d φ, (d, φ) ∈ pointS exampleSentence →
+      P' d φ = ((exampleQuote q' d φ : ℚ) : ℝ)) :
     IsLogicalInductor P DP ↔ IsLogicalInductor P' DP :=
-  lic_iff_of_finiteSupportPerturbation_ofPatches P P' DP exampleS hPcomp hP'comp hagree
+  lic_iff_of_finiteSupportPerturbation_ofPatches P P' DP (pointS exampleSentence)
+    hPcomp hP'comp hagree
     (finiteSupportPatch_example q P hexact)
     (finiteSupportPatch_example q' P' hexact')
 
@@ -551,29 +565,6 @@ noncomputable def finiteSupportPatch (P : History)
   finiteSupportPatch_ofTable P S (fun d φ => mc.quote d (Encodable.encode φ))
     (fun d φ _ => mc.quote_exact d φ) (entriesOf S mc.quote)
     (tablePresentation_entriesOf S mc.quote)
-
-/-- The patch under the reserved-atom-free hypothesis: a specialization of
-`finiteSupportPatch`, which needs no condition on the frozen sentences at all.  It is
-one of the public names a client may already be using.
-
-Kind `C`; hypotheses `(a)`.
-Paper node: `app:ifp` -/
-noncomputable def finiteSupportPatch_ofNoReserved (P : History)
-    (S : Finset (ℕ × Sentence)) (hP : ComputableMarket P)
-    (_hnr : ∀ p ∈ S, NoReserved p.2) :
-    FiniteSupportPatch P S :=
-  finiteSupportPatch P S hP
-
-/-- The patch under the syntactic recognizability hypothesis, likewise a specialization of
-`finiteSupportPatch` and likewise one of the public names.
-
-Kind `C`; hypotheses `(a)`.
-Paper node: `app:ifp` -/
-noncomputable def finiteSupportPatch_ofRecognizable (P : History)
-    (S : Finset (ℕ × Sentence)) (hP : ComputableMarket P)
-    (_hrec : ∀ p ∈ S, Recognizable p.2) :
-    FiniteSupportPatch P S :=
-  finiteSupportPatch P S hP
 
 /-- `P` and `P'` differ on only finitely many price coordinates, and no sentence involved
 has a **reserved-atom** subformula.
@@ -675,13 +666,13 @@ the recognition problem genuinely demands.
   (`decode_falsum_noncanonical`).  Deciding "does this code denote `ψ`" is therefore
   `Nat.unpair` on the token's digits, i.e. integer square root.
   `DigitFP.sqrtRemW_mem_FP` and `DigitFP.unpairW_spec` supply the arithmetic and
-  `FiberTest.fiberW_mem_FP` the decode test, while `RpnFreeze.patterns` replaces the
+  `FiberTest.fiberW_mem_FP` the decode test, while `StructPat.segPatterns` replaces the
   constant spelling list, confining the infinite fibre inside a hole predicate.
 
 * **`NoReserved` stands for a structured-payload recognizer**, and that is two problems, not
   one.  A leaf may also be spelled with the structured paper-prime block
   `[1, 0, pol] ++ 1^L ++ [0] ++ p ++ [19]`, which denotes *only* reserved atoms
-  `atom (Nat.pair 5 _)` (`parseStructuredPaperPrime_shape`), so excluding those targets makes
+  `atom (Nat.pair 5 _)` (`StructPat.parseStructuredPaperPrime_inv`), so excluding those targets makes
   the branch unreachable.  Covering them needs both of:
 
   - **the length identification**, `L = |p|`.  The numeral `0` is spelled `1^k 0` for every
@@ -721,9 +712,6 @@ def pointQuote (φ : Sentence) (q : ℚ) : ℕ → ℕ → ℚ := fun n c =>
 /-- The market it presents. -/
 def pointHistory (φ : Sentence) (q : ℚ) : History :=
   fun n χ => (pointQuote φ q n (Encodable.encode χ) : ℝ)
-
-/-- Its single moved coordinate. -/
-def pointS (φ : Sentence) : Finset (ℕ × Sentence) := {(0, φ)}
 
 lemma pointQuote_mem_Icc (φ : Sentence) {q : ℚ} (h0 : 0 ≤ q) (h1 : q ≤ 1) (n c : ℕ) :
     0 ≤ pointQuote φ q n c ∧ pointQuote φ q n c ≤ 1 := by
@@ -805,23 +793,9 @@ def twoPointQuote (q : ℚ) : ℕ → ℕ → ℚ :=
 def twoPointHistory (q : ℚ) : History :=
   pointHistory (LO.Propositional.Formula.atom 0 : Sentence) q
 
-lemma twoPointQuote_mem_Icc {q : ℚ} (h0 : 0 ≤ q) (h1 : q ≤ 1) (n c : ℕ) :
-    0 ≤ twoPointQuote q n c ∧ twoPointQuote q n c ≤ 1 :=
-  pointQuote_mem_Icc _ h0 h1 n c
-
-lemma twoPointHistory_mem_Icc {q : ℚ} (h0 : 0 ≤ q) (h1 : q ≤ 1) (n : ℕ) (φ : Sentence) :
-    0 ≤ twoPointHistory q n φ ∧ twoPointHistory q n φ ≤ 1 :=
-  pointHistory_mem_Icc _ h0 h1 n φ
-
-/-- **The table is computable**, as a function of the paired input. -/
-lemma computable_twoPointQuote (q : ℚ) :
-    Computable (fun z : ℕ => twoPointQuote q z.unpair.1 z.unpair.2) :=
-  computable_pointQuote _ q
-
 /-- **Both markets are honest `ComputableMarket`s.**
 
-Kind `N+` non-vacuity witness.  Provenance: (a) `computable_twoPointQuote`;
-(b) `ComputableMarket.ofComputableTable`.
+Kind `N+` non-vacuity witness.  Provenance: (a) `computableMarket_point`.
 Paper node: `app:ifp` -/
 theorem computableMarket_twoPoint (q : ℚ) (h0 : 0 ≤ q) (h1 : q ≤ 1) :
     ComputableMarket (twoPointHistory q) :=
@@ -829,15 +803,16 @@ theorem computableMarket_twoPoint (q : ℚ) (h0 : 0 ≤ q) (h1 : q ≤ 1) :
 
 /-- Off the frozen coordinate the two markets agree. -/
 lemma twoPointHistory_agree (q q' : ℚ) :
-    ∀ d φ, (d, φ) ∉ exampleS → twoPointHistory q d φ = twoPointHistory q' d φ :=
+    ∀ d φ, (d, φ) ∉ pointS exampleSentence →
+      twoPointHistory q d φ = twoPointHistory q' d φ :=
   pointHistory_agree _ q q'
 
 /-- On the frozen coordinate the market really is at its table value. -/
 lemma twoPointHistory_exact (q : ℚ) :
-    ∀ d φ, (d, φ) ∈ exampleS →
+    ∀ d φ, (d, φ) ∈ pointS exampleSentence →
       twoPointHistory q d φ = ((exampleQuote q d φ : ℚ) : ℝ) := by
   intro d φ hmem
-  simp only [exampleS, Finset.mem_singleton, Prod.ext_iff] at hmem
+  simp only [pointS, Finset.mem_singleton, Prod.ext_iff] at hmem
   obtain ⟨rfl, rfl⟩ := hmem
   rw [twoPointHistory, pointHistory, pointQuote, if_pos ⟨rfl, rfl⟩]
   rfl
@@ -855,7 +830,7 @@ lemma twoPointHistory_ne_at :
 markets.**
 
 Every hypothesis is discharged: both markets are `ComputableMarket`s with real
-`Nat.Partrec.Code` tables, they agree off `exampleS`, they *disagree* on it
+`Nat.Partrec.Code` tables, they agree off `pointS exampleSentence`, they *disagree* on it
 (`twoPointHistory_ne_at`), and each carries a `FiniteSupportPatch` built from the
 run-level lookup.  Nothing is assumed.
 

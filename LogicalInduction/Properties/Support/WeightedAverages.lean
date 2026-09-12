@@ -186,6 +186,21 @@ lemma weightedAverage_const_mul (w x : ℕ → ℝ) (c : ℝ) (n : ℕ) :
     rw [hnum]
     ring
 
+/-- Negation passes through a weighted average: `weightedAverage_const_mul` at `c = -1`. -/
+lemma weightedAverage_neg (w x : ℕ → ℝ) (n : ℕ) :
+    weightedAverage w (fun i => -x i) n = -weightedAverage w x n := by
+  simpa using weightedAverage_const_mul w x (-1) n
+
+/-- A constant sequence averages to itself, wherever the total mass is nonzero. -/
+lemma weightedAverage_const (w : ℕ → ℝ) (c : ℝ) {n : ℕ}
+    (hden : prefixSum w n ≠ 0) :
+    weightedAverage w (fun _ => c) n = c := by
+  rw [weightedAverage_eq_div hden]
+  have hnum : prefixSum (fun i => w i * c) n = prefixSum w n * c := by
+    simp only [prefixSum, Finset.sum_mul]
+  rw [hnum]
+  field_simp
+
 lemma weightedAverage_mem_Icc {w x : ℕ → ℝ} {a b : ℝ} {n : ℕ}
     (hw : ∀ i, 0 ≤ w i) (hx : ∀ i, x i ∈ Icc a b)
     (hden : 0 < prefixSum w n) :

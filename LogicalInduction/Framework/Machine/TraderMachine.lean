@@ -85,25 +85,6 @@ section Ops
 variable (r : Regs m n) (V : Fin m → ℕ) (B : ℕ) (inp₀ : Tape) (w₀ : Fin n → Tape)
   (ys : List Bool)
 
-/-- An update by a value at most `B` keeps every register at most `B`. -/
-lemma update_le {q : Fin m} {x : ℕ} (hv : ∀ k, V k ≤ B) (hx : x ≤ B) :
-    ∀ k, Function.update V q x k ≤ B := by
-  intro k
-  simp only [Function.update_apply]
-  split_ifs
-  · exact hx
-  · exact hv k
-
-/-- The strict counterpart of `update_le`: an update by a value below `B` keeps every
-register below `B`. -/
-lemma update_lt {q : Fin m} {x : ℕ} (hv : ∀ k, V k < B)
-    (hx : x < B) : ∀ k, Function.update V q x k < B := by
-  intro k
-  simp only [Function.update_apply]
-  split_ifs
-  · exact hx
-  · exact hv k
-
 /-- `q := c`, as a vector update. -/
 lemma setConst_regsWork (q : Fin m) (c : ℕ)
     (hinp₀ : Parked inp₀) (hpark : ∀ i, Parked (w₀ i))
@@ -142,21 +123,6 @@ lemma subInto_regsWork (src dst : Fin m) (hne : src ≠ dst)
     (regsWork_apply r w₀ V src) (regsWork_apply r w₀ V dst)
   rw [regsWork_update] at h
   exact h.mono_bound (subIntoTime_le_arith (V src) (V dst) B (hv src) (hv dst))
-
-/-- `dst := dst + src`, as a vector update. Completes the register-op instruction set
-(`setConst`, `copyInto`, `subInto`, `addInto`, `mulAddInto`, `ltFlag`); the trader machine
-itself reaches addition through `incRegTM` and `mulAddIntoTM`. -/
-lemma addInto_regsWork (src dst : Fin m) (hne : src ≠ dst)
-    (hinp₀ : Parked inp₀) (hpark : ∀ i, Parked (w₀ i)) (hv : ∀ k, V k ≤ B) :
-    (addIntoTM (r src) (r dst)).HoareTime
-      (EmitPred inp₀ (regsWork r w₀ V) ys)
-      (EmitPred inp₀ (regsWork r w₀ (Function.update V dst (V dst + V src))) ys)
-      (evalnArithmeticCost B) := by
-  have h := addIntoTM_hoareTime (r src) (r dst) (r.ne hne) (V src) (V dst) inp₀
-    (regsWork r w₀ V) ys hinp₀ (fun i _ => parked_regsWork r hpark V i)
-    (regsWork_apply r w₀ V src) (regsWork_apply r w₀ V dst)
-  rw [regsWork_update] at h
-  exact h.mono_bound (addIntoTime_le_arith (V src) (V dst) B (hv src) (hv dst))
 
 /-- `dst := dst + src₁ * src₂`, as a vector update. -/
 lemma mulAddInto_regsWork (src₁ src₂ dst : Fin m)
@@ -286,23 +252,23 @@ lemma clampTM_hoareTime (dr : Regs 10 n) (v : Fin 10 → ℕ) (B : ℕ)
       (5 * evalnArithmeticCost B + 4) := by
   have h1 := setConst_regsWork dr v B inp₀ w₀ ys 2 4 hinp₀ hpark hv (by omega)
   set V1 := Function.update v 2 4 with hV1
-  have hv1 : ∀ k, V1 k ≤ B := update_le v B hv (by omega)
+  have hv1 : ∀ k, V1 k ≤ B := update_le hv (by omega)
   have h2 := copyInto_regsWork dr V1 B inp₀ w₀ ys 0 9 (by decide) hinp₀ hpark hv1
   set V2 := Function.update V1 9 (V1 0) with hV2
-  have hv2 : ∀ k, V2 k ≤ B := update_le V1 B hv1 (hv1 0)
+  have hv2 : ∀ k, V2 k ≤ B := update_le hv1 (hv1 0)
   have h3 := subInto_regsWork dr V2 B inp₀ w₀ ys 2 9 (by decide) hinp₀ hpark hv2
   set V3 := Function.update V2 9 (V2 9 - V2 2) with hV3
-  have hv3 : ∀ k, V3 k ≤ B := update_le V2 B hv2 (by have := hv2 9; omega)
+  have hv3 : ∀ k, V3 k ≤ B := update_le hv2 (by have := hv2 9; omega)
   have h4 := copyInto_regsWork dr V3 B inp₀ w₀ ys 0 1 (by decide) hinp₀ hpark hv3
   set V4 := Function.update V3 1 (V3 0) with hV4
-  have hv4 : ∀ k, V4 k ≤ B := update_le V3 B hv3 (hv3 0)
+  have hv4 : ∀ k, V4 k ≤ B := update_le hv3 (hv3 0)
   have h5 := subInto_regsWork dr V4 B inp₀ w₀ ys 9 1 (by decide) hinp₀ hpark hv4
   set V5 := Function.update V4 1 (V4 1 - V4 9) with hV5
-  have hv5 : ∀ k, V5 k ≤ B := update_le V4 B hv4 (by have := hv4 1; omega)
+  have hv5 : ∀ k, V5 k ≤ B := update_le hv4 (by have := hv4 1; omega)
   have hfinal : V5 = clampVals v := by
     funext k
-    fin_cases k <;>
-      simp [clampVals, hV5, hV4, hV3, hV2, hV1] <;> omega
+    fin_cases k <;> simp [clampVals, hV5, hV4, hV3, hV2, hV1]
+    all_goals omega
   rw [hfinal] at h5
   exact (seqEmit hinp₀ (parked_regsWork dr hpark V1) h1
     (seqEmit hinp₀ (parked_regsWork dr hpark V2) h2
@@ -343,60 +309,60 @@ lemma digitFlagsTM_hoareTime (dr : Regs 10 n) (u : Fin 10 → ℕ) (B : ℕ)
       (13 * evalnArithmeticCost B + 12) := by
   have h1 := setConst_regsWork dr u B inp₀ w₀ ys 2 1 hinp₀ hpark hu (by omega)
   set W1 := Function.update u 2 1 with hW1
-  have hw1 : ∀ k, W1 k ≤ B := update_le u B hu (by omega)
+  have hw1 : ∀ k, W1 k ≤ B := update_le hu (by omega)
   have h2 := ltFlag_regsWork dr W1 B inp₀ w₀ ys 1 2 3 4
     (by decide) (by decide) (by decide) hinp₀ hpark hw1
   set W2 := Function.update (Function.update W1 3 (W1 2 - W1 1)) 4
     (if W1 1 < W1 2 then 1 else 0) with hW2
   have hw2 : ∀ k, W2 k ≤ B :=
-    update_le _ B (update_le W1 B hw1 (by have := hw1 2; omega)) (by split_ifs <;> omega)
+    update_le (update_le hw1 (by have := hw1 2; omega)) (by split_ifs <;> omega)
   have h3 := setConst_regsWork dr W2 B inp₀ w₀ ys 2 2 hinp₀ hpark hw2 (by omega)
   set W3 := Function.update W2 2 2 with hW3
-  have hw3 : ∀ k, W3 k ≤ B := update_le W2 B hw2 (by omega)
+  have hw3 : ∀ k, W3 k ≤ B := update_le hw2 (by omega)
   have h4 := ltFlag_regsWork dr W3 B inp₀ w₀ ys 1 2 3 5
     (by decide) (by decide) (by decide) hinp₀ hpark hw3
   set W4 := Function.update (Function.update W3 3 (W3 2 - W3 1)) 5
     (if W3 1 < W3 2 then 1 else 0) with hW4
   have hw4 : ∀ k, W4 k ≤ B :=
-    update_le _ B (update_le W3 B hw3 (by have := hw3 2; omega)) (by split_ifs <;> omega)
+    update_le (update_le hw3 (by have := hw3 2; omega)) (by split_ifs <;> omega)
   have h5 := setConst_regsWork dr W4 B inp₀ w₀ ys 2 3 hinp₀ hpark hw4 (by omega)
   set W5 := Function.update W4 2 3 with hW5
-  have hw5 : ∀ k, W5 k ≤ B := update_le W4 B hw4 (by omega)
+  have hw5 : ∀ k, W5 k ≤ B := update_le hw4 (by omega)
   have h6 := ltFlag_regsWork dr W5 B inp₀ w₀ ys 1 2 3 6
     (by decide) (by decide) (by decide) hinp₀ hpark hw5
   set W6 := Function.update (Function.update W5 3 (W5 2 - W5 1)) 6
     (if W5 1 < W5 2 then 1 else 0) with hW6
   have hw6 : ∀ k, W6 k ≤ B :=
-    update_le _ B (update_le W5 B hw5 (by have := hw5 2; omega)) (by split_ifs <;> omega)
+    update_le (update_le hw5 (by have := hw5 2; omega)) (by split_ifs <;> omega)
   have h7 := setConst_regsWork dr W6 B inp₀ w₀ ys 2 4 hinp₀ hpark hw6 (by omega)
   set W7 := Function.update W6 2 4 with hW7
-  have hw7 : ∀ k, W7 k ≤ B := update_le W6 B hw6 (by omega)
+  have hw7 : ∀ k, W7 k ≤ B := update_le hw6 (by omega)
   have h8 := ltFlag_regsWork dr W7 B inp₀ w₀ ys 1 2 3 7
     (by decide) (by decide) (by decide) hinp₀ hpark hw7
   set W8 := Function.update (Function.update W7 3 (W7 2 - W7 1)) 7
     (if W7 1 < W7 2 then 1 else 0) with hW8
   have hw8 : ∀ k, W8 k ≤ B :=
-    update_le _ B (update_le W7 B hw7 (by have := hw7 2; omega)) (by split_ifs <;> omega)
+    update_le (update_le hw7 (by have := hw7 2; omega)) (by split_ifs <;> omega)
   have h9 := setConst_regsWork dr W8 B inp₀ w₀ ys 8 1 hinp₀ hpark hw8 (by omega)
   set W9 := Function.update W8 8 1 with hW9
-  have hw9 : ∀ k, W9 k ≤ B := update_le W8 B hw8 (by omega)
+  have hw9 : ∀ k, W9 k ≤ B := update_le hw8 (by omega)
   have h10 := subInto_regsWork dr W9 B inp₀ w₀ ys 7 8 (by decide) hinp₀ hpark hw9
   set W10 := Function.update W9 8 (W9 8 - W9 7) with hW10
-  have hw10 : ∀ k, W10 k ≤ B := update_le W9 B hw9 (by have := hw9 8; omega)
+  have hw10 : ∀ k, W10 k ≤ B := update_le hw9 (by have := hw9 8; omega)
   have h11 := subInto_regsWork dr W10 B inp₀ w₀ ys 6 7 (by decide) hinp₀ hpark hw10
   set W11 := Function.update W10 7 (W10 7 - W10 6) with hW11
-  have hw11 : ∀ k, W11 k ≤ B := update_le W10 B hw10 (by have := hw10 7; omega)
+  have hw11 : ∀ k, W11 k ≤ B := update_le hw10 (by have := hw10 7; omega)
   have h12 := subInto_regsWork dr W11 B inp₀ w₀ ys 5 6 (by decide) hinp₀ hpark hw11
   set W12 := Function.update W11 6 (W11 6 - W11 5) with hW12
-  have hw12 : ∀ k, W12 k ≤ B := update_le W11 B hw11 (by have := hw11 6; omega)
+  have hw12 : ∀ k, W12 k ≤ B := update_le hw11 (by have := hw11 6; omega)
   have h13 := subInto_regsWork dr W12 B inp₀ w₀ ys 4 5 (by decide) hinp₀ hpark hw12
   set W13 := Function.update W12 5 (W12 5 - W12 4) with hW13
-  have hw13 : ∀ k, W13 k ≤ B := update_le W12 B hw12 (by have := hw12 5; omega)
+  have hw13 : ∀ k, W13 k ≤ B := update_le hw12 (by have := hw12 5; omega)
   have hfinal : W13 = flagVals u := by
     funext k
     fin_cases k <;>
       simp [flagVals, hW13, hW12, hW11, hW10, hW9, hW8, hW7, hW6, hW5, hW4, hW3, hW2,
-        hW1, Function.update_apply]
+        hW1]
   rw [hfinal] at h13
   exact (seqEmit hinp₀ (parked_regsWork dr hpark W1) h1
     (seqEmit hinp₀ (parked_regsWork dr hpark W2) h2
@@ -555,12 +521,8 @@ and the first three *overlap by design*: `selfW 9…26` alias the pairing and di
 Only `selfW 0…8` are private to the top-level program, and only `0…7` are live — `0` the
 day, `1` the clock, `2` the length program's result tag, `3` its result value, `4` the loop
 count, `5` the loop index, `6…7` clamp scratch. The aliasing is why `pairW_ne_selfW` and
-`digW_ne_selfW` carry index-arithmetic hypotheses while `digW_ne_pairW` does not. The
-lemmas below are the pairwise-disjointness table the stage proofs read off.
-
-`selfW` is also the name `Framework/Machine/EvalnCompiler.lean` gives the analogous window
-one level down, and the `open` above brings it into scope. The current namespace wins, so an
-unqualified `selfW` here is always this file's. -/
+`digW_ne_selfW` carry index-arithmetic hypotheses: a window disjoint from `selfW` outright
+would need none. The lemmas below are the disjointness facts the stage proofs read off. -/
 
 section Layout
 variable (lc tc : Nat.Partrec.Code)
@@ -599,37 +561,17 @@ lemma pairW_ne_selfW (i : Fin 8) (j : Fin 32) (h : 9 + (i : ℕ) ≠ (j : ℕ)) 
 lemma digW_ne_selfW (i : Fin 10) (j : Fin 32) (h : 17 + (i : ℕ) ≠ (j : ℕ)) :
     digW lc tc i ≠ selfW lc tc j := amb_ne _ _ i j (by omega)
 
-/-- The digit and pairing windows are disjoint outright — unlike their intersections with
-`selfW`, this one needs no index hypothesis, since `17 ≤ 17 + i` and `9 + j < 17`. -/
-lemma digW_ne_pairW (i : Fin 10) (j : Fin 8) : digW lc tc i ≠ pairW lc tc j :=
-  amb_ne _ _ i j (by have := j.isLt; omega)
-
 lemma lcW_ne_selfW (i : Fin (codeRegs lc)) (j : Fin 32) : lcW lc tc i ≠ selfW lc tc j :=
   amb_ne _ _ i j (by have := j.isLt; omega)
 
 lemma tcW_ne_selfW (i : Fin (codeRegs tc)) (j : Fin 32) : tcW lc tc i ≠ selfW lc tc j :=
   amb_ne _ _ i j (by have := j.isLt; omega)
 
-/-- The length code's window is disjoint from the pairing block; the entry of the
-disjointness table that lets the length call and the pairing stage be reordered. -/
-lemma lcW_ne_pairW (i : Fin (codeRegs lc)) (j : Fin 8) : lcW lc tc i ≠ pairW lc tc j :=
-  amb_ne _ _ i j (by have := j.isLt; omega)
-
 lemma tcW_ne_pairW (i : Fin (codeRegs tc)) (j : Fin 8) : tcW lc tc i ≠ pairW lc tc j :=
-  amb_ne _ _ i j (by have := j.isLt; omega)
-
-/-- The length code's window is disjoint from the digit block, so emission cannot disturb
-the length call's registers. -/
-lemma lcW_ne_digW (i : Fin (codeRegs lc)) (j : Fin 10) : lcW lc tc i ≠ digW lc tc j :=
   amb_ne _ _ i j (by have := j.isLt; omega)
 
 lemma tcW_ne_digW (i : Fin (codeRegs tc)) (j : Fin 10) : tcW lc tc i ≠ digW lc tc j :=
   amb_ne _ _ i j (by have := j.isLt; omega)
-
-/-- The two compiled code windows are disjoint. This is the fact that makes the layout
-sound: the token code, re-run on every iteration, never touches the length code's answer. -/
-lemma tcW_ne_lcW (i : Fin (codeRegs tc)) (j : Fin (codeRegs lc)) :
-    tcW lc tc i ≠ lcW lc tc j := amb_ne _ _ i j (by have := j.isLt; omega)
 
 end Layout
 
@@ -655,7 +597,6 @@ noncomputable def tokenBodyVals (V : Fin (totalRegs lc tc) → ℕ) :
   let V8 := writeWindow (digW lc tc) V7 (digitVals (fun j => V7 (digW lc tc j)))
   Function.update V8 (selfW lc tc 5) (V8 (selfW lc tc 5) + 1)
 
-set_option maxHeartbeats 1000000 in
 /-- Every working register below the pairing block, other than the loop index, is left
     alone by an iteration. -/
 lemma tokenBodyVals_selfW (V : Fin (totalRegs lc tc) → ℕ) (q : Fin 32)
@@ -672,7 +613,6 @@ lemma tokenBodyVals_selfW (V : Fin (totalRegs lc tc) → ℕ) (q : Fin 32)
     Function.update_of_ne (Ne.symm (pairW_ne_selfW lc tc 1 q (by simp; omega))),
     Function.update_of_ne (Ne.symm (pairW_ne_selfW lc tc 0 q (by simp; omega)))]
 
-set_option maxHeartbeats 1000000 in
 /-- The loop index advances by one. -/
 lemma tokenBodyVals_index (V : Fin (totalRegs lc tc) → ℕ) :
     tokenBodyVals lc tc V (selfW lc tc 5) = V (selfW lc tc 5) + 1 := by
@@ -714,7 +654,6 @@ lemma tcW_local_ne (i j : Fin 16) (h : i ≠ j) :
     tcW lc tc (codeLocal tc i) ≠ tcW lc tc (codeLocal tc j) :=
   fun e => h ((codeLocal tc).injective ((tcW lc tc).injective e))
 
-set_option maxHeartbeats 2000000 in
 /-- **One iteration of the emission loop meets its budget.** From a register state `V` whose
 values are all below `B`, `tokenBodyTM` reaches `tokenBodyVals lc tc V` and appends the three
 bits of the clamped token digit, within the token code's own step bound `codeMachineTime tc`
@@ -728,8 +667,7 @@ lemma tokenBodyTM_hoareTime (R : Regs (totalRegs lc tc) n)
     (hB5 : 5 ≤ B) (hsB : s < B) (hV : ∀ k, V k < B)
     (hBtc : codeRegBound tc s ≤ B)
     (hpair : Nat.pair (V (selfW lc tc 0)) (V (selfW lc tc 5)) ≤ s)
-    (hclock : V (selfW lc tc 1) ≤ s)
-    (hinc : V (selfW lc tc 5) + 1 < B) :
+    (hclock : V (selfW lc tc 1) ≤ s) :
     (tokenBodyTM lc tc R).HoareTime
       (EmitPred inp₀ (regsWork R w₀ V) ys)
       (EmitPred inp₀ (regsWork R w₀ (tokenBodyVals lc tc V))
@@ -739,12 +677,12 @@ lemma tokenBodyTM_hoareTime (R : Regs (totalRegs lc tc) n)
   have h1 := copyInto_regsWork R V B inp₀ w₀ ys (selfW lc tc 0) (pairW lc tc 0)
     (Ne.symm (pairW_ne_selfW lc tc 0 0 (by decide))) hinp₀ hpark (fun k => (hV k).le)
   set V1 := Function.update V (pairW lc tc 0) (V (selfW lc tc 0)) with hV1
-  have hv1 : ∀ k, V1 k < B := update_lt V B hV (hV _)
+  have hv1 : ∀ k, V1 k < B := update_lt hV (hV _)
   -- stage 2: the index into the pairing block
   have h2 := copyInto_regsWork R V1 B inp₀ w₀ ys (selfW lc tc 5) (pairW lc tc 1)
     (Ne.symm (pairW_ne_selfW lc tc 1 5 (by decide))) hinp₀ hpark (fun k => (hv1 k).le)
   set V2 := Function.update V1 (pairW lc tc 1) (V1 (selfW lc tc 5)) with hV2
-  have hv2 : ∀ k, V2 k < B := update_lt V1 B hv1 (hv1 _)
+  have hv2 : ∀ k, V2 k < B := update_lt hv1 (hv1 _)
   -- the two pairing inputs, read back
   have r2a : V2 (pairW lc tc 0) = V (selfW lc tc 0) := by
     rw [hV2, Function.update_of_ne (pairW_ne lc tc 0 1 (by decide)), hV1,
@@ -777,7 +715,7 @@ lemma tokenBodyTM_hoareTime (R : Regs (totalRegs lc tc) n)
     (tcW lc tc (codeLocal tc 0)) (Ne.symm (tcW_ne_pairW lc tc _ 6)) hinp₀ hpark
     (fun k => (hv3 k).le)
   set V4 := Function.update V3 (tcW lc tc (codeLocal tc 0)) (V3 (pairW lc tc 6)) with hV4
-  have hv4 : ∀ k, V4 k < B := update_lt V3 B hv3 (hv3 _)
+  have hv4 : ∀ k, V4 k < B := update_lt hv3 (hv3 _)
   have r4 : V4 (selfW lc tc 1) = V (selfW lc tc 1) := by
     rw [hV4, Function.update_of_ne (Ne.symm (tcW_ne_selfW lc tc _ 1)), hV3,
       writeWindow_of_ne _ _ _ (fun j => pairW_ne_selfW lc tc j 1 (by have := j.isLt; simp; omega)),
@@ -788,7 +726,7 @@ lemma tokenBodyTM_hoareTime (R : Regs (totalRegs lc tc) n)
     (tcW lc tc (codeLocal tc 1)) (Ne.symm (tcW_ne_selfW lc tc _ 1)) hinp₀ hpark
     (fun k => (hv4 k).le)
   set V5 := Function.update V4 (tcW lc tc (codeLocal tc 1)) (V4 (selfW lc tc 1)) with hV5
-  have hv5 : ∀ k, V5 k < B := update_lt V4 B hv4 (hv4 _)
+  have hv5 : ∀ k, V5 k < B := update_lt hv4 (hv4 _)
   have r5a : V5 (tcW lc tc (codeLocal tc 0))
       = Nat.pair (V (selfW lc tc 0)) (V (selfW lc tc 5)) := by
     rw [hV5, Function.update_of_ne (tcW_local_ne lc tc 0 1 (by decide)), hV4,
@@ -821,7 +759,7 @@ lemma tokenBodyTM_hoareTime (R : Regs (totalRegs lc tc) n)
   have h7 := copyInto_regsWork R V6 B inp₀ w₀ ys (tcW lc tc (codeLocal tc 3))
     (digW lc tc 0) (tcW_ne_digW lc tc _ 0) hinp₀ hpark (fun k => (hv6 k).le)
   set V7 := Function.update V6 (digW lc tc 0) (V6 (tcW lc tc (codeLocal tc 3))) with hV7
-  have hv7 : ∀ k, V7 k < B := update_lt V6 B hv6 (hv6 _)
+  have hv7 : ∀ k, V7 k < B := update_lt hv6 (hv6 _)
   have r7 : V7 (digW lc tc 0) = tokenDigit lc tc V := by
     rw [hV7, Function.update_self, r6]
   -- stage 8: the digit block
@@ -869,7 +807,6 @@ end BodySpec
 section BodyBound
 variable (lc tc : Nat.Partrec.Code)
 
-set_option maxHeartbeats 1000000 in
 /-- An iteration keeps every register inside the bound. -/
 lemma tokenBodyVals_lt (V : Fin (totalRegs lc tc) → ℕ) (s B : ℕ)
     (hB5 : 5 ≤ B) (hsB : s < B) (hV : ∀ k, V k < B)
@@ -880,9 +817,9 @@ lemma tokenBodyVals_lt (V : Fin (totalRegs lc tc) → ℕ) (s B : ℕ)
     ∀ k, tokenBodyVals lc tc V k < B := by
   simp only [tokenBodyVals]
   set V1 := Function.update V (pairW lc tc 0) (V (selfW lc tc 0)) with hV1
-  have hv1 : ∀ k, V1 k < B := update_lt V B hV (hV _)
+  have hv1 : ∀ k, V1 k < B := update_lt hV (hV _)
   set V2 := Function.update V1 (pairW lc tc 1) (V1 (selfW lc tc 5)) with hV2
-  have hv2 : ∀ k, V2 k < B := update_lt V1 B hv1 (hv1 _)
+  have hv2 : ∀ k, V2 k < B := update_lt hv1 (hv1 _)
   have r2a : V2 (pairW lc tc 0) = V (selfW lc tc 0) := by
     rw [hV2, Function.update_of_ne (pairW_ne lc tc 0 1 (by decide)), hV1,
       Function.update_self]
@@ -905,7 +842,7 @@ lemma tokenBodyVals_lt (V : Fin (totalRegs lc tc) → ℕ) (s B : ℕ)
         = Nat.pair (V2 (pairW lc tc 0)) (V2 (pairW lc tc 1)) := by simp [pairVals]
     rw [hp6, r2a, r2b]
   set V4 := Function.update V3 (tcW lc tc (codeLocal tc 0)) (V3 (pairW lc tc 6)) with hV4
-  have hv4 : ∀ k, V4 k < B := update_lt V3 B hv3 (hv3 _)
+  have hv4 : ∀ k, V4 k < B := update_lt hv3 (hv3 _)
   have r4 : V4 (selfW lc tc 1) = V (selfW lc tc 1) := by
     rw [hV4, Function.update_of_ne (Ne.symm (tcW_ne_selfW lc tc _ 1)), hV3,
       writeWindow_of_ne _ _ _
@@ -913,7 +850,7 @@ lemma tokenBodyVals_lt (V : Fin (totalRegs lc tc) → ℕ) (s B : ℕ)
       hV2, Function.update_of_ne (Ne.symm (pairW_ne_selfW lc tc 1 1 (by decide))), hV1,
       Function.update_of_ne (Ne.symm (pairW_ne_selfW lc tc 0 1 (by decide)))]
   set V5 := Function.update V4 (tcW lc tc (codeLocal tc 1)) (V4 (selfW lc tc 1)) with hV5
-  have hv5 : ∀ k, V5 k < B := update_lt V4 B hv4 (hv4 _)
+  have hv5 : ∀ k, V5 k < B := update_lt hv4 (hv4 _)
   have r5a : V5 (tcW lc tc (codeLocal tc 0))
       = Nat.pair (V (selfW lc tc 0)) (V (selfW lc tc 5)) := by
     rw [hV5, Function.update_of_ne (tcW_local_ne lc tc 0 1 (by decide)), hV4,
@@ -934,7 +871,7 @@ lemma tokenBodyVals_lt (V : Fin (totalRegs lc tc) → ℕ) (s B : ℕ)
     exact writeWindow_bounded _ _ _ B hv5
       (fun j => codeVals_lt tc s B _ hBtc (fun i => hv5 _) hin0 hin1 j) k
   set V7 := Function.update V6 (digW lc tc 0) (V6 (tcW lc tc (codeLocal tc 3))) with hV7
-  have hv7 : ∀ k, V7 k < B := update_lt V6 B hv6 (hv6 _)
+  have hv7 : ∀ k, V7 k < B := update_lt hv6 (hv6 _)
   set V8 := writeWindow (digW lc tc) V7 (digitVals (fun j => V7 (digW lc tc j))) with hV8
   have hv8 : ∀ k, V8 k < B := by
     intro k
@@ -954,7 +891,7 @@ lemma tokenBodyVals_lt (V : Fin (totalRegs lc tc) → ℕ) (s B : ℕ)
       hV2, Function.update_of_ne (Ne.symm (pairW_ne_selfW lc tc 1 5 (by decide))), hV1,
       Function.update_of_ne (Ne.symm (pairW_ne_selfW lc tc 0 5 (by decide)))]
   rw [r8]
-  exact update_lt V8 B hv8 hinc
+  exact update_lt hv8 hinc
 
 end BodyBound
 
@@ -1041,7 +978,6 @@ lemma tokenLoop_hoareTime (R : Regs (totalRegs lc tc) n) (l : Fin n)
           tokenLoopVals_index, hidx]
         exact le_trans (natPair_mono (le_refl _) (by omega)) hs)
     (by rw [tokenLoopVals_selfW lc tc V₀ 1 (by decide) (by decide)]; exact hCs)
-    (by rw [tokenLoopVals_index, hidx]; omega)
   exact hbody
 
 end Loop
@@ -1110,7 +1046,6 @@ end Setup
 section SetupSpec
 variable (lc tc : Nat.Partrec.Code)
 
-set_option maxHeartbeats 2000000 in
 /-- The four registers the loop reads out of the setup. -/
 lemma setupVals_spec (a k N : ℕ) (V : Fin (totalRegs lc tc) → ℕ) :
     setupVals lc tc a k N V (selfW lc tc 0) = N ∧
@@ -1248,7 +1183,6 @@ noncomputable def setupTM (a k : ℕ) (R : Regs (totalRegs lc tc) n) : TM n :=
   seqTM (mulAddIntoTM (R (selfW lc tc 2)) (R (selfW lc tc 7)) (R (selfW lc tc 4)))
     (setConstTM (R (selfW lc tc 5)) 0)
 
-set_option maxHeartbeats 4000000 in
 /-- **The setup meets its budget.** From an all-zero register file on the unary day,
 `setupTM` reaches `setupVals`: the day measured off the input tape, the clock
 `clockPoly a k` evaluated by Horner, the length code run under that clock, and the loop count
@@ -1278,7 +1212,7 @@ lemma setupTM_hoareTime (a k : ℕ) (R : Regs (totalRegs lc tc) n)
     (fun i _ => hpv V i) (by rw [regsWork_apply, hV])
   rw [regsWork_update] at h1
   set V1 := Function.update V (selfW lc tc 0) x.length with hV1
-  have hv1 : ∀ k, V1 k < B := update_lt V B hVlt (by omega)
+  have hv1 : ∀ k, V1 k < B := update_lt hVlt (by omega)
   have r1 : V1 (selfW lc tc 0) = x.length := by rw [hV1, Function.update_self]
   -- stage 2: the clock
   have h2 := polyEvalTM_hoareTime (R (selfW lc tc 0)) (R (selfW lc tc 1))
@@ -1296,7 +1230,7 @@ lemma setupTM_hoareTime (a k : ℕ) (R : Regs (totalRegs lc tc) n)
   have hCB : (clockPoly a k).eval x.length < B := by
     rw [clockPoly_eval]; omega
   have hv2 : ∀ k, V2 k < B :=
-    update_lt _ B (update_lt V1 B hv1 hCB) hCB
+    update_lt (update_lt hv1 hCB) hCB
   have r2a : V2 (selfW lc tc 0) = x.length := by
     rw [hV2, Function.update_of_ne (selfW_ne lc tc 0 1 (by decide)),
       Function.update_of_ne (selfW_ne lc tc 0 6 (by decide)), r1]
@@ -1307,12 +1241,12 @@ lemma setupTM_hoareTime (a k : ℕ) (R : Regs (totalRegs lc tc) n)
     (lcW lc tc (codeLocal lc 0)) (Ne.symm (lcW_ne_selfW lc tc _ 0)) hinp₀ hpark
     (fun k => (hv2 k).le)
   set V3 := Function.update V2 (lcW lc tc (codeLocal lc 0)) (V2 (selfW lc tc 0)) with hV3
-  have hv3 : ∀ k, V3 k < B := update_lt V2 B hv2 (hv2 _)
+  have hv3 : ∀ k, V3 k < B := update_lt hv2 (hv2 _)
   have h4 := copyInto_regsWork R V3 B inp₀ w₀ [] (selfW lc tc 1)
     (lcW lc tc (codeLocal lc 1)) (Ne.symm (lcW_ne_selfW lc tc _ 1)) hinp₀ hpark
     (fun k => (hv3 k).le)
   set V4 := Function.update V3 (lcW lc tc (codeLocal lc 1)) (V3 (selfW lc tc 1)) with hV4
-  have hv4 : ∀ k, V4 k < B := update_lt V3 B hv3 (hv3 _)
+  have hv4 : ∀ k, V4 k < B := update_lt hv3 (hv3 _)
   have e4in : (fun j => V4 (lcW lc tc j)) (codeLocal lc 0) ≤ s := by
     show V4 (lcW lc tc (codeLocal lc 0)) ≤ s
     rw [hV4, Function.update_of_ne (fun e => (by decide : (0 : Fin 16) ≠ 1)
@@ -1344,36 +1278,36 @@ lemma setupTM_hoareTime (a k : ℕ) (R : Regs (totalRegs lc tc) n)
   have h6 := copyInto_regsWork R V5 B inp₀ w₀ [] (lcW lc tc (codeLocal lc 2))
     (selfW lc tc 2) (lcW_ne_selfW lc tc _ 2) hinp₀ hpark (fun k => (hv5 k).le)
   set V6 := Function.update V5 (selfW lc tc 2) (V5 (lcW lc tc (codeLocal lc 2))) with hV6
-  have hv6 : ∀ k, V6 k < B := update_lt V5 B hv5 (hv5 _)
+  have hv6 : ∀ k, V6 k < B := update_lt hv5 (hv5 _)
   have h7 := copyInto_regsWork R V6 B inp₀ w₀ [] (lcW lc tc (codeLocal lc 3))
     (selfW lc tc 3) (lcW_ne_selfW lc tc _ 3) hinp₀ hpark (fun k => (hv6 k).le)
   set V7 := Function.update V6 (selfW lc tc 3) (V6 (lcW lc tc (codeLocal lc 3))) with hV7
-  have hv7 : ∀ k, V7 k < B := update_lt V6 B hv6 (hv6 _)
+  have hv7 : ∀ k, V7 k < B := update_lt hv6 (hv6 _)
   -- stages 8 to 11: the clamp `min lenVal clock`
   have h8 := copyInto_regsWork R V7 B inp₀ w₀ [] (selfW lc tc 3) (selfW lc tc 6)
     (selfW_ne lc tc 3 6 (by decide)) hinp₀ hpark (fun k => (hv7 k).le)
   set V8 := Function.update V7 (selfW lc tc 6) (V7 (selfW lc tc 3)) with hV8
-  have hv8 : ∀ k, V8 k < B := update_lt V7 B hv7 (hv7 _)
+  have hv8 : ∀ k, V8 k < B := update_lt hv7 (hv7 _)
   have h9 := subInto_regsWork R V8 B inp₀ w₀ [] (selfW lc tc 1) (selfW lc tc 6)
     (selfW_ne lc tc 1 6 (by decide)) hinp₀ hpark (fun k => (hv8 k).le)
   set V9 := Function.update V8 (selfW lc tc 6) (V8 (selfW lc tc 6) - V8 (selfW lc tc 1))
     with hV9
-  have hv9 : ∀ k, V9 k < B := update_lt V8 B hv8 (by have := hv8 (selfW lc tc 6); omega)
+  have hv9 : ∀ k, V9 k < B := update_lt hv8 (by have := hv8 (selfW lc tc 6); omega)
   have h10 := copyInto_regsWork R V9 B inp₀ w₀ [] (selfW lc tc 3) (selfW lc tc 7)
     (selfW_ne lc tc 3 7 (by decide)) hinp₀ hpark (fun k => (hv9 k).le)
   set V10 := Function.update V9 (selfW lc tc 7) (V9 (selfW lc tc 3)) with hV10
-  have hv10 : ∀ k, V10 k < B := update_lt V9 B hv9 (hv9 _)
+  have hv10 : ∀ k, V10 k < B := update_lt hv9 (hv9 _)
   have h11 := subInto_regsWork R V10 B inp₀ w₀ [] (selfW lc tc 6) (selfW lc tc 7)
     (selfW_ne lc tc 6 7 (by decide)) hinp₀ hpark (fun k => (hv10 k).le)
   set V11 := Function.update V10 (selfW lc tc 7)
     (V10 (selfW lc tc 7) - V10 (selfW lc tc 6)) with hV11
   have hv11 : ∀ k, V11 k < B :=
-    update_lt V10 B hv10 (by have := hv10 (selfW lc tc 7); omega)
+    update_lt hv10 (by have := hv10 (selfW lc tc 7); omega)
   -- stages 12 and 13: the count
   have h12 := setConst_regsWork R V11 B inp₀ w₀ [] (selfW lc tc 4) 0 hinp₀ hpark
     (fun k => (hv11 k).le) (by omega)
   set V12 := Function.update V11 (selfW lc tc 4) 0 with hV12
-  have hv12 : ∀ k, V12 k < B := update_lt V11 B hv11 (by omega)
+  have hv12 : ∀ k, V12 k < B := update_lt hv11 (by omega)
   have h13 := mulAddInto_regsWork R V12 B inp₀ w₀ [] (selfW lc tc 2) (selfW lc tc 7)
     (selfW lc tc 4) (selfW_ne lc tc 2 7 (by decide)) (selfW_ne lc tc 2 4 (by decide))
     (selfW_ne lc tc 7 4 (by decide)) hinp₀ hpark (fun k => (hv12 k).le)
@@ -1390,7 +1324,7 @@ lemma setupTM_hoareTime (a k : ℕ) (R : Regs (totalRegs lc tc) n)
     exact e5tag
   have hzero12 : V12 (selfW lc tc 4) = 0 := by rw [hV12, Function.update_self]
   have hv13 : ∀ k, V13 k < B := by
-    refine update_lt V12 B hv12 ?_
+    refine update_lt hv12 ?_
     have h7B := hv12 (selfW lc tc 7)
     have : V12 (selfW lc tc 2) * V12 (selfW lc tc 7) ≤ V12 (selfW lc tc 7) := by
       calc V12 (selfW lc tc 2) * V12 (selfW lc tc 7)
@@ -1412,7 +1346,6 @@ lemma setupTM_hoareTime (a k : ℕ) (R : Regs (totalRegs lc tc) n)
             (seqEmit hinp₀ (hpv V11) h11 (seqEmit hinp₀ (hpv V12) h12
               (seqEmit hinp₀ (hpv V13) h13 h14))))))))))))).mono_bound (by omega)
 
-set_option maxHeartbeats 2000000 in
 /-- The setup keeps every register inside the bound. -/
 lemma setupVals_lt (a k N : ℕ) (V : Fin (totalRegs lc tc) → ℕ) (s B : ℕ)
     (hV : ∀ i, V i = 0) (hB5 : 5 ≤ B) (hsB : s < B)
@@ -1421,21 +1354,21 @@ lemma setupVals_lt (a k N : ℕ) (V : Fin (totalRegs lc tc) → ℕ) (s B : ℕ)
   have hVlt : ∀ j, V j < B := fun j => by rw [hV j]; omega
   simp only [setupVals]
   set V1 := Function.update V (selfW lc tc 0) N with hV1
-  have hv1 : ∀ j, V1 j < B := update_lt V B hVlt (by omega)
+  have hv1 : ∀ j, V1 j < B := update_lt hVlt (by omega)
   have r1 : V1 (selfW lc tc 0) = N := by rw [hV1, Function.update_self]
   set V2 := Function.update (Function.update V1 (selfW lc tc 6)
     ((clockPoly a k).eval N)) (selfW lc tc 1) ((clockPoly a k).eval N) with hV2
   have hCB : (clockPoly a k).eval N < B := by rw [clockPoly_eval]; omega
-  have hv2 : ∀ j, V2 j < B := update_lt _ B (update_lt V1 B hv1 hCB) hCB
+  have hv2 : ∀ j, V2 j < B := update_lt (update_lt hv1 hCB) hCB
   have r2a : V2 (selfW lc tc 0) = N := by
     rw [hV2, Function.update_of_ne (selfW_ne lc tc 0 1 (by decide)),
       Function.update_of_ne (selfW_ne lc tc 0 6 (by decide)), r1]
   have r2b : V2 (selfW lc tc 1) = (clockPoly a k).eval N := by
     rw [hV2, Function.update_self]
   set V3 := Function.update V2 (lcW lc tc (codeLocal lc 0)) (V2 (selfW lc tc 0)) with hV3
-  have hv3 : ∀ j, V3 j < B := update_lt V2 B hv2 (hv2 _)
+  have hv3 : ∀ j, V3 j < B := update_lt hv2 (hv2 _)
   set V4 := Function.update V3 (lcW lc tc (codeLocal lc 1)) (V3 (selfW lc tc 1)) with hV4
-  have hv4 : ∀ j, V4 j < B := update_lt V3 B hv3 (hv3 _)
+  have hv4 : ∀ j, V4 j < B := update_lt hv3 (hv3 _)
   have e4in : (fun j => V4 (lcW lc tc j)) (codeLocal lc 0) ≤ s := by
     show V4 (lcW lc tc (codeLocal lc 0)) ≤ s
     rw [hV4, Function.update_of_ne (fun e => (by decide : (0 : Fin 16) ≠ 1)
@@ -1457,22 +1390,22 @@ lemma setupVals_lt (a k N : ℕ) (V : Fin (totalRegs lc tc) → ℕ) (s B : ℕ)
     rw [hV5, writeWindow_apply]
     exact codeVals_tag_le lc _
   set V6 := Function.update V5 (selfW lc tc 2) (V5 (lcW lc tc (codeLocal lc 2))) with hV6
-  have hv6 : ∀ j, V6 j < B := update_lt V5 B hv5 (hv5 _)
+  have hv6 : ∀ j, V6 j < B := update_lt hv5 (hv5 _)
   set V7 := Function.update V6 (selfW lc tc 3) (V6 (lcW lc tc (codeLocal lc 3))) with hV7
-  have hv7 : ∀ j, V7 j < B := update_lt V6 B hv6 (hv6 _)
+  have hv7 : ∀ j, V7 j < B := update_lt hv6 (hv6 _)
   set V8 := Function.update V7 (selfW lc tc 6) (V7 (selfW lc tc 3)) with hV8
-  have hv8 : ∀ j, V8 j < B := update_lt V7 B hv7 (hv7 _)
+  have hv8 : ∀ j, V8 j < B := update_lt hv7 (hv7 _)
   set V9 := Function.update V8 (selfW lc tc 6) (V8 (selfW lc tc 6) - V8 (selfW lc tc 1))
     with hV9
-  have hv9 : ∀ j, V9 j < B := update_lt V8 B hv8 (by have := hv8 (selfW lc tc 6); omega)
+  have hv9 : ∀ j, V9 j < B := update_lt hv8 (by have := hv8 (selfW lc tc 6); omega)
   set V10 := Function.update V9 (selfW lc tc 7) (V9 (selfW lc tc 3)) with hV10
-  have hv10 : ∀ j, V10 j < B := update_lt V9 B hv9 (hv9 _)
+  have hv10 : ∀ j, V10 j < B := update_lt hv9 (hv9 _)
   set V11 := Function.update V10 (selfW lc tc 7)
     (V10 (selfW lc tc 7) - V10 (selfW lc tc 6)) with hV11
   have hv11 : ∀ j, V11 j < B :=
-    update_lt V10 B hv10 (by have := hv10 (selfW lc tc 7); omega)
+    update_lt hv10 (by have := hv10 (selfW lc tc 7); omega)
   set V12 := Function.update V11 (selfW lc tc 4) 0 with hV12
-  have hv12 : ∀ j, V12 j < B := update_lt V11 B hv11 (by omega)
+  have hv12 : ∀ j, V12 j < B := update_lt hv11 (by omega)
   have htag12 : V12 (selfW lc tc 2) ≤ 1 := by
     rw [hV12, Function.update_of_ne (selfW_ne lc tc 2 4 (by decide)), hV11,
       Function.update_of_ne (selfW_ne lc tc 2 7 (by decide)), hV10,
@@ -1485,7 +1418,7 @@ lemma setupVals_lt (a k N : ℕ) (V : Fin (totalRegs lc tc) → ℕ) (s B : ℕ)
   set V13 := Function.update V12 (selfW lc tc 4)
     (V12 (selfW lc tc 4) + V12 (selfW lc tc 2) * V12 (selfW lc tc 7)) with hV13
   have hv13 : ∀ j, V13 j < B := by
-    refine update_lt V12 B hv12 ?_
+    refine update_lt hv12 ?_
     have h7B := hv12 (selfW lc tc 7)
     have hz : V12 (selfW lc tc 4) = 0 := by rw [hV12, Function.update_self]
     have hprod : V12 (selfW lc tc 2) * V12 (selfW lc tc 7) ≤ V12 (selfW lc tc 7) := by
@@ -1493,7 +1426,7 @@ lemma setupVals_lt (a k N : ℕ) (V : Fin (totalRegs lc tc) → ℕ) (s B : ℕ)
           ≤ 1 * V12 (selfW lc tc 7) := Nat.mul_le_mul_right _ htag12
         _ = V12 (selfW lc tc 7) := by omega
     omega
-  exact update_lt V13 B hv13 (by omega)
+  exact update_lt hv13 (by omega)
 
 end SetupMachine
 
@@ -1592,7 +1525,6 @@ noncomputable def traderCost (a k N s B count : ℕ) : ℕ :=
     + count * (25 * evalnArithmeticCost B + codeMachineTime tc s (evalnArithmeticCost B)
       + 70 + 2) + count + 40
 
-set_option maxHeartbeats 8000000 in
 /-- **The whole machine meets its budget.** From a fresh tape holding the unary day, and a
 blank work and output tape, `traderTM` ends with `traderOutput lc tc a k x` on the output
 accumulator, within `traderCost`. Setup and loop composed. -/
@@ -1695,15 +1627,6 @@ lemma opBudget_poly : IsPolyBounded opBudget := by
   rw [opBudget]
   omega
 
-/-- The fork's per-operation budget is monotone in the register bound. Stated here because
-`opBudget` (`Complexitylib`) carries no monotonicity fact of its own. -/
-lemma opBudget_mono : Monotone opBudget := by
-  intro p q hpq
-  simp only [opBudget]
-  have : (p + 2) * (p + 2) * (p + 2) ≤ (q + 2) * (q + 2) * (q + 2) :=
-    Nat.mul_le_mul (Nat.mul_le_mul (by omega) (by omega)) (by omega)
-  omega
-
 lemma layerBudget_poly : IsPolyBounded layerBudget :=
   ((IsPolyBounded.const_mul opBudget_poly 4).add (IsPolyBounded.const 3)).of_le
     (fun x => by rw [layerBudget])
@@ -1712,15 +1635,6 @@ section Poly
 variable (lc tc : Nat.Partrec.Code) (a k : ℕ)
 
 lemma clockOf_poly : IsPolyBounded (clockOf a k) := ⟨a, k, fun _ => by rw [clockOf]⟩
-
-/-- The day clock is monotone in the input length; the companion of `clockOf_poly`, and the
-`clockOf` entry of the `hornerCap_mono`/`boundOf_mono`/`arithOf_mono` chain. -/
-lemma clockOf_mono : Monotone (clockOf a k) := by
-  intro p q hpq
-  simp only [clockOf]
-  have : (p + 1) ^ k ≤ (q + 1) ^ k := Nat.pow_le_pow_left (by omega) k
-  have := Nat.mul_le_mul_left a this
-  omega
 
 lemma hornerCap_poly : IsPolyBounded (hornerCap a k) :=
   (IsPolyBounded.monomial ((polyCoeffs (clockPoly a k)).sum + 1)

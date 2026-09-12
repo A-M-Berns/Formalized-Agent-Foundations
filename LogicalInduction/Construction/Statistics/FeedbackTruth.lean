@@ -71,21 +71,13 @@ consumers below.
 `Nat.sqrt` is locally irreducible in the namespace below, for the reason stated in
 `Construction/Statistics/SettlementClock.lean`; a declaration moved across that boundary must
 carry the attribute with it.
-**The criterion binder below is `def:lic` at the paper's own quantifier.**  Every result here that consumes an
-exploiting trader takes `[IsLogicalInductor P DP]`, and the trader is certified at `EfficientlyComputable`:
-it is assembled from `AffineCombination.PolySequence`'s machine-metered emission fields
-through `PolySequence.buyBelowTrader_ec` (`Properties/AffineCoherence.lean`), which has no
-fuel-class form: the bridge `BigSpliceStream.toMachine` runs fuel to machine, and no map
-back is proved or claimed.  The
-calibration is stated at `def:ec` in `Framework/Affine.lean`, and the `_unconditional`
-endpoints discharge the criterion through `LIA_is_logical_inductor`.
 
 -/
 
 namespace LogicalInduction
 namespace FeedbackTruth
 
-open AffineCombination PrefixPatchCompile Filter Topology
+open AffineCombination Filter Topology
 
 -- See the module header on `Nat.sqrt` opacity.
 attribute [local irreducible] Nat.sqrt
@@ -676,7 +668,7 @@ lemma feedbackResidualSeq_bounded
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     BoundedAffinePrices (feedbackResidualSeq As C) P := by
   obtain ⟨B, hB0, hB⟩ := hbounded
-  obtain ⟨v, hv⟩ := exists_consistentWithTheory DP hworld
+  obtain ⟨v, hv⟩ := DP.exists_consistentWithTheory hworld
   obtain ⟨M0, hM0⟩ := herr.bddAbove_range
   set M : ℝ := max M0 0 with hMdef
   have hMerr : ∀ n, err n ≤ M := fun n => (hM0 ⟨n, rfl⟩).trans (le_max_left _ _)
@@ -751,8 +743,7 @@ noncomputable def feedbackTruthSequence
     (hmag : ∀ n, (As n).magnitude P ≤ 1)
     (hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
-    FeedbackTruthSequence As truth P DP f := by
-  exact {
+    FeedbackTruthSequence As truth P DP f where
     determined := ⟨err, herr, hdet⟩
     sequence := feedbackResidualSeq As C
     poly := feedbackResidualSeqPoly hpoly C hstrict
@@ -767,7 +758,6 @@ noncomputable def feedbackTruthSequence
     feedback_price := by
       intro k
       rw [feedbackResidualSeq_price_at As C hstrict P k, C.agrees]
-  }
 
 /-- The exactly-determined instance of `feedbackTruthSequence`, at zero residual.  This is
 what the sentence-indicator and affine feedback endpoints use, where `Θ` really does pin

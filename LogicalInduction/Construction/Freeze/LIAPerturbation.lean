@@ -54,11 +54,12 @@ noncomputable def liaPerturbed (DP : DeductiveProcess) (r : ℚ) : History :=
 
 /-- Off the moved coordinate the two markets agree. -/
 lemma liaPerturbed_agree (DP : DeductiveProcess) (r : ℚ) :
-    ∀ d φ, (d, φ) ∉ exampleS → liaHistory DP d φ = liaPerturbed DP r d φ := by
+    ∀ d φ, (d, φ) ∉ FreezeOracle.pointS FreezeOracle.exampleSentence →
+      liaHistory DP d φ = liaPerturbed DP r d φ := by
   intro d φ hmem
   have hne : ¬(d = 0 ∧ φ = (LO.Propositional.Formula.atom 0 : Sentence)) := by
     intro hc
-    exact hmem (by simp [exampleS, hc.1, hc.2])
+    exact hmem (by simp [FreezeOracle.pointS, FreezeOracle.exampleSentence, hc.1, hc.2])
   rw [liaPerturbed, if_neg hne]
 
 /-! ## Computability of the perturbed market -/
@@ -162,7 +163,7 @@ theorem logicalInductor_liaPerturbed (DP : DeductiveProcess)
   have hmarket : ComputableMarket (liaHistory DP) := hLIA.marketComputable
   refine (lic_iff_of_finiteSupport (liaHistory DP) (liaPerturbed DP r) DP
     hmarket (computableMarket_liaPerturbed DP hmarket r h0 h1) ?_).mp hLIA
-  exact ⟨exampleS, liaPerturbed_agree DP r⟩
+  exact ⟨(FreezeOracle.pointS FreezeOracle.exampleSentence), liaPerturbed_agree DP r⟩
 
 /-- **The informative instance, packaged.**  A computable market that is a machine logical
 inductor, differs from the constructed one at exactly one coordinate, and differs there by a
@@ -180,7 +181,8 @@ theorem exists_informative_liaPerturbation (DP : DeductiveProcess)
       IsLogicalInductor P' DP ∧
       P' 0 (LO.Propositional.Formula.atom 0 : Sentence)
         ≠ liaHistory DP 0 (LO.Propositional.Formula.atom 0 : Sentence) ∧
-      (∀ d φ, (d, φ) ∉ exampleS → liaHistory DP d φ = P' d φ) := by
+      (∀ d φ, (d, φ) ∉ FreezeOracle.pointS FreezeOracle.exampleSentence →
+        liaHistory DP d φ = P' d φ) := by
   obtain ⟨r, h0, h1, hr⟩ := exists_perturbation_value DP
   have hmarket : ComputableMarket (liaHistory DP) :=
     (LIA_is_logical_inductor DP hDP).marketComputable

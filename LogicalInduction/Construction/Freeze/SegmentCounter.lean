@@ -1,5 +1,6 @@
 import LogicalInduction.Construction.Freeze.StructuredPatterns
 import LogicalInduction.Construction.Freeze.CounterAutomaton
+import LogicalInduction.Construction.Freeze.PayloadAutomaton
 
 /-!
 # Splitting `SegMatch` into a regular part and a counter part
@@ -22,8 +23,8 @@ the split, exactly:
 * Both zero tests in the payload state are load-bearing: at the terminator the counter must
   be exactly spent, and a payload token arriving with the counter spent means the payload is
   longer than the field.
-* `segMatch_iff_relaxed_and_ctr` proves the split exact; `h19` (a complete payload contains
-  no `19`) is a hypothesis so that `PayAuto.nineteen_not_mem_of_parse` is not duplicated.
+* `segMatch_iff_relaxed_and_ctr` proves the split exact, discharging the delimiter fact (a
+  complete payload contains no `19`) from `PayAuto.nineteen_not_mem_of_parse`.
 
 Consumed by `SegmentRecognizer.lean`; `segMatch_iff_relaxed_and_ctr` is in
 `AxiomAudit.lean`.
@@ -40,7 +41,7 @@ open CtrAuto StructPat
 /-- Dropping the length identification: an exact segment match is a relaxed one. -/
 lemma matchesRelaxed_of_matchesSeg
     (h19 : ∀ {q : List ℕ} {c : ℕ},
-      parseStructuredArithmeticFormula q.length 0 q = some (c, []) → 19 ∉ q)
+      parseStructuredArithmeticFormula q.length q = some (c, []) → 19 ∉ q)
     {σ : StructPat.PatSeg} {b : List ℕ} (h : StructPat.PatSeg.MatchesSeg σ b) :
     PatSeg.MatchesRelaxed σ b := by
   cases σ with
@@ -52,7 +53,7 @@ lemma matchesRelaxed_of_matchesSeg
 
 lemma segMatch_relaxed_of_segMatch
     (h19 : ∀ {q : List ℕ} {c : ℕ},
-      parseStructuredArithmeticFormula q.length 0 q = some (c, []) → 19 ∉ q)
+      parseStructuredArithmeticFormula q.length q = some (c, []) → 19 ∉ q)
     {p : List StructPat.PatSeg} {b : List ℕ} (h : StructPat.SegMatch p b) :
     SegMatchRelaxed p b := by
   obtain ⟨bs, hf, rfl⟩ := h
@@ -312,7 +313,7 @@ lemma foldl_struct_bad {pol fc : ℕ} {k : ℕ}
 
 lemma run_seg_exact
     (h19 : ∀ {q : List ℕ} {c : ℕ},
-      parseStructuredArithmeticFormula q.length 0 q = some (c, []) → 19 ∉ q)
+      parseStructuredArithmeticFormula q.length q = some (c, []) → 19 ∉ q)
     {σ : StructPat.PatSeg} {b : List ℕ} {k : ℕ} (hσ : p[k]? = some σ)
     (hm : StructPat.PatSeg.MatchesSeg σ b) :
     List.foldl (segCtr p).step (k, 0) b = (k + 1, 0) := by
@@ -355,7 +356,7 @@ private lemma drop_cons_aux {σ : StructPat.PatSeg} {segs : List StructPat.PatSe
 
 lemma run_exact
     (h19 : ∀ {q : List ℕ} {c : ℕ},
-      parseStructuredArithmeticFormula q.length 0 q = some (c, []) → 19 ∉ q) :
+      parseStructuredArithmeticFormula q.length q = some (c, []) → 19 ∉ q) :
     ∀ {segs : List StructPat.PatSeg} {bs : List (List ℕ)},
       List.Forall₂ StructPat.PatSeg.MatchesSeg segs bs →
       ∀ k : ℕ, p.drop k = segs →
@@ -374,7 +375,7 @@ lemma run_exact
 
 lemma run_rej
     (h19 : ∀ {q : List ℕ} {c : ℕ},
-      parseStructuredArithmeticFormula q.length 0 q = some (c, []) → 19 ∉ q) :
+      parseStructuredArithmeticFormula q.length q = some (c, []) → 19 ∉ q) :
     ∀ {segs : List StructPat.PatSeg} {bs : List (List ℕ)},
       List.Forall₂ PatSeg.MatchesRelaxed segs bs →
       ¬ List.Forall₂ StructPat.PatSeg.MatchesSeg segs bs →
@@ -399,15 +400,14 @@ lemma run_rej
 /-- **The split of `StructPat.SegMatch` into a relaxed part and a counter part is
 exact.**
 
-`h19` is supplied by the payload grammar (`PayAuto.nineteen_not_mem_of_parse`); it is a
-hypothesis here so that the fact is not duplicated.
+The delimiter fact the proof needs — a complete payload contains no `19` — is the payload
+grammar's own (`PayAuto.nineteen_not_mem_of_parse`), discharged here rather than assumed.
 
 Proof kind: `P` proved.  Provenance: (a) `run_exact`, `run_rej`,
-`matchesRelaxed_of_matchesSeg`; (b) `CtrAuto.CtrProgram.Accepts`.
+`matchesRelaxed_of_matchesSeg`, `PayAuto.nineteen_not_mem_of_parse`;
+(b) `CtrAuto.CtrProgram.Accepts`.
 Paper node: `app:ifp` -/
 lemma segMatch_iff_relaxed_and_ctr
-    (h19 : ∀ {q : List ℕ} {c : ℕ},
-      parseStructuredArithmeticFormula q.length 0 q = some (c, []) → 19 ∉ q)
     (p : List StructPat.PatSeg) (b : List ℕ) :
     StructPat.SegMatch p b ↔ SegMatchRelaxed p b ∧ (segCtr p).Accepts b = true := by
   have hrun : ∀ bs : List (List ℕ),
@@ -415,16 +415,16 @@ lemma segMatch_iff_relaxed_and_ctr
     fun _ => rfl
   constructor
   · intro hsm
-    refine ⟨segMatch_relaxed_of_segMatch h19 hsm, ?_⟩
+    refine ⟨segMatch_relaxed_of_segMatch PayAuto.nineteen_not_mem_of_parse hsm, ?_⟩
     obtain ⟨bs, hf, rfl⟩ := hsm
-    have h := run_exact (p := p) h19 hf 0 (by simp)
+    have h := run_exact (p := p) PayAuto.nineteen_not_mem_of_parse hf 0 (by simp)
     rw [CtrProgram.Accepts, hrun bs, h]
     simp [segCtr]
   · rintro ⟨⟨bs, hf, rfl⟩, hacc⟩
     by_contra hno
     have hnf : ¬ List.Forall₂ StructPat.PatSeg.MatchesSeg p bs := fun hc =>
       hno ⟨bs, hc, rfl⟩
-    obtain ⟨m, hm⟩ := run_rej (p := p) h19 hf hnf 0 (by simp)
+    obtain ⟨m, hm⟩ := run_rej (p := p) PayAuto.nineteen_not_mem_of_parse hf hnf 0 (by simp)
     rw [CtrProgram.Accepts, hrun bs, hm] at hacc
     simp only [segCtr, Bool.and_eq_true, decide_eq_true_eq, rejSt] at hacc
     omega

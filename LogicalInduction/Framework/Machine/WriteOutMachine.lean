@@ -4,7 +4,6 @@ import LogicalInduction.Framework.Machine.DigitArithFP
 import LogicalInduction.Framework.Machine.Ruler
 import LogicalInduction.Framework.Emission.RpnEmission
 import LogicalInduction.Framework.Emission.RpnSplice
-import LogicalInduction.Framework.Emission.WriteOut
 
 /-!
 # The write-out classes, machine reading
@@ -745,7 +744,7 @@ lemma MachineDigits.mod_two {x : ℕ → ℕ} (h : MachineDigits x) :
     cases cur with
     | nil => simp
     | cons c cs =>
-        rw [TokenFold.digitsToBits_cons,
+        rw [digitsToBits_cons,
           DigitFP.dig3_digitBits _ c (by have := hcur c (by simp); omega)]
         simp only [digitVal_cons]
         congr 1
@@ -964,7 +963,7 @@ lemma MachineDigits.ofTokenListNat {L : ℕ → List ℕ} (h : MachineTokenStrea
     intro W cli cur hcur
     rw [sndBlock_pair, sndBlock_pair,
       show digitsToBits cur ++ digitsToBits [0, 0, 0]
-        = digitsToBits (cur ++ [0, 0, 0]) from (TokenFold.digitsToBits_append _ _).symm,
+        = digitsToBits (cur ++ [0, 0, 0]) from (digitsToBits_append _ _).symm,
       take_nine_digitsToBits, take_three_pad cur hcur]
   have hfold := TokenFold.natFold_mem_FP (STEPn := fun c (_ : ℕ) => c)
     (EMITn := fun (_ : List Bool) t => digitsToBits (padTriple t))
@@ -977,8 +976,8 @@ lemma MachineDigits.ofTokenListNat {L : ℕ → List ℕ} (h : MachineTokenStrea
         = digitsToBits ((L d ++ [63]).flatMap padTriple) := by
     intro d
     rw [show undigitize (bitsToDigits (F (unaryDay d))) = L d from hdec d,
-      natFold_out_flatMap, List.nil_append, TokenFold.digitsToBits_flatMap,
-      ← TokenFold.digitsToBits_append, List.flatMap_append]
+      natFold_out_flatMap, List.nil_append, digitsToBits_flatMap,
+      ← digitsToBits_append, List.flatMap_append]
     simp [padTriple_sentinel]
   refine MachineDigits.of_digitWord
     (D := fun z => (TokenFold.natFold (fun c (_ : ℕ) => c)
@@ -1093,6 +1092,19 @@ the class carries. This is the interface a splicing emitter consumes — the mac
 lemma MachineRatCodes.toMachineDigits {q : ℕ → ℚ} (h : MachineRatCodes q) :
     MachineDigits (fun n => Encodable.encode (q n)) :=
   (h.numCode.natPair h.den).of_eq (fun n => (encode_rat_eq (q n)).symm)
+
+/-- The flat code of a ruler-measured natural, read as a rational, is a machine-metered
+digit block: `⌜(n : ℚ)⌝ = ⟪2n, 1⟫` (`encode_rat_natCast`), so it is `MachineDigits.natPair`
+of the doubled ruler and the constant `1`.  This is what `MachineSpliceStream`'s constant
+leaf consumes, and it replaces the fuel-metered `PolyRatCodes` rational-cast helper: nothing
+here bounds `f`'s value. -/
+lemma ratNatCast_machineDigits {f : ℕ → ℕ} (hf : UnaryRuler f) :
+    MachineDigits (fun x ↦ Encodable.encode (((f x : ℕ) : ℚ))) :=
+  ((MachineDigits.ofUnaryRuler (hf.add hf)).natPair
+      (MachineDigits.ofUnaryRuler (UnaryRuler.const 1))).of_eq (fun x ↦ by
+    rw [encode_rat_natCast]
+    congr 1
+    omega)
 
 /-- **Congruence.** The three runs are untouched; only the certified sequence's name
 changes. Fuel-side twin: `DigitRatCodes.of_eq`. -/

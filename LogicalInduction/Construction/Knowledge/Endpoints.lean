@@ -138,14 +138,6 @@ Foundation's internal provability predicate at `V := ℕ`, whose side condition 
   `theoryOf m` for a single `m` — is not formalized, and no endpoint consumes it
   (`hinc` is stated at the caller's own machine).  `theoryOf_const_ofNNF` proves the
   singleton half exactly.
-**The criterion binder below is `def:lic` at the paper's own quantifier.**  Every result here that consumes an
-exploiting trader takes `[IsLogicalInductor P DP]`, and the trader is certified at `EfficientlyComputable`:
-it is assembled from `AffineCombination.PolySequence`'s machine-metered emission fields
-through `PolySequence.buyBelowTrader_ec` (`Properties/AffineCoherence.lean`), which has no
-fuel-class form: the bridge `BigSpliceStream.toMachine` runs fuel to machine, and no map
-back is proved or claimed.  The
-calibration is stated at `def:ec` in `Framework/Affine.lean`, and the `_unconditional`
-endpoints discharge the criterion through `LIA_is_logical_inductor`.
 
 -/
 
@@ -969,7 +961,7 @@ theorem lic_does_not_anticipate_halting_unconditional
 (`neverHaltMachine`), the paper's `⟨y⟩` bitstring inputs `2 ^ n`, and the identity horizon
 supplied through `ComputableHorizon.of`.  The non-halting hypothesis is proved, not assumed;
 nothing is left to the caller. -/
-example :
+lemma lic_does_not_anticipate_halting_neverHalt :
     (fun n => liaHistory (paperDP T) n
       ((representedBoundedHaltingClaims T
           (fun _ => neverHaltMachine) (fun n => 2 ^ n) (fun n => n)
@@ -991,7 +983,7 @@ arithmetized.
 
 This is the first endpoint of the development whose subject matter is a `Con(Θ)` family
 rather than a caller-supplied bounded computation. -/
-example :
+lemma lic_belief_finitistic_consistency_ackermann :
     (fun n => liaHistory (paperDP 𝗜𝚺₁) n
       (conClaimSentence (conGamma 𝗜𝚺₁ 𝗜𝚺₁ ComputableHorizon.ackermann) n)) ≈ₙ fun _ => 1 :=
   lic_belief_finitistic_consistency_unconditional 𝗜𝚺₁ _ ComputableHorizon.ackermann
@@ -1008,7 +1000,7 @@ soundness at the standard model (`Foundation`'s `Arithmetic/Schemata.lean`).  Th
 route lives *inside this
 witness only* — the endpoint above takes consistency as a hypothesis, exactly as the paper
 does, and no soundness assumption reaches the trust surface. -/
-example :
+lemma lic_belief_stronger_theory_consistency_ackermann :
     (fun n => liaHistory (paperDP 𝗜𝚺₁) n
       (conClaimSentence (conGamma 𝗜𝚺₁ 𝗣𝗔 ComputableHorizon.ackermann) n)) ≈ₙ fun _ => 1 :=
   lic_belief_stronger_theory_consistency_unconditional 𝗜𝚺₁ 𝗣𝗔 inferInstance _
@@ -1028,7 +1020,7 @@ lemma conGamma_mentions_zero_ackermann :
 /-- **The `thm:pac` family does not collapse: two concrete days, two different sentences.**
 Applied at the same theory and horizon as the `thm:pac` witness above, with the occurrence
 side condition discharged rather than assumed. -/
-example :
+lemma conClaimSentence_ackermann_day_ne :
     conClaimSentence (conGamma 𝗜𝚺₁ 𝗜𝚺₁ ComputableHorizon.ackermann) 0
       ≠ conClaimSentence (conGamma 𝗜𝚺₁ 𝗜𝚺₁ ComputableHorizon.ackermann) 1 :=
   conClaimSentence_ne_of_day_ne _ conGamma_mentions_zero_ackermann (by decide)
@@ -1452,7 +1444,7 @@ grows linearly in the day and whose source *number* is exponential (so the whole
 excludes it, `digitMachineCodes_nest_not_polyMachineCodes`), and whose halting hypothesis is
 *proved* rather than assumed (`codeHalts_nest`).  The inputs are the paper's own `⟨x⟩` shape,
 the `n`-bit string `2 ^ n`.  Nothing is left for the caller. -/
-example :
+lemma lic_learns_halting_patterns_nest :
     (fun n => liaHistory (paperDP T) n
       ((representedHaltingClaims T Nat.Partrec.Code.nest (fun n => 2 ^ n)
           Nat.Partrec.Code.bigDigits_sourceNat_nest.toMachine bigDigits_two_pow.toMachine).sentence n))
@@ -1763,7 +1755,7 @@ lemma exists_window (m : Nat.Partrec.Code) :
   induction l with
   | nil =>
       intro _
-      exact ⟨0, [], [], by simp, by simp [conjSource, ArithSource.compile]⟩
+      exact ⟨0, [], [], by simp, by simp [conjSource]⟩
   | cons σ t ih =>
       intro hmem
       obtain ⟨b₀, i₀, s₀, hev, hcomp⟩ := hmem σ (by simp)
@@ -1969,7 +1961,7 @@ private lemma compile_conjSource_replicate_verum (k : ℕ) :
       = (↑(listConj (List.replicate k (⊤ : ArithmeticSentence)))
           : ArithmeticSemiformula ℕ 0) := by
   induction k with
-  | zero => simp [conjSource, ArithSource.compile]
+  | zero => simp [conjSource]
   | succ k ih => simp [List.replicate_succ, conjSource, ArithSource.compile, ih]
 
 /-- **A machine that never outputs presents the empty theory, and the predicate knows it.**

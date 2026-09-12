@@ -1,7 +1,6 @@
 import LogicalInduction.Framework.Criterion
 import Mathlib.Topology.Compactness.Compact
 import Mathlib.Topology.Constructions
-import Mathlib.Topology.Order
 
 /-!
 # Compactness — one world for the whole deductive process
@@ -138,33 +137,33 @@ lemma DeductiveProcess.exists_consistentWithTheory (DP : DeductiveProcess)
 This is the finite-consequence form of propositional compactness.  It is useful when a
 computable construction can decide finite-stage entailment: a search over stages then
 eventually discovers every consequence of the completed theory. -/
-lemma DeductiveProcess.exists_stage_entails (DP : DeductiveProcess) (phi : Sentence)
-    (h : ∀ v : PCWorld, v.ConsistentWithTheory DP → v.Holds phi) :
-    ∃ k, ∀ v : PCWorld, v.ConsistentWith (DP.D k) → v.Holds phi := by
+lemma DeductiveProcess.exists_stage_entails (DP : DeductiveProcess) (φ : Sentence)
+    (h : ∀ v : PCWorld, v.ConsistentWithTheory DP → v.Holds φ) :
+    ∃ k, ∀ v : PCWorld, v.ConsistentWith (DP.D k) → v.Holds φ := by
   classical
   by_contra hstage
   push Not at hstage
   set t : ℕ → Set (ℕ → Bool) := fun n =>
     {b | (PCWorld.ofBits b).ConsistentWith (DP.D n) ∧
-      ¬ (PCWorld.ofBits b).Holds phi}
+      ¬ (PCWorld.ofBits b).Holds φ}
   have htd : ∀ i, t (i + 1) ⊆ t i := by
     intro i b hb
-    exact ⟨fun psi hpsi => hb.1 psi (DP.mono i hpsi), hb.2⟩
+    exact ⟨fun ψ hψ => hb.1 ψ (DP.mono i hψ), hb.2⟩
   have htn : ∀ i, (t i).Nonempty := by
     intro i
-    obtain ⟨v, hvD, hvphi⟩ := hstage i
+    obtain ⟨v, hvD, hvφ⟩ := hstage i
     obtain ⟨b, hb⟩ := PCWorld.exists_bits v
-    exact ⟨b, (fun psi hpsi => (hb psi).2 (hvD psi hpsi)), fun hphi => hvphi ((hb phi).1 hphi)⟩
+    exact ⟨b, (fun ψ hψ => (hb ψ).2 (hvD ψ hψ)), fun hφ => hvφ ((hb φ).1 hφ)⟩
   have htcl : ∀ i, IsClosed (t i) := by
     intro i
     have hset : t i =
         {b : ℕ → Bool | (PCWorld.ofBits b).ConsistentWith (DP.D i)} ∩
-          {b : ℕ → Bool | (PCWorld.ofBits b).Holds phi}ᶜ := by
+          {b : ℕ → Bool | (PCWorld.ofBits b).Holds φ}ᶜ := by
       ext b
       simp [t]
     rw [hset]
     exact (PCWorld.isClosed_setOf_consistentWith (DP.D i)).inter
-      (PCWorld.isClopen_setOf_holds phi).compl.isClosed
+      (PCWorld.isClopen_setOf_holds φ).compl.isClosed
   obtain ⟨b, hb⟩ :=
     IsCompact.nonempty_iInter_of_sequence_nonempty_isCompact_isClosed
       t htd htn (htcl 0).isCompact htcl

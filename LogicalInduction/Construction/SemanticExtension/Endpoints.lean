@@ -42,14 +42,6 @@ module — `liftedCCEEBaseDP_computable`, `liftedCCEEBaseWorld_hworld`,
 `canonicalCCEE_weight_nonvacuous` and
 `lic_no_expected_net_update_conditional_exact_canonical`; the `thm:ccee` row of
 `scripts/coverage-classification.md` records the two-rendering split.
-**The criterion binder below is `def:lic` at the paper's own quantifier.**  Every result here that consumes an
-exploiting trader takes `[IsLogicalInductor P DP]`, and the trader is certified at `EfficientlyComputable`:
-it is assembled from `AffineCombination.PolySequence`'s machine-metered emission fields
-through `PolySequence.buyBelowTrader_ec` (`Properties/AffineCoherence.lean`), which has no
-fuel-class form: the bridge `BigSpliceStream.toMachine` runs fuel to machine, and no map
-back is proved or claimed.  The
-calibration is stated at `def:ec` in `Framework/Affine.lean`, and the `_unconditional`
-endpoints discharge the criterion through `LIA_is_logical_inductor`.
 
 -/
 
@@ -89,11 +81,11 @@ substrate. -/
 noncomputable def liftedCCEEBaseWorld (T : ArithmeticTheory) : PCWorld := fun a =>
   if a.unpair.1 = oldLanguageTag then
     provabilityWorld T a.unpair.2
-  else theoremQuoteCertifiedProductWorld T a
+  else theoremQuoteProductWorld T a
 
 lemma liftedCCEEBaseWorld_agree_original (T : ArithmeticTheory) {a : ℕ}
     (ha : a.unpair.1 ≠ oldLanguageTag) :
-    liftedCCEEBaseWorld T a ↔ theoremQuoteCertifiedProductWorld T a := by
+    liftedCCEEBaseWorld T a ↔ theoremQuoteProductWorld T a := by
   simp [liftedCCEEBaseWorld, ha]
 
 @[simp] lemma liftedCCEEBaseWorld_oldAtom (T : ArithmeticTheory) (a : ℕ) :
@@ -106,7 +98,7 @@ lemma liftedCCEEBaseWorld_agree_original (T : ArithmeticTheory) {a : ℕ}
 product world it copies. -/
 lemma liftedCCEEBaseWorld_quoteLeaf (T : ArithmeticTheory) (code input : ℕ) :
     (liftedCCEEBaseWorld T).Holds (semanticQuoteLeaf code input) ↔
-      (theoremQuoteCertifiedProductWorld T).Holds (semanticQuoteLeaf code input) := by
+      (theoremQuoteProductWorld T).Holds (semanticQuoteLeaf code input) := by
   change liftedCCEEBaseWorld T (semanticPrimeCode (semanticQuoteSchema code) input) ↔ _
   apply liftedCCEEBaseWorld_agree_original
   simp [semanticPrimeCode, oldLanguageTag, semanticPrimeTag]
@@ -114,7 +106,7 @@ lemma liftedCCEEBaseWorld_quoteLeaf (T : ArithmeticTheory) (code input : ℕ) :
 /-- The same for a quotation atom. -/
 lemma liftedCCEEBaseWorld_quoteAtom (T : ArithmeticTheory) (w : ℕ) :
     (liftedCCEEBaseWorld T).Holds (quoteAtom w) ↔
-      (theoremQuoteCertifiedProductWorld T).Holds (quoteAtom w) := by
+      (theoremQuoteProductWorld T).Holds (quoteAtom w) := by
   change liftedCCEEBaseWorld T
       (quotationClaimCode universalQuotePos universalQuoteNeg w) ↔ _
   apply liftedCCEEBaseWorld_agree_original
@@ -140,11 +132,10 @@ product world. -/
 lemma liftedCCEEBaseWorld_semanticQuoteDefSentence_iff
     (T : ArithmeticTheory) (e : ℕ) :
     (liftedCCEEBaseWorld T).Holds (semanticQuoteDefSentence e) ↔
-      (theoremQuoteCertifiedProductWorld T).Holds (semanticQuoteDefSentence e) :=
+      (theoremQuoteProductWorld T).Holds (semanticQuoteDefSentence e) :=
   semanticQuoteDefSentence_congr (liftedCCEEBaseWorld_quoteLeaf T)
     (liftedCCEEBaseWorld_quoteAtom T) e
 
-set_option maxHeartbeats 2000000 in
 lemma liftedCCEEBaseWorld_consistent_theorem
     (T : ArithmeticTheory) [T.Δ₁] [𝗣𝗔⁻ ⪯ T]
     [Entailment.Consistent T] :
@@ -153,21 +144,18 @@ lemma liftedCCEEBaseWorld_consistent_theorem
   apply (PCWorld.holds_congr_atomCodes phi (fun a ha =>
     liftedCCEEBaseWorld_agree_original T
       (theoremDP_oldLanguageFresh T k phi hphi a ha))).mpr
-  exact theoremQuoteCertifiedProductWorld_consistent_theorem T k phi hphi
+  exact theoremQuoteProductWorld_consistent_theorem T k phi hphi
 
-set_option maxHeartbeats 2000000 in
 lemma liftedCCEEBaseWorld_consistent_quote
     (T : ArithmeticTheory) [T.Δ₁] [𝗣𝗔⁻ ⪯ T]
     [Entailment.Consistent T] :
     (liftedCCEEBaseWorld T).ConsistentWithTheory semanticQuoteDP := by
   intro k phi hphi
-  obtain ⟨e, rfl⟩ := exists_of_mem_semanticQuoteStageList
-    (List.mem_toFinset.mp hphi)
+  obtain ⟨e, -, rfl⟩ := mem_prefixProcess.mp hphi
   exact (liftedCCEEBaseWorld_semanticQuoteDefSentence_iff T e).mpr
-    (theoremQuoteCertifiedProductWorld_consistent_quote T e _
-      (List.mem_toFinset.mpr (mem_semanticQuoteStageList (le_refl e))))
+    (theoremQuoteProductWorld_consistent_quote T e _
+      (self_mem_prefixProcess _ (le_refl e)))
 
-set_option maxHeartbeats 2000000 in
 lemma liftedCCEEBaseWorld_consistent_lifted
     (T : ArithmeticTheory) [T.Δ₁] [𝗣𝗔⁻ ⪯ T]
     [Entailment.Consistent T] :
@@ -180,7 +168,6 @@ lemma liftedCCEEBaseWorld_consistent_lifted
   rw [hpull]
   exact theoremDP_hworld T
 
-set_option maxHeartbeats 2000000 in
 /-- The independent original/lifted base has a completed world.
 
 Paper node: `thm:ccee` -/
@@ -232,14 +219,14 @@ lemma canonicalCCEEDP_computable
 /-! ## The canonical joint world -/
 
 /-- The joint world of the canonical process: the source extension of the lifted base
-world, further extended by the registry-admitted product clauses. -/
-private noncomputable abbrev canonicalCCEEWorld
+world, further extended by the registry-admitted product clauses.  It is public because it
+appears in the statements of `canonicalCCEEDP_hworld` and the four lemmas below it. -/
+noncomputable abbrev canonicalCCEEWorld
     (T : ArithmeticTheory) [T.Δ₁] [𝗣𝗔⁻ ⪯ T]
     [Entailment.Consistent T] : PCWorld :=
   semanticRegistryProductExtensionWorld (liftedCCEEBaseDPComputation T)
     (semanticSourceExtensionWorld (liftedCCEEBaseWorld T))
 
-set_option maxHeartbeats 2000000 in
 lemma canonicalCCEEWorld_quoteLeaf
     (T : ArithmeticTheory) [T.Δ₁] [𝗣𝗔⁻ ⪯ T]
     [Entailment.Consistent T] (code input : ℕ) :
@@ -255,7 +242,6 @@ lemma canonicalCCEEWorld_quoteLeaf
   exact semanticSourceExtensionWorld_leaf_other (liftedCCEEBaseWorld T)
     (semanticQuoteSchema code) input (by simp [semanticQuoteSchema])
 
-set_option maxHeartbeats 2000000 in
 lemma canonicalCCEEWorld_quoteAtom
     (T : ArithmeticTheory) [T.Δ₁] [𝗣𝗔⁻ ⪯ T]
     [Entailment.Consistent T] (w : ℕ) :
@@ -279,19 +265,16 @@ lemma canonicalCCEEWorld_semanticQuoteDefSentence_iff
   semanticQuoteDefSentence_congr (canonicalCCEEWorld_quoteLeaf T)
     (canonicalCCEEWorld_quoteAtom T) e
 
-set_option maxHeartbeats 2000000 in
 lemma canonicalCCEEWorld_consistent_quote
     (T : ArithmeticTheory) [T.Δ₁] [𝗣𝗔⁻ ⪯ T]
     [Entailment.Consistent T] :
     (canonicalCCEEWorld T).ConsistentWithTheory semanticQuoteDP := by
   intro k phi hphi
-  obtain ⟨e, rfl⟩ := exists_of_mem_semanticQuoteStageList
-    (List.mem_toFinset.mp hphi)
+  obtain ⟨e, -, rfl⟩ := mem_prefixProcess.mp hphi
   exact (canonicalCCEEWorld_semanticQuoteDefSentence_iff T e).mpr
     (liftedCCEEBaseWorld_consistent_quote T e _
-      (List.mem_toFinset.mpr (mem_semanticQuoteStageList (le_refl e))))
+      (self_mem_prefixProcess _ (le_refl e)))
 
-set_option maxHeartbeats 2000000 in
 /-- The full fixed CCEE process has a completed world.
 
 Paper node: `thm:ccee` -/
@@ -327,8 +310,7 @@ lemma canonicalCCEEDP_hworld
         (semanticSourceExtensionWorld (liftedCCEEBaseWorld T)) hfresh).mpr
           ((semanticSourceExtensionWorld_holds_fresh (liftedCCEEBaseWorld T) hfresh).mpr
             (liftedCCEEBaseWorld_consistent_lifted T k phi hlift))
-  · obtain ⟨e, rfl⟩ := semanticSourceStageList_exists
-      (List.mem_toFinset.mp hsource)
+  · obtain ⟨e, -, rfl⟩ := mem_prefixProcess.mp hsource
     exact semanticRegistryProductExtensionWorld_holds_sourceDef
       (liftedCCEEBaseDPComputation T) (liftedCCEEBaseWorld T) e
   · exact semanticRegistryProductDP_hworld (liftedCCEEBaseDPComputation T)
@@ -383,7 +365,6 @@ private lemma canonicalCCEE_consistent_quote
 
 /-! ## Admitting the source as an exact factor -/
 
-set_option maxHeartbeats 2000000 in
 /-- Exact values of the internally represented source handle.
 
 Paper node: `thm:ccee` -/
@@ -410,7 +391,6 @@ lemma liftedMachineSemanticHandle_valuesAt {X : ℕ → LUV}
     · exact (hx.2.2 r).2 hr (by
         simpa [liftedMachineSourceSentence, hr0, liftLUV] using hemitted)
 
-set_option maxHeartbeats 2000000 in
 /-- Every paper-facing valued RPN source is automatically admitted by the fixed registry.
 
 Paper node: `thm:ccee` -/
@@ -430,7 +410,6 @@ lemma liftedMachineSource_factor_eventually
   simp [semanticFactorPrefixValidAtFuel, liftedMachineSourceSchema_source,
     hfuel]
 
-set_option maxHeartbeats 2000000 in
 /-- Every internally constructed rational quote is admitted as an exact product factor.
 
 Paper node: `thm:ccee` -/
@@ -497,7 +476,6 @@ noncomputable def canonicalConditionalExpectationQuoteCode
 
 /-! ## `thm:ccee`, generalized semantic-extension form -/
 
-set_option maxHeartbeats 2000000 in
 /-- **`thm:ccee`, generalized semantic-extension form, at zero slack.**  The source is
 automatically renamed and admitted by finite semantic consequence; the weight and
 right-hand quotation are built internally.  The sole LIA process is `canonicalCCEEDP T`,

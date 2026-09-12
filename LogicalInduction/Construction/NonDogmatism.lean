@@ -27,8 +27,9 @@ directory carries that node.
 
 ## The source premise
 
-* `RepeatedEnumeration` — `triangularRepeat` and `EfficientRepeatedEnumeration.ofMachineCodes` for an
-  already write-out-metered sentence stream, and `CEEnumeration` /
+* `RepeatedEnumeration` — `triangularRepeat` and
+  `EfficientRepeatedEnumeration.ofMachineCodes` for an already write-out-metered sentence
+  stream, and `CEEnumeration` /
   `EfficientRepeatedEnumeration.ofCE` for an arbitrary computably enumerable one.  The latter
   carries out, under the interpreter clock, the padding-and-repeating step of `thm:obu`'s own
   proof (tex:5651-5656), padding with `source 0` rather than with the paper's `⊤`;
@@ -40,7 +41,7 @@ directory carries that node.
   alone; it is the budget the Occam risk allocation of `thm:ob` spends.
 * `PrefixMachine` — a concrete self-delimiting sentence code discharging **every** field of
   `PrefixMachinePresentation`, including both emission certificates — proved in the fuel
-  model and crossed to the machine classes the fields now carry — and the additive negation
+  model and crossed to the machine classes the fields take — and the additive negation
   overhead `κ(∼φ) ≤ κ(φ) + 2`.
 * `UniversalPrefix` — the same boundary at the prefix complexity of a genuine self-delimiting
   *universal* machine, so `thm:ob` is not tied to one fixed code.

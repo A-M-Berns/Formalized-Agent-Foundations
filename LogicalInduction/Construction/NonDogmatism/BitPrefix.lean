@@ -127,11 +127,6 @@ def ordinaryIndependentBitAtoms : IndependentBitAtoms emptyBitDeductiveProcess w
     · intro k
       rfl
 
-/-- The `IndependentBitAtoms` interface has an inhabitant. -/
-lemma independentBitAtoms_nonempty :
-    ∃ DP : DeductiveProcess, Nonempty (IndependentBitAtoms DP) :=
-  ⟨emptyBitDeductiveProcess, ⟨ordinaryIndependentBitAtoms⟩⟩
-
 /-! ## The whole-value naming certificate is uninhabited
 
 The non-vacuity guard, run in the negative direction: a *whole-value* naming certificate
@@ -548,11 +543,6 @@ lemma rpn_bitPrefixLiteral (nameMap : ℕ → ℕ) (j : ℕ) (b : Bool) :
     3 :: rpn (bitPrefixLiteral (fun k ↦ Formula.atom (nameMap k)) j b)
       = bitBlock (nameMap j) b := by
   cases b <;> simp [bitPrefixLiteral, bitBlock, rpn]
-
-lemma rpn_top : rpn (⊤ : Sentence) = [2, 0, 0] := by
-  simp [rpn]
-
-lemma rpn_and (φ ψ : Sentence) : rpn (φ ⋏ ψ) = 3 :: (rpn φ ++ rpn ψ) := rfl
 
 /-- The Polish run of an offset literal conjunction is the concatenation of the per-position
 literal blocks followed by the empty-fold terminator `[2, 0, 0]`. -/

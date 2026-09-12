@@ -56,20 +56,14 @@ function the background theory is asked to represent. -/
 def deferredWeightPairCode (f : DeferralFunction) (w : ℕ → ℚ) (n : ℕ) : ℕ :=
   Nat.pair (w (f n)).num.natAbs (w (f n)).den
 
-private lemma encode_nonneg_rat {q : ℚ} (hq : 0 ≤ q) :
-    Encodable.encode q = Nat.pair (2 * q.num.natAbs) q.den := by
-  rw [encode_rat_eq]
-  congr 1
-  have h : q.num = (q.num.natAbs : ℤ) := (Int.natAbs_of_nonneg (Rat.num_nonneg.mpr hq)).symm
-  rw [h, encode_int_natCast]
-  exact congrArg (2 * ·) (Int.natAbs_natCast q.num.natAbs).symm
-
 private lemma deferredWeightPairCode_eq (f : DeferralFunction) (w : ℕ → ℚ)
     (hw0 : ∀ n, 0 ≤ w n) (n : ℕ) :
     deferredWeightPairCode f w n =
       Nat.pair (Nat.div2 (Encodable.encode (w (f n))).unpair.1)
         (Encodable.encode (w (f n))).unpair.2 := by
-  rw [deferredWeightPairCode, encode_nonneg_rat (hw0 _), Nat.unpair_pair]
+  have hnn : 0 ≤ (w (f n)).num := Rat.num_nonneg.mpr (hw0 _)
+  have hab : (w (f n)).num.natAbs = (w (f n)).num.toNat := by omega
+  rw [deferredWeightPairCode, encode_rat_of_nonneg (hw0 _), Nat.unpair_pair, hab]
   simp [Nat.div2_val]
 
 /-- The deferred weight's pair code is total computable, so `RepresentsComputations` applies
@@ -121,15 +115,6 @@ private lemma cross_le_of_div_lt {a b : ℕ} {r : ℚ} (hb : 0 < b)
     calc (a : ℚ) * (r.den : ℚ) < (r * (b : ℚ)) * (r.den : ℚ) := mul_lt_mul_of_pos_right h2 hd
       _ = r * (r.den : ℚ) * (b : ℚ) := by ring
   exact le_of_lt (by exact_mod_cast h3)
-
-/-- Every model of `T` is a model of `𝗜𝗢𝗽𝗲𝗻`, along `𝗜𝗢𝗽𝗲𝗻 ⪯ 𝗜𝚺₁ ⪯ T`.  This is the
-opening move of each completeness argument below. -/
-private lemma models_iOpen_of_models (T : ArithmeticTheory) [𝗜𝚺₁ ⪯ T]
-    (M : Type) [ORingStructure M] [M↓[ℒₒᵣ] ⊧* T] :
-    M↓[ℒₒᵣ] ⊧* 𝗜𝗢𝗽𝗲𝗻 :=
-  letI : 𝗜𝗢𝗽𝗲𝗻 ⪯ T :=
-    Entailment.WeakerThan.trans (𝓣 := 𝗜𝚺₁) inferInstance inferInstance
-  ModelsTheory.of_provably_subtheory M 𝗜𝗢𝗽𝗲𝗻 T inferInstance
 
 /-! ## A represented pair code as a literal paper LUV -/
 
