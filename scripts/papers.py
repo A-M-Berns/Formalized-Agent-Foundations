@@ -223,7 +223,7 @@ PAPERS = {
         "source_format": "text-extraction",
         "node_checker": "scripts/check-safe-pareto-improvements-nodes.py",
         "readme": "SafeParetoImprovements/README.md",
-        "knowledge": None,
+        "knowledge": "SafeParetoImprovements/KNOWLEDGE.md",
         "errata": "SafeParetoImprovements/notes/paper-errata.md",
     },
 }
