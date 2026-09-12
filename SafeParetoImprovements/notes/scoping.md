@@ -593,6 +593,16 @@ C and E and the split "Theorem 17" header must be deduplicated by the parser).
   foreknowledge independence, an information structure distinguishing what a player knows
   when choosing an instruction from what is realized later. Design note to follow.
 
+- RULING 0 (2026-09-12): scope confirmed = §2–§6 with the appendix proofs of main-text
+  theorems; Theorem 9 / Prop 10 / Lemma 11 / Prop 12 carried as *qualified* nodes; the paper
+  stays `in-progress` until the complexity tranche lands or those nodes are ruled out.
+- RULING 7 (2026-09-12): Definition 7 reads "strict" into its body (erratum D10).
+- RULING 8 (2026-09-12): Theorem 15 **deferred** — not in the current tranche; erratum D12
+  stays recorded, no carrier until the projection reading is settled.
+- Harness round 1 (2026-09-12) closed at `d0333de`: 40 findings, one blocker (Definition 5's
+  non-triviality, erratum D13, repaired as `dd:nontrivial`). Next: round 2 audit alongside
+  the tranche E design note (`notes/instruction-layer.md`).
+
 **Still open:**
 
 0. Scope = §2–§6 with appendix proofs (no §8 exists) — assumed, not yet explicitly
