@@ -626,8 +626,12 @@ C and E and the split "Theorem 17" header must be deduplicated by the parser).
 7. Definition 7: read "strict" into the body (recommended) vs. as printed.
 8. Theorem 15: projections onto `C(Γ)` rather than the strong frontier `PF(C(Γ))`
    (recommended, re-verifying Appendix E) vs. partial `πᵢ` with existence hypotheses.
-10. §5 modeling (token games, support-restricted Lemma 13, Corollary 14's explicit
-   formula) — not yet walked through; discussion pending.
+10. §5 modeling — design note `notes/coordination-layer.md` (2026-09-12) asks for three
+   rulings: RULING 10 (Definition 7 / Proposition 12 / Lemma 13 / Corollary 14 stated per
+   play family, with the token game built after Assumption 2's isomorphism is known — the
+   D6 relabelling), RULING 11 (Assumption 1 added alongside Assumption 2 where `Γ` is not
+   assumed reduced), RULING 12 (Corollary 14 carried as convex-and-compact with the explicit
+   weighted Minkowski-sum formula; the polytope clause not rendered).
 
 ## 9. Codex review, 2026-09-04
 
