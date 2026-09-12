@@ -3886,6 +3886,19 @@ blocks, a stale entry, a malformed line, a non-empty block once the paper is
   -- load-bearing for every "the representatives play the token copy" argument, since
   -- `Book.playReduced` reduces first.
   SafeParetoImprovements.Game.Reduced.of_iso
+  -- §5.2 (SafeParetoImprovements/PerfectCoordination.lean, RULINGS 7/10/11): Definition 7,
+  -- the reassignment construction along Assumption 2's isomorphism, Proposition 12 in both
+  -- directions and as the paper's iff; two-sided witnesses (Examples/DecisionWitnesses.lean).
+  SafeParetoImprovements.Play.StrictPerfectCoordinationSPIDecision
+  SafeParetoImprovements.TokenGame.reassign SafeParetoImprovements.Play.exists_tokenGame_ue_eq
+  SafeParetoImprovements.Representatives.exists_mem_support_of_frequently
+  SafeParetoImprovements.Representatives.exists_support_not_paretoOptimal_of_strictSPI
+  SafeParetoImprovements.Representatives.exists_strictSPI_of_support_not_paretoOptimal
+  SafeParetoImprovements.Representatives.strictPerfectCoordinationSPIDecision_iff
+  SafeParetoImprovements.Examples.coin_ne_zero_iff
+  SafeParetoImprovements.Examples.conflictGame_strictPerfectCoordinationSPIDecision
+  SafeParetoImprovements.Examples.chicken_support_paretoOptimal
+  SafeParetoImprovements.Examples.chicken_not_strictPerfectCoordinationSPIDecision
   -- Proposition 16 with the paper's own witness (SafeParetoImprovements/Examples/Chicken.lean):
   -- Table 7 over `CAct ⊕ ℕ` (`dd:room`, RULING 13 -- over the bare `CAct` the game uses its
   -- whole universe and `TokenGame chicken` is EMPTY, so the impossibility clause was

@@ -37,6 +37,10 @@ lemma ae_coin_iff (P : Bool → Prop) : (∀ᵐ ω ∂coin, P ω) ↔ P true ∧
     Measure.dirac_apply, smul_eq_mul, mul_eq_zero, add_eq_zero]
   simp [Set.indicator_apply]
 
+/-- An event has positive probability under the fair coin iff it holds at some face. -/
+lemma coin_ne_zero_iff (P : Bool → Prop) : coin {ω | P ω} ≠ 0 ↔ P true ∨ P false := by
+  rw [← frequently_ae_iff, Filter.Frequently, ae_coin_iff, not_and_or, not_not, not_not]
+
 end Examples
 
 end SafeParetoImprovements

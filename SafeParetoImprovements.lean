@@ -183,6 +183,8 @@ ruled on but not yet carried by any declaration.
 | `SafeParetoImprovements/Instruction.lean` | Appendix A: the instruction language `Prog` (`dd:code-eq`), its execution, the realization theorem `Prog.programGame`, Algorithm 2 as a term, **Proposition 18** (`Prog.algorithm2_isProgramEquilibrium`) and **Theorem 1** (`Prog.exists_programEquilibrium_plays`) |
 | `SafeParetoImprovements/Independence.lean` | beyond the paper (RULING 9): default instructions (`dd:default-instr`), participation independence, the information stage and foreknowledge independence, with the dove-ish and punishing instructions as witnesses |
 | `SafeParetoImprovements/Coordination.lean` | §5.1: `C(Γ)` (`Game.feasible`, `dd:feasible`), perfect-coordination token games (`TokenGame`), **Definition 6** (`TokenGame.IsSPI`, `IsStrictSPI`), room and the token copy (`Game.HasRoomOutside`, `Game.HasRoom`, `Game.hasRoomOutside_of_infinite`, `Game.tokenCopy`, `Game.tokenIso`, `dd:room`), **Lemma 11** (`Game.paretoOptimalIn_feasible_iff`, LP characterization) |
+| `SafeParetoImprovements/PerfectCoordination.lean` | §5.2: **Definition 7** (`Play.StrictPerfectCoordinationSPIDecision`, RULINGS 7/10), the reassignment construction (`TokenGame.reassign`, `Play.exists_tokenGame_ue_eq`: `uᵉ` along the isomorphism Assumption 2 supplies), **Proposition 12** as Algorithm 1's correctness iff (`Representatives.strictPerfectCoordinationSPIDecision_iff`, RULING 11, `dd:complexity`) |
+| `SafeParetoImprovements/Examples/DecisionWitnesses.lean` | Definition 7 two-sided through Proposition 12: the conflict game is a "yes" instance, Table 7 a "no" instance |
 | `SafeParetoImprovements/Examples/Coin.lean` | the fair coin on `Bool`, shared by the examples that need a genuinely random `Π` |
 | `SafeParetoImprovements/Examples/Chicken.lean` | Table 7 over `CAct ⊕ ℕ` (`dd:room`) and **Proposition 16** (`Examples.chicken_no_perfectCoordinationSPI`): a Pareto improvement that no perfect-coordination SPI achieves in expectation, with its label-free kernel (`chicken_no_feasible_dominating_of_mean_cc`), the token games of every size that make the class non-empty, and the `Π`-dependence disclosure |
 | `SafeParetoImprovements/Examples/TokenWitnesses.lean` | the positive side of **Definition 6**: a `2 × 2` game over `Bool ⊕ ℕ` with a fresh token copy, a perfect-coordination SPI with equality at every sample point, and a *strict* one built by the paper's Demand-Game recipe with `uᵉ` defined along the book's isomorphism (erratum D6, RULING 10) |
@@ -211,4 +213,6 @@ import SafeParetoImprovements.Examples.ProgramGameWitnesses
 import SafeParetoImprovements.Coordination
 import SafeParetoImprovements.Examples.Coin
 import SafeParetoImprovements.Examples.Chicken
+import SafeParetoImprovements.PerfectCoordination
+import SafeParetoImprovements.Examples.DecisionWitnesses
 import SafeParetoImprovements.Examples.TokenWitnesses

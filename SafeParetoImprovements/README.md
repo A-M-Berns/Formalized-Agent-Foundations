@@ -60,6 +60,8 @@ proved — there is no `sorry` in `SafeParetoImprovements/`:
 | **Definition 6** (perfect-coordination SPI, strict variant) | `TokenGame.IsSPI`, `TokenGame.IsStrictSPI` | `Coordination.lean` |
 | Lemma 11 (Pareto-optimality in `C(Γ)` as a linear program; the polynomial-time clause not rendered, `dd:complexity`) | `Game.paretoOptimalIn_feasible_iff` | `Coordination.lean` |
 | Definition 6 witnesses (strict and equality-only perfect-coordination SPIs with `uᵉ` defined along the book's isomorphism) | `Examples.conflictStrictToken_isStrictSPI`, `conflictPlainToken_isSPI` | `Examples/TokenWitnesses.lean` |
+| **Definition 7** (strict perfect-coordination SPI decision problem; "strict" read in, RULING 7; per play family, RULING 10) | `Play.StrictPerfectCoordinationSPIDecision` | `PerfectCoordination.lean` |
+| **Proposition 12** (Algorithm 1's correctness as an iff, under Assumptions 1–2 and room; the polynomial-time clause not rendered) | `Representatives.strictPerfectCoordinationSPIDecision_iff` | `PerfectCoordination.lean` |
 | **Proposition 16** (Table 7 over `CAct ⊕ ℕ`, `dd:room`: a Pareto improvement no perfect-coordination SPI achieves; also in label-free form `chicken_no_feasible_dominating_of_mean_cc`; `Π` existential, see `chicken_spi_for_other_representatives`) | `Examples.chicken_no_perfectCoordinationSPI` | `Examples/Chicken.lean` |
 | **Theorem 1** (every SPI is played in a program equilibrium of the program game with delegation instructions, given the threat-point guarantee) | `Prog.exists_programEquilibrium_plays` | `Instruction.lean` |
 | Proposition 5 (Prisoner's Dilemma, Table 3) | `Examples.prisonersDilemma_isStrictSPI` | `Examples/PrisonersDilemma.lean` |
@@ -106,8 +108,8 @@ Demand Game), and no theorem about either.
 
 **Not yet formalized:** Theorem 9, Proposition 10 and the rest of the Appendix D chain
 (Propositions 23–26, Definition 8, Lemma 28 — Lemma 20's content is `Game.elim_diamond`);
-of §5, Definition 7, Proposition 12, Lemma 13 and Corollary 14 (design in
-`notes/coordination-layer.md`, awaiting rulings) and Theorem 15 (deferred).  Theorem 17 and Lemma 27 are cited external results and are not
+of §5, Lemma 13 and Corollary 14 (design in `notes/coordination-layer.md`, rulings given)
+and Theorem 15 (deferred).  Theorem 17 and Lemma 27 are cited external results and are not
 carried.
 
 **Consumer readiness.**  There is no `SafeParetoImprovements/API.lean` and no
@@ -132,7 +134,7 @@ appendix-only nodes in scope exactly insofar as Theorem 9 is.  Condensed from
 | 4.4 | Assumptions 1–2, Lemma 4, consistency of A1 + A2 (unnumbered) | **in, landed** (`dd:book` for the consistency) |
 | 4.5 | Propositions 5–8 (examples) | **in, landed**; concrete games double as witnesses |
 | 4.6 | Definition 5, Theorem 9, Proposition 10 | Definition 5 **landed** as a derivation system with soundness (`Play.isSPI_of_deriv`); Theorem 9 / Proposition 10 complexity clauses **qualified** (RULING 6) |
-| 5 | Definitions 6–7, Lemma 11, Proposition 12, Lemma 13, Corollary 14, Theorem 15, Proposition 16 | Definition 6, Lemma 11 (qualified) and Proposition 16 **landed** (`Coordination.lean`, `Examples/Chicken.lean`, `dd:feasible`, `dd:room`); Definition 7, Proposition 12, Lemma 13, Corollary 14 designed (`notes/coordination-layer.md`, RULINGS 10–12 pending); Theorem 15 deferred (RULING 8) |
+| 5 | Definitions 6–7, Lemma 11, Proposition 12, Lemma 13, Corollary 14, Theorem 15, Proposition 16 | Definitions 6–7, Lemma 11 (qualified), Proposition 12 (qualified) and Proposition 16 **landed** (`Coordination.lean`, `PerfectCoordination.lean`, `Examples/{Chicken,TokenWitnesses,DecisionWitnesses}.lean`; `dd:feasible`, `dd:room`, RULINGS 10–13b); Lemma 13 and Corollary 14 next (RULING 12: polytope clause attempted); Theorem 15 deferred (RULING 8) |
 | 6 | no nodes | prose only |
 | App. A | Proposition 18; Theorem 17 (Tennenholtz 2004) | Proposition 18 **landed** (`Prog.algorithm2_isProgramEquilibrium`); Theorem 17 cited external, **not** re-proved |
 | App. B | no nodes (Sen / Raub discussion) | out |
