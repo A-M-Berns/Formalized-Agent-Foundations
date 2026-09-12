@@ -232,7 +232,7 @@ code.fld { font-size: 10.5px; margin: 0 2px 2px 0; display: inline-block; }
 <div class="wrap">
 <nav class="rail" aria-label="node index">
   <div class="rail-title">Read-through</div>
-  <div class="rail-progress" id="progress">0 / 339 read</div>
+  <div class="rail-progress" id="progress">0 / 341 read</div>
   <a class="nav-paper" href="#paper-logical-induction">Logical Induction</a>
   <div class="nav-sec">The Logical Induction Criterion</div>
 <a class="nav-item" href="#def-lic" data-node="def-lic"><span class="dot exact"></span>def:lic</a>
@@ -660,6 +660,8 @@ code.fld { font-size: 10.5px; margin: 0 2px 2px 0; display: inline-block; }
 <a class="nav-item" href="#spi-lemma-11" data-node="spi-lemma-11"><span class="dot plain"></span>Lemma 11</a>
 <a class="nav-item" href="#spi-proposition-12" data-node="spi-proposition-12"><span class="dot plain"></span>Proposition 12</a>
 <div class="nav-sec">§5.3 Characterizing safe Pareto improvements under improved representative coordination</div>
+<a class="nav-item" href="#spi-lemma-13" data-node="spi-lemma-13"><span class="dot plain"></span>Lemma 13</a>
+<a class="nav-item" href="#spi-corollary-14" data-node="spi-corollary-14"><span class="dot plain"></span>Corollary 14</a>
 <a class="nav-item" href="#spi-proposition-16" data-node="spi-proposition-16"><span class="dot plain"></span>Proposition 16</a>
 <div class="nav-sec">Appendix A Proof of Theorem 1 – program equilibrium implementations of safe Pareto improvements</div>
 <a class="nav-item" href="#spi-proposition-18" data-node="spi-proposition-18"><span class="dot plain"></span>Proposition 18</a>
@@ -702,7 +704,7 @@ code.fld { font-size: 10.5px; margin: 0 2px 2px 0; display: inline-block; }
     <div style="overflow-x:auto"><table class="index">
       <tr><td><strong>Paper</strong></td><td class="count"><strong>nodes</strong></td>
           <td><strong>library</strong></td><td><strong>editorial data on its cards</strong></td></tr>
-      <tr><td><a href="#paper-logical-induction">Logical Induction</a><div class="idx-cite">Garrabrant, Benson-Tilsen, Critch, Soares, Taylor (2016) · <a href="https://arxiv.org/abs/1609.03543">arXiv:1609.03543</a></div></td><td class="count">66</td><td><code>LogicalInduction/</code></td><td>a status badge per node (exact / strengthened / corrected / refuted / qualified) with a universal-vs-instantiated axis, a curated canonical endpoint set, a reading note and a "what to check" note — all from one machine-checked table</td></tr><tr><td><a href="#paper-cartesian-frames">Cartesian Frames</a><div class="idx-cite">Garrabrant, Herrmann, Lopez-Wild (2021) · <a href="https://arxiv.org/abs/2109.10996">arXiv:2109.10996</a></div></td><td class="count">60</td><td><code>CartesianFrames/</code></td><td>errata cross-references and the Claim 35 intentional-deviation ruling; <strong>no strength classification exists for this paper</strong></td></tr><tr><td><a href="#paper-modal-agents">Robust Cooperation in the Prisoner&#x27;s Dilemma: Program Equilibrium via Provability Logic</a><div class="idx-cite">Barász, Christiano, Fallenstein, Herreshoff, LaVictoire, Yudkowsky (2014) · <a href="https://arxiv.org/abs/1401.5577">arXiv:1401.5577</a></div></td><td class="count">12</td><td><code>ModalAgents/</code></td><td>scope notes and the deliberately-unannotated inventory endpoints; <strong>no strength classification exists for this paper</strong></td></tr><tr><td><a href="#paper-finite-factored-sets">Temporal Inference with Finite Factored Sets</a><div class="idx-cite">Garrabrant (2021) · <a href="https://arxiv.org/abs/2109.11513">arXiv:2109.11513</a></div></td><td class="count">88</td><td><code>FiniteFactoredSets/</code></td><td><strong>complete</strong> — §2–§7; 88 nodes carried by declarations and nine rendered by Mathlib vocabulary, 97 in scope. Conjecture 1 is stated as a <code>Prop</code> and deliberately not proved, and Example 3 is out of scope by ruling; <strong>no strength classification exists for this paper</strong></td></tr><tr><td><a href="#paper-factored-space-models">Factored space models: Towards causality between levels of abstraction</a><div class="idx-cite">Garrabrant, Mayer, Wache, Lang, Eisenstat, Dell (2024) · <a href="https://arxiv.org/abs/2412.02579">arXiv:2412.02579</a></div></td><td class="count">50</td><td><code>FactoredSpaces/</code></td><td><strong>in progress</strong> — the correspondence view of what is landed so far; <strong>no strength classification exists for this paper</strong></td></tr><tr><td><a href="#paper-condensation">Condensation: A Theory of Concepts</a><div class="idx-cite">Eisenstat (2025) · <a href="https://openreview.net/forum?id=HwKFJ3odui">OpenReview:HwKFJ3odui</a></div></td><td class="count">39</td><td><code>Condensation/</code></td><td><strong>in progress (milestone M2; read-through outstanding)</strong> — every in-scope node has a proved carrier, and each declaration is badged: 79 <em>axiom-clean</em>, 0 <em>staged</em> (statement final, proof still <code>sorry</code>). Nothing badged staged is claimed proved. The cards show the paper statement beside the Lean statement that carries it, so the section grows as the formalization lands; <strong>no strength classification exists for this paper</strong></td></tr><tr><td><a href="#paper-safe-pareto-improvements">Safe Pareto Improvements for Delegated Game Playing</a><div class="idx-cite">Oesterheld, Conitzer (2022) · <a href="https://doi.org/10.1007/s10458-022-09574-6">doi:10.1007/s10458-022-09574-6</a></div></td><td class="count">24</td><td><code>SafeParetoImprovements/</code></td><td><strong>in progress (milestone M0)</strong> — the §3–§4.5 spine at the certainty-filter level, each declaration badged: 43 <em>axiom-clean</em>, 0 <em>staged</em> (statement final, proof still <code>sorry</code>). The correspondence view of what has landed so far; <strong>no strength classification exists for this paper</strong></td></tr>
+      <tr><td><a href="#paper-logical-induction">Logical Induction</a><div class="idx-cite">Garrabrant, Benson-Tilsen, Critch, Soares, Taylor (2016) · <a href="https://arxiv.org/abs/1609.03543">arXiv:1609.03543</a></div></td><td class="count">66</td><td><code>LogicalInduction/</code></td><td>a status badge per node (exact / strengthened / corrected / refuted / qualified) with a universal-vs-instantiated axis, a curated canonical endpoint set, a reading note and a "what to check" note — all from one machine-checked table</td></tr><tr><td><a href="#paper-cartesian-frames">Cartesian Frames</a><div class="idx-cite">Garrabrant, Herrmann, Lopez-Wild (2021) · <a href="https://arxiv.org/abs/2109.10996">arXiv:2109.10996</a></div></td><td class="count">60</td><td><code>CartesianFrames/</code></td><td>errata cross-references and the Claim 35 intentional-deviation ruling; <strong>no strength classification exists for this paper</strong></td></tr><tr><td><a href="#paper-modal-agents">Robust Cooperation in the Prisoner&#x27;s Dilemma: Program Equilibrium via Provability Logic</a><div class="idx-cite">Barász, Christiano, Fallenstein, Herreshoff, LaVictoire, Yudkowsky (2014) · <a href="https://arxiv.org/abs/1401.5577">arXiv:1401.5577</a></div></td><td class="count">12</td><td><code>ModalAgents/</code></td><td>scope notes and the deliberately-unannotated inventory endpoints; <strong>no strength classification exists for this paper</strong></td></tr><tr><td><a href="#paper-finite-factored-sets">Temporal Inference with Finite Factored Sets</a><div class="idx-cite">Garrabrant (2021) · <a href="https://arxiv.org/abs/2109.11513">arXiv:2109.11513</a></div></td><td class="count">88</td><td><code>FiniteFactoredSets/</code></td><td><strong>complete</strong> — §2–§7; 88 nodes carried by declarations and nine rendered by Mathlib vocabulary, 97 in scope. Conjecture 1 is stated as a <code>Prop</code> and deliberately not proved, and Example 3 is out of scope by ruling; <strong>no strength classification exists for this paper</strong></td></tr><tr><td><a href="#paper-factored-space-models">Factored space models: Towards causality between levels of abstraction</a><div class="idx-cite">Garrabrant, Mayer, Wache, Lang, Eisenstat, Dell (2024) · <a href="https://arxiv.org/abs/2412.02579">arXiv:2412.02579</a></div></td><td class="count">50</td><td><code>FactoredSpaces/</code></td><td><strong>in progress</strong> — the correspondence view of what is landed so far; <strong>no strength classification exists for this paper</strong></td></tr><tr><td><a href="#paper-condensation">Condensation: A Theory of Concepts</a><div class="idx-cite">Eisenstat (2025) · <a href="https://openreview.net/forum?id=HwKFJ3odui">OpenReview:HwKFJ3odui</a></div></td><td class="count">39</td><td><code>Condensation/</code></td><td><strong>in progress (milestone M2; read-through outstanding)</strong> — every in-scope node has a proved carrier, and each declaration is badged: 79 <em>axiom-clean</em>, 0 <em>staged</em> (statement final, proof still <code>sorry</code>). Nothing badged staged is claimed proved. The cards show the paper statement beside the Lean statement that carries it, so the section grows as the formalization lands; <strong>no strength classification exists for this paper</strong></td></tr><tr><td><a href="#paper-safe-pareto-improvements">Safe Pareto Improvements for Delegated Game Playing</a><div class="idx-cite">Oesterheld, Conitzer (2022) · <a href="https://doi.org/10.1007/s10458-022-09574-6">doi:10.1007/s10458-022-09574-6</a></div></td><td class="count">26</td><td><code>SafeParetoImprovements/</code></td><td><strong>in progress (milestone M0)</strong> — the §3–§4.5 spine at the certainty-filter level, each declaration badged: 47 <em>axiom-clean</em>, 0 <em>staged</em> (statement final, proof still <code>sorry</code>). The correspondence view of what has landed so far; <strong>no strength classification exists for this paper</strong></td></tr>
     </table></div>
     <p><strong>Only Logical Induction has a strength classification and per-node reading
     notes.</strong> They are the product of a dedicated re-derivation pass and a
@@ -9452,7 +9454,7 @@ Corollary 5.10 gives us a simple characterization of the structure of the polar.
   <h2 class="paper-head">Safe Pareto Improvements for Delegated Game Playing</h2>
   <p class="paper-cite">Oesterheld, Conitzer (2022) ·
   <a href="https://doi.org/10.1007/s10458-022-09574-6">doi:10.1007/s10458-022-09574-6</a> ·
-  <code>SafeParetoImprovements/</code> · 24 nodes</p>
+  <code>SafeParetoImprovements/</code> · 26 nodes</p>
 
   <div class="method">
     <div class="no-tier"><b>This formalization is in progress, and no strength
@@ -9473,7 +9475,7 @@ Corollary 5.10 gives us a simple characterization of the structure of the polar.
     equality of games — that is <code>Game.EqOn</code> (<code>dd:total-utility</code>). The
     full glossary is in <code>SafeParetoImprovements.lean</code> and the trust surface in
     <code>SafeParetoImprovements/README.md</code>.
-    Numbered nodes with no Lean statement annotated to them: <code>Definition 8</code>, <code>Theorem 9</code>, <code>Proposition 10</code>, <code>Lemma 13</code>, <code>Corollary 14</code>, <code>Theorem 15</code>, <code>Lemma 20</code>, <code>Proposition 23</code>, <code>Proposition 24</code>, <code>Proposition 25</code>, <code>Proposition 26</code>, <code>Lemma 27</code>, <code>Lemma 28</code>.</div>
+    Numbered nodes with no Lean statement annotated to them: <code>Definition 8</code>, <code>Theorem 9</code>, <code>Proposition 10</code>, <code>Theorem 15</code>, <code>Lemma 20</code>, <code>Proposition 23</code>, <code>Proposition 24</code>, <code>Proposition 25</code>, <code>Proposition 26</code>, <code>Lemma 27</code>, <code>Lemma 28</code>.</div>
 
     <h3>How nodes are cited</h3>
     <p>This paper numbers on <em>global</em> counters that never reset: Definitions on one
@@ -9499,7 +9501,7 @@ Corollary 5.10 gives us a simple characterization of the structure of the polar.
 
   <div class="method">
 <h3>Proved and staged endpoints</h3>
-<div class="legend"><span class="staged proved">axiom-clean</span><span class="count">43 — listed in <code>AxiomAudit.lean</code>’s <code>SPI-INVENTORY</code> block, so <code>#assert_axioms_clean</code> has checked that the proof depends on no <code>sorry</code> and no added axiom.</span></div>
+<div class="legend"><span class="staged proved">axiom-clean</span><span class="count">47 — listed in <code>AxiomAudit.lean</code>’s <code>SPI-INVENTORY</code> block, so <code>#assert_axioms_clean</code> has checked that the proof depends on no <code>sorry</code> and no added axiom.</span></div>
 <div class="legend"><span class="staged">staged &middot; sorry</span><span class="count">0 — the <em>statement</em> is final, the proof is not: staged in the <code>SPI-PENDING</code> block, which is pure comment and asserts nothing. Each card’s footer names what it waits on.</span></div>
 <p>Every declaration below carries one of these two badges, and each card’s header carries the node’s own verdict — <em>axiom-clean</em>, <em>partly staged</em> (some carrier of that node is proved and some is not), or <em>proof staged</em>. A staged endpoint is a claim about the statement only; nothing badged staged is claimed proved.</p>
 </div>
@@ -10020,6 +10022,78 @@ coordination SPI.</pre>
 </article>
 <h2 class="sec" id="sec-spi--5-3-Characterizing-safe-Pareto-improvements-under-improved-representative-coordination">§5.3 Characterizing safe Pareto improvements under improved representative coordination</h2>
 
+<article class="node" id="spi-lemma-13">
+  <header class="node-head">
+    <label class="check"><input type="checkbox" data-node="spi-lemma-13" aria-label="mark Lemma 13 read"></label>
+    <span class="node-label">Lemma 13</span>
+    <span class="node-title"></span>
+    <span class="kind">lemma</span><span class="staged proved">axiom-clean</span>
+  </header>
+  <div class="panes">
+    <section class="paper-pane">
+      <div class="pane-tag">Paper · doi:10.1007/s10458-022-09574-6</div>
+      <pre class="extract">Let Γ = ({a11 , ..., al11 }, ..., {a1n , ..., alnn }, u) be any game. Let Γ′
+be a perfect-coordination SPI on Γ. Then we can define ue with values in
+
+C(Γ) such that under Assumption 2 the game
+                   (︃
+              Γ = Â1 := {â11 , ..., âl11 }, ..., Ân := {â1n , ..., âlnn },
+               s
+
+                                                                            )︃
+                              i1         in            i1       in       e
+                      û : (â1 , ..., ân ) ↦→ u(a1 , ..., an ), u
+
+is also an SPI on Γ, with
+
+                 E [u(Π(Γs )) | Π(Γ)=a] = E u(Π(Γ′ )) ⃓ Π(Γ)=a
+                                           [︁         ⃓        ]︁
+
+for all a ∈ A and consequently E [u(Π(Γs ))] = E [u(Π(Γ′ ))].</pre>
+    </section>
+    <section class="lean-pane">
+      <div class="pane-tag">Lean · statement only (proof body is kernel-checked)</div>
+      <div class="ep-slide"><div class="ep-head"><code class="ep-name">SafeParetoImprovements.Representatives.exists_reassignment_condExp_eq</code><span class="staged proved">axiom-clean</span><span class="ep-file">SafeParetoImprovements/Characterization.lean</span></div><pre class="sig">theorem exists_reassignment_condExp_eq (Γ : Game N 𝒜)
+    (hA1 : R.toPlay.SatisfiesA1 R.certainty) (hA2 : R.toPlay.SatisfiesA2 R.certainty)
+    (h : Γ.reduce.HasRoomOutside Γ.S) {T&#x27; : TokenGame Γ} (hT&#x27; : T&#x27;.IsSPI R.toPlay R.certainty) :
+    ∃ T : TokenGame Γ, Γ.reduce.Isomorphic T.game ∧ T.IsSPI R.toPlay R.certainty ∧
+      (∀ a ∈ R.support Γ, R.condExp Γ a (fun ω =&gt; T.ue (R.play T.game ω)) =
+        R.condExp Γ a (fun ω =&gt; T&#x27;.ue (R.play T&#x27;.game ω))) ∧
+      R.tokenValue Γ T = R.tokenValue Γ T&#x27;</pre></div>
+    </section>
+  </div>
+</article>
+
+<article class="node" id="spi-corollary-14">
+  <header class="node-head">
+    <label class="check"><input type="checkbox" data-node="spi-corollary-14" aria-label="mark Corollary 14 read"></label>
+    <span class="node-label">Corollary 14</span>
+    <span class="node-title"></span>
+    <span class="kind">corollary</span><span class="staged proved">axiom-clean</span>
+  </header>
+  <div class="panes">
+    <section class="paper-pane">
+      <div class="pane-tag">Paper · doi:10.1007/s10458-022-09574-6</div>
+      <pre class="extract">Under Assumption 2, the set of Pareto improvements that
+are safely achievable with perfect coordination
+
+               {E[u(Γ′ )] | Γ′ is perfect-coordination SPI on Γ}
+
+is a convex polygon.</pre>
+    </section>
+    <section class="lean-pane">
+      <div class="pane-tag">Lean · statement only (proof body is kernel-checked)</div>
+      <div class="ep-nav"><button class="ep-prev" aria-label="previous endpoint">&#8249;</button><span class="ep-count" data-total="3">1 / 3</span><button class="ep-next" aria-label="next endpoint">&#8250;</button><span class="ep-nav-hint">inventory endpoints for this node</span></div><div class="ep-slide"><div class="ep-head"><code class="ep-name">SafeParetoImprovements.Representatives.achievable_eq_improvementSum</code><span class="staged proved">axiom-clean</span><span class="ep-file">SafeParetoImprovements/Characterization.lean</span></div><pre class="sig">theorem achievable_eq_improvementSum (Γ : Game N 𝒜)
+    (hA1 : R.toPlay.SatisfiesA1 R.certainty) (hA2 : R.toPlay.SatisfiesA2 R.certainty)
+    (h : Γ.reduce.HasRoomOutside Γ.S) : R.achievable Γ = R.improvementSum Γ</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">SafeParetoImprovements.Representatives.convex_achievable</code><span class="staged proved">axiom-clean</span><span class="ep-file">SafeParetoImprovements/Characterization.lean</span></div><pre class="sig">theorem convex_achievable (Γ : Game N 𝒜)
+    (hA1 : R.toPlay.SatisfiesA1 R.certainty) (hA2 : R.toPlay.SatisfiesA2 R.certainty)
+    (h : Γ.reduce.HasRoomOutside Γ.S) : Convex ℝ (R.achievable Γ)</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">SafeParetoImprovements.Representatives.isPolytope_achievable</code><span class="staged proved">axiom-clean</span><span class="ep-file">SafeParetoImprovements/Characterization.lean</span></div><pre class="sig">theorem isPolytope_achievable (Γ : Game N 𝒜)
+    (hA1 : R.toPlay.SatisfiesA1 R.certainty) (hA2 : R.toPlay.SatisfiesA2 R.certainty)
+    (h : Γ.reduce.HasRoomOutside Γ.S) : IsPolytope (R.achievable Γ)</pre></div>
+    </section>
+  </div>
+</article>
+
 <article class="node" id="spi-proposition-16">
   <header class="node-head">
     <label class="check"><input type="checkbox" data-node="spi-proposition-16" aria-label="mark Proposition 16 read"></label>
@@ -10232,6 +10306,6 @@ symmetry), and Γ′m ∼Ξ Γ′m+1 by application of Assumption 2 such that
 })();
 </script>
 
-<!-- trust-surface-papers: logical-induction=66 cartesian-frames=60 modal-agents=12 finite-factored-sets=88 factored-space-models=50 condensation=39 safe-pareto-improvements=24 -->
+<!-- trust-surface-papers: logical-induction=66 cartesian-frames=60 modal-agents=12 finite-factored-sets=88 factored-space-models=50 condensation=39 safe-pareto-improvements=26 -->
 
-<!-- trust-surface-sources: 331ec7824f5d093c0d8474d3cc9c5798cf792249c1c4536e2e5954ffdcc49578 -->
+<!-- trust-surface-sources: 9e17963d4be077c35260d62bd65633f77b36563d62bbe386cc6e33e0439eb573 -->

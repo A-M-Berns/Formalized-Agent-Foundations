@@ -3,8 +3,9 @@
 **Status:** rulings 10–13b given 2026-09-12 (`scoping.md` §8); D1 landed (`Coordination.lean`,
 `Examples/Chicken.lean`, `Examples/TokenWitnesses.lean`, with the round-4 blocker fixed per
 `.harness/adjudication/token-games-investigation.md`: §5 examples over `X ⊕ ℕ`, `HasRoomOutside`,
-label-free kernel for Proposition 16). D2–D4 to follow under those rulings; Corollary 14's
-polytope clause is to be attempted (RULING 12). Covers §5.1–§5.3 minus Theorem 15
+label-free kernel for Proposition 16). D2 (Definition 7, Proposition 12, `TokenGame.reassign`)
+and D3 (Lemma 13, Corollary 14 with the polytope clause via `Polytope.lean`) landed 2026-09-12;
+the tranche is complete except Theorem 15 (RULING 8). Covers §5.1–§5.3 minus Theorem 15
 (RULING 8: deferred, erratum D12). Nodes: the unnumbered `C(Γ)` and token games, Definition 6,
 Definition 7 (RULING 7: "strict" read into the body, erratum D10), Lemma 11, Algorithm 1,
 Proposition 12, Lemma 13, Corollary 14, Proposition 16. Errata already recorded that bind the

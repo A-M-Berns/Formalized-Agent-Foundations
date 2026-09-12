@@ -3899,6 +3899,25 @@ blocks, a stale entry, a malformed line, a non-empty block once the paper is
   SafeParetoImprovements.Examples.conflictGame_strictPerfectCoordinationSPIDecision
   SafeParetoImprovements.Examples.chicken_support_paretoOptimal
   SafeParetoImprovements.Examples.chicken_not_strictPerfectCoordinationSPIDecision
+  -- §5.3 (SafeParetoImprovements/Characterization.lean, Polytope.lean; RULINGS 10/11/12,
+  -- errata D6/D7): conditional expectation on the play's fibers, Lemma 13, Corollary 14
+  -- (formula, convexity, compactness, polytope clause) and the polytope substrate.
+  SafeParetoImprovements.Representatives.condExp SafeParetoImprovements.Representatives.tokenValue
+  SafeParetoImprovements.Representatives.condExp_comp_play
+  SafeParetoImprovements.Representatives.integral_eq_sum_condExp
+  SafeParetoImprovements.Representatives.condExp_mem_feasible
+  SafeParetoImprovements.Representatives.le_condExp_of_isSPI
+  SafeParetoImprovements.Representatives.exists_reassignment_condExp_eq
+  SafeParetoImprovements.Representatives.achievable SafeParetoImprovements.Game.improvementSet
+  SafeParetoImprovements.Representatives.improvementSum
+  SafeParetoImprovements.Representatives.achievable_eq_improvementSum
+  SafeParetoImprovements.Representatives.convex_achievable
+  SafeParetoImprovements.Representatives.isCompact_achievable
+  SafeParetoImprovements.Representatives.isPolytope_achievable
+  SafeParetoImprovements.Game.isClosed_feasible SafeParetoImprovements.Game.isCompact_feasible
+  SafeParetoImprovements.Game.isPolytope_feasible SafeParetoImprovements.Game.isPolytope_improvementSet
+  SafeParetoImprovements.IsPolytope SafeParetoImprovements.IsPolytope.inter_halfspace
+  SafeParetoImprovements.IsPolytope.inter_Ici SafeParetoImprovements.IsPolytope.finsetSum
   -- Proposition 16 with the paper's own witness (SafeParetoImprovements/Examples/Chicken.lean):
   -- Table 7 over `CAct ⊕ ℕ` (`dd:room`, RULING 13 -- over the bare `CAct` the game uses its
   -- whole universe and `TokenGame chicken` is EMPTY, so the impossibility clause was

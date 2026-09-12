@@ -81,16 +81,17 @@ variable {X : Play N 𝒜 Ω} {L : Filter Ω}
 
 /-- **Reassignment realises any feasible-valued function of the play**: under Assumptions
 1 and 2, with room, for every `f` sending reduced outcomes into `C(Γ)` there is a token
-game whose original-player payoff at the representatives' token play is `f` at the
-representatives' play of `Γ`, with certainty.  The token game is `TokenGame.reassign` along
+game — an isomorphic copy of `reduce Γ` — whose original-player payoff at the
+representatives' token play is `f` at the representatives' play of `Γ`, with certainty.  The token game is `TokenGame.reassign` along
 the isomorphism Assumption 2 supplies. -/
 lemma exists_tokenGame_ue_eq (hA1 : X.SatisfiesA1 L) (hA2 : X.SatisfiesA2 L) (Γ : Game N 𝒜)
     (h : Γ.reduce.HasRoomOutside Γ.S) (f : (∀ i, 𝒜 i) → N → ℝ)
     (hf : ∀ a ∈ Γ.reduce.profiles, f a ∈ Γ.feasible) :
-    ∃ T : TokenGame Γ, ∀ᶠ ω in L, T.ue (X.play T.game ω) = f (X.play Γ ω) := by
+    ∃ T : TokenGame Γ, Γ.reduce.Isomorphic T.game ∧
+      ∀ᶠ ω in L, T.ue (X.play T.game ω) = f (X.play Γ ω) := by
   obtain ⟨ψ, hψ⟩ := hA2 Γ.reduce (Γ.reduce.tokenCopy h) Γ.reduce_reduced
     (Game.Reduced.of_iso (Γ.reduce.tokenIso h) Γ.reduce_reduced) ⟨Γ.reduce.tokenIso h⟩
-  refine ⟨TokenGame.reassign Γ h ψ f hf, ?_⟩
+  refine ⟨TokenGame.reassign Γ h ψ f hf, ⟨Γ.reduce.tokenIso h⟩, ?_⟩
   filter_upwards [hψ, hA1.play_reduce Γ] with ω hω hred
   obtain ⟨hmem, hmap⟩ := (ψ.mem_rel _ _).1 hω
   show f (ψ.symm.map (X.play (Γ.reduce.tokenCopy h) ω)) = f (X.play Γ ω)
@@ -163,7 +164,7 @@ lemma exists_strictSPI_of_support_not_paretoOptimal (Γ : Game N 𝒜)
     · simp [hfdef, hab, hy]
     · simp only [hfdef, if_neg hab]
       exact Γ.u_mem_feasible (Γ.reduce_isSubsetGameOf.profiles_subset ha)
-  obtain ⟨T, hT⟩ := Play.exists_tokenGame_ue_eq hA1 hA2 Γ h f hf
+  obtain ⟨T, -, hT⟩ := Play.exists_tokenGame_ue_eq hA1 hA2 Γ h f hf
   have hge : ∀ a, Γ.u a ≤ f a := by
     intro a
     by_cases hab : a = a₀

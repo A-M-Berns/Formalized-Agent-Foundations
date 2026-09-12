@@ -1,6 +1,7 @@
 import SafeParetoImprovements.Isomorphism
 import SafeParetoImprovements.Play
 import Mathlib.Analysis.Convex.Combination
+import Mathlib.Analysis.Convex.Topology
 
 /-!
 # SPIs under improved coordination — the carriers (§5.1, Lemma 11)
@@ -146,6 +147,16 @@ lemma feasible_eq_convexHull : Γ.feasible = convexHull ℝ (Γ.u '' Γ.profiles
   · refine convexHull_min ?_ Γ.convex_feasible
     rintro _ ⟨a, ha, rfl⟩
     exact Γ.u_mem_feasible ha
+
+/-- `C(Γ)` is closed (the convex hull of a finite set). -/
+lemma isClosed_feasible (Γ : Game N 𝒜) : IsClosed Γ.feasible := by
+  rw [feasible_eq_convexHull]
+  exact ((Set.Finite.ofFinset Γ.profilesFinset fun _ => Γ.mem_profilesFinset).image Γ.u).isCompact_convexHull (𝕜 := ℝ) |>.isClosed
+
+/-- `C(Γ)` is compact. -/
+lemma isCompact_feasible (Γ : Game N 𝒜) : IsCompact Γ.feasible := by
+  rw [feasible_eq_convexHull]
+  exact ((Set.Finite.ofFinset Γ.profilesFinset fun _ => Γ.mem_profilesFinset).image Γ.u).isCompact_convexHull (𝕜 := ℝ)
 
 /-- The value of the paper's linear program at a correlated strategy `p` and target `y`
 (extraction l. 1366–1381): `∑ᵢ (uᵢ(p) − yᵢ)`. -/
