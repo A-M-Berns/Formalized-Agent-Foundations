@@ -49,6 +49,10 @@ instance : ∀ i, Fintype (TemptUniverse i)
   | .one => inferInstanceAs (Fintype T1)
   | .two => inferInstanceAs (Fintype T2)
 
+instance : ∀ i, Nonempty (TemptUniverse i)
+  | .one => ⟨T1.T⟩
+  | .two => ⟨T2.C⟩
+
 /-- Table 6's payoffs. -/
 def temptPayoff : T1 → T2 → Two → ℝ
   | .T, .C, .one => 1
@@ -212,14 +216,21 @@ theorem temptation_isStrictSPI [L.NeBot] (hA1 : X.SatisfiesA1 L) :
     norm_num [temptPayoff]
 
 /-- Proposition 7's SPI is **unilateral** (Definition 2): only player 1's instruction
-changes. -/
-lemma temptation_isUnilateralSPI [L.NeBot] (hA1 : X.SatisfiesA1 L) :
-    X.IsUnilateralSPI L temptation temptationCommit :=
-  ⟨⟨temptationCommit.isSubsetGameOf, .one, fun j hj => by
+changes.  No non-degeneracy of the filter is needed: the conclusion has no
+positive-probability clause, so the SPI is derived from the two play lemmas directly
+rather than through the strict theorem (R1-F31). -/
+lemma temptation_isUnilateralSPI (hA1 : X.SatisfiesA1 L) :
+    X.IsUnilateralSPI L temptation temptationCommit := by
+  refine ⟨⟨temptationCommit.isSubsetGameOf, .one, fun j hj => by
       cases j
       · exact absurd rfl hj
       · exact ⟨rfl, fun _ _ => rfl⟩⟩,
-    (temptation_isStrictSPI X L hA1).isSPI⟩
+    temptationCommit.isSubsetGameOf, ?_⟩
+  filter_upwards [temptation_play X L hA1, temptationCommit_play X L hA1] with
+    ω ⟨h1, h2⟩ ⟨h1', h2'⟩
+  rw [Pi.le_def]
+  intro i
+  cases i <;> simp only [temptation.u_apply, h1, h2, h1', h2'] <;> norm_num [temptPayoff]
 
 end Examples
 

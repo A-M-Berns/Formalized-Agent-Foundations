@@ -23,22 +23,22 @@ from an audit. The scoping note (`notes/scoping.md`) and the errata file
 | §3 "with certainty" / "with positive probability" | `∀ᶠ ω in L` / `∃ᶠ ω in L` for a filter `L` | `dd:certainty`; the paper's instance is `L = ae μ` (`Representatives.certainty`) |
 | Def 1 SPI, strict SPI | `Play.IsSPI`, `Play.IsStrictSPI` | erratum D1 in the strictness clause |
 | Def 2 unilateral | `Game.Unilateral`, `Play.IsUnilateralSPI` | |
-| §4.1 `Φ : M ⊸ N`, `Φ⁻¹`, `Ψ ∘ Φ`, `id`, `all` | Mathlib `SetRel`, `.inv`, `Φ ○ Ψ` (**diagrammatic**), `SetRel.id` / `Game.partialId`, `Game.allRel` | `Ψ ∘ Φ` (paper) = `Φ ○ Ψ` (Lean) |
+| §4.1 `Φ : M ⊸ N`, `Φ⁻¹`, `Ψ ∘ Φ`, `id_A`, `all` | Mathlib `SetRel`, `.inv`, `Φ ○ Ψ` (**diagrammatic**), `Game.partialId` (the typed identity; Lemma 2.1 uses it), `Game.allRel` | `Ψ ∘ Φ` (paper) = `Φ ○ Ψ` (Lean) |
 | Def 3 `Γ ∼_Φ Γ'` | `Play.Corresponds` | |
 | Lemma 2.1–2.7 | `Play.corresponds_id`, `Corresponds.inv`, `.trans`, `.mono_rel`, `corresponds_allRel`, `.ne_of_at_eq_empty`, `.ne_of_inv_at_eq_empty` | |
 | §4.2 equivalence `R`, preorder `⪰` | `Play.BijEquiv`, `Play.Improves Γ₀` | `⪰` relative to a base game's payoffs |
-| Def 4 | `Play.ParetoImprovingCorrespondence` | typed on the two profile sets |
+| Def 4 | `Play.ParetoImprovingCorrespondence` | field `typed : Φ ⊆ Γ.profiles ×ˢ Γs.profiles` (R1-F05) |
 | Thm 3 | `Play.isSPI_iff_exists_paretoImprovingCorrespondence` | |
 | Assumption 1 / 2 | `Play.SatisfiesA1`, `Play.SatisfiesA2` | predicates; A2 existential over isomorphisms |
 | Assumption 1's `Φ` | `Game.elimRel` | |
 | Lemma 4 | `GameIso.paretoImproving_of_paretoImproving`, `…strictly…` | via the automorphism `Φ⁻¹ ∘ Ψ` (`GameIso.payoff_eq_of_self`) |
-| "`Γ ∼_Φ Γ'` by Assumption 2" (lax use) | `Play.exists_paretoImproving_corresponds_of_assumption2` | |
-| §4.4.3 book representatives | `Book`, `Book.toPlay`, `Book.satisfiesA1/2`, `exists_play_satisfiesA1_satisfiesA2` | `dd:book`; pages parametric |
+| "`Γ ∼_Φ Γ'` by Assumption 2" (lax use) | `Play.exists_paretoImproving_corresponds_of_assumption2` (+ `paretoImprovingCorrespondence_of_iso`) | `isSPI_of_assumption2` deleted (R1-F12: its hypotheses forced equal action sets) |
+| §4.4.3 book representatives | `Book`, `Book.toPlay`, `Book.satisfiesA1/2`, `exists_play_satisfiesA1_satisfiesA2`, `exists_representatives_satisfiesA1_satisfiesA2`, `Book.prescribed` | `dd:book`; pages parametric; `Book.prescribed` plays a chosen outcome on every game with a given reduction (Prop 6 strict witness in `Examples/Witnesses.lean`) |
 | iterated elimination / "fully reduce" | `Game.Elim`, `Game.ElimStar`, `Game.reduce`, `Game.Reduced` | `reduce` canonical by `reduced_unique` (Church–Rosser) |
 | Lemma 19 | `Game.isStrictlyDominated_erase` | |
 | Lemma 20 | (absorbed) `Game.elim_diamond` | |
-| Lemma 21 / 22 | `Game.Deriv.exists_iso`, `Game.Deriv.normal`, `Game.exists_paretoImproving_deriv_iff` | `dd:derivation` |
-| Def 5 | `Game.Step`, `Game.Deriv`, `Game.SPIDecision`, `Game.StrictSPIDecision`, `Game.UnilateralSPIDecision` | |
+| Lemma 21 / 22 | `Game.Deriv.exists_normalForm` / `Game.exists_paretoImproving_normalForm` | `dd:derivation`; supporting: `Deriv.exists_iso`, `Deriv.normal`, `exists_paretoImproving_deriv_iff` (no labels) |
+| Def 5 | `Game.Step`, `Game.Deriv`; `Game.SPIDecision`, `StrictSPIDecision`, `UnilateralSPIDecision` (repaired, `dd:nontrivial`); `…Printed` variants (constant-true, D13) | soundness: `Play.isSPI_of_deriv`, `isUnilateralSPI_of_deriv`, `isStrictSPI_of_deriv` |
 | Props 5, 6, 7, 8 | `Examples.prisonersDilemma_isStrictSPI`, `demandGame_isSPI`/`_isStrictSPI`, `temptation_isStrictSPI`, `complicatedTemptation_isUnilateralSPI` | |
 | footnote 5 | `Play.isSPI_of_paretoDominant` | |
 | `supp Π(Γ)` (§5) | `Representatives.support` | |
@@ -54,6 +54,7 @@ Full rationale in `notes/scoping.md` §3; rulings by Anson 2026-09-12 in its §8
 - **`dd:iso`** — per-player bijections, `λᵢ > 0`, constants as data (`scale`, `shift`) so composition/inverse compute.
 - **`dd:book`** — the §4.4.3 consistency argument is a theorem: quotient of games by isomorphism, `Quotient.out` representatives, `Classical.choice` translations, pages parametric. Holds at every sample point.
 - **`dd:derivation`** — Definition 5 is a Prop-valued derivation system inside a root game; the empty derivation records the typed identity `Game.partialId`. Soundness is for the SPI *conclusion* (via Lemma 4), never for the recorded correspondence.
+- **`dd:nontrivial`** — Definition 5's non-triviality clause is read as "the full reductions have different action sets" (`Γs.reduce.S ≠ Γ.reduce.S`), the reading Appendix D's hardness proof uses (the identity action map is the trivial case); the printed clause is constant-true (erratum D13) and is carried alongside as `…Printed` with its triviality theorem. Ruled 2026-09-12.
 - **`dd:complexity`** (planned) — Theorem 9 / Prop 10 / Lemma 11 / Prop 12 carried as *qualified* nodes: mathematics exact, complexity-class and runtime clauses disclosed as not rendered.
 - **EconCSLib** is a pinned lake dependency (`cef01c7`, Mathlib v4.30.0 upstream; builds against our v4.31.0). The paper library names EconCSLib only through `Game.toStrategic` and the dominance definitions.
 
@@ -63,8 +64,14 @@ Full rationale in `notes/scoping.md` §3; rulings by Anson 2026-09-12 in its §8
 - **Isomorphism is bijective with `λᵢ > 0`** (erratum D5): the printed §2 definition omits both; both are forced.
 - **Lemma 4 is stated for `GameIso Γ Γ'` with Pareto-improvingness under `Γ`'s total `u`** — no subset-game hypothesis is needed because `u` is total (erratum D2 records that the paper needs one).
 - **Lemma 20 has no carrier of its own**: its content (elimination steps commute) is `Game.elim_diamond`, which is what confluence needs; the paper's phrasing (reverse-then-forward reordering) is not separately stated.
-- **Lemma 21's normal form is stated as the pair `Deriv.exists_iso` + `Deriv.normal`** rather than as a statement about reordering a given chain: derivations are `Prop`-valued, so "the same chain reorganized" is not expressible; what is expressible and what the paper uses is that the same endpoints admit a normal-form derivation whose composite is the graph of an isomorphism of the full reductions.
+- **Lemma 21 is carried qualitatively** (R1-F20/F21, codex-adjudicated): the labelled statements assert the existence of an isomorphism of the full reductions realized by a derivation of shape eliminations / one isomorphism move / reverse eliminations, exposed through the `ElimStar` witnesses, `Step.iso` and the composite identity — NOT "the same chain reorganized" (a `Prop`-valued derivation can still express restricted chains through `ElimStar`, so the earlier "not expressible" justification was over-broad and is retracted). The printed length bound `m ≤ k` is not rendered and is false as printed (erratum D14). The normal form's composite is *contained in* the original composite on the reduced outcomes, never equal to it (a `refl` derivation from a non-reduced game has the partial identity on all outcomes).
+- **Definition 5's non-triviality clause is repaired** (R1-F18, ruled 2026-09-12, erratum D13): the carrier requires the reduced *action sets* to differ (`Γs.reduce.S ≠ Γ.reduce.S`, `dd:nontrivial`); the printed clause (reductions not `EqOn`) is constant-true under payoff shifts and is carried alongside as `…Printed` with its triviality theorem.
+- **`Play` is a larger class than the paper's `Π`** (R1-F01, refuted by cross-examination): it need not respect `Game.EqOn`, so a hand-built play can distinguish two Lean games that are the same paper game. Every paper node quantifies universally over `X : Play`, so this only strengthens them (same pattern as `dd:certainty`), and Assumption 2 forbids the phenomenon: any `GameIso` between `EqOn`-equal games preserves payoffs, so under A2 there is no strict SPI between `EqOn`-equal reduced games (library lemma). The book witness is `EqOn`-invariant up to payoffs, not outcomes (`Game.chosenIso` is chosen per Lean game). Do NOT add a `play_eqOn` field.
 - **Proposition 6's strictness clause** is proved for *whichever* isomorphism Assumption 2 supplies (all of Table 2's outcomes are worth more than `−3` to player 1), not by identifying the isomorphism.
+
+- **Definition 4's carrier is typed** (R1-F05): `Play.ParetoImprovingCorrespondence` carries `typed : Φ ⊆ Γ.profiles ×ˢ Γs.profiles`; Theorem 3 quantifies over the structure alone.
+- **Lemma 2.1 uses the typed identity** `Game.partialId` (the paper's `id_A`), and Lemma 2.4's hypothesis is containment at outcomes of `Γ` only (R1-F06/F07/F35).
+- **`Game.ParetoOptimalIn` is a one-liner over Mathlib's `Pi` order**, not a redefinition of EconCSLib's fair-division `IsParetoOptimal` (R1-F02, refuted); it becomes load-bearing in §5.
 
 ## Disclosures (residual modeling substitutions)
 
@@ -75,6 +82,17 @@ None.
 See `notes/paper-errata.md` (D1–D12). Statement-level: D1, D2, D5, D8, D10, D12. Rulings pending on D10 (Definition 7's "strict") and D12 (Theorem 15's projections).
 
 ## Pitfalls
+
+Round-1 audit clearances (checked, do not re-raise): Mathlib `SetRel` composition is diagrammatic (`Data/Rel.lean`), so `Corresponds.trans` concluding `Φ ○ Ψ` is the paper's `Ψ ∘ Φ`; EconCSLib `StrictlyDominates G i s s'` means `s` dominates `s'`, and `IsStrictlyDominated i a := ∃ a', StrictlyDominates i a' a` puts the dominator first; `Game.Elim`/`ElimStar`/`reduce` are not duplicates of EconCSLib's simultaneous-round `Survives` (one action at a time, shrinking the game, with confluence — EconCSLib has neither); the Prisoner's Dilemma in `Examples/` is Table 3, not EconCSLib's example (different payoffs); all 48 table cells of Tables 1–6 were verified executably; `GameIso.payoff_eq_of_self` needs `[Fintype N]` genuinely (surjectivity direction of the max/min argument); `Game.chosenIso` is well-defined despite `Classical.choice` (`Nonempty` is a `Prop`); `Lean.collectAxioms` traverses inductive constructors, so inventorying `Game.Step`/`Game.Deriv` is real coverage; `Representatives.isStrictSPI_iff` is `frequently_ae_iff`, not `Iff.rfl`; `hsub` in Theorem 3 is load-bearing in the ⇐ direction; `Play.IsStrictSPI` is `False` at `L = ⊥` while `IsSPI` is `True` — endpoints concluding strictness from non-frequently hypotheses carry `[L.NeBot]`, Proposition 6's strict clause gets it from its `∃ᶠ` hypothesis.
+
+- `GameIso.affine` is oriented *source payoff = scale · image payoff + shift*; hence `ctIso.shift .two = -1` for Table 5's "player 2's utilities equal up to the constant 1". Check the direction before "fixing" a sign.
+- A `GameIso Γ Γ'` together with `Γ'.IsSubsetGameOf Γ` forces equal action sets (bijection ⇒ equal cardinality ⇒ equality): never state an Assumption-2 helper with both hypotheses on one pair; the paper's isomorphisms relate the two *full reductions*.
+- A subset game's payoffs are unconstrained and `EqOn` compares payoffs: any predicate combining "subset game" with "reductions not `EqOn`" is satisfied by a payoff shift (this is erratum D13).
+- Off-profile payoffs of the SPI subset games are `0` (`spiPayoff`, `ctSPIPayoff₁`); unobservable by construction (`Play.mem`, `IsSPI` under the original `u`, `Unilateral` on the subset game's profiles) — covered by `dd:total-utility`.
+- The paper prints the §4.5 examples as "Proposition (Example) n"; the registered node ids are the bare `Proposition n` (`scripts/paper_nodes.py` normalizes) — the labels are correct though not verbatim substrings.
+- Building a `GameIso` inside a tactic proof with `have` erases its body (it is data); use `let`/a top-level `def` so `ψ.map a` reduces.
+- The mechanical Tier-2 set for this paper (`SurfaceProbe.lean`'s `#surface_types` over SPI-INVENTORY) is `Game`, `GameIso`, `Play`, `Play.ParetoImprovingCorrespondence`; freezes are maintained by hand in `AxiomAudit.lean`.
+- Prescribed-page books: `page q ω := if h : T.cls = q then (T.chosenIso q h).map a else …` plays `a` on every game whose full reduction is `T` (`GameIso.symm_map_map` + proof irrelevance on the positive branch) — the witness pattern for Proposition 6's strictness clause and Proposition 16.
 
 - `Π` is Lean's pi-binder token: name the representatives model `R`, never `Π`.
 - Superscript identifiers (`Γˢ`, `aˢ`) are not valid Lean identifiers; use `Γs`.

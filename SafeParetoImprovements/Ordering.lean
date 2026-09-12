@@ -56,8 +56,9 @@ lemma bijEquiv_refl (Γ : Game N 𝒜) : X.BijEquiv L Γ Γ := by
   refine ⟨{p | p.1 ∈ Γ.profiles ∧ p.2 = p.1}, ⟨id, bijOn_id _, rfl⟩, ?_⟩
   exact Eventually.of_forall fun ω => ⟨X.mem Γ ω, rfl⟩
 
-lemma BijEquiv.symm [Nonempty (∀ i, 𝒜 i)] {Γ Γ' : Game N 𝒜} (h : X.BijEquiv L Γ Γ') :
+lemma BijEquiv.symm {Γ Γ' : Game N 𝒜} (h : X.BijEquiv L Γ Γ') :
     X.BijEquiv L Γ' Γ := by
+  haveI : Nonempty (∀ i, 𝒜 i) := ⟨Γ.profiles_nonempty.choose⟩
   obtain ⟨Φ, ⟨f, hf, rfl⟩, hc⟩ := h
   refine ⟨{p | p.1 ∈ Γ'.profiles ∧ p.2 = Function.invFunOn f Γ.profiles p.1},
     ⟨Function.invFunOn f Γ.profiles, (bijOn_comm hf.invOn_invFunOn.symm).1 hf, rfl⟩, ?_⟩
@@ -78,7 +79,7 @@ lemma BijEquiv.trans {Γ Γ' Γ'' : Game N 𝒜} (h : X.BijEquiv L Γ Γ') (h' :
   exact ⟨ha, by rw [hc'', hb]⟩
 
 /-- `R` is an equivalence relation (footnote 3). -/
-lemma bijEquiv_equivalence [Nonempty (∀ i, 𝒜 i)] : Equivalence (X.BijEquiv L) :=
+lemma bijEquiv_equivalence : Equivalence (X.BijEquiv L) :=
   ⟨bijEquiv_refl, BijEquiv.symm, BijEquiv.trans⟩
 
 variable (X L)
@@ -93,7 +94,9 @@ def Improves (Γ₀ Γ Γ' : Game N 𝒜) : Prop :=
 variable {X L}
 
 lemma improves_refl (Γ₀ Γ : Game N 𝒜) : X.Improves L Γ₀ Γ Γ :=
-  ⟨SetRel.id, corresponds_id X L Γ, fun a b h => by rw [SetRel.mem_id] at h; rw [h]⟩
+  ⟨Γ.partialId, corresponds_id X L Γ, fun a b h => by
+    have hb : b = a := h.2
+    rw [hb]⟩
 
 lemma Improves.trans {Γ₀ Γ Γ' Γ'' : Game N 𝒜} (h : X.Improves L Γ₀ Γ Γ')
     (h' : X.Improves L Γ₀ Γ' Γ'') : X.Improves L Γ₀ Γ Γ'' := by
@@ -115,8 +118,9 @@ lemma improves_self_iff_isSPI {Γ Γs : Game N 𝒜} (hsub : Γs.IsSubsetGameOf 
   · rintro ⟨Φ, hc, hΦ⟩
     exact ⟨hsub, hc.mono fun ω hω => hΦ _ _ hω⟩
   · intro h
-    obtain ⟨Φ, hΦsub, hΦ⟩ := (X.isSPI_iff_exists_paretoImprovingCorrespondence L hsub).1 h
-    exact ⟨Φ, hΦ.corresponds, fun a b hab => hΦ.improving a (hΦsub hab).1 b (hΦsub hab).2 hab⟩
+    obtain ⟨Φ, hΦ⟩ := (X.isSPI_iff_exists_paretoImprovingCorrespondence L hsub).1 h
+    exact ⟨Φ, hΦ.corresponds,
+      fun a b hab => hΦ.improving a (hΦ.typed hab).1 b (hΦ.typed hab).2 hab⟩
 
 /-- **Footnote 5**: if an outcome `a` of `Γ` Pareto-dominates every outcome of `Γ`, then
 any subset game whose only outcome is `a` is an SPI on `Γ`, with no assumption on the
@@ -124,7 +128,7 @@ representatives (Lemma 2.5 with Theorem 3). -/
 lemma isSPI_of_paretoDominant {Γ Γs : Game N 𝒜} (hsub : Γs.IsSubsetGameOf Γ) {a : ∀ i, 𝒜 i}
     (hdom : ∀ b ∈ Γ.profiles, Γ.u b ≤ Γ.u a) (hs : Γs.profiles = {a}) : X.IsSPI L Γ Γs := by
   refine (X.isSPI_iff_exists_paretoImprovingCorrespondence L hsub).2
-    ⟨Γ.allRel Γs, fun _ hp => hp, corresponds_allRel X L Γ Γs, fun b hb c hc _ => ?_⟩
+    ⟨Γ.allRel Γs, corresponds_allRel X L Γ Γs, fun b hb c hc _ => ?_, fun _ hp => hp⟩
   rw [hs, Set.mem_singleton_iff] at hc
   rw [hc]
   exact hdom b hb

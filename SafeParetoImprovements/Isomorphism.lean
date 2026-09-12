@@ -42,6 +42,13 @@ universe u v w
 
 variable {N : Type u} {𝒜 : N → Type v}
 
+/-- A game inhabits every player's slice of the action universe: `Aᵢ` is a nonempty subset
+of `𝒜 i`.  This is what `Function.invFunOn` needs to invert an isomorphism, so `GameIso.symm`
+takes it from the game in scope instead of asking callers for `[∀ i, Nonempty (𝒜 i)]`
+(R1-F03, R1-F13).  Not an instance: instance search cannot guess which game to use. -/
+lemma Game.nonempty_universe (Γ : Game N 𝒜) (i : N) : Nonempty (𝒜 i) :=
+  ⟨(Γ.nonempty i).choose⟩
+
 /-- A **game isomorphism** `Φ : Γ → Γ'` (§2, `dd:iso`): per-player bijections
 `Aᵢ → A'ᵢ` (recorded on the whole universe, constrained on `Aᵢ`) and strictly positive
 affine constants with `uᵢ(a) = λᵢ · u'ᵢ(Φ(a)) + cᵢ` on the profiles of `Γ`. -/
@@ -109,6 +116,19 @@ def refl (Γ : Game N 𝒜) : GameIso Γ Γ where
 
 @[simp] lemma refl_map (Γ : Game N 𝒜) (a : ∀ i, 𝒜 i) : (refl Γ).map a = a := rfl
 
+/-- Two games *equal in the paper's sense* (`Game.EqOn`) are isomorphic by the identity:
+same action sets, and the same payoffs where they matter. -/
+def ofEqOn {Γ Γ' : Game N 𝒜} (h : Γ.EqOn Γ') : GameIso Γ Γ' where
+  toFun _ := id
+  bijOn i := by rw [show Γ.S i = Γ'.S i from congrFun h.1 i]; exact bijOn_id _
+  scale _ := 1
+  scale_pos _ := one_pos
+  shift _ := 0
+  affine a ha i := by simpa using h.2 a ha i
+
+@[simp] lemma ofEqOn_map {Γ Γ' : Game N 𝒜} (h : Γ.EqOn Γ') (a : ∀ i, 𝒜 i) :
+    (ofEqOn h).map a = a := rfl
+
 /-- Composition: first `φ`, then `ψ`. -/
 def trans (φ : GameIso Γ Γ') (ψ : GameIso Γ' Γ'') : GameIso Γ Γ'' where
   toFun i := ψ.toFun i ∘ φ.toFun i
@@ -126,36 +146,38 @@ def trans (φ : GameIso Γ Γ') (ψ : GameIso Γ' Γ'') : GameIso Γ Γ'' where
 
 section inv
 
-variable [∀ i, Nonempty (𝒜 i)]
-
 /-- The inverse isomorphism, with `Φᵢ⁻¹` chosen on `A'ᵢ` by `invFunOn` and the constants
-`1/λᵢ`, `−cᵢ/λᵢ`. -/
-noncomputable def symm (φ : GameIso Γ Γ') : GameIso Γ' Γ where
-  toFun i := Function.invFunOn (φ.toFun i) (Γ.S i)
-  bijOn i := (bijOn_comm (φ.bijOn i).invOn_invFunOn.symm).1 (φ.bijOn i)
-  scale i := (φ.scale i)⁻¹
-  scale_pos i := inv_pos.2 (φ.scale_pos i)
-  shift i := -(φ.shift i / φ.scale i)
-  affine b hb i := by
-    have hmem : (fun j => Function.invFunOn (φ.toFun j) (Γ.S j) (b j)) ∈ Γ.profiles := fun j =>
-      (φ.bijOn j).surjOn.mapsTo_invFunOn (hb j)
-    have hmap : (fun j => φ.toFun j (Function.invFunOn (φ.toFun j) (Γ.S j) (b j))) = b := by
-      funext j
-      exact (φ.bijOn j).invOn_invFunOn.2 (hb j)
-    have h := φ.affine _ hmem i
-    rw [hmap] at h
-    have hpos := φ.scale_pos i
-    rw [h]
-    field_simp
-    ring
+`1/λᵢ`, `−cᵢ/λᵢ`.  The pointwise nonemptiness `Function.invFunOn` needs is taken from
+`Γ` itself (`Game.nonempty_universe`) rather than demanded of the caller. -/
+noncomputable def symm (φ : GameIso Γ Γ') : GameIso Γ' Γ :=
+  haveI : ∀ i, Nonempty (𝒜 i) := Γ.nonempty_universe
+  { toFun := fun i => Function.invFunOn (φ.toFun i) (Γ.S i)
+    bijOn := fun i => (bijOn_comm (φ.bijOn i).invOn_invFunOn.symm).1 (φ.bijOn i)
+    scale := fun i => (φ.scale i)⁻¹
+    scale_pos := fun i => inv_pos.2 (φ.scale_pos i)
+    shift := fun i => -(φ.shift i / φ.scale i)
+    affine := fun b hb i => by
+      have hmem : (fun j => Function.invFunOn (φ.toFun j) (Γ.S j) (b j)) ∈ Γ.profiles := fun j =>
+        (φ.bijOn j).surjOn.mapsTo_invFunOn (hb j)
+      have hmap : (fun j => φ.toFun j (Function.invFunOn (φ.toFun j) (Γ.S j) (b j))) = b := by
+        funext j
+        exact (φ.bijOn j).invOn_invFunOn.2 (hb j)
+      have h := φ.affine _ hmem i
+      rw [hmap] at h
+      have hpos := φ.scale_pos i
+      rw [h]
+      field_simp
+      ring }
 
 lemma symm_map_map (φ : GameIso Γ Γ') {a : ∀ i, 𝒜 i} (ha : a ∈ Γ.profiles) :
     φ.symm.map (φ.map a) = a := by
+  haveI : ∀ i, Nonempty (𝒜 i) := Γ.nonempty_universe
   funext j
   exact (φ.bijOn j).invOn_invFunOn.1 (ha j)
 
 lemma map_symm_map (φ : GameIso Γ Γ') {b : ∀ i, 𝒜 i} (hb : b ∈ Γ'.profiles) :
     φ.map (φ.symm.map b) = b := by
+  haveI : ∀ i, Nonempty (𝒜 i) := Γ.nonempty_universe
   funext j
   exact (φ.bijOn j).invOn_invFunOn.2 (hb j)
 
@@ -221,6 +243,27 @@ lemma payoff_eq_of_self (θ : GameIso Γ Γ) {a : ∀ i, 𝒜 i} (ha : a ∈ Γ.
     rw [hl1, hc0] at h1
     linarith
 
+/-- **Any** isomorphism between two games that are equal in the paper's sense
+(`Game.EqOn`) preserves payoffs: it is an automorphism of `Γ` once the target's action
+sets and payoffs are identified with `Γ`'s, so `payoff_eq_of_self` applies.  This is what
+makes Assumption 2 forbid a strict SPI between two presentations of one paper game
+(`Play.SatisfiesA2.not_isStrictSPI_of_eqOn`, R1-F01). -/
+lemma payoff_eq_of_eqOn (h : Γ.EqOn Γ') (φ : GameIso Γ Γ') {a : ∀ i, 𝒜 i}
+    (ha : a ∈ Γ.profiles) (i : N) : Γ.u (φ.map a) i = Γ.u a i := by
+  have hprof : Γ'.profiles = Γ.profiles := by ext b; simp [Game.profiles, h.1]
+  let θ : GameIso Γ Γ :=
+    { toFun := φ.toFun
+      bijOn := fun j => by
+        nth_rewrite 2 [show Γ.S j = Γ'.S j from congrFun h.1 j]; exact φ.bijOn j
+      scale := φ.scale
+      scale_pos := φ.scale_pos
+      shift := φ.shift
+      affine := fun b hb j => by
+        have hb' := φ.affine b hb j
+        rwa [show Γ'.u (fun k => φ.toFun k (b k)) j = Γ.u (fun k => φ.toFun k (b k)) j from
+          (h.2 (φ.map b) (hprof ▸ φ.map_mem hb) j).symm] at hb' }
+  exact θ.payoff_eq_of_self ha i
+
 end auto
 
 /-! ### Pareto-improving isomorphisms and Lemma 4 -/
@@ -237,7 +280,7 @@ def StrictlyParetoImproving (φ : GameIso Γ Γ') : Prop :=
 
 section lemma4
 
-variable [Fintype N] [DecidableEq N] [∀ i, Nonempty (𝒜 i)]
+variable [Fintype N] [DecidableEq N]
 
 /-- **Lemma 4**: if `Φ` and `Ψ` are isomorphisms between `Γ` and `Γ'` and `Φ` is
 Pareto-improving, so is `Ψ`.  (The lemma needs `Γ'` to be a subset game of `Γ` for

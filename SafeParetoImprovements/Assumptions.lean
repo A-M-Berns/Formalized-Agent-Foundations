@@ -84,11 +84,12 @@ lemma SatisfiesA1.play_erase [∀ i, DecidableEq (𝒜 i)] (hA1 : X.SatisfiesA1 
   (hA1 Γ i ã h).mono fun _ hω => hω.2.2
 
 /-- The **lax use of Assumption 2** (the paragraph after Lemma 4): if `Γ` and `Γ'` are
-fully reduced, `Γ'` is a subset game of `Γ`, and *some* isomorphism `Γ → Γ'` is
-Pareto-improving, then under Assumption 2 there is a Pareto-improving isomorphism `Ψ`
-with `Γ ∼_Ψ Γ'`, i.e. a Pareto-improving outcome correspondence in the sense of
-Definition 4. -/
-lemma exists_paretoImproving_corresponds_of_assumption2 [Fintype N] [∀ i, Nonempty (𝒜 i)]
+fully reduced and *some* isomorphism `Γ → Γ'` is Pareto-improving, then under Assumption 2
+there is a Pareto-improving isomorphism `Ψ` with `Γ ∼_Ψ Γ'`, i.e. a Pareto-improving
+outcome correspondence in the sense of Definition 4.  No subset-game hypothesis is taken
+or needed: the paper's uses (§4.4.2, Proposition 6) have the isomorphism between two full
+reductions, neither of which is a subset game of the other. -/
+lemma exists_paretoImproving_corresponds_of_assumption2 [Fintype N]
     (hA2 : X.SatisfiesA2 L) {Γ Γ' : Game N 𝒜} (hΓ : Γ.Reduced) (hΓ' : Γ'.Reduced)
     (φ : GameIso Γ Γ') (hφ : φ.ParetoImproving) :
     ∃ ψ : GameIso Γ Γ', ψ.ParetoImproving ∧ X.Corresponds L Γ Γ' ψ.rel := by
@@ -101,20 +102,32 @@ Pareto-improving outcome correspondence (Definition 4). -/
 lemma paretoImprovingCorrespondence_of_iso {Γ Γ' : Game N 𝒜} (ψ : GameIso Γ Γ')
     (hψ : ψ.ParetoImproving) (hc : X.Corresponds L Γ Γ' ψ.rel) :
     X.ParetoImprovingCorrespondence L Γ Γ' ψ.rel :=
-  ⟨hc, fun a _ b _ hab => by
-    obtain ⟨ha, rfl⟩ := (ψ.mem_rel a b).1 hab
-    exact hψ a ha⟩
+  { corresponds := hc
+    improving := fun a _ b _ hab => by
+      obtain ⟨ha, rfl⟩ := (ψ.mem_rel a b).1 hab
+      exact hψ a ha
+    typed := fun p hp => ⟨hp.1, hp.2 ▸ ψ.map_mem hp.1⟩ }
 
-/-- **Under Assumption 2**, a fully reduced subset game isomorphic to a fully reduced
-game by a Pareto-improving isomorphism is an SPI on it (Assumption 2 + Lemma 4 +
-Theorem 3). -/
-lemma isSPI_of_assumption2 [Fintype N] [∀ i, Nonempty (𝒜 i)] (hA2 : X.SatisfiesA2 L)
-    {Γ Γ' : Game N 𝒜} (hsub : Γ'.IsSubsetGameOf Γ) (hΓ : Γ.Reduced) (hΓ' : Γ'.Reduced)
-    (φ : GameIso Γ Γ') (hφ : φ.ParetoImproving) : X.IsSPI L Γ Γ' := by
-  obtain ⟨ψ, hψ, hc⟩ := exists_paretoImproving_corresponds_of_assumption2 hA2 hΓ hΓ' φ hφ
-  exact (X.isSPI_iff_exists_paretoImprovingCorrespondence L hsub).2
-    ⟨ψ.rel, fun p hp => ⟨hp.1, hp.2 ▸ ψ.map_mem hp.1⟩,
-      paretoImprovingCorrespondence_of_iso ψ hψ hc⟩
+/-- **Assumption 2 forbids a strict SPI between two presentations of the same game**
+(R1-F01).  `Play` is deliberately a larger class than the paper's `Π`: the paper's payoff
+function is defined only on `A`, so `Π` cannot depend on off-domain payoff values, whereas
+a `Play` family may distinguish two games that are equal in the paper's sense
+(`Game.EqOn`).  Every paper node here quantifies universally over the play family, so the
+larger class only *strengthens* those statements; and the phenomenon the extra freedom
+allows -- one presentation being a strict SPI on another -- is ruled out for any family
+satisfying Assumption 2, because every isomorphism between `EqOn`-equal games preserves
+payoffs (`GameIso.payoff_eq_of_eqOn`).  The book witness is `EqOn`-invariant in exactly
+this sense: it plays two `EqOn`-equal games through the same page, so no `EqOn`-difference
+is visible in payoff terms. -/
+lemma SatisfiesA2.not_isStrictSPI_of_eqOn [Fintype N] [L.NeBot] (hA2 : X.SatisfiesA2 L)
+    {Γ Γ' : Game N 𝒜} (h : Γ.EqOn Γ') (hΓ : Γ.Reduced) (hΓ' : Γ'.Reduced) :
+    ¬ X.IsStrictSPI L Γ Γ' := by
+  rintro ⟨-, i, hstrict⟩
+  obtain ⟨φ, hc⟩ := hA2 Γ Γ' hΓ hΓ' ⟨GameIso.ofEqOn h⟩
+  obtain ⟨ω, hlt, hω⟩ := (hstrict.and_eventually hc).exists
+  obtain ⟨hmem, hmap⟩ := (φ.mem_rel _ _).1 hω
+  rw [hmap, GameIso.payoff_eq_of_eqOn h φ hmem i] at hlt
+  exact lt_irrefl _ hlt
 
 end Play
 

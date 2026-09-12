@@ -286,8 +286,13 @@ codex F3.) Semantics is deliberately **not** "`Deriv Γ₀ Γ Γ' Φ → Γ ∼_
 A2": Assumption 2 supplies *some* isomorphism, not the recorded `φ`, so that statement
 is false. What is true, and is what Definition 5 and Theorem 9 actually use, is:
 
-- **Normalization** (Lemma 21, via Lemmas 19–20): every derivation has an equivalent one
-  of shape `elim* ; iso ; unelim*` with the same composite relation.
+- **Normalization** (Lemma 21, via Lemmas 19–20): every derivation relates each outcome of
+  the full reduction along some isomorphism of full reductions, and that isomorphism is
+  realized by a derivation of shape `elim* ; iso ; unelim*`. (The normal form's composite is
+  the graph of the isomorphism on the reduced outcomes — *contained in* the original
+  composite restricted there, not equal to it: a `refl` derivation from a non-reduced game
+  has the partial identity on all outcomes as its composite. Corrected after the round-1
+  codex adjudication, R1-F40.)
 - **SPI soundness** (Lemma 22 + Lemma 4 + Theorem 3): if some derivation from `Γ₀` to
   `Γˢ` has a Pareto-improving composite, then for every `Π` satisfying A1 + A2 there is
   *some* Pareto-improving correspondence `Γ₀ ∼_Ψ Γˢ`, hence `Γˢ` is an SPI on `Γ₀`. The

@@ -50,7 +50,7 @@ def prisonersDilemma : Game Two PDUniverse where
 
 namespace prisonersDilemma
 
-@[simp] lemma S_eq (i : Two) : prisonersDilemma.S i = Finset.univ := rfl
+lemma S_eq (i : Two) : prisonersDilemma.S i = Finset.univ := rfl
 
 lemma mem_profiles (a : ∀ i, PDUniverse i) : a ∈ prisonersDilemma.profiles := fun _ =>
   Finset.mem_univ _
@@ -58,7 +58,7 @@ lemma mem_profiles (a : ∀ i, PDUniverse i) : a ∈ prisonersDilemma.profiles :
 /-- `Defect` strictly dominates `Cooperate` for player one. -/
 lemma dominated_one : prisonersDilemma.IsStrictlyDominated .one .cooperate := by
   refine ⟨.defect, (prisonersDilemma.strictlyDominates_iff _ _ _).2
-    ⟨by simp, by simp, fun b _ => ?_⟩⟩
+    ⟨by simp [S_eq], by simp [S_eq], fun b _ => ?_⟩⟩
   cases h : b .two <;>
     norm_num [prisonersDilemma, pdPayoff, h, Function.update_of_ne (show Two.two ≠ Two.one by decide)]
 

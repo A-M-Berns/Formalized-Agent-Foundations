@@ -94,11 +94,21 @@ ruled on but not yet carried by any declaration.
   page for the reduced game's isomorphism class, and translate back through a chosen
   isomorphism.  The page distribution is a parameter, so the same construction serves
   Proposition 16 and the strictness clause of Proposition 6.
-* `dd:derivation` — *planned*.  Definition 5's "(strict) (unilateral) SPI decision problem"
-  is a syntactic derivation system — single applications of Assumption 1, Assumption 1 in
-  reverse via Lemma 2.2, and Assumption 2 with the chosen isomorphism recorded — whose
-  semantics is SPI soundness through Lemma 4 and Theorem 3, not "the composite
-  correspondence holds" (which is false).  Ruled "try it, tentatively".
+* `dd:derivation` — *realized* (`Derivation.lean`).  Definition 5's "(strict) (unilateral)
+  SPI decision problem" is a syntactic derivation system — single applications of
+  Assumption 1, Assumption 1 in reverse via Lemma 2.2, and Assumption 2 with the chosen
+  isomorphism recorded — whose semantics is SPI soundness through Lemma 4 and Theorem 3
+  (`Play.isSPI_of_deriv` and the strict/unilateral variants), not "the composite
+  correspondence holds" (which is false).  Lemmas 21–22 are carried qualitatively
+  (`Deriv.exists_normalForm`, `exists_paretoImproving_normalForm`); the printed length bound
+  `m ≤ k` is not rendered and is false as printed (erratum D14).
+* `dd:nontrivial` — *realized* (`Derivation.lean`).  Definition 5's non-triviality clause is
+  read as "the full reductions have different action sets" (`Γs.reduce.S ≠ Γ.reduce.S`),
+  the reading Appendix D's hardness proof uses; the printed clause ("not equal") is
+  satisfied by any payoff shift of a subset game and so is constant-true (erratum D13,
+  harness round 1).  The printed predicates are carried alongside as `…Printed` with the
+  theorems that they are constant-true, and the repaired one has a "no" instance
+  (`not_spiDecision_of_card_le_one`).  Ruled 2026-09-12.
 * `dd:program-game` — *planned*.  Theorem 1's program game is an abstract interface plus a
   concrete minimal language closed under the three instructions Algorithm 2 needs, with
   private per-player seeds for the punishers' randomization and classical code equality
@@ -127,6 +137,7 @@ ruled on but not yet carried by any declaration.
 | `SafeParetoImprovements/Examples/DemandGame.lean` | Tables 1–2 and **Proposition 6**, both clauses (`Examples.demandGame_isSPI`, `Examples.demandGame_isStrictSPI`) |
 | `SafeParetoImprovements/Examples/Temptation.lean` | Table 6 and **Proposition 7** (`Examples.temptation_isStrictSPI`) |
 | `SafeParetoImprovements/Examples/ComplicatedTemptation.lean` | Tables 4–5 and **Proposition 8** (`Examples.complicatedTemptation_isUnilateralSPI`) |
+| `SafeParetoImprovements/Examples/Witnesses.lean` | non-vacuity witnesses: a play family over `Unit` at which each of Propositions 5–8 has all its hypotheses satisfied (the strict clause of 6 through `Book.prescribed`), and the `Representatives` inhabitant `Examples.unitRepresentatives` |
 -/
 import SafeParetoImprovements.Game
 import SafeParetoImprovements.Play
@@ -143,3 +154,4 @@ import SafeParetoImprovements.Examples.PrisonersDilemma
 import SafeParetoImprovements.Examples.DemandGame
 import SafeParetoImprovements.Examples.Temptation
 import SafeParetoImprovements.Examples.ComplicatedTemptation
+import SafeParetoImprovements.Examples.Witnesses

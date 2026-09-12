@@ -103,8 +103,12 @@ lemma IsSubsetGameOf.trans {Γ Γ' Γ'' : Game N 𝒜} (h : Γ.IsSubsetGameOf Γ
 lemma IsSubsetGameOf.profiles_subset {Γ' Γ : Game N 𝒜} (h : Γ'.IsSubsetGameOf Γ) :
     Γ'.profiles ⊆ Γ.profiles := fun _ ha i => h i (ha i)
 
-/-- The subset game of `Γ` with action sets `T` and the *same* payoff function, written
-`(T, u|_T)` in the paper.  This is the form Assumption 1 produces. -/
+/-- The game with action sets `T` and the *same* payoff function as `Γ`, written
+`(T, u|_T)` in the paper.  This is the form Assumption 1 produces.
+
+The constructor itself permits an arbitrary nonempty `T`: it is a **subset game** of `Γ`
+only when `T i ⊆ Γ.S i` for every player, which is the hypothesis of
+`restrict_isSubsetGameOf` and is not part of the definition. -/
 def restrict (T : ∀ i, Finset (𝒜 i)) (hT : ∀ i, (T i).Nonempty) : Game N 𝒜 :=
   { S := T, nonempty := hT, u := Γ.u }
 

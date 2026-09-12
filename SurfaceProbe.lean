@@ -23,6 +23,7 @@ import LogicalInduction.Properties
 import LogicalInduction.Construction
 import CartesianFrames.Examples
 import FiniteFactoredSets
+import SafeParetoImprovements
 
 open Lean Elab Command Meta in
 /-- Structures appearing in the types of `ids`, closed transitively through the field
@@ -45,7 +46,8 @@ elab "#surface_types " ids:ident+ : command => do
         for c in info.type.getUsedConstants do
           if Lean.isStructure env0 c && !hits.contains c then
             hits := hits.insert c; frontier := c :: frontier
-  let libs : List Name := [`LogicalInduction, `CartesianFrames, `FiniteFactoredSets]
+  let libs : List Name :=
+    [`LogicalInduction, `CartesianFrames, `FiniteFactoredSets, `SafeParetoImprovements]
   let out := (hits.toList.filterMap fun h =>
     if libs.any (·.isPrefixOf h) then some h.toString else none).toArray.qsort (· < ·)
   logInfo m!"STRUCTS-IN-ENDPOINT-TYPES:\n{String.intercalate "\n" out.toList}"

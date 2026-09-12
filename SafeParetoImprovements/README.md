@@ -53,9 +53,9 @@ proved — there is no `sorry` in `SafeParetoImprovements/`:
 | Assumption 1, Assumption 2 | `Play.SatisfiesA1`, `Play.SatisfiesA2` | `Assumptions.lean` |
 | Lemma 4 (weak and strict forms) | `GameIso.paretoImproving_of_paretoImproving`, `GameIso.strictlyParetoImproving_of_strictlyParetoImproving` | `Isomorphism.lean` |
 | Lemma 19 (path independence, local form) | `Game.isStrictlyDominated_erase` | `Reduction.lean` |
-| Definition 5 (SPI decision problem, strict and unilateral variants) as a derivation system | `Game.Step`, `Game.Deriv`, `Game.SPIDecision`, `Game.StrictSPIDecision`, `Game.UnilateralSPIDecision` | `Derivation.lean` |
-| Lemma 21 (structure of derivations; normal form) | `Game.Deriv.exists_iso`, `Game.Deriv.normal` | `Derivation.lean` |
-| Lemma 22 (certificate form: Pareto-improving derivation ⟺ Pareto-improving isomorphism of the full reductions) | `Game.exists_paretoImproving_deriv_iff` | `Derivation.lean` |
+| Definition 5 (SPI decision problem, strict and unilateral variants) as a derivation system | `Game.Step`, `Game.Deriv`; repaired non-triviality (`dd:nontrivial`, erratum D13): `Game.SPIDecision`, `Game.StrictSPIDecision`, `Game.UnilateralSPIDecision`; printed, constant-true: `Game.SPIDecisionPrinted`, `…StrictSPIDecisionPrinted`, `…UnilateralSPIDecisionPrinted` | `Derivation.lean` |
+| Lemma 21 (normal form of derivations: eliminations, one isomorphism, reverse eliminations; the printed length bound is not rendered, erratum D14) | `Game.Deriv.exists_normalForm` | `Derivation.lean` |
+| Lemma 22 (symmetry-free Pareto-improving chain to the reduction of the SPI candidate) | `Game.exists_paretoImproving_normalForm` | `Derivation.lean` |
 | Proposition 5 (Prisoner's Dilemma, Table 3) | `Examples.prisonersDilemma_isStrictSPI` | `Examples/PrisonersDilemma.lean` |
 | Proposition 6 (Demand Game, Tables 1–2), both clauses | `Examples.demandGame_isSPI`, `Examples.demandGame_isStrictSPI` | `Examples/DemandGame.lean` |
 | Proposition 7 (Temptation Game, Table 6) | `Examples.temptation_isStrictSPI` | `Examples/Temptation.lean` |
@@ -73,10 +73,9 @@ and the **book representatives** of §4.4.3, proving that Assumptions 1 and 2 ar
 satisfiable with the page distribution as a parameter (`Book.lean`, `dd:book`).
 
 **Not yet formalized:** Theorem 1 and Proposition 18 (tranche E, `dd:program-game`);
-Definition 5, Theorem 9, Proposition 10 and the
-Appendix D chain Lemmas 20–22, Propositions 23–26, Definition 8, Lemma 28 (tranche C,
-`dd:derivation`); all of §5 (tranche D).  Theorem 17 and Lemma 27 are cited external
-results and are not carried.
+Theorem 9, Proposition 10 and the rest of the Appendix D chain (Propositions 23–26,
+Definition 8, Lemma 28 — Lemma 20's content is `Game.elim_diamond`); all of §5 (tranche D).
+Theorem 17 and Lemma 27 are cited external results and are not carried.
 
 **Consumer readiness.**  There is no `SafeParetoImprovements/API.lean` and no
 `APITests/SafeParetoImprovements.lean` yet; both are mandatory before the registry status

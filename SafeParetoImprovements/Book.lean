@@ -1,6 +1,7 @@
 import SafeParetoImprovements.Assumptions
 import SafeParetoImprovements.Reduction
 import SafeParetoImprovements.Representatives
+import Mathlib.MeasureTheory.Measure.Dirac
 
 /-!
 # Consistency of Assumptions 1 and 2: the book representatives (§4.4.3)
@@ -34,8 +35,11 @@ certainty".
 **The pages are a parameter.**  The construction takes any page family; the
 deterministic book (`Book.const`) proves joint satisfiability outright, and books with
 prescribed page distributions are what Proposition 16 and the strictness clause of
-Proposition 6 need.  `Book.toRepresentatives` packages a book with a probability
-measure whose page fibers are measurable into a `Representatives` model.
+Proposition 6 need — `Book.prescribed` is one, pinning the page of a single class to a
+chosen outcome (`Book.prescribed_play`).  `Book.toRepresentatives` packages a book with a
+probability measure whose page fibers are measurable into a `Representatives` model, and
+`exists_representatives_satisfiesA1_satisfiesA2` states §4.4.3's consistency claim at that
+level rather than only for a bare play family.
 
 The representative of a class need not itself be reduced; nothing here needs it.
 -/
@@ -59,19 +63,17 @@ lemma Game.Isomorphic.trans {Γ Γ' Γ'' : Game N 𝒜} (h : Γ.Isomorphic Γ') 
 
 section classes
 
-variable [∀ i, Nonempty (𝒜 i)]
-
 lemma Game.Isomorphic.symm {Γ Γ' : Game N 𝒜} (h : Γ.Isomorphic Γ') : Γ'.Isomorphic Γ :=
   ⟨h.some.symm⟩
 
 /-- Isomorphism of games is an equivalence relation (given `dd:iso`'s bijective,
 positive-affine reading; with `λᵢ = 0` allowed it would not be symmetric). -/
-def isoSetoid (N : Type u) (𝒜 : N → Type v) [∀ i, Nonempty (𝒜 i)] : Setoid (Game N 𝒜) where
+def isoSetoid (N : Type u) (𝒜 : N → Type v) : Setoid (Game N 𝒜) where
   r := Game.Isomorphic
   iseqv := ⟨Game.Isomorphic.refl, Game.Isomorphic.symm, Game.Isomorphic.trans⟩
 
 /-- The isomorphism classes of games over the universe: the pages of the book. -/
-abbrev IsoClass (N : Type u) (𝒜 : N → Type v) [∀ i, Nonempty (𝒜 i)] :=
+abbrev IsoClass (N : Type u) (𝒜 : N → Type v) :=
   Quotient (isoSetoid N 𝒜)
 
 /-- The class of a game. -/
@@ -97,11 +99,11 @@ end classes
 
 /-! ### The book and its play -/
 
-variable [Fintype N] [DecidableEq N] [∀ i, DecidableEq (𝒜 i)] [∀ i, Nonempty (𝒜 i)]
+variable [Fintype N] [DecidableEq N] [∀ i, DecidableEq (𝒜 i)]
 
 /-- A **book** (§4.4.3): for each isomorphism class, a random outcome of the class's
 representative game — the page the representatives consult. -/
-structure Book (N : Type u) (𝒜 : N → Type v) [∀ i, Nonempty (𝒜 i)] (Ω : Type w) where
+structure Book (N : Type u) (𝒜 : N → Type v) (Ω : Type w) where
   /-- The page for a class, at a sample point. -/
   page : IsoClass N 𝒜 → Ω → (∀ i, 𝒜 i)
   /-- The page is an outcome of the representative. -/
@@ -174,6 +176,31 @@ noncomputable def const (Ω : Type w) : Book N 𝒜 Ω where
   page q _ := (q.rep.profiles_nonempty).choose
   page_mem q _ := (q.rep.profiles_nonempty).choose_spec
 
+/-- The **prescribed book** for one target class: the page of the class of the reduced
+game `T` is a chosen outcome `a` of `T`, translated onto the class representative; every
+other class gets an arbitrary outcome.  This is the "book with a prescribed page
+distribution" that Proposition 16 and the strictness clause of Proposition 6 need
+(R1-F15). -/
+noncomputable def prescribed (T : Game N 𝒜) {a : ∀ i, 𝒜 i} (ha : a ∈ T.profiles)
+    (Ω : Type w) : Book N 𝒜 Ω where
+  page q _ := open Classical in
+    if h : T.cls = q then (T.chosenIso q h).map a else (q.rep.profiles_nonempty).choose
+  page_mem q _ := by
+    classical
+    by_cases h : T.cls = q
+    · rw [dif_pos h]; exact (T.chosenIso q h).map_mem ha
+    · rw [dif_neg h]; exact (q.rep.profiles_nonempty).choose_spec
+
+/-- The prescribed book plays `a` in every game whose full reduction is `T`. -/
+lemma prescribed_play (T : Game N 𝒜) {a : ∀ i, 𝒜 i} (ha : a ∈ T.profiles) (Ω : Type w)
+    (Γ : Game N 𝒜) (hΓ : Γ.reduce = T) (ω : Ω) :
+    (prescribed T ha Ω).toPlay.play Γ ω = a := by
+  classical
+  rw [toPlay_play, hΓ, playReduced, prescribed]
+  dsimp only
+  rw [dif_pos rfl]
+  exact GameIso.symm_map_map _ ha
+
 /-! ### Books as probabilistic representatives -/
 
 section representatives
@@ -221,5 +248,17 @@ certainty filter.  The witness is the deterministic book. -/
 lemma exists_play_satisfiesA1_satisfiesA2 (Ω : Type w) :
     ∃ X : Play N 𝒜 Ω, ∀ L : Filter Ω, X.SatisfiesA1 L ∧ X.SatisfiesA2 L :=
   ⟨(Book.const Ω).toPlay, fun L => ⟨(Book.const Ω).satisfiesA1 L, (Book.const Ω).satisfiesA2 L⟩⟩
+
+/-- **Assumptions 1 and 2 are jointly satisfiable by *representatives*** — a probability
+space with measurable outcome fibers, which is what §3 models the representatives as — and
+not merely by a bare play family (R1-F14).  The witness is the deterministic book on a
+one-point probability space; its pages are constant, hence its fibers measurable, and the
+assumptions hold at every sample point and so at the model's own certainty filter. -/
+lemma exists_representatives_satisfiesA1_satisfiesA2 :
+    ∃ R : Representatives.{u, v, 0} N 𝒜,
+      R.toPlay.SatisfiesA1 R.certainty ∧ R.toPlay.SatisfiesA2 R.certainty :=
+  ⟨(Book.const Unit).toRepresentatives (μ := MeasureTheory.Measure.dirac ())
+      (fun _ _ => trivial),
+    (Book.const Unit).satisfiesA1 _, (Book.const Unit).satisfiesA2 _⟩
 
 end SafeParetoImprovements

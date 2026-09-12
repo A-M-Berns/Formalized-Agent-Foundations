@@ -205,10 +205,11 @@ PAPERS = {
         "doi": "10.1007/s10458-022-09574-6",
         "url": "https://doi.org/10.1007/s10458-022-09574-6",
         "library": "SafeParetoImprovements",
-        # Milestone M0: the §3–§4.4 spine (Definitions 1–4, Lemma 2, Theorem 3, Lemma 4,
-        # Assumptions 1–2) and Lemma 19 are stated and proved at the certainty-filter
-        # level, with the probability-one realization in `Representatives.lean`.  No
-        # consumer API yet.  See `SafeParetoImprovements/README.md`.
+        # Milestone M0: Definitions 1–5, Lemma 2, Theorem 3, Lemma 4, Assumptions 1–2,
+        # the joint-satisfiability theorem for the assumptions, Lemma 19 with path
+        # independence, Lemmas 21–22 (derivation system), and Propositions 5–8, at the
+        # certainty-filter level with the probability-one realization in
+        # `Representatives.lean`.  No consumer API yet.  See `SafeParetoImprovements/README.md`.
         "status": "in-progress",
         "source": "SafeParetoImprovements/notes/oesterheld-conitzer-2022-spi.txt",
         "pdf": "SafeParetoImprovements/notes/oesterheld-conitzer-2022-spi.pdf",
