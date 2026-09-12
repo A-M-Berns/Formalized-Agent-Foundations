@@ -638,7 +638,23 @@ C and E and the split "Theorem 17" header must be deduplicated by the parser).
    with *infinite* room (`CAct ⊕ ℕ`, off-profile payoffs `0` per `dd:total-utility`), so the
    token-game class is the paper's up to relabelling (R4-F02), and add positive witnesses
    (a `HasRoom` game, a strict perfect-coordination SPI) so Definition 6 is two-sided
-   (R4-F05). Awaiting the ruling; `Chicken.lean` stays as committed until then.
+   (R4-F05).
+   **Ruled 2026-09-12 (Anson), after the investigation
+   `.harness/adjudication/token-games-investigation.md`:**
+   - RULING 13: §5 examples live over universes with infinite room (`X ⊕ ℕ`, game actions
+     in `inl`, off-profile payoffs `0`); `TokenGame` keeps the printed `fresh` field;
+     impossibility results are additionally carried label-free (as facts about
+     `C(Γ)`-valued random variables). RULING 13b: `Game.HasRoom` is repaired to
+     `Game.HasRoomOutside Γ B` (tokens of `Γ.reduce` must be fresh for `Γ`).
+   - RULING 10: Definition 7, Proposition 12, Lemma 13 and Corollary 14 are stated **per
+     play family** (`∀ Π satisfying the assumptions, ∃ token game …`), the token game
+     built after Assumption 2's isomorphism is known (`uᵉ` defined along it, erratum D6);
+     Proposition 16 stays existential in `Π` (the universal reading is false for Table 7).
+   - RULING 11: Assumption 1 is hypothesized **alongside** Assumption 2 at those nodes
+     (disclosed addition).
+   - RULING 12: Corollary 14 is carried with the explicit weighted Minkowski-sum formula
+     **and the polytope clause is to be attempted** (finitely many vertices), not
+     qualified away.
 
 ## 9. Codex review, 2026-09-04
 
