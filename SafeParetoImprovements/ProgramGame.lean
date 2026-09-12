@@ -11,7 +11,8 @@ The paper's Appendix A analyses the meta-game of delegation as a *program game*
 (Tennenholtz 2004): each player submits a program, the programs are run against each
 other, and a *program equilibrium* is a Nash equilibrium of the induced game.  This file
 carries the abstract interface, in the repo's implementation-independence style: the
-concrete instruction language and the realization theorem live in `Instruction.lean`.
+concrete instruction language and its realization as a `ProgramGame` live in
+`Instruction.lean`.
 
 ## The model
 
@@ -78,12 +79,6 @@ lemma pureMixed_val {i : N} (a : 𝒜 i) (ha : a ∈ Γ.S i) (b : Γ.S i) :
 
 end pure
 
-/-- Mixed strategies are probability vectors: every coordinate lies in `[0, 1]`. -/
-lemma mixed_val_mem_Icc {i : N} (p : Γ.Mixed i) (b : Γ.S i) : p.val b ∈ Icc (0 : ℝ) 1 := by
-  refine ⟨p.2.1 b, ?_⟩
-  rw [← p.2.2]
-  exact Finset.single_le_sum (fun c _ => p.2.1 c) (Finset.mem_univ b)
-
 variable [DecidableEq N] [Fintype N]
 
 /-- `uᵢ(σ)` for a profile of independent mixed strategies: EconCSLib's expected payoff on
@@ -118,9 +113,11 @@ lemma abs_expected_le (σ : ∀ i, Γ.Mixed i) (i : N) :
   rw [expected_eq]
   refine (Finset.abs_sum_le_sum_abs _ _).trans (Finset.sum_le_sum fun s _ => ?_)
   rw [abs_mul]
-  have h0 : 0 ≤ ∏ j, (σ j).val (s j) := Finset.prod_nonneg fun j _ => (Γ.mixed_val_mem_Icc _ _).1
+  have h0 : 0 ≤ ∏ j, (σ j).val (s j) :=
+    Finset.prod_nonneg fun j _ => (mem_Icc_of_mem_stdSimplex (σ j).2 (s j)).1
   have h1 : ∏ j, (σ j).val (s j) ≤ 1 :=
-    Finset.prod_le_one (fun j _ => (Γ.mixed_val_mem_Icc _ _).1) (fun j _ => (Γ.mixed_val_mem_Icc _ _).2)
+    Finset.prod_le_one (fun j _ => (mem_Icc_of_mem_stdSimplex (σ j).2 (s j)).1)
+      (fun j _ => (mem_Icc_of_mem_stdSimplex (σ j).2 (s j)).2)
   rw [abs_of_nonneg h0]
   exact mul_le_of_le_one_left (abs_nonneg _) h1
 
@@ -198,7 +195,7 @@ lemma expected_update_pure_le [∀ i, DecidableEq (𝒜 i)] {a : ∀ i, 𝒜 i} 
       ≤ ∑ s : Γ.toStrategic.Profile, (∏ j, (σ j).val (s j)) * Γ.u a i := by
         refine Finset.sum_le_sum fun s _ => ?_
         have h0 : 0 ≤ ∏ j, (σ j).val (s j) :=
-          Finset.prod_nonneg fun j _ => (Γ.mixed_val_mem_Icc _ _).1
+          Finset.prod_nonneg fun j _ => (mem_Icc_of_mem_stdSimplex (σ j).2 (s j)).1
         rcases h0.lt_or_eq with hpos | hzero
         · refine mul_le_mul_of_nonneg_left ?_ h0
           have hs : Γ.ofStrategicProfile s = Function.update a i (s i) := by
@@ -216,8 +213,11 @@ lemma expected_update_pure_le [∀ i, DecidableEq (𝒜 i)] {a : ∀ i, 𝒜 i} 
         · rw [← hzero, zero_mul, zero_mul]
     _ = Γ.u a i := by rw [← Finset.sum_mul, sum_prod_mixed, one_mul]
 
-/-- **A pure Nash equilibrium certifies the threat-point guarantee**: if `a` is a pure
-profile in which every player best-responds, then `vᵢ ≤ uᵢ(a)` for every `i`. -/
+/-- **The threat point is metered from above by one player's best response**: if `aᵢ` is a
+best response to `a₋ᵢ` among `i`'s pure actions, then `vᵢ ≤ uᵢ(a)`.  This is a statement
+about the single player `i` under the single condition `hbr`; a pure Nash equilibrium is
+the case in which the condition holds for every player at once, and then it gives the
+bound for every player. -/
 lemma threatPoint_le_of_bestResponse [∀ i, DecidableEq (𝒜 i)] {a : ∀ i, 𝒜 i}
     (ha : a ∈ Γ.profiles) (i : N)
     (hbr : ∀ b ∈ Γ.S i, Γ.u (Function.update a i b) i ≤ Γ.u a i) :
@@ -226,6 +226,40 @@ lemma threatPoint_le_of_bestResponse [∀ i, DecidableEq (𝒜 i)] {a : ∀ i, �
   refine csSup_le ⟨_, mem_image_of_mem _ (mem_univ (Γ.pureMixed (a i) (ha i)))⟩ ?_
   rintro _ ⟨p, -, rfl⟩
   exact Γ.expected_update_pure_le ha i hbr p
+
+/-- If the pure action `a` of player `i` guarantees at least `c` against every profile,
+then it guarantees at least `c` against every mixture of the others. -/
+lemma le_expected_update_pure [∀ i, DecidableEq (𝒜 i)] {i : N} {a : 𝒜 i} (ha : a ∈ Γ.S i)
+    (τ : ∀ j, Γ.Mixed j) (c : ℝ)
+    (h : ∀ s : Γ.toStrategic.Profile, (s i : 𝒜 i) = a → c ≤ Γ.u (Γ.ofStrategicProfile s) i) :
+    c ≤ Γ.expected (Function.update τ i (Γ.pureMixed a ha)) i := by
+  set σ := Function.update τ i (Γ.pureMixed a ha) with hσ
+  rw [expected_eq]
+  have hone : (∑ s : Γ.toStrategic.Profile, (∏ j, (σ j).val (s j)) * c) = c := by
+    rw [← Finset.sum_mul, Γ.sum_prod_mixed σ, one_mul]
+  calc c = ∑ s : Γ.toStrategic.Profile, (∏ j, (σ j).val (s j)) * c := hone.symm
+    _ ≤ _ := by
+        refine Finset.sum_le_sum fun s _ => ?_
+        have h0 : 0 ≤ ∏ j, (σ j).val (s j) :=
+          Finset.prod_nonneg fun j _ => (mem_Icc_of_mem_stdSimplex (σ j).2 (s j)).1
+        rcases h0.lt_or_eq with hpos | hzero
+        · refine mul_le_mul_of_nonneg_left ?_ h0
+          have hne : (σ i).val (s i) ≠ 0 :=
+            fun hz => hpos.ne' (Finset.prod_eq_zero (Finset.mem_univ i) hz)
+          rw [hσ, Function.update_self, pureMixed_val] at hne
+          exact h s (by by_contra hc; exact hne (if_neg hc))
+        · rw [← hzero, zero_mul, zero_mul]
+
+/-- **The threat point is metered from below by a maximin guarantee**: if some pure action
+`a` of player `i` guarantees her at least `c` against every profile, then `c ≤ vᵢ`.  The
+dual of `threatPoint_le_of_bestResponse`, which meters `vᵢ` from above. -/
+lemma le_threatPoint_of_guarantee [∀ i, DecidableEq (𝒜 i)] (i : N) {a : 𝒜 i}
+    (ha : a ∈ Γ.S i) (c : ℝ)
+    (h : ∀ s : Γ.toStrategic.Profile, (s i : 𝒜 i) = a → c ≤ Γ.u (Γ.ofStrategicProfile s) i) :
+    c ≤ Γ.threatPoint i := by
+  refine le_csInf ⟨_, mem_image_of_mem _ (mem_univ (fun j => Classical.arbitrary (Γ.Mixed j)))⟩ ?_
+  rintro _ ⟨τ, -, rfl⟩
+  exact (Γ.le_expected_update_pure ha τ c h).trans (Γ.expected_le_bestValue i τ _)
 
 end Game
 
@@ -304,37 +338,6 @@ lemma Plays.exec_eq {c : ∀ i, P.Instr i} {f : R.Ω → ∀ i, 𝒜 i}
 
 end ProgramGame
 
-namespace Representatives
-
-variable (R : Representatives.{u, v, w} N 𝒜) [Fintype N]
-
-/-- `ω ↦ g(Π(Γ)(ω))` is measurable for every real function `g` of the outcome: `Π(Γ)`
-takes finitely many values, on measurable fibers. -/
-lemma measurable_comp_play (Γ : Game N 𝒜) (g : (∀ i, 𝒜 i) → ℝ) :
-    Measurable fun ω => g (R.play Γ ω) := by
-  classical
-  have : (fun ω => g (R.play Γ ω)) =
-      fun ω => ∑ a ∈ Γ.profilesFinset, Set.indicator {ω | R.play Γ ω = a} (fun _ => g a) ω := by
-    funext ω
-    rw [Finset.sum_eq_single (R.play Γ ω)]
-    · simp
-    · intro b _ hb
-      simp [Set.indicator, Ne.symm hb]
-    · intro h
-      exact absurd (Γ.mem_profilesFinset.2 (R.toPlay.mem Γ ω)) h
-  rw [this]
-  exact Finset.measurable_sum _ fun a _ => measurable_const.indicator (R.measurableSet_fiber Γ a)
-
-lemma integrable_comp_play (Γ : Game N 𝒜) (g : (∀ i, 𝒜 i) → ℝ) :
-    Integrable (fun ω => g (R.play Γ ω)) R.μ := by
-  classical
-  refine Integrable.of_bound (R.measurable_comp_play Γ g).aestronglyMeasurable
-    (∑ a ∈ Γ.profilesFinset, |g a|) (ae_of_all _ fun ω => ?_)
-  exact Finset.single_le_sum (f := fun a => |g a|) (fun a _ => abs_nonneg _)
-    (Γ.mem_profilesFinset.2 (R.toPlay.mem Γ ω))
-
-end Representatives
-
 namespace ProgramGame
 
 variable {Γ₀ : Game N 𝒜} {R : Representatives.{u, v, w} N 𝒜} (P : ProgramGame.{u, v, w, x} Γ₀ R)
@@ -353,8 +356,10 @@ lemma payoff_of_plays {c : ∀ i, P.Instr i} {f : R.Ω → ∀ i, 𝒜 i} (h : P
 be a program profile with Algorithm 2's semantics: everybody's execution is `Π(Γˢ)`
 (`hcoop`), and against any unilateral deviation `c' ≠ c i` the other players play the
 minimax profile against `i` (`hpunish`).  If `Π(Γ₀)` guarantees every player at least their
-threat point in expectation (`hthreat`), then `c` is a program equilibrium, and its
-execution is `Π(Γˢ)`.
+threat point in expectation (`hthreat`), then `c` is a program equilibrium.  (That its
+execution is `Π(Γˢ)` is the hypothesis `hcoop`, so it is not restated as a conclusion
+here; the concrete endpoint `Prog.algorithm2_isProgramEquilibrium` carries both halves of
+the paper's claim, supplying the second from `Prog.plays_algorithm2`.)
 
 The deviator's payoff is bounded *above* by `vᵢ` (erratum D8: the paper writes equality,
 which needs the deviator to best-respond), because against the minimax profile no mixture
@@ -367,9 +372,9 @@ lemma isProgramEquilibrium_of_algorithm2 {Γs : Game N 𝒜}
     (hpunish : ∀ i (c' : P.Instr i), c' ≠ c i → ∀ ω j, j ≠ i →
       P.exec (Function.update c i c') ω j = Γ₀.minimax i j)
     (hthreat : ∀ i, Γ₀.threatPoint i ≤ ∫ ω, Γ₀.u (R.play Γ₀ ω) i ∂R.μ) :
-    P.IsProgramEquilibrium c ∧ P.Plays c fun ω => R.play Γs ω := by
-  refine ⟨fun i c' => ?_, hcoop⟩
-  show P.payoff (Function.update c i c') i ≤ P.payoff c i
+    P.IsProgramEquilibrium c := by
+  rw [P.isProgramEquilibrium_iff]
+  intro i c'
   by_cases hc : c' = c i
   · rw [hc, Function.update_eq_self]
   have hmem : ∀ ω, R.play Γs ω ∈ Γ₀.profiles :=

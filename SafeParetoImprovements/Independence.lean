@@ -81,7 +81,12 @@ def ForeknowledgeIndependent (D : P.DefaultInstr) (c : ∀ i, P.Instr i) {i : N}
       P.exec (Function.update (Function.update c j (D.default j)) i
         (π.policy (π.willNotParticipate j))) ω i
 
-/-- A policy that ignores its signal is foreknowledge independent. -/
+/-- A policy that ignores its signal is foreknowledge independent.  This is the
+**degenerate** case and is worth nothing as a non-vacuity witness: both sides of
+`ForeknowledgeIndependent` are then literally the same term, so the predicate holds by
+`rfl` whatever the execution model does.  A witness with content needs a policy whose two
+signals select *different* instructions; `Examples.foreknowledgeIndependent_pd` is one
+(R3-F07/F13). -/
 lemma foreknowledgeIndependent_of_const (D : P.DefaultInstr) (c : ∀ i, P.Instr i) {i : N}
     (π : P.Policy i) (hπ : ∀ s, π.policy s = π.policy π.noInfo) :
     P.ForeknowledgeIndependent D c π := by
@@ -164,7 +169,10 @@ lemma not_participationIndependent_of_punish_play (c : N → Prog Γ₀) (i : N)
 
 /-- **Algorithm 2 is not participation independent** whenever its punishment of a
 non-participating `j` — `i`'s coordinate of the minimax profile against `j` — differs
-from the default play at some sample point. -/
+from the default play at some sample point.  The hypothesis is satisfiable: it is
+discharged in the Demand Game by `Examples.demandGame_algorithm2_not_participationIndependent`
+(R3-F12).  It genuinely fails in the Prisoner's Dilemma, where the minimax punishment and
+the default play are both `Defect`. -/
 lemma not_participationIndependent_algorithm2 (Γs : Game N 𝒜) (h : Γs.IsSubsetGameOf Γ₀)
     (i : N) {j : N} (hj : j ≠ i)
     (hσ : ∃ ω, Γ₀.minimax j i ≠ Γ₀.pureMixed (R.play Γ₀ ω i) (R.toPlay.mem Γ₀ ω i)) :

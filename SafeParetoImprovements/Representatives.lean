@@ -1,5 +1,7 @@
 import SafeParetoImprovements.Correspondence
 import Mathlib.MeasureTheory.Measure.Typeclasses.Probability
+import Mathlib.MeasureTheory.Integral.Bochner.Basic
+import Mathlib.MeasureTheory.Integral.IntegrableOn
 
 /-!
 # Representatives as a probability model, and the realization of "with certainty"
@@ -111,6 +113,40 @@ lemma support_subset_profiles (Γ : Game N 𝒜) : R.support Γ ⊆ Γ.profiles 
     rintro rfl
     exact hna (R.toPlay.mem Γ ω)
   simp [this]
+
+/-! ### Real functions of the play -/
+
+section comp
+
+variable [Fintype N]
+
+/-- `ω ↦ g(Π(Γ)(ω))` is measurable for every real function `g` of the outcome: `Π(Γ)`
+takes finitely many values, on measurable fibers. -/
+lemma measurable_comp_play (Γ : Game N 𝒜) (g : (∀ i, 𝒜 i) → ℝ) :
+    Measurable fun ω => g (R.play Γ ω) := by
+  classical
+  have : (fun ω => g (R.play Γ ω)) =
+      fun ω => ∑ a ∈ Γ.profilesFinset, Set.indicator {ω | R.play Γ ω = a} (fun _ => g a) ω := by
+    funext ω
+    rw [Finset.sum_eq_single (R.play Γ ω)]
+    · simp
+    · intro b _ hb
+      simp [Set.indicator, Ne.symm hb]
+    · intro h
+      exact absurd (Γ.mem_profilesFinset.2 (R.toPlay.mem Γ ω)) h
+  rw [this]
+  exact Finset.measurable_sum _ fun a _ => measurable_const.indicator (R.measurableSet_fiber Γ a)
+
+/-- `ω ↦ g(Π(Γ)(ω))` is integrable: it is measurable and takes finitely many values. -/
+lemma integrable_comp_play (Γ : Game N 𝒜) (g : (∀ i, 𝒜 i) → ℝ) :
+    Integrable (fun ω => g (R.play Γ ω)) R.μ := by
+  classical
+  refine Integrable.of_bound (R.measurable_comp_play Γ g).aestronglyMeasurable
+    (∑ a ∈ Γ.profilesFinset, |g a|) (ae_of_all _ fun ω => ?_)
+  exact Finset.single_le_sum (f := fun a => |g a|) (fun a _ => abs_nonneg _)
+    (Γ.mem_profilesFinset.2 (R.toPlay.mem Γ ω))
+
+end comp
 
 end Representatives
 

@@ -24,7 +24,7 @@ players' code differs, the paper's loop punishes the *first* such player in the 
 stands in.  Only unilateral deviations matter for program equilibrium, and for those the
 choice is forced.
 
-`Prog.programGame Γ₀ R` realises `Prog` as a `ProgramGame` (the realization theorem: the
+`Prog.programGame Γ₀ R` realises `Prog` as a `ProgramGame` (the realization: the
 delegation branch is measurable because `Π(Γ′)` has measurable fibers).  `Prog.algorithm2`
 is Algorithm 2 as a term, with one repair (erratum D15): the paper's line 3 says "play
 `minimax(i, j)`", which by its own definition is a strategy for *player `j`*; the punisher
@@ -131,7 +131,7 @@ lemma measurable_execAt (c : N → Prog Γ₀) (k : N) (p : Prog Γ₀) (b : Γ�
         exact ihp _
 
 variable (Γ₀) in
-/-- **The realization theorem**: `Prog` with `execAt` is a program game on `Γ₀` for the
+/-- **The realization**: `Prog` with `execAt` is a program game on `Γ₀` for the
 representatives `R`.  Every player's instruction set is `Prog Γ₀`; player `k`'s realised
 mixed action is the execution of her own code. -/
 noncomputable def programGame : ProgramGame.{u, v, w, max u v} Γ₀ R where
@@ -202,13 +202,25 @@ theorem algorithm2_isProgramEquilibrium (hSPI : R.toPlay.IsSPI R.certainty Γ₀
     (hthreat : ∀ i, Γ₀.threatPoint i ≤ ∫ ω, Γ₀.u (R.play Γ₀ ω) i ∂R.μ) :
     (programGame Γ₀ R).IsProgramEquilibrium (fun _ => algorithm2 Γs h) ∧
       (programGame Γ₀ R).Plays (fun _ => algorithm2 Γs h) fun ω => R.play Γs ω :=
-  (programGame Γ₀ R).isProgramEquilibrium_of_algorithm2 hSPI _ (plays_algorithm2 R h)
-    (fun i c' hc ω j hj => exec_update_algorithm2 R h i c' hc ω j hj) hthreat
+  ⟨(programGame Γ₀ R).isProgramEquilibrium_of_algorithm2 hSPI _ (plays_algorithm2 R h)
+    (fun i c' hc ω j hj => exec_update_algorithm2 R h i c' hc ω j hj) hthreat,
+    plays_algorithm2 R h⟩
 
 /-- **Theorem 1.**  Let `Γˢ` be an SPI on `Γ₀` for the representatives `R`.  In the program
-game on `Γ₀` whose instructions are the programs of `Prog` — the normal kind of
-instructions plus "play `Πᵢ(Γ′)`" for subset games `Γ′` — if `Π(Γ₀)` guarantees each
+game on `Γ₀` whose instructions are the programs of `Prog`, if `Π(Γ₀)` guarantees each
 player at least their minimax utility, then `Π(Γˢ)` is played in a program equilibrium.
+
+**What `Prog` is** (`dd:code-eq`, RULING 3).  `Prog` is the *minimal* language carrying
+exactly the three instructions Algorithm 2 needs — play a fixed mixed action, call
+`Πᵢ(Γ′)` on a subset game, and branch on whether everybody submitted my own code — and
+nothing else.  It is therefore a strictly smaller instruction set than the paper's
+"computer programs in some programming language such as Lisp": there is no general
+recursion, no arithmetic, no inspection of a counterpart's code beyond the equality test.
+The narrowing is disclosed rather than hidden, and it is not where the content sits: the
+language-independent statement is `ProgramGame.isProgramEquilibrium_of_algorithm2`, which
+proves the same conclusion for *any* `ProgramGame` — any instruction set whatever — from
+Algorithm 2's two semantic properties.  A richer language changes only which term realises
+those properties, and `Prog` shows at least one does.
 
 Paper node: `Theorem 1` -/
 theorem exists_programEquilibrium_plays (hSPI : R.toPlay.IsSPI R.certainty Γ₀ Γs)

@@ -614,6 +614,10 @@ C and E and the split "Theorem 17" header must be deduplicated by the parser).
   Dilemma witnesses. Design refinement disclosed as `dd:exec-kernel`: per-player seed
   spaces are replaced by the outcome distributions they induce (a mixed action per player
   given `ω`, independent across players). New erratum D15 (Algorithm 2's punishment index).
+- Harness round 3 (2026-09-12, tranche E, Opus channels): 13 findings, all fixed — Mathlib
+  duplicate removed, Theorem 1's `Prog` narrowing disclosed at the endpoint, random Demand-Game
+  witness for Theorem 1 (`Book.prescribedRandom`), Algorithm 2's PI failure instantiated, FI
+  positive witness made non-degenerate, threat point metered from below.
 
 **Still open:**
 

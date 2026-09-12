@@ -86,12 +86,19 @@ against `i` exist by compactness (`Game.threatPoint`, `Game.minimax`), the progr
 interface `ProgramGame` has EconCSLib's Nash equilibrium as program equilibrium
 (`dd:program-game`, `dd:exec-kernel`), Proposition 18 is proved over the interface
 (`ProgramGame.isProgramEquilibrium_of_algorithm2`) and instantiated at the instruction
-language `Prog` (`dd:code-eq`), and a pure Nash equilibrium played by `Π(Γ₀)` certifies
-the threat-point hypothesis (`Game.threatPoint_le_of_bestResponse`; the Prisoner's Dilemma
-witness in `Examples/ProgramGameWitnesses.lean`).  Beyond the paper, `Independence.lean`
+language `Prog` (`dd:code-eq`), and the threat point is metered from above by a pure best
+response (`Game.threatPoint_le_of_bestResponse`) and from below by a pure guarantee
+(`Game.le_threatPoint_of_guarantee`).  Theorem 1 is carried for the program game whose
+instructions are exactly `Prog` — a deliberate narrowing of the paper's "any programming
+language", disclosed at the endpoint — and its hypotheses are witnessed twice in
+`Examples/ProgramGameWitnesses.lean`: deterministically in the Prisoner's Dilemma and with
+a genuinely random `Π(Γ₀)` in the Demand Game (a fair coin, `Book.prescribedRandom`);
+the threat-point hypothesis is shown to have content (it fails for the book that plays
+`(DM, DM)`).  Beyond the paper, `Independence.lean`
 makes participation independence and foreknowledge independence stateable (RULING 9,
 `dd:default-instr`): definitions, the dove-ish and punishing `Prog` instructions as
-two-sided witnesses, and no theorem about either.
+two-sided witnesses (including that Algorithm 2 is *not* participation independent in the
+Demand Game), and no theorem about either.
 
 **Not yet formalized:** Theorem 9, Proposition 10 and the rest of the Appendix D chain
 (Propositions 23–26, Definition 8, Lemma 28 — Lemma 20's content is `Game.elim_diamond`);

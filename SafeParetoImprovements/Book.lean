@@ -36,8 +36,10 @@ certainty".
 deterministic book (`Book.const`) proves joint satisfiability outright, and books with
 prescribed page distributions are what Proposition 16 and the strictness clause of
 Proposition 6 need — `Book.prescribed` is one, pinning the page of a single class to a
-chosen outcome (`Book.prescribed_play`).  `Book.varying` goes further and is the one book
-here whose play depends on the sample point: over the sample space of profiles it reaches
+chosen outcome (`Book.prescribed_play`).  `Book.prescribedRandom` is its `ω`-dependent
+generalization: the page of the target class is an arbitrary random outcome, so the play
+on the games reducing to that class is genuinely random (`Book.prescribedRandom_play`);
+`Book.prescribed` is its constant case.  `Book.varying` goes further: over the sample space of profiles it reaches
 *every* outcome of *every* game's full reduction, which is what the side condition of
 `Play.isStrictSPI_of_deriv` needs (`exists_play_satisfiesA1_satisfiesA2_hits`).
 `Book.toRepresentatives` packages a book with a
@@ -180,30 +182,46 @@ noncomputable def const (Ω : Type w) : Book N 𝒜 Ω where
   page q _ := (q.rep.profiles_nonempty).choose
   page_mem q _ := (q.rep.profiles_nonempty).choose_spec
 
+/-- The **prescribed book** for one target class, with a page that may depend on the sample
+point: the page of the class of the reduced game `T` is the outcome `a ω` of `T`,
+translated onto the class representative; every other class gets an arbitrary outcome.
+Unlike `Book.prescribed` (the constant case, `a` independent of `ω`) this book's play can
+be genuinely random on the games reducing to `T`, which is what a non-degenerate instance
+of Theorem 1 needs (R3-F11). -/
+noncomputable def prescribedRandom (T : Game N 𝒜) {a : Ω → ∀ i, 𝒜 i}
+    (ha : ∀ ω, a ω ∈ T.profiles) : Book N 𝒜 Ω where
+  page q ω := open Classical in
+    if h : T.cls = q then (T.chosenIso q h).map (a ω) else (q.rep.profiles_nonempty).choose
+  page_mem q ω := by
+    classical
+    by_cases h : T.cls = q
+    · rw [dif_pos h]; exact (T.chosenIso q h).map_mem (ha ω)
+    · rw [dif_neg h]; exact (q.rep.profiles_nonempty).choose_spec
+
+/-- The prescribed book plays `a ω` in every game whose full reduction is `T`. -/
+lemma prescribedRandom_play (T : Game N 𝒜) {a : Ω → ∀ i, 𝒜 i} (ha : ∀ ω, a ω ∈ T.profiles)
+    (Γ : Game N 𝒜) (hΓ : Γ.reduce = T) (ω : Ω) :
+    (prescribedRandom T ha).toPlay.play Γ ω = a ω := by
+  classical
+  rw [toPlay_play, hΓ, playReduced, prescribedRandom]
+  dsimp only
+  rw [dif_pos rfl]
+  exact GameIso.symm_map_map _ (ha ω)
+
 /-- The **prescribed book** for one target class: the page of the class of the reduced
 game `T` is a chosen outcome `a` of `T`, translated onto the class representative; every
 other class gets an arbitrary outcome.  This is the "book with a prescribed page
 distribution" that Proposition 16 and the strictness clause of Proposition 6 need
-(R1-F15). -/
+(R1-F15).  It is the constant case of `Book.prescribedRandom`. -/
 noncomputable def prescribed (T : Game N 𝒜) {a : ∀ i, 𝒜 i} (ha : a ∈ T.profiles)
-    (Ω : Type w) : Book N 𝒜 Ω where
-  page q _ := open Classical in
-    if h : T.cls = q then (T.chosenIso q h).map a else (q.rep.profiles_nonempty).choose
-  page_mem q _ := by
-    classical
-    by_cases h : T.cls = q
-    · rw [dif_pos h]; exact (T.chosenIso q h).map_mem ha
-    · rw [dif_neg h]; exact (q.rep.profiles_nonempty).choose_spec
+    (Ω : Type w) : Book N 𝒜 Ω :=
+  prescribedRandom (Ω := Ω) T (a := fun _ => a) (fun _ => ha)
 
 /-- The prescribed book plays `a` in every game whose full reduction is `T`. -/
 lemma prescribed_play (T : Game N 𝒜) {a : ∀ i, 𝒜 i} (ha : a ∈ T.profiles) (Ω : Type w)
     (Γ : Game N 𝒜) (hΓ : Γ.reduce = T) (ω : Ω) :
-    (prescribed T ha Ω).toPlay.play Γ ω = a := by
-  classical
-  rw [toPlay_play, hΓ, playReduced, prescribed]
-  dsimp only
-  rw [dif_pos rfl]
-  exact GameIso.symm_map_map _ ha
+    (prescribed T ha Ω).toPlay.play Γ ω = a :=
+  prescribedRandom_play T (fun _ => ha) Γ hΓ ω
 
 /-- The **varying book**: the sample space is the space of profiles itself, and the page of
 a class at a sample point `ω` is `ω` whenever that is an outcome of the class's

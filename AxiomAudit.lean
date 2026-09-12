@@ -3823,6 +3823,9 @@ blocks, a stale entry, a malformed line, a non-empty block once the paper is
   SafeParetoImprovements.Book.toPlay SafeParetoImprovements.Book.const
   SafeParetoImprovements.Book.satisfiesA1 SafeParetoImprovements.Book.satisfiesA2
   SafeParetoImprovements.exists_play_satisfiesA1_satisfiesA2
+  -- The `ω`-dependent prescribed book (R3-F11): `Book.prescribed` is its constant case,
+  -- and it is what makes a *random* `Π` available to the Theorem 1 witness.
+  SafeParetoImprovements.Book.prescribedRandom SafeParetoImprovements.Book.prescribedRandom_play
   -- Soundness of Definition 5's derivations for the three SPI notions (`dd:derivation`,
   -- R1-F24, R1-F26), and the erratum-D13 witnesses: the printed decision predicates are
   -- constant-true, the repaired one has a "no" instance (SafeParetoImprovements/Derivation.lean).
@@ -3840,6 +3843,10 @@ blocks, a stale entry, a malformed line, a non-empty block once the paper is
   SafeParetoImprovements.Game.bestValue_minimax SafeParetoImprovements.Game.threatPoint_le_bestValue
   SafeParetoImprovements.Game.expected_minimax_le_threatPoint
   SafeParetoImprovements.Game.threatPoint_le_of_bestResponse
+  SafeParetoImprovements.Game.le_expected_update_pure
+  SafeParetoImprovements.Game.le_threatPoint_of_guarantee
+  SafeParetoImprovements.Representatives.measurable_comp_play
+  SafeParetoImprovements.Representatives.integrable_comp_play
   SafeParetoImprovements.ProgramGame SafeParetoImprovements.ProgramGame.payoff
   SafeParetoImprovements.ProgramGame.toStrategic SafeParetoImprovements.ProgramGame.IsProgramEquilibrium
   SafeParetoImprovements.ProgramGame.isProgramEquilibrium_iff SafeParetoImprovements.ProgramGame.Plays
@@ -3858,18 +3865,42 @@ blocks, a stale entry, a malformed line, a non-empty block once the paper is
   SafeParetoImprovements.ProgramGame.Policy SafeParetoImprovements.ProgramGame.ForeknowledgeIndependent
   SafeParetoImprovements.ProgramGame.foreknowledgeIndependent_of_const
   SafeParetoImprovements.Prog.default SafeParetoImprovements.Prog.defaultInstr SafeParetoImprovements.Prog.dove
+  SafeParetoImprovements.Prog.plays_default
+  SafeParetoImprovements.Prog.participationIndependent_of_punish_default
   SafeParetoImprovements.Prog.participationIndependent_dove
   SafeParetoImprovements.Prog.not_participationIndependent_of_punish_play
   SafeParetoImprovements.Prog.not_participationIndependent_algorithm2
   SafeParetoImprovements.Prog.not_foreknowledgeIndependent_of_switch
   -- Non-vacuity for the program-game layer (SafeParetoImprovements/Examples/
-  -- ProgramGameWitnesses.lean): Theorem 1's hypotheses jointly satisfied in the
-  -- Prisoner's Dilemma, and the independence predicates two-sided.
+  -- ProgramGameWitnesses.lean): Theorem 1's hypotheses jointly satisfied twice over --
+  -- deterministically in the Prisoner's Dilemma and with a genuinely random `Π` in the
+  -- Demand Game (R3-F11) -- the threat-point hypothesis shown to have content by a book
+  -- that violates it, and the independence predicates two-sided, with Algorithm 2's
+  -- failure of participation independence as an instance rather than a hypothesis
+  -- (R3-F12).
+  SafeParetoImprovements.Examples.pdRepresentatives
+  SafeParetoImprovements.Examples.pdRepresentatives_play
   SafeParetoImprovements.Examples.pdRepresentatives_threatPoint_le
   SafeParetoImprovements.Examples.prisonersDilemma_algorithm2_isProgramEquilibrium
+  SafeParetoImprovements.Examples.coin SafeParetoImprovements.Examples.demandPages
+  SafeParetoImprovements.Examples.demandRandomBook
+  SafeParetoImprovements.Examples.demandRandomRepresentatives
+  SafeParetoImprovements.Examples.demandRandom_play
+  SafeParetoImprovements.Examples.demandRandom_play_ne
+  SafeParetoImprovements.Examples.demandRandom_threatPoint_le
+  SafeParetoImprovements.Examples.demandRandom_algorithm2_isProgramEquilibrium
+  SafeParetoImprovements.Examples.demandGame_threatPoint_one_nonneg
+  SafeParetoImprovements.Examples.demandRepresentatives
+  SafeParetoImprovements.Examples.demandRepresentatives_play
+  SafeParetoImprovements.Examples.demandBook_not_threatPoint_le
+  SafeParetoImprovements.Examples.demandGame_threatPoint_two_le
+  SafeParetoImprovements.Examples.demandGame_minimax_two_one_ne_RM
+  SafeParetoImprovements.Examples.demandGame_algorithm2_not_participationIndependent
   SafeParetoImprovements.Examples.not_participationIndependent_pd
   SafeParetoImprovements.Examples.participationIndependent_pd
+  SafeParetoImprovements.Examples.pdSwitchPolicy
   SafeParetoImprovements.Examples.not_foreknowledgeIndependent_pd
+  SafeParetoImprovements.Examples.pdFallbackPolicy
   SafeParetoImprovements.Examples.foreknowledgeIndependent_pd
 -- SPI-INVENTORY-END
 
