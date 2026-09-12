@@ -1,7 +1,7 @@
 # Safe Pareto Improvements for Delegated Game Playing — scoping note
 
-**Status:** draft for discussion (2026-09-04). Nothing here is settled; every item marked
-*RULING* needs Anson's call before M0 lands. No Lean has been written.
+**Status:** draft for discussion (2026-09-04; rulings recorded 2026-09-12 in §8). No Lean
+has been written.
 
 **Paper.** Caspar Oesterheld and Vincent Conitzer, *Safe Pareto Improvements for
 Delegated Game Playing*, JAAMAS 36 (2022), doi 10.1007/s10458-022-09574-6; short
@@ -544,25 +544,53 @@ C and E and the split "Theorem 17" header must be deduplicated by the parser).
 
 ---
 
-## 8. Open rulings, collected
+## 8. Rulings, collected
 
-0. Scope = §2–§6 with appendix proofs (no §8 exists).
-1. EconCSLib as a pinned lake dependency (recommended) vs. vendored slice.
-2. Certainty: paper nodes at the filter level, `strengthened` (recommended) vs. `ae`
-   nodes with private filter lemmas. No duplicated surface either way.
-3. Theorem 1: concrete program language with private seeds and classical code equality
-   (recommended) vs. abstract interface only.
-4. `dd:universe` / `dd:total-utility` / `dd:iso` as stated.
-5. The A1 + A2 consistency model as a required N± node with parametric page
-   distribution.
-6. Complexity: Theorem 9 / Prop 10 / Lemma 11 / Prop 12 carried as **qualified** nodes
-   with tranche F deferred, paper not `completed` until F lands or they are ruled out
-   (recommended) vs. out of scope vs. tranche F in initial scope.
+**Ruled by Anson, 2026-09-12** (verbal walk-through of the modeling choices):
+
+- `dd:universe` (fixed per-player action universe): **accepted**.
+- `dd:total-utility`: **accepted**, with the instruction that the paper's game equality
+  (`Game.EqOn`) be defined separately from Lean `=` and that this distinction be made
+  very clear at the definition and in the README.
+- `dd:iso` (per-player bijections, `λᵢ > 0`): **accepted**.
+- Payoffs in `ℝ`, finite players, finite nonempty action sets: **accepted**.
+- `dd:representatives` (one probability space, `play : Game → Ω → outcome`, membership
+  everywhere, measurable fibers; Assumptions 1–2 read literally as "for every game,
+  with certainty"): **accepted**.
+- `dd:certainty`: **RULING 2 = option (i)** — the correspondence layer is parametric in
+  the notion of certainty (a filter); paper nodes are stated at that level and marked
+  `strengthened`. **Required in addition (Anson):** an explicit realization module
+  showing that the paper's "probability one" satisfies the interface: `ae μ` is a
+  filter, non-degenerate for a probability measure (`ae_neBot`), "with certainty" at
+  `ae μ` unfolds to `∀ᵐ ω ∂μ` and "with positive probability" to `μ {ω | …} ≠ 0`
+  (`frequently_ae_iff`), and Definitions 1 and 3 at that instance read as printed.
+  These are realization statements (iffs between the abstract and concrete notions),
+  not second copies of the theorems, so they do not conflict with the
+  one-declaration rule. Same pattern as
+  `feedback_implementation_independent_theorems`.
+- No built-in rationality on `Representatives`; assumptions as separate predicates:
+  **accepted**.
+- `dd:book`: **RULING 5 = yes**, the joint satisfiability of Assumptions 1 and 2 is a
+  required theorem (N±), with the page distribution parametric. Hand-check the
+  per-game choice of translation against automorphisms before writing Lean.
+- `dd:derivation`: **RULING = try it, tentatively**; revisit if Lemma 21's normalization
+  fights the inductive type.
+- `dd:program-game` (concrete language, private seeds, classical code equality):
+  **RULING 3 = concrete language**.
+- `dd:complexity`: **RULING 6 = qualified nodes, tranche F deferred**.
+- EconCSLib as a pinned dependency with the two-way bridge: **RULING 1 = dependency**.
+
+**Still open:**
+
+0. Scope = §2–§6 with appendix proofs (no §8 exists) — assumed, not yet explicitly
+   confirmed.
 7. Definition 7: read "strict" into the body (recommended) vs. as printed.
 8. Theorem 15: projections onto `C(Γ)` rather than the strong frontier `PF(C(Γ))`
    (recommended, re-verifying Appendix E) vs. partial `πᵢ` with existence hypotheses.
 9. Tranche E's instruction layer designed for participation independence (default
    instruction first-class) as part of this project vs. a separate follow-up.
+10. §5 modeling (token games, support-restricted Lemma 13, Corollary 14's explicit
+   formula) — not yet walked through; discussion pending.
 
 ## 9. Codex review, 2026-09-04
 
