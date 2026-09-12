@@ -34,6 +34,14 @@ lean_lib Condensation where
 lean_lib FactoredSpaces where
   srcDir := "."
 
+-- Safe Pareto Improvements for Delegated Game Playing (Oesterheld–Conitzer 2022). Globbed
+-- like `Condensation`; the aggregator `SafeParetoImprovements.lean` carries the `dd:`
+-- glossary. See `SafeParetoImprovements/notes/scoping.md`.
+@[default_target]
+lean_lib SafeParetoImprovements where
+  srcDir := "."
+  globs := #[.andSubmodules `SafeParetoImprovements]
+
 -- Vendored Shannon-information substrate: the entropy import closure of
 -- teorth/pfr @ 01c9b666945eaf73b3f7d8b20ffe003f8640e630 (Apache-2.0), 25 modules, kept at
 -- upstream module paths so diffs against upstream stay readable. Two compatibility
@@ -152,6 +160,19 @@ require complexitylib from git
 
 require Foundation from git
   "https://github.com/FormalizedFormalLogic/Foundation" @ "41d20b5158e9331e9b8dd86e16dbf488cc688bdb"
+
+-- Game-theory substrate for `SafeParetoImprovements` (Oesterheld–Conitzer 2022):
+-- `StrategicGame`, strict dominance, best response, Nash equilibrium, mixed strategies
+-- and expected payoff, simultaneous-round IESDS. Pinned to a commit because the library
+-- is young and its API moves; a bump is a deliberate act. Upstream pins Mathlib v4.30.0
+-- while this repository is on v4.31.0 — Lake takes the root's Mathlib, and the imported
+-- strategic-game modules compile unmodified against it (probe of 2026-09-04, recorded in
+-- `SafeParetoImprovements/notes/scoping.md` §2). Only the modules FAF imports are built.
+-- The paper's set-based `Game` maps to `StrategicGame` through one bridge
+-- (`SafeParetoImprovements/Game.lean`); paper-facing statements never name an EconCSLib
+-- internal directly.
+require EconCSLib from git
+  "https://github.com/gametheoryinlean/EconCSLib" @ "cef01c709a7d238f076b45818f2ff2629518efe3"
 
 -- Vendored subset of FormalizedFormalLogic/ProvabilityLogic @ 7ed4a427 (2026-07-27,
 -- the last upstream commit in CI lockstep with the Foundation pin above): the

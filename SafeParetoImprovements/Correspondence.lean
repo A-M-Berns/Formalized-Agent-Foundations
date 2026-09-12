@@ -1,0 +1,165 @@
+import SafeParetoImprovements.Play
+import Mathlib.Data.Rel
+
+/-!
+# Outcome correspondence (§4.1–§4.3)
+
+## Multivalued functions (§4.1)
+
+A multivalued function `Φ : M ⊸ N` sends each `m` to a set `Φ(m) ⊆ N`; it is the same
+data as a relation, and Mathlib's `SetRel M N` (a set of pairs, `m ~[Φ] n` for
+`(m, n) ∈ Φ`) is used directly rather than re-defined.  The dictionary:
+
+| paper                         | here                                            |
+|-------------------------------|-------------------------------------------------|
+| `n ∈ Φ(m)`                    | `m ~[Φ] n`                                      |
+| `Φ(m)` as a set               | `Φ.image {m}`                                   |
+| `Φ(Q)` for `Q ⊆ M`            | `Φ.image Q`                                     |
+| `id_M`                        | `SetRel.id`                                     |
+| `all_{M,N} : m ↦ N`           | `Set.univ` (or `M ×ˢ N` on the typed sets)      |
+| `Φ⁻¹`                         | `Φ.inv`                                         |
+| `Ψ ∘ Φ` (first `Φ`, then `Ψ`) | `Φ ○ Ψ` — **Mathlib composes diagrammatically** |
+| single-valued                 | `∀ m, ∃! n, m ~[Φ] n`                           |
+
+The reversal of composition order is the one thing to keep in mind when reading Lemma 2.3
+against the paper.
+
+## Outcome correspondence (§4.2–§4.3)
+
+`Γ ∼_Φ Γ'` (Definition 3) is a statement about the representatives: with certainty,
+`Π(Γ') ∈ Φ(Π(Γ))`.  It is stated for a `Play` family and an arbitrary certainty filter
+(`dd:certainty`); Lemma 2 and Theorem 3 are proved at that generality, which is exactly
+the generality their printed proofs already have.
+-/
+
+namespace SafeParetoImprovements
+
+open Filter SetRel
+
+universe u v w
+
+variable {N : Type u} {𝒜 : N → Type v} {Ω : Type w}
+
+/-- The paper's `all_{A,A'} : a ↦ A'`, typed on the profiles of two games: every outcome
+of `Γ` is sent to every outcome of `Γ'`. -/
+def Game.allRel (Γ Γ' : Game N 𝒜) : SetRel (∀ i, 𝒜 i) (∀ i, 𝒜 i) :=
+  Γ.profiles ×ˢ Γ'.profiles
+
+namespace Play
+
+variable (X : Play N 𝒜 Ω) (L : Filter Ω)
+
+/-- **Outcome correspondence** `Γ ∼_Φ Γ'`: with certainty, `Π(Γ') ∈ Φ(Π(Γ))`.  A statement
+about the representatives, not about the games.  Stated for an arbitrary certainty filter
+`L` (`dd:certainty`); the paper's statement is the instance `L = ae μ`.
+
+Paper node: `Definition 3` -/
+def Corresponds (Γ Γ' : Game N 𝒜) (Φ : SetRel (∀ i, 𝒜 i) (∀ i, 𝒜 i)) : Prop :=
+  ∀ᶠ ω in L, X.play Γ ω ~[Φ] X.play Γ' ω
+
+/-! ### Lemma 2 — the basic facts about `∼`
+
+All seven items hold for every filter; the printed proofs use nothing else.  Item 5 is
+the only one that uses the play family's membership constraint `Π(Γ') ∈ A'`. -/
+
+variable {X L}
+
+/-- Lemma 2.1, **reflexivity**: `Γ ∼_{id_A} Γ`.
+
+Paper node: `Lemma 2` -/
+theorem corresponds_id (X : Play N 𝒜 Ω) (L : Filter Ω) (Γ : Game N 𝒜) :
+    X.Corresponds L Γ Γ SetRel.id :=
+  Eventually.of_forall fun _ => rfl
+
+/-- Lemma 2.2, **symmetry**: if `Γ ∼_Φ Γ'` then `Γ' ∼_{Φ⁻¹} Γ`.
+
+Paper node: `Lemma 2` -/
+theorem Corresponds.inv {Γ Γ' : Game N 𝒜} {Φ : SetRel (∀ i, 𝒜 i) (∀ i, 𝒜 i)}
+    (h : X.Corresponds L Γ Γ' Φ) : X.Corresponds L Γ' Γ Φ.inv :=
+  h.mono fun _ hω => hω
+
+/-- Lemma 2.3, **transitivity**: if `Γ ∼_Φ Γ'` and `Γ' ∼_Ψ Γ''` then `Γ ∼_{Ψ ∘ Φ} Γ''`.
+The paper's `Ψ ∘ Φ` is Mathlib's `Φ ○ Ψ`.
+
+Paper node: `Lemma 2` -/
+theorem Corresponds.trans {Γ Γ' Γ'' : Game N 𝒜} {Φ Ψ : SetRel (∀ i, 𝒜 i) (∀ i, 𝒜 i)}
+    (h : X.Corresponds L Γ Γ' Φ) (h' : X.Corresponds L Γ' Γ'' Ψ) :
+    X.Corresponds L Γ Γ'' (Φ ○ Ψ) :=
+  (h.and h').mono fun _ ⟨hω, hω'⟩ => ⟨_, hω, hω'⟩
+
+/-- Lemma 2.4, **weakening**: if `Γ ∼_Φ Γ'` and `Φ(a) ⊆ Ξ(a)` for all `a`, then
+`Γ ∼_Ξ Γ'`.
+
+Paper node: `Lemma 2` -/
+theorem Corresponds.mono_rel {Γ Γ' : Game N 𝒜} {Φ Ξ : SetRel (∀ i, 𝒜 i) (∀ i, 𝒜 i)}
+    (h : X.Corresponds L Γ Γ' Φ) (hΦΞ : Φ ⊆ Ξ) : X.Corresponds L Γ Γ' Ξ :=
+  h.mono fun _ hω => hΦΞ hω
+
+/-- Lemma 2.5, the **trivial correspondence**: `Γ ∼_{all_{A,A'}} Γ'` always.  This is the
+one item that uses `Π(Γ') ∈ A'`.
+
+Paper node: `Lemma 2` -/
+theorem corresponds_allRel (X : Play N 𝒜 Ω) (L : Filter Ω) (Γ Γ' : Game N 𝒜) :
+    X.Corresponds L Γ Γ' (Γ.allRel Γ') :=
+  Eventually.of_forall fun ω => ⟨X.mem Γ ω, X.mem Γ' ω⟩
+
+/-- Lemma 2.6, **elimination**: if `Γ ∼_Φ Γ'` and `Φ(a) = ∅`, then `Π(Γ) ≠ a` with
+certainty.
+
+Paper node: `Lemma 2` -/
+theorem Corresponds.ne_of_at_eq_empty {Γ Γ' : Game N 𝒜} {Φ : SetRel (∀ i, 𝒜 i) (∀ i, 𝒜 i)}
+    (h : X.Corresponds L Γ Γ' Φ) {a : ∀ i, 𝒜 i} (ha : Φ.image {a} = ∅) :
+    ∀ᶠ ω in L, X.play Γ ω ≠ a :=
+  h.mono fun ω hω heq => by
+    have : X.play Γ' ω ∈ Φ.image {a} := ⟨a, rfl, heq ▸ hω⟩
+    simp [ha] at this
+
+/-- Lemma 2.7, **elimination in the target**: if `Γ ∼_Φ Γ'` and `Φ⁻¹(a') = ∅`, then
+`Π(Γ') ≠ a'` with certainty.  (The printed proof cites "reflexivity (Lemma 2.1)" where it
+uses symmetry, Lemma 2.2 — erratum D4.)
+
+Paper node: `Lemma 2` -/
+theorem Corresponds.ne_of_inv_at_eq_empty {Γ Γ' : Game N 𝒜}
+    {Φ : SetRel (∀ i, 𝒜 i) (∀ i, 𝒜 i)} (h : X.Corresponds L Γ Γ' Φ) {a' : ∀ i, 𝒜 i}
+    (ha' : Φ.inv.image {a'} = ∅) : ∀ᶠ ω in L, X.play Γ' ω ≠ a' :=
+  h.inv.ne_of_at_eq_empty ha'
+
+/-! ### Pareto-improving correspondence and Theorem 3 (§4.3) -/
+
+variable (X L)
+
+/-- `Φ` is a **Pareto-improving outcome correspondence** from `Γ` to its subset game
+`Γs`: `Γ ∼_Φ Γs`, and `u(aˢ) ≥ u(a)` (the *original* payoff `u`, pointwise) for every
+outcome `a` of `Γ` and every `aˢ ∈ Φ(a)`.  The typing `Φ : A ⊸ Aˢ` is carried as the
+quantification over the two profile sets.  (The printed definition writes `Γ ∼_Φ Γ'` for
+`Γ ∼_Φ Γˢ` and types `Φ` with an ordinary arrow — erratum D2.)
+
+Paper node: `Definition 4` -/
+structure ParetoImprovingCorrespondence (Γ Γs : Game N 𝒜)
+    (Φ : SetRel (∀ i, 𝒜 i) (∀ i, 𝒜 i)) : Prop where
+  corresponds : X.Corresponds L Γ Γs Φ
+  improving : ∀ a ∈ Γ.profiles, ∀ b ∈ Γs.profiles, a ~[Φ] b → Γ.u a ≤ Γ.u b
+
+/-- **Theorem 3**: a subset game `Γs` of `Γ` is an SPI on `Γ` if and only if there is a
+Pareto-improving outcome correspondence from `Γ` to `Γs`.  The correspondence in the
+forward direction is the paper's `a ↦ {aˢ ∈ Aˢ | u(aˢ) ≥ u(a)}`.  Holds for every
+certainty filter (`dd:certainty`).
+
+Paper node: `Theorem 3` -/
+theorem isSPI_iff_exists_paretoImprovingCorrespondence {Γ Γs : Game N 𝒜}
+    (hsub : Γs.IsSubsetGameOf Γ) :
+    X.IsSPI L Γ Γs ↔
+      ∃ Φ : SetRel (∀ i, 𝒜 i) (∀ i, 𝒜 i), Φ ⊆ Γ.profiles ×ˢ Γs.profiles ∧
+        X.ParetoImprovingCorrespondence L Γ Γs Φ := by
+  constructor
+  · rintro ⟨-, h⟩
+    refine ⟨{p | p.1 ∈ Γ.profiles ∧ p.2 ∈ Γs.profiles ∧ Γ.u p.1 ≤ Γ.u p.2},
+      fun p hp => ⟨hp.1, hp.2.1⟩, ⟨?_, fun a _ b _ hΦ => hΦ.2.2⟩⟩
+    exact h.mono fun ω hω => ⟨X.mem Γ ω, X.mem Γs ω, hω⟩
+  · rintro ⟨Φ, -, hΦ⟩
+    exact ⟨hsub, hΦ.corresponds.mono fun ω hω =>
+      hΦ.improving _ (X.mem Γ ω) _ (X.mem Γs ω) hω⟩
+
+end Play
+
+end SafeParetoImprovements
