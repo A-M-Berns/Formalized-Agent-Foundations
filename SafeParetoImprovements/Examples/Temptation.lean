@@ -213,7 +213,7 @@ theorem temptation_isStrictSPI [L.NeBot] (hA1 : X.SatisfiesA1 L) :
 
 /-- Proposition 7's SPI is **unilateral** (Definition 2): only player 1's instruction
 changes. -/
-theorem temptation_isUnilateralSPI [L.NeBot] (hA1 : X.SatisfiesA1 L) :
+lemma temptation_isUnilateralSPI [L.NeBot] (hA1 : X.SatisfiesA1 L) :
     X.IsUnilateralSPI L temptation temptationCommit :=
   ⟨⟨temptationCommit.isSubsetGameOf, .one, fun j hj => by
       cases j

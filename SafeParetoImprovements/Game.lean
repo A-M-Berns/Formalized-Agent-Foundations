@@ -193,7 +193,7 @@ def StrictlyDominates [DecidableEq N] (i : N) (a a' : 𝒜 i) : Prop :=
 /-- The paper's definition of strict dominance, read off the bridge.  Quantifying over
 whole profiles `b ∈ A` and overwriting `i`'s coordinate is the same as quantifying over
 `a₋ᵢ ∈ A₋ᵢ`, because every `a₋ᵢ` extends to a profile (action sets are nonempty). -/
-theorem strictlyDominates_iff [DecidableEq N] (i : N) (a a' : 𝒜 i) :
+lemma strictlyDominates_iff [DecidableEq N] (i : N) (a a' : 𝒜 i) :
     Γ.StrictlyDominates i a a' ↔
       a ∈ Γ.S i ∧ a' ∈ Γ.S i ∧
         ∀ b ∈ Γ.profiles, Γ.u (Function.update b i a') i < Γ.u (Function.update b i a) i := by

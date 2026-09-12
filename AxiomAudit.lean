@@ -87,6 +87,7 @@ import CartesianFrames.Categorical
 import FiniteFactoredSets
 import Condensation
 import FactoredSpaces
+import SafeParetoImprovements
 
 open Lean Elab Command in
 /-- Fail elaboration unless every named declaration exists and depends on no axioms
@@ -3690,6 +3691,106 @@ open FactoredSpaces in
   verts chain head last nodup
 #assert_fields Digraph.Walk
   verts chain head last
+
+/-! ## Safe Pareto Improvements (Oesterheld & Conitzer 2022) — endpoint inventory
+
+Nodes are cited by printed kind and global number (`Paper node: \`Theorem 3\``) read off
+the committed text extraction
+`SafeParetoImprovements/notes/oesterheld-conitzer-2022-spi.txt`;
+`scripts/check-safe-pareto-improvements-nodes.py` enforces validity, anchoring, and that
+every annotated declaration appears in one of the two blocks below.  The paper numbers
+on global counters that never reset — Definitions on one, Assumptions on another,
+Theorem/Lemma/Proposition/Corollary sharing a third — so the kind is part of the key, and
+the checker asserts the extraction yields exactly the paper's 37 parseable nodes
+(`Theorem 17`, a cited external result whose header the extraction tears in two, is
+deliberately outside the set).
+
+Status: **milestone M0**, registered `in-progress`.  The §3–§4.4 spine is stated and
+proved at the certainty-filter level (`dd:certainty`): Definitions 1–4, Lemma 2 (all seven
+items), **Theorem 3**, Assumptions 1–2 as predicates, Lemma 4 in both forms, Lemma 19
+(the local form of path independence, Appendix D.1), and the four §4.5 worked
+examples, Propositions 5–8.  There is **no `sorry` anywhere in
+`SafeParetoImprovements/`**, so the `SPI-PENDING` block below is empty and the whole
+annotated surface is in the `#assert_axioms_clean` block.  The probability-one realization
+(`Representatives.lean`), the canonical reduction (`Reduction.lean`) and the book
+representatives proving Assumptions 1 and 2 jointly satisfiable (`Book.lean`, `dd:book`)
+carry no `Paper node:` line — they are substrate and non-vacuity witnesses, not numbered
+nodes — and so are not inventoried here yet; when the consumer API lands they belong in
+the *Consumer API conveniences* section below.  See `SafeParetoImprovements/README.md`.
+
+This is **not** the paper being `completed` in `scripts/papers.py`: that status
+additionally requires a curated `SafeParetoImprovements/API.lean` boundary, client tests
+in `APITests/`, a human read-through and a final fresh-context audit, none of which has
+happened.
+
+**Why there are two blocks.**  Same contract as Condensation's (see the preamble of the
+CONDENSATION-INVENTORY block above for the full rationale): an endpoint whose *statement*
+is final and carries a `Paper node:` line but whose proof is still `sorry` cannot be listed
+in `#assert_axioms_clean` — that command exists to catch exactly a `sorryAx` dependency —
+and dropping the annotation would be a lie about the statement's provenance.  So the
+`SPI-INVENTORY` block below is the ordinary axiom gate, and the `SPI-PENDING` block that
+follows it is **pure Lean comment** naming, one per line with a reason, every annotated
+endpoint that is not yet axiom-clean, with a `-- SECTION: consumers (un-annotated)` half
+for declarations that depend on a `sorry` without being endpoints.
+`scripts/check-safe-pareto-improvements-nodes.py` accepts an annotated declaration listed
+in *either* block and fences the staging with the same four hard failures (a name in both
+blocks, a stale entry, a malformed line, a non-empty block once the paper is
+`completed`).  **Moving a name from the pending block to the inventory block is what
+"proved this endpoint" means**; the two edits belong in the same commit as the proof. -/
+
+-- SPI-INVENTORY-BEGIN
+#assert_axioms_clean
+  -- §3: Definitions 1–2 (SafeParetoImprovements/Play.lean), at the certainty-filter level.
+  SafeParetoImprovements.Play.IsSPI SafeParetoImprovements.Play.IsStrictSPI
+  SafeParetoImprovements.Game.Unilateral SafeParetoImprovements.Play.IsUnilateralSPI
+  -- §4.2–§4.3: Definition 3, Lemma 2 items 1–7, Definition 4, Theorem 3
+  -- (SafeParetoImprovements/Correspondence.lean).
+  SafeParetoImprovements.Play.Corresponds
+  SafeParetoImprovements.Play.corresponds_id SafeParetoImprovements.Play.Corresponds.inv
+  SafeParetoImprovements.Play.Corresponds.trans
+  SafeParetoImprovements.Play.Corresponds.mono_rel
+  SafeParetoImprovements.Play.corresponds_allRel
+  SafeParetoImprovements.Play.Corresponds.ne_of_at_eq_empty
+  SafeParetoImprovements.Play.Corresponds.ne_of_inv_at_eq_empty
+  SafeParetoImprovements.Play.ParetoImprovingCorrespondence
+  SafeParetoImprovements.Play.isSPI_iff_exists_paretoImprovingCorrespondence
+  -- §4.4: Assumptions 1–2 as predicates (SafeParetoImprovements/Assumptions.lean).
+  SafeParetoImprovements.Play.SatisfiesA1 SafeParetoImprovements.Play.SatisfiesA2
+  -- §4.4.2 / Appendix C: Lemma 4, weak and strict forms (SafeParetoImprovements/Isomorphism.lean).
+  SafeParetoImprovements.GameIso.paretoImproving_of_paretoImproving
+  SafeParetoImprovements.GameIso.strictlyParetoImproving_of_strictlyParetoImproving
+  -- Appendix D.1: Lemma 19 (SafeParetoImprovements/Reduction.lean).
+  SafeParetoImprovements.Game.isStrictlyDominated_erase
+  -- §4.6 / Appendix D.1: Definition 5 as a derivation system (moves, chains, the three
+  -- decision predicates), Lemma 21 (structure and normal form), Lemma 22 (certificate
+  -- form) (SafeParetoImprovements/Derivation.lean).
+  SafeParetoImprovements.Game.Step SafeParetoImprovements.Game.Deriv
+  SafeParetoImprovements.Game.Deriv.exists_iso SafeParetoImprovements.Game.Deriv.normal
+  SafeParetoImprovements.Game.exists_paretoImproving_deriv_iff
+  SafeParetoImprovements.Game.SPIDecision SafeParetoImprovements.Game.StrictSPIDecision
+  SafeParetoImprovements.Game.UnilateralSPIDecision
+  -- §4.5: the four worked examples, Propositions 5, 6 (both clauses), 7 and 8
+  -- (SafeParetoImprovements/Examples/PrisonersDilemma.lean, DemandGame.lean,
+  -- Temptation.lean, ComplicatedTemptation.lean).
+  SafeParetoImprovements.Examples.prisonersDilemma_isStrictSPI
+  SafeParetoImprovements.Examples.demandGame_isSPI
+  SafeParetoImprovements.Examples.demandGame_isStrictSPI
+  SafeParetoImprovements.Examples.temptation_isStrictSPI
+  SafeParetoImprovements.Examples.complicatedTemptation_isUnilateralSPI
+-- SPI-INVENTORY-END
+
+-- The staged half of the Safe Pareto Improvements annotated surface: endpoints whose
+-- *statements* are final and carry a `Paper node:` line, but which are not yet
+-- axiom-clean -- either their own proof is `sorry` or they consume one.  This block is
+-- pure comment; it compiles to nothing and asserts nothing.  See the preamble above for
+-- the four failure modes `scripts/check-safe-pareto-improvements-nodes.py` fences it
+-- with.  Both sections are empty at M0: there is no `sorry` in `SafeParetoImprovements/`.
+-- The `-- SECTION:` marker line stays so that an un-annotated consumer of a staged
+-- theorem has a place to be named.
+--
+-- SPI-PENDING-BEGIN
+-- SECTION: consumers (un-annotated)
+-- SPI-PENDING-END
 
 /-! ## Consumer API conveniences (not paper endpoint inventories)
 

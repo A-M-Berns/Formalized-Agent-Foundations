@@ -1,0 +1,145 @@
+/-
+# Safe Pareto Improvements for Delegated Game Playing (Oesterheld & Conitzer, 2022)
+
+This is the root import for the formalization of Caspar Oesterheld and Vincent Conitzer,
+*Safe Pareto Improvements for Delegated Game Playing*, Autonomous Agents and Multi-Agent
+Systems 36 (2022), doi 10.1007/s10458-022-09574-6 (short version AAMAS 2021).
+
+This module is the *aggregator*: it re-exports every file of the formalization and carries
+the `dd:` glossary, but it is not a curated boundary and says nothing about what is
+supported.  The formalization is at milestone M0 and registered `in-progress` in
+`scripts/papers.py`; there is no `SafeParetoImprovements/API.lean` consumer entrypoint
+yet, and the completed-status flip is gated on one (root `CLAUDE.md`, *Consumer readiness
+is part of paper completion*).
+
+The paper is the specification:
+`SafeParetoImprovements/notes/oesterheld-conitzer-2022-spi.pdf` is the authors' copy of the
+article ("equal to the JAAMAS version except for formatting", 57 pp.) and
+`SafeParetoImprovements/notes/oesterheld-conitzer-2022-spi.txt` is the committed
+`pdftotext -layout` extraction that the node checker reads.  There is no arXiv record and
+no TeX source in hand, so the printed node numbers are the provenance keys.  The paper
+numbers on **global counters that never reset**: Definitions on one (`Definition 1` …
+`Definition 8`), Assumptions on another (`Assumption 1`, `Assumption 2`), and Theorem,
+Lemma, Proposition and Corollary on a single shared counter (`Theorem 1`, `Lemma 2`,
+`Theorem 3`, `Lemma 4`, `Proposition 5`, … `Lemma 28`).  Examples are set as
+`Proposition (Example) n` and are cited as `Proposition n`.  `Theorem 17` (Tennenholtz
+2004) and `Lemma 27` (Cook 1971) are cited external results; the former's header is torn
+by a display delimiter in the extraction and is deliberately not in the node set
+(`scripts/check-safe-pareto-improvements-nodes.py`).
+
+Paper-facing declarations follow the repository's labeling convention: the docstring ends
+in a paper-node line naming the printed kind and global number, backticked (the marker
+line of `Play.SatisfiesA1` in `Assumptions.lean` names `Assumption 1`).  The kind is part
+of the key —
+`Lemma 2` and `Definition 2` are different nodes — and the paper's item references
+(`Lemma 2.2`) name items, not nodes: the annotation says `Lemma 2` and the docstring names
+the item in prose.  That annotation is reserved for the audited surface; internal lemmas
+cite the paper in prose instead.  `theorem` is reserved for the paper's numbered results,
+paper-facing `def`s and `structure`s (Definitions, Assumptions) carry the annotation too,
+and supporting mathematics is stated as `lemma`.  Every annotated declaration is listed in
+`AxiomAudit.lean`'s `SPI-INVENTORY` block (axiom-checked) or staged in its `SPI-PENDING`
+block (statement final, proof pending); `scripts/check-safe-pareto-improvements-nodes.py`
+enforces both directions.
+
+**Substrate.**  Games are stated over a fixed per-player action universe (`dd:universe`)
+with payoffs in `ℝ`; the §2 game-theoretic vocabulary (strict dominance, and later best
+response, Nash equilibrium, mixed strategies) is *not* re-defined here but taken from
+EconCSLib's `StrategicGame` through the bridge `Game.toStrategic`
+(`SafeParetoImprovements/Game.lean`), pinned as a dependency in `lakefile.lean`.
+Paper-facing statements never name an EconCSLib notion directly; each is characterised by
+a lemma that reads as the paper's sentence (`strictlyDominates_iff`).  Multivalued
+functions (§4.1) are Mathlib's `SetRel`, composed diagrammatically — `Φ ○ Ψ` is the
+paper's `Ψ ∘ Φ`.
+
+## `dd:` glossary — standing design decisions
+
+A `dd:` tag records a choice made by the formalization rather than by the paper.  The
+rationale for each lives in `SafeParetoImprovements/notes/scoping.md` §3, and the rulings
+that fixed them in §8 of the same note; `SafeParetoImprovements/README.md` is the trust
+surface.  Tags marked *realized* are in force in the Lean below; tags marked *planned* are
+ruled on but not yet carried by any declaration.
+
+* `dd:universe` — *realized* (`Game.lean`).  Every game a given set of representatives can
+  be asked to play lives over one fixed per-player action universe `𝒜 : N → Type*`; a
+  `Game` is a finite nonempty subset of each `𝒜 i` plus a payoff function.  A subset game
+  is literally `Sˢ i ⊆ S i`, Assumption 1's `Aᵢ − {ãᵢ}` is `Finset.erase`, outcomes of all
+  games share one type, and the paper's "`A₁, …, Aₙ` pairwise disjoint" is automatic.  A
+  disclosed narrowing of the paper's unspecified quantification domain, in the direction
+  that makes the theorems stronger.
+* `dd:total-utility` — *realized* (`Game.lean`).  `Game.u` is total on universe profiles,
+  so Lean's `=` on `Game` is **not** the paper's equality of games; the paper's equality
+  (agreement of strategy sets and of payoffs on the smaller game's profiles, forced by
+  Definition 2's `uˢᵢ = uᵢ` across different domains) is `Game.EqOn`, and every
+  paper-facing statement uses it.
+* `dd:certainty` — *realized* (`Play.lean`, `Correspondence.lean`, `Representatives.lean`).
+  "With certainty" is a filter `L` on the sample space: `∀ᶠ ω in L`, and "with positive
+  probability" is `∃ᶠ ω in L`.  Definitions 1–4, Lemma 2 and Theorem 3 are stated at that
+  generality (RULING 2, option (i)) and are *strengthened* relative to the printed ones;
+  the paper's own instance, probability one, is `ae μ`, and `Representatives.lean` proves
+  the realization iffs (`isSPI_iff`, `isStrictSPI_iff`, `corresponds_iff`) rather than a
+  second copy of any theorem.
+* `dd:representatives` — *realized* (`Play.lean`, `Representatives.lean`).  The
+  representatives are a **random solver**: one sample space on which every `Π(Γ)` is
+  defined, `play : Game N 𝒜 → Ω → (∀ i, 𝒜 i)` with membership in the game's profiles
+  everywhere and measurable outcome fibers, and nothing else built in.  Assumptions 1 and 2
+  are separate predicates (`Play.SatisfiesA1`, `Play.SatisfiesA2`); "under Assumptions 1
+  and 2" is a quantifier over play families satisfying them.
+* `dd:iso` — *realized* (`Isomorphism.lean`).  A game isomorphism is a per-player family of
+  **bijections** `Aᵢ → A'ᵢ` with **strictly positive** scaling `λᵢ > 0` and shifts `cᵢ`,
+  carried as data (`GameIso`); both readings are forced by later use and recorded as
+  errata D5.
+* `dd:book` — *realized* (`Book.lean`).  The joint satisfiability of Assumptions 1 and 2
+  (§4.4.3, which the paper leaves informal) is a theorem, not a remark: the "book"
+  representatives fully reduce a game (`Game.reduce`, `Reduction.lean`), read a random
+  page for the reduced game's isomorphism class, and translate back through a chosen
+  isomorphism.  The page distribution is a parameter, so the same construction serves
+  Proposition 16 and the strictness clause of Proposition 6.
+* `dd:derivation` — *planned*.  Definition 5's "(strict) (unilateral) SPI decision problem"
+  is a syntactic derivation system — single applications of Assumption 1, Assumption 1 in
+  reverse via Lemma 2.2, and Assumption 2 with the chosen isomorphism recorded — whose
+  semantics is SPI soundness through Lemma 4 and Theorem 3, not "the composite
+  correspondence holds" (which is false).  Ruled "try it, tentatively".
+* `dd:program-game` — *planned*.  Theorem 1's program game is an abstract interface plus a
+  concrete minimal language closed under the three instructions Algorithm 2 needs, with
+  private per-player seeds for the punishers' randomization and classical code equality
+  (RULING 3); Proposition 18 is proved directly, without Theorem 17.
+* `dd:complexity` — *planned*.  Theorem 9, Proposition 10, Lemma 11 and Proposition 12 are
+  carried as **qualified** nodes: the paper-node label sits on the mathematical content
+  (certificate characterizations, Lemma 28's reduction as an iff, the LP characterization,
+  Algorithm 1's correctness) and the docstring says which complexity-class or runtime
+  clause of the printed statement is not rendered and why (RULING 6, tranche F deferred).
+
+## Files
+
+| file | content |
+|---|---|
+| `SafeParetoImprovements/Game.lean` | §2: `Game` over a fixed universe, `Game.EqOn`, subset games, `Game.restrict`/`Game.erase`, the EconCSLib bridge `Game.toStrategic`, strict dominance (`strictlyDominates_iff`) |
+| `SafeParetoImprovements/Play.lean` | §3: the play family `Play`, Definitions 1–2 (`Play.IsSPI`, `Play.IsStrictSPI`, `Game.Unilateral`, `Play.IsUnilateralSPI`) at the certainty-filter level |
+| `SafeParetoImprovements/Correspondence.lean` | §4.1–§4.3: multivalued functions as `SetRel`, Definition 3 (`Play.Corresponds`), Lemma 2 (items 1–7), Definition 4 (`Play.ParetoImprovingCorrespondence`), **Theorem 3** (`Play.isSPI_iff_exists_paretoImprovingCorrespondence`) |
+| `SafeParetoImprovements/Ordering.lean` | §4.2 prose after Lemma 2: the equivalence relation `R` (single-valued bijective correspondence) and the preorder `⪰` relative to a base game; unnumbered carriers |
+| `SafeParetoImprovements/Isomorphism.lean` | §2 game isomorphism (`GameIso`, `Game.Isomorphic`), the automorphism argument, Lemma 4 in both its weak and strict forms |
+| `SafeParetoImprovements/Assumptions.lean` | §4.4: Assumption 1 (`Play.SatisfiesA1`) and Assumption 2 (`Play.SatisfiesA2`) as predicates, and the Lemma-4 transfer that makes Assumption 2's existential usable |
+| `SafeParetoImprovements/Reduction.lean` | Appendix D.1: single-step elimination `Game.Elim` and its closure, **Lemma 19** (`Game.isStrictlyDominated_erase`), confluence, uniqueness of the fully reduced game, and the canonical `Game.reduce` |
+| `SafeParetoImprovements/Representatives.lean` | `Representatives`: the probabilistic model, support, and the realization of the certainty interface at `ae μ` |
+| `SafeParetoImprovements/Book.lean` | §4.4.3: the book representatives and the joint satisfiability of Assumptions 1 and 2 (`dd:book`), with the page distribution as a parameter |
+| `SafeParetoImprovements/Examples/TwoPlayer.lean` | the two-element player type and the finite-check lemmas the §4.5 tables need |
+| `SafeParetoImprovements/Examples/PrisonersDilemma.lean` | Table 3 and **Proposition 5** (`Examples.prisonersDilemma_isStrictSPI`), also the non-vacuity witness for `Play.IsStrictSPI` |
+| `SafeParetoImprovements/Examples/DemandGame.lean` | Tables 1–2 and **Proposition 6**, both clauses (`Examples.demandGame_isSPI`, `Examples.demandGame_isStrictSPI`) |
+| `SafeParetoImprovements/Examples/Temptation.lean` | Table 6 and **Proposition 7** (`Examples.temptation_isStrictSPI`) |
+| `SafeParetoImprovements/Examples/ComplicatedTemptation.lean` | Tables 4–5 and **Proposition 8** (`Examples.complicatedTemptation_isUnilateralSPI`) |
+-/
+import SafeParetoImprovements.Game
+import SafeParetoImprovements.Play
+import SafeParetoImprovements.Correspondence
+import SafeParetoImprovements.Ordering
+import SafeParetoImprovements.Isomorphism
+import SafeParetoImprovements.Assumptions
+import SafeParetoImprovements.Reduction
+import SafeParetoImprovements.Representatives
+import SafeParetoImprovements.Book
+import SafeParetoImprovements.Derivation
+import SafeParetoImprovements.Examples.TwoPlayer
+import SafeParetoImprovements.Examples.PrisonersDilemma
+import SafeParetoImprovements.Examples.DemandGame
+import SafeParetoImprovements.Examples.Temptation
+import SafeParetoImprovements.Examples.ComplicatedTemptation

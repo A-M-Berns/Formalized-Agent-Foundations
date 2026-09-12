@@ -172,7 +172,7 @@ section auto
 variable [Fintype N] [DecidableEq N]
 
 /-- An automorphism `θ` of `Γ` preserves payoffs on `A`. -/
-theorem payoff_eq_of_self (θ : GameIso Γ Γ) {a : ∀ i, 𝒜 i} (ha : a ∈ Γ.profiles) (i : N) :
+lemma payoff_eq_of_self (θ : GameIso Γ Γ) {a : ∀ i, 𝒜 i} (ha : a ∈ Γ.profiles) (i : N) :
     Γ.u (θ.map a) i = Γ.u a i := by
   classical
   have hne : Γ.profilesFinset.Nonempty := by

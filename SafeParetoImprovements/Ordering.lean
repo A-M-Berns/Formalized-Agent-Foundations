@@ -78,7 +78,7 @@ lemma BijEquiv.trans {Γ Γ' Γ'' : Game N 𝒜} (h : X.BijEquiv L Γ Γ') (h' :
   exact ⟨ha, by rw [hc'', hb]⟩
 
 /-- `R` is an equivalence relation (footnote 3). -/
-theorem bijEquiv_equivalence [Nonempty (∀ i, 𝒜 i)] : Equivalence (X.BijEquiv L) :=
+lemma bijEquiv_equivalence [Nonempty (∀ i, 𝒜 i)] : Equivalence (X.BijEquiv L) :=
   ⟨bijEquiv_refl, BijEquiv.symm, BijEquiv.trans⟩
 
 variable (X L)
@@ -102,14 +102,14 @@ lemma Improves.trans {Γ₀ Γ Γ' Γ'' : Game N 𝒜} (h : X.Improves L Γ₀ �
   exact ⟨Φ ○ Ψ, hc.trans hc', fun a c ⟨b, hab, hbc⟩ => (hΦ a b hab).trans (hΨ b c hbc)⟩
 
 /-- `⪰` is a preorder: reflexive and transitive (but not symmetric or antisymmetric). -/
-theorem improves_preorder (Γ₀ : Game N 𝒜) :
+lemma improves_preorder (Γ₀ : Game N 𝒜) :
     (∀ Γ, X.Improves L Γ₀ Γ Γ) ∧
       ∀ Γ Γ' Γ'', X.Improves L Γ₀ Γ Γ' → X.Improves L Γ₀ Γ' Γ'' → X.Improves L Γ₀ Γ Γ'' :=
   ⟨improves_refl Γ₀, fun _ _ _ h h' => h.trans h'⟩
 
 /-- For a subset game `Γs` of `Γ`, `Γ ⪰ Γs` (relative to `Γ`) is exactly "`Γs` is an SPI
 on `Γ`" (Theorem 3). -/
-theorem improves_self_iff_isSPI {Γ Γs : Game N 𝒜} (hsub : Γs.IsSubsetGameOf Γ) :
+lemma improves_self_iff_isSPI {Γ Γs : Game N 𝒜} (hsub : Γs.IsSubsetGameOf Γ) :
     X.Improves L Γ Γ Γs ↔ X.IsSPI L Γ Γs := by
   constructor
   · rintro ⟨Φ, hc, hΦ⟩
@@ -121,7 +121,7 @@ theorem improves_self_iff_isSPI {Γ Γs : Game N 𝒜} (hsub : Γs.IsSubsetGameO
 /-- **Footnote 5**: if an outcome `a` of `Γ` Pareto-dominates every outcome of `Γ`, then
 any subset game whose only outcome is `a` is an SPI on `Γ`, with no assumption on the
 representatives (Lemma 2.5 with Theorem 3). -/
-theorem isSPI_of_paretoDominant {Γ Γs : Game N 𝒜} (hsub : Γs.IsSubsetGameOf Γ) {a : ∀ i, 𝒜 i}
+lemma isSPI_of_paretoDominant {Γ Γs : Game N 𝒜} (hsub : Γs.IsSubsetGameOf Γ) {a : ∀ i, 𝒜 i}
     (hdom : ∀ b ∈ Γ.profiles, Γ.u b ≤ Γ.u a) (hs : Γs.profiles = {a}) : X.IsSPI L Γ Γs := by
   refine (X.isSPI_iff_exists_paretoImprovingCorrespondence L hsub).2
     ⟨Γ.allRel Γs, fun _ hp => hp, corresponds_allRel X L Γ Γs, fun b hb c hc _ => ?_⟩

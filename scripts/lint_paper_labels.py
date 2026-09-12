@@ -27,6 +27,12 @@ provenance keys:
   printed number read off the committed text extraction is the key.  Its counter is
   section-scoped and shared across every environment including `definition` and
   `example`, so node numbers read `<section>.<n>` and a bare integer will not do.
+* `SafeParetoImprovements/` — likewise read off a committed text extraction (no arXiv
+  record, no TeX), but that paper's counters are *global*: Definitions and Assumptions
+  each count on their own, and Theorem/Lemma/Proposition/Corollary share one counter
+  that never resets, so node numbers are bare integers (`Theorem 3`, `Lemma 19`) and a
+  `<section>.<n>` pair is wrong.  A `theorem` renders a paper result, so `Definition`
+  and `Assumption` (carried by `def`s) are not accepted kinds here.
 
 This linter enforces only that a `theorem` *names* a node in its library's format;
 that the node exists in the committed TeX, that the annotation is anchored to a named
@@ -66,6 +72,13 @@ CD_LABEL = re.compile(
 # section.  A `theorem` renders a paper *result*, so `Definition` is not accepted here.
 FSM_LABEL = re.compile(
     r"Paper node:.*(Theorem|Lemma|Proposition|Corollary)\s+(?:[0-9]+|[A-Z])\.[0-9]+"
+)
+# Safe Pareto Improvements numbers Theorem/Lemma/Proposition/Corollary on one shared
+# global counter, so a paper-facing `theorem` cites a bare integer (`Lemma 4`,
+# `Theorem 15`); the paper's item references (`Lemma 2.2`) name items, not nodes, and
+# are rejected so that the node checker sees `Lemma 2`.
+SPI_LABEL = re.compile(
+    r"Paper node:.*(Theorem|Lemma|Proposition|Corollary)\s+[0-9]+(?!\.?[0-9])"
 )
 # A declaration's `theorem` keyword can be preceded by any number of attribute blocks
 # and modifiers, in any order (`private @[simp] theorem`, `@[simp] private theorem`,
@@ -132,6 +145,7 @@ libraries = {
     Path("FiniteFactoredSets"): FFS_LABEL,
     Path("Condensation"): CD_LABEL,
     Path("FactoredSpaces"): FSM_LABEL,
+    Path("SafeParetoImprovements"): SPI_LABEL,
 }
 paths = [(path, label) for library, label in libraries.items()
          for path in library.rglob("*.lean")]

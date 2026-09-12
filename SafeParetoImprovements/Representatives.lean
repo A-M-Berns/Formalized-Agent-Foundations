@@ -69,23 +69,23 @@ instance : (R.certainty).NeBot := IsProbabilityMeasure.ae_neBot
 
 /-- **Realization, certainty**: at the paper's instance, "`P` with certainty" is
 `∀ᵐ ω ∂μ, P ω`. -/
-theorem eventually_certainty_iff (P : R.Ω → Prop) :
+lemma eventually_certainty_iff (P : R.Ω → Prop) :
     (∀ᶠ ω in R.certainty, P ω) ↔ ∀ᵐ ω ∂R.μ, P ω := Iff.rfl
 
 /-- **Realization, positive probability**: at the paper's instance, "`P` with positive
 probability" is `μ {ω | P ω} ≠ 0`. -/
-theorem frequently_certainty_iff (P : R.Ω → Prop) :
+lemma frequently_certainty_iff (P : R.Ω → Prop) :
     (∃ᶠ ω in R.certainty, P ω) ↔ R.μ {ω | P ω} ≠ 0 := frequently_ae_iff
 
 /-- **Realization of Definition 1** at the paper's instance: `Γs` is an SPI on `Γ` iff it
 is a subset game and `u(Π(Γs)) ≥ u(Π(Γ))` almost surely. -/
-theorem isSPI_iff (Γ Γs : Game N 𝒜) :
+lemma isSPI_iff (Γ Γs : Game N 𝒜) :
     R.toPlay.IsSPI R.certainty Γ Γs ↔
       Γs.IsSubsetGameOf Γ ∧ ∀ᵐ ω ∂R.μ, Γ.u (R.play Γ ω) ≤ Γ.u (R.play Γs ω) := Iff.rfl
 
 /-- **Realization of Definition 1 (strictness)** at the paper's instance: a strict SPI is
 an SPI with some player `i` for whom `uᵢ(Π(Γs)) > uᵢ(Π(Γ))` has positive probability. -/
-theorem isStrictSPI_iff (Γ Γs : Game N 𝒜) :
+lemma isStrictSPI_iff (Γ Γs : Game N 𝒜) :
     R.toPlay.IsStrictSPI R.certainty Γ Γs ↔
       R.toPlay.IsSPI R.certainty Γ Γs ∧
         ∃ i, R.μ {ω | Γ.u (R.play Γ ω) i < Γ.u (R.play Γs ω) i} ≠ 0 := by
@@ -93,7 +93,7 @@ theorem isStrictSPI_iff (Γ Γs : Game N 𝒜) :
 
 /-- **Realization of Definition 3** at the paper's instance: `Γ ∼_Φ Γ'` iff
 `Π(Γ') ∈ Φ(Π(Γ))` almost surely. -/
-theorem corresponds_iff (Γ Γ' : Game N 𝒜) (Φ : SetRel (∀ i, 𝒜 i) (∀ i, 𝒜 i)) :
+lemma corresponds_iff (Γ Γ' : Game N 𝒜) (Φ : SetRel (∀ i, 𝒜 i) (∀ i, 𝒜 i)) :
     R.toPlay.Corresponds R.certainty Γ Γ' Φ ↔ ∀ᵐ ω ∂R.μ, R.play Γ ω ~[Φ] R.play Γ' ω :=
   Iff.rfl
 

@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main, logical-induction, cartesian-frames-formalization, finite-factored-sets, factored-space-models, condensation]
+    branches: [main, logical-induction, cartesian-frames-formalization, finite-factored-sets, factored-space-models, condensation, spi-delegated-games]
   pull_request:
 
 concurrency:
@@ -74,6 +74,18 @@ jobs:
       # set of nodes an annotation may name.
       - name: Check Condensation node annotations
         run: python3 scripts/check-condensation-nodes.py
+
+      # Blocking: same contract for Safe Pareto Improvements (Oesterheld & Conitzer 2022).
+      # Like Condensation, that paper has no arXiv record and no TeX in hand, so the
+      # committed source is a `pdftotext -layout` extraction and the provenance keys are
+      # read off its header lines — but its counters are *global*: Definitions and
+      # Assumptions each on their own, Theorem/Lemma/Proposition/Corollary sharing one
+      # (`Lemma 2`, `Theorem 3`, `Lemma 4`). The checker asserts that exactly the paper's
+      # 37 parseable nodes are derived (Theorem 17, a cited external result whose header
+      # the extraction tears in two, is deliberately outside the set), so a re-extraction
+      # that mangles a header fails here rather than silently shrinking the node set.
+      - name: Check Safe Pareto Improvements node annotations
+        run: python3 scripts/check-safe-pareto-improvements-nodes.py
 
       # Blocking: same contract for Factored Space Models. Five of that paper's fifty
       # nodes carry no \label, so the provenance keys are the printed section-scoped

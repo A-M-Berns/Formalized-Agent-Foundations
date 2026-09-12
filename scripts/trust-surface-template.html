@@ -245,6 +245,8 @@ code.fld { font-size: 10.5px; margin: 0 2px 2px 0; display: inline-block; }
   %%NAV_FSM%%
   <a class="nav-paper" href="#paper-condensation">Condensation</a>
   %%NAV_CD%%
+  <a class="nav-paper" href="#paper-safe-pareto-improvements">Safe Pareto Improvements</a>
+  %%NAV_SPI%%
 </nav>
 <main>
   <h1>Formalized Agent Foundations — the trust-surface read-through</h1>
@@ -676,7 +678,7 @@ code.fld { font-size: 10.5px; margin: 0 2px 2px 0; display: inline-block; }
     set of nodes an annotation is allowed to name.</p>
     <p>For the same reason the paper statements below are shown <strong>verbatim as
     extracted</strong>, in a preformatted block, rather than converted to typeset
-    mathematics as the other four sections are: there is no markup to convert, and
+    mathematics as the TeX-backed sections are: there is no markup to convert, and
     reflowing the text would mean rewriting the paper's statement. The extraction keeps
     the printed line breaks and the alignment of displayed equations, and the extractor's
     f-ligature slots are resolved back to letters; nothing else is altered. Where a
@@ -684,6 +686,58 @@ code.fld { font-size: 10.5px; margin: 0 2px 2px 0; display: inline-block; }
   </div>
 
   %%CARDS_CD%%
+  </section>
+
+  <section class="paper-section" id="paper-safe-pareto-improvements">
+  <h2 class="paper-head">Safe Pareto Improvements for Delegated Game Playing</h2>
+  <p class="paper-cite">Oesterheld, Conitzer (2022) ·
+  <a href="https://doi.org/10.1007/s10458-022-09574-6">doi:10.1007/s10458-022-09574-6</a> ·
+  <code>SafeParetoImprovements/</code> · %%NSPI%% nodes</p>
+
+  <div class="method">
+    <div class="no-tier"><b>This formalization is in progress, and no strength
+    classification exists for this paper.</b> It is at milestone M0: the §3–§4.5 spine —
+    Definitions 1–4, Lemma 2, Theorem 3, Assumptions 1–2, Lemma 4, the four worked examples
+    Propositions 5–8 — together with Lemma 19, stated and proved at the <em>certainty-filter</em> level
+    (<code>dd:certainty</code>: "with certainty" is <code>∀ᶠ ω in L</code> for a filter
+    <code>L</code>, so these nodes are <em>strengthened</em> relative to the printed ones,
+    and the paper's probability-one instance <code>ae μ</code> is recovered by realization
+    iffs in <code>Representatives.lean</code>). A card appearing here asserts that the Lean
+    statement shown carries that paper node; the badge on each declaration says whether it
+    is <span class="staged proved">axiom-clean</span> or <span class="staged">staged</span>
+    (statement final, proof still <code>sorry</code>), read from the <code>SPI-INVENTORY</code>
+    and <code>SPI-PENDING</code> blocks of <code>AxiomAudit.lean</code>. Two disclosed
+    modelling choices a reader must hold in mind: every game lives over a fixed per-player
+    action universe (<code>dd:universe</code>), and <code>Game.u</code> is total on universe
+    profiles, so Lean's <code>=</code> on <code>Game</code> is <b>not</b> the paper's
+    equality of games — that is <code>Game.EqOn</code> (<code>dd:total-utility</code>). The
+    full glossary is in <code>SafeParetoImprovements.lean</code> and the trust surface in
+    <code>SafeParetoImprovements/README.md</code>.
+    Numbered nodes with no Lean statement annotated to them: %%SPI_MISSING%%.</div>
+
+    <h3>How nodes are cited</h3>
+    <p>This paper numbers on <em>global</em> counters that never reset: Definitions on one
+    (<code>Definition 1</code> … <code>Definition 8</code>), Assumptions on another
+    (<code>Assumption 1</code>, <code>Assumption 2</code>), and Theorem, Lemma, Proposition
+    and Corollary on a single shared counter (<code>Theorem 1</code>, <code>Lemma 2</code>,
+    <code>Theorem 3</code>, <code>Lemma 4</code>, <code>Proposition 5</code>, …
+    <code>Lemma 28</code>), so the kind is part of the key. Examples are set as
+    <code>Proposition (Example) n</code> and cited as <code>Proposition n</code>. Like
+    Condensation, the paper has no arXiv record and no TeX in hand: the committed source is
+    <code>SafeParetoImprovements/notes/oesterheld-conitzer-2022-spi.txt</code>, a
+    <code>pdftotext&nbsp;-layout</code> extraction of the committed PDF, and
+    <code>scripts/check-safe-pareto-improvements-nodes.py</code> reads the printed numbers off
+    its header lines and asserts that exactly the paper's 37 parseable nodes are derived.
+    <code>Theorem 17</code> (Tennenholtz 2004, a cited external result) has its header torn
+    in two by a display delimiter in the extraction and is deliberately outside that set.</p>
+    <p>As for Condensation, the paper statements below are shown <strong>verbatim as
+    extracted</strong>, in a preformatted block: the extraction keeps the printed line
+    breaks and the alignment of displayed equations, page furniture and the figure pages
+    that interrupt one statement (Proposition 16) are dropped, and nothing else is altered.
+    Where a statement is hard to read here, read the committed PDF.</p>
+  </div>
+
+  %%CARDS_SPI%%
   </section>
 </main>
 </div>

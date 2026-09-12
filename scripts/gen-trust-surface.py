@@ -29,6 +29,10 @@ and lives in `PAPERS_EDITORIAL` below plus the page prose in
   badged *axiom-clean* or *staged*, with the node's own verdict on the card header.  Any
   paper reaching a milestone statement-first opts into the same treatment by naming those
   two blocks; a paper that names neither renders exactly as it always has.
+* **Safe Pareto Improvements** is the second extraction-backed paper and is wired exactly
+  as Condensation is: verbatim statements through `ExtractionRenderer`, sectioning read
+  off the extraction's page layout (`paper_nodes.printed_global_sections`), and the two
+  `AxiomAudit.lean` blocks (`SPI-INVENTORY`, `SPI-PENDING`) badging every declaration.
 
 Run from anywhere:  python3 scripts/gen-trust-surface.py
 Regenerate after any change to a paper source, a library's annotations, the registry,
@@ -378,8 +382,8 @@ def clean_title(t):
 class ExtractionRenderer:
     """Render a statement that was read off a `pdftotext -layout` extraction.
 
-    Condensation has no TeX source (see `scripts/papers.py`), so there is no markup to
-    convert: what is committed is the printed page as plain text, with its own line
+    Condensation and Safe Pareto Improvements have no TeX source (see `scripts/papers.py`),
+    so there is no markup to convert: what is committed is the printed page as plain text, with its own line
     breaks, column alignment and inline display equations.  Reflowing that into prose
     would silently rewrite the paper's statement, and glyph-substituting it would claim a
     conversion that never happened — so it is shown *verbatim*, in a preformatted block,
@@ -1046,6 +1050,16 @@ PAPERS_EDITORIAL = {
         'inventory_block': 'CONDENSATION-INVENTORY',
         'pending_block': 'CONDENSATION-PENDING',
     },
+    # The second extraction-backed paper, wired as Condensation is: no macro layer, sections
+    # read off the page layout (left-margin `3.1    Title` lines and lettered appendices),
+    # statements verbatim, and the two audit blocks naming the proved/staged partition.
+    'safe-pareto-improvements': {
+        'macros': (), 'pre_macros': (),
+        'sections': paper_nodes.printed_global_sections, 'appendix': False,
+        'renderer': ExtractionRenderer,
+        'inventory_block': 'SPI-INVENTORY',
+        'pending_block': 'SPI-PENDING',
+    },
 }
 
 
@@ -1053,14 +1067,16 @@ def source_tag(paper):
     """The exact version committed, named the way the paper is citable.
 
     `arXiv:1609.03543v5` for a preprint; for a paper with no preprint record the
-    OpenReview id, and failing that the committed source's own filename — never a
-    fabricated arXiv id.
+    OpenReview id or the DOI, and failing both the committed source's own filename —
+    never a fabricated arXiv id.
     """
     if paper.get('arxiv'):
         stem = os.path.basename(paper['source']).removesuffix('-main.tex')
         return 'arXiv:' + stem
     if paper.get('openreview'):
         return 'OpenReview:' + paper['openreview']
+    if paper.get('doi'):
+        return 'doi:' + paper['doi']
     return os.path.basename(paper['source'])
 
 
@@ -1261,9 +1277,9 @@ def build_correspondence(key, paper, warnings, *, extras=None):
     extras = extras or {}
     prefix = {'cartesian-frames': 'cf-', 'modal-agents': 'ma-',
               'finite-factored-sets': 'ffs-', 'condensation': 'cd-',
-              'factored-space-models': 'fsm-'}[key]
-    # `condensation` supplies a callable (its sectioning is read off the text
-    # extraction's page layout); every TeX-backed paper supplies a `\section` regex.
+              'factored-space-models': 'fsm-', 'safe-pareto-improvements': 'spi-'}[key]
+    # The extraction-backed papers supply a callable (their sectioning is read off the
+    # text extraction's page layout); every TeX-backed paper supplies a `\section` regex.
     sections = (conf['sections'](tex) if callable(conf['sections'])
                 else section_titles(tex, conf['sections'], conf['appendix']))
     tag = source_tag(paper)
@@ -1352,6 +1368,14 @@ def main():
     cd_missing_html = (
         ', '.join('<code>%s</code>' % html.escape(n) for n in cd_uncited)
         if cd_uncited else 'none — every numbered node carries a Lean statement')
+
+    spi_paper = PAPERS['safe-pareto-improvements']
+    spi = build_correspondence('safe-pareto-improvements', spi_paper, warnings)
+    spi_uncited = sorted(set(spi['numbered']) - spi['covered'],
+                         key=paper_nodes.printed_global_node_sort_key)
+    spi_missing_html = (
+        ', '.join('<code>%s</code>' % html.escape(n) for n in spi_uncited)
+        if spi_uncited else 'none — every numbered node carries a Lean statement')
 
     # --- ModalAgents: inventoried endpoints that deliberately carry no annotation ---
     ma_inventory = inventory_names('MA-INVENTORY', warnings)
@@ -1443,6 +1467,19 @@ def main():
     cd_editorial += ('. The cards show the paper statement beside the Lean statement '
                      'that carries it, so the section grows as the formalization lands; '
                      '<strong>no strength classification exists for this paper</strong>')
+    # Likewise generated for Safe Pareto Improvements, so the proved/staged split it quotes
+    # is the one the audit blocks hold at generation time.
+    if spi['staging'] is None:
+        spi_editorial = '<strong>in progress (milestone M0)</strong> — no staging block'
+    else:
+        spi_proved, spi_staged = spi['staging'].counts(spi['rendered'])
+        spi_editorial = (
+            '<strong>in progress (milestone M0)</strong> — the §3–§4.5 spine at the '
+            'certainty-filter level, each declaration badged: %d <em>axiom-clean</em>, '
+            '%d <em>staged</em> (statement final, proof still <code>sorry</code>)'
+            % (spi_proved, spi_staged))
+    spi_editorial += ('. The correspondence view of what has landed so far; '
+                      '<strong>no strength classification exists for this paper</strong>')
     index_rows = ''
     for key, section, editorial in (
             ('logical-induction', li,
@@ -1465,15 +1502,19 @@ def main():
             ('factored-space-models', fsm,
              '<strong>in progress</strong> — the correspondence view of what is landed so '
              'far; <strong>no strength classification exists for this paper</strong>'),
-            ('condensation', cd, cd_editorial)):
+            ('condensation', cd, cd_editorial),
+            ('safe-pareto-improvements', spi, spi_editorial)):
         p = PAPERS[key]
         if p.get('arxiv'):
             cite_link = ('<a href="https://arxiv.org/abs/%s">arXiv:%s</a>'
                          % (p['arxiv'], p['arxiv']))
-        elif p.get('url'):
+        elif p.get('openreview') and p.get('url'):
             cite_link = ('<a href="%s">OpenReview:%s</a>'
                          % (html.escape(p['url'], quote=True),
-                            html.escape(p.get('openreview', 'record'))))
+                            html.escape(p['openreview'])))
+        elif p.get('doi'):
+            cite_link = ('<a href="https://doi.org/%s">doi:%s</a>'
+                         % (html.escape(p['doi'], quote=True), html.escape(p['doi'])))
         else:
             cite_link = html.escape(os.path.basename(p['source']))
         index_rows += (
@@ -1484,7 +1525,7 @@ def main():
                cite_link, section['total'], html.escape(p['library']), editorial))
 
     total_nodes = (li['total'] + cf['total'] + ma['total'] + ffs['total']
-                   + fsm['total'] + cd['total'])
+                   + fsm['total'] + cd['total'] + spi['total'])
 
     page = read('scripts/trust-surface-template.html')
     for placeholder, value in (
@@ -1494,14 +1535,18 @@ def main():
             ('%%NAV_FFS%%', '\n'.join(ffs['nav'])),
             ('%%NAV_FSM%%', '\n'.join(fsm['nav'])),
             ('%%NAV_CD%%', '\n'.join(cd['nav'])),
+            ('%%NAV_SPI%%', '\n'.join(spi['nav'])),
             ('%%CARDS_LI%%', '\n'.join(li['cards'])),
             ('%%CARDS_CF%%', '\n'.join(cf['cards'])),
             ('%%CARDS_MA%%', '\n'.join(ma['cards'])),
             ('%%CARDS_FFS%%', '\n'.join(ffs['cards'])),
             ('%%CARDS_FSM%%', '\n'.join(fsm['cards'])),
             ('%%CARDS_CD%%', '\n'.join(cd['cards'])),
+            ('%%CARDS_SPI%%', '\n'.join(spi['cards'])),
             ('%%CD_MISSING%%', cd_missing_html),
+            ('%%SPI_MISSING%%', spi_missing_html),
             ('%%NCD%%', str(cd['total'])),
+            ('%%NSPI%%', str(spi['total'])),
             ('%%INDEX%%', index_rows),
             ('%%T2ROWS%%', t2_li),
             ('%%T2ROWS_CF%%', t2_cf),
@@ -1535,16 +1580,17 @@ def main():
                         (('logical-induction', li), ('cartesian-frames', cf),
                          ('modal-agents', ma), ('finite-factored-sets', ffs),
                          ('factored-space-models', fsm),
-                         ('condensation', cd))))
+                         ('condensation', cd),
+                         ('safe-pareto-improvements', spi))))
     page += ('\n<!-- trust-surface-sources: %s -->\n'
              % paper_nodes.trust_surface_hash(ROOT))
     open(ROOT + 'docs/trust-surface.html', 'w', encoding='utf-8').write(page)
 
     print('wrote docs/trust-surface.html — %d nodes (%d Logical Induction, '
           '%d Cartesian Frames, %d ModalAgents, %d Finite Factored Sets, '
-          '%d Factored Space Models, %d Condensation)'
+          '%d Factored Space Models, %d Condensation, %d Safe Pareto Improvements)'
           % (total_nodes, li['total'], cf['total'], ma['total'], ffs['total'],
-             fsm['total'], cd['total']))
+             fsm['total'], cd['total'], spi['total']))
     for w in warnings:
         print('  note: %s' % w)
 

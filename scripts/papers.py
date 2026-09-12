@@ -31,6 +31,11 @@ sources differ, not by preference:
                     own global counter that never resets (`\\newtheorem{theorem}{Theorem}`
                     with no `[section]`), so numbers read `Definition 34` rather than
                     `Theorem 4.5`.
+* `printed-global` — global, never-resetting counters *read off the printed page*
+                    (text-extraction only; no TeX form exists): Definition and Assumption
+                    each on their own counter, Theorem/Lemma/Proposition/Corollary sharing
+                    one, so numbers read `Lemma 2`, `Theorem 3`, `Lemma 4`, and the kind
+                    is part of the key.
 
 A paper's scheme is a fact about its source; do not "harmonize" them.
 
@@ -186,6 +191,40 @@ PAPERS = {
         "readme": "Condensation/README.md",
         "knowledge": "Condensation/KNOWLEDGE.md",
         "errata": "Condensation/notes/paper-errata.md",
+    },
+    "safe-pareto-improvements": {
+        "title": "Safe Pareto Improvements for Delegated Game Playing",
+        "authors": "Oesterheld, Conitzer",
+        "year": 2022,
+        # No preprint server ID: this paper is not on arXiv (arXiv 2403.05103 is the
+        # same authors' later paper on expected-utility maximizers in program games, not
+        # this one).  The record is the JAAMAS article below; the committed PDF is the
+        # authors' copy, "equal to the JAAMAS version except for formatting".  A short
+        # version appeared at AAMAS 2021.
+        "arxiv": None,
+        "doi": "10.1007/s10458-022-09574-6",
+        "url": "https://doi.org/10.1007/s10458-022-09574-6",
+        "library": "SafeParetoImprovements",
+        # Milestone M0: the §3–§4.4 spine (Definitions 1–4, Lemma 2, Theorem 3, Lemma 4,
+        # Assumptions 1–2) and Lemma 19 are stated and proved at the certainty-filter
+        # level, with the probability-one realization in `Representatives.lean`.  No
+        # consumer API yet.  See `SafeParetoImprovements/README.md`.
+        "status": "in-progress",
+        "source": "SafeParetoImprovements/notes/oesterheld-conitzer-2022-spi.txt",
+        "pdf": "SafeParetoImprovements/notes/oesterheld-conitzer-2022-spi.pdf",
+        # Definitions and Assumptions each count globally on their own; Theorem, Lemma,
+        # Proposition and Corollary share one global counter (`Theorem 1`, `Lemma 2`,
+        # `Theorem 3`, …).  No TeX exists, so — as for Condensation — the committed source
+        # is the `pdftotext -layout` extraction and the numbers are read off its header
+        # lines; `scripts/check-safe-pareto-improvements-nodes.py` asserts the derived set
+        # is exactly the 37 parseable nodes (Theorem 17, a cited external result, has its
+        # header torn by a display delimiter and is deliberately not in the set).
+        "scheme": "printed-global",
+        "source_format": "text-extraction",
+        "node_checker": "scripts/check-safe-pareto-improvements-nodes.py",
+        "readme": "SafeParetoImprovements/README.md",
+        "knowledge": None,
+        "errata": "SafeParetoImprovements/notes/paper-errata.md",
     },
 }
 

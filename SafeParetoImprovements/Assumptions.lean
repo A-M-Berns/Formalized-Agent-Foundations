@@ -88,7 +88,7 @@ fully reduced, `Γ'` is a subset game of `Γ`, and *some* isomorphism `Γ → Γ
 Pareto-improving, then under Assumption 2 there is a Pareto-improving isomorphism `Ψ`
 with `Γ ∼_Ψ Γ'`, i.e. a Pareto-improving outcome correspondence in the sense of
 Definition 4. -/
-theorem exists_paretoImproving_corresponds_of_assumption2 [Fintype N] [∀ i, Nonempty (𝒜 i)]
+lemma exists_paretoImproving_corresponds_of_assumption2 [Fintype N] [∀ i, Nonempty (𝒜 i)]
     (hA2 : X.SatisfiesA2 L) {Γ Γ' : Game N 𝒜} (hΓ : Γ.Reduced) (hΓ' : Γ'.Reduced)
     (φ : GameIso Γ Γ') (hφ : φ.ParetoImproving) :
     ∃ ψ : GameIso Γ Γ', ψ.ParetoImproving ∧ X.Corresponds L Γ Γ' ψ.rel := by
@@ -108,7 +108,7 @@ lemma paretoImprovingCorrespondence_of_iso {Γ Γ' : Game N 𝒜} (ψ : GameIso 
 /-- **Under Assumption 2**, a fully reduced subset game isomorphic to a fully reduced
 game by a Pareto-improving isomorphism is an SPI on it (Assumption 2 + Lemma 4 +
 Theorem 3). -/
-theorem isSPI_of_assumption2 [Fintype N] [∀ i, Nonempty (𝒜 i)] (hA2 : X.SatisfiesA2 L)
+lemma isSPI_of_assumption2 [Fintype N] [∀ i, Nonempty (𝒜 i)] (hA2 : X.SatisfiesA2 L)
     {Γ Γ' : Game N 𝒜} (hsub : Γ'.IsSubsetGameOf Γ) (hΓ : Γ.Reduced) (hΓ' : Γ'.Reduced)
     (φ : GameIso Γ Γ') (hφ : φ.ParetoImproving) : X.IsSPI L Γ Γ' := by
   obtain ⟨ψ, hψ, hc⟩ := exists_paretoImproving_corresponds_of_assumption2 hA2 hΓ hΓ' φ hφ

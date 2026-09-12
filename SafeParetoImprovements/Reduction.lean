@@ -233,7 +233,7 @@ lemma Reduced.eq_of_elimStar {Γ Γ' : Game N 𝒜} (h : Γ.Reduced) (hh : Γ.El
 obtained from `Γ` by iterated elimination of strictly dominated actions are equal.  The
 paper cites this as well known [1, 19, 41] and gives Lemma 19 as its local core; here it
 is Lemma 19 → diamond property → Church–Rosser. -/
-theorem reduced_unique {Γ Γ₁ Γ₂ : Game N 𝒜} (h₁ : Γ.ElimStar Γ₁) (h₂ : Γ.ElimStar Γ₂)
+lemma reduced_unique {Γ Γ₁ Γ₂ : Game N 𝒜} (h₁ : Γ.ElimStar Γ₁) (h₂ : Γ.ElimStar Γ₂)
     (r₁ : Γ₁.Reduced) (r₂ : Γ₂.Reduced) : Γ₁ = Γ₂ := by
   obtain ⟨d, hd₁, hd₂⟩ := church_rosser elim_diamond h₁ h₂
   exact (r₁.eq_of_elimStar hd₁).symm.trans (r₂.eq_of_elimStar hd₂)
@@ -295,7 +295,7 @@ lemma reduce_of_not_reduced [Fintype N] {Γ : Game N 𝒜} (h : ¬ Γ.Reduced) :
   rw [reduce.eq_def, dif_neg h]
 
 /-- `reduce Γ` is reachable from `Γ` by iterated elimination. -/
-theorem elimStar_reduce [Fintype N] (Γ : Game N 𝒜) : Γ.ElimStar Γ.reduce := by
+lemma elimStar_reduce [Fintype N] (Γ : Game N 𝒜) : Γ.ElimStar Γ.reduce := by
   by_cases h : Γ.Reduced
   · rw [reduce_of_reduced h]; exact ReflTransGen.refl
   · rw [reduce_of_not_reduced h]
@@ -304,7 +304,7 @@ termination_by Γ.size
 decreasing_by exact Γ.size_eraseStep_lt h
 
 /-- `reduce Γ` contains no strictly dominated action. -/
-theorem reduce_reduced [Fintype N] (Γ : Game N 𝒜) : Γ.reduce.Reduced := by
+lemma reduce_reduced [Fintype N] (Γ : Game N 𝒜) : Γ.reduce.Reduced := by
   by_cases h : Γ.Reduced
   · rw [reduce_of_reduced h]; exact h
   · rw [reduce_of_not_reduced h]
@@ -314,21 +314,21 @@ decreasing_by exact Γ.size_eraseStep_lt h
 
 /-- The characterisation of the canonical reduction: any fully reduced game obtained from
 `Γ` by iterated elimination *is* `reduce Γ`. -/
-theorem reduce_eq_of_reduced_of_elimStar [Fintype N] {Γ Γ' : Game N 𝒜} (h : Γ.ElimStar Γ')
+lemma reduce_eq_of_reduced_of_elimStar [Fintype N] {Γ Γ' : Game N 𝒜} (h : Γ.ElimStar Γ')
     (hr : Γ'.Reduced) : Γ.reduce = Γ' :=
   reduced_unique (elimStar_reduce Γ) h (reduce_reduced Γ) hr
 
 /-- Eliminating a strictly dominated action does not change the full reduction — the fact
 the book construction of §4.4.3 needs for Assumption 1. -/
-theorem reduce_erase [Fintype N] (Γ : Game N 𝒜) {i : N} {a : 𝒜 i} (ha : Γ.IsStrictlyDominated i a) :
+lemma reduce_erase [Fintype N] (Γ : Game N 𝒜) {i : N} {a : 𝒜 i} (ha : Γ.IsStrictlyDominated i a) :
     (Γ.erase i a ha.erase_nonempty).reduce = Γ.reduce :=
   (reduce_eq_of_reduced_of_elimStar
     (ReflTransGen.head ⟨i, a, ha, rfl⟩ (elimStar_reduce _)) (reduce_reduced _)).symm
 
-theorem reduce_isSubsetGameOf [Fintype N] (Γ : Game N 𝒜) : Γ.reduce.IsSubsetGameOf Γ :=
+lemma reduce_isSubsetGameOf [Fintype N] (Γ : Game N 𝒜) : Γ.reduce.IsSubsetGameOf Γ :=
   (elimStar_reduce Γ).isSubsetGameOf
 
-@[simp] theorem reduce_u [Fintype N] (Γ : Game N 𝒜) : Γ.reduce.u = Γ.u := (elimStar_reduce Γ).u_eq
+@[simp] lemma reduce_u [Fintype N] (Γ : Game N 𝒜) : Γ.reduce.u = Γ.u := (elimStar_reduce Γ).u_eq
 
 end reduce
 

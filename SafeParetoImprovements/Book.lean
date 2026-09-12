@@ -137,7 +137,7 @@ noncomputable def toPlay : Play N 𝒜 Ω where
 
 /-- **The book representatives satisfy Assumption 1**, at every sample point and hence
 for every certainty filter. -/
-theorem satisfiesA1 (L : Filter Ω) : B.toPlay.SatisfiesA1 L := by
+lemma satisfiesA1 (L : Filter Ω) : B.toPlay.SatisfiesA1 L := by
   intro Γ i ã h
   refine Eventually.of_forall fun ω => ?_
   refine ⟨B.toPlay.mem Γ ω, ?_, ?_⟩
@@ -155,7 +155,7 @@ theorem satisfiesA1 (L : Filter Ω) : B.toPlay.SatisfiesA1 L := by
 /-- **The book representatives satisfy Assumption 2**, at every sample point and hence
 for every certainty filter: two fully reduced isomorphic games read the same page, and
 the composite of their translations is the witnessing isomorphism. -/
-theorem satisfiesA2 (L : Filter Ω) : B.toPlay.SatisfiesA2 L := by
+lemma satisfiesA2 (L : Filter Ω) : B.toPlay.SatisfiesA2 L := by
   intro Γ Γ' hΓ hΓ' hiso
   have hq : Γ'.cls = Γ.cls := (Game.cls_eq_of_isomorphic hiso).symm
   -- translations onto the common representative
@@ -218,7 +218,7 @@ end Book
 /-- **Assumptions 1 and 2 are jointly satisfiable** (§4.4.3, made formal): over any
 universe and any sample space there is a play family satisfying both, for every
 certainty filter.  The witness is the deterministic book. -/
-theorem exists_play_satisfiesA1_satisfiesA2 (Ω : Type w) :
+lemma exists_play_satisfiesA1_satisfiesA2 (Ω : Type w) :
     ∃ X : Play N 𝒜 Ω, ∀ L : Filter Ω, X.SatisfiesA1 L ∧ X.SatisfiesA2 L :=
   ⟨(Book.const Ω).toPlay, fun L => ⟨(Book.const Ω).satisfiesA1 L, (Book.const Ω).satisfiesA2 L⟩⟩
 
