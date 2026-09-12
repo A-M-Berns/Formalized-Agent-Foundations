@@ -3857,6 +3857,28 @@ blocks, a stale entry, a malformed line, a non-empty block once the paper is
   SafeParetoImprovements.Prog.exec_update_algorithm2
   SafeParetoImprovements.Prog.algorithm2_isProgramEquilibrium
   SafeParetoImprovements.Prog.exists_programEquilibrium_plays
+  -- §5.1 (SafeParetoImprovements/Coordination.lean, `dd:feasible`, `dd:room`): the
+  -- feasible set and its convex-hull description, token games with Definition 6, room and
+  -- the token copy with its natural isomorphism, Lemma 11 as the LP characterization.
+  SafeParetoImprovements.Game.Correlated SafeParetoImprovements.Game.Correlated.payoff
+  SafeParetoImprovements.Game.feasible SafeParetoImprovements.Game.u_mem_feasible
+  SafeParetoImprovements.Game.convex_feasible SafeParetoImprovements.Game.feasible_eq_convexHull
+  SafeParetoImprovements.Game.lpObjective SafeParetoImprovements.Game.paretoOptimalIn_feasible_iff
+  SafeParetoImprovements.TokenGame SafeParetoImprovements.TokenGame.IsSPI
+  SafeParetoImprovements.TokenGame.IsStrictSPI
+  SafeParetoImprovements.Game.HasRoom SafeParetoImprovements.Game.tokenCopy
+  SafeParetoImprovements.Game.tokenCopy_fresh SafeParetoImprovements.Game.tokenIso
+  SafeParetoImprovements.Game.tokenCopy_u_map
+  -- Proposition 16 with the paper's own witness (SafeParetoImprovements/Examples/Chicken.lean):
+  -- Table 7, its reduction, the fair-coin representatives, the two supporting half-planes.
+  SafeParetoImprovements.Examples.coin SafeParetoImprovements.Examples.integral_coin
+  SafeParetoImprovements.Examples.ae_coin_iff
+  SafeParetoImprovements.Examples.chicken SafeParetoImprovements.Examples.chicken.reduce_eq
+  SafeParetoImprovements.Examples.chicken.feasible_le₁ SafeParetoImprovements.Examples.chicken.feasible_le₂
+  SafeParetoImprovements.Examples.chickenRepresentatives
+  SafeParetoImprovements.Examples.chickenRepresentatives_play
+  SafeParetoImprovements.Examples.chickenRepresentatives_integral
+  SafeParetoImprovements.Examples.chicken_no_perfectCoordinationSPI
   -- Beyond the paper (SafeParetoImprovements/Independence.lean, RULING 9,
   -- `dd:default-instr`): default instructions, participation independence, the
   -- information stage and foreknowledge independence, and their `Prog` witnesses.
@@ -3934,6 +3956,10 @@ execution kernel (`dd:exec-kernel`) whose product structure Proposition 18 rests
   default plays_default
 #assert_fields SafeParetoImprovements.ProgramGame.Policy
   Signal noInfo willNotParticipate policy
+#assert_fields SafeParetoImprovements.Game.Correlated
+  weight nonneg support sum_eq_one
+#assert_fields SafeParetoImprovements.TokenGame
+  game fresh ue ue_mem
 
 -- The staged half of the Safe Pareto Improvements annotated surface: endpoints whose
 -- *statements* are final and carry a `Paper node:` line, but which are not yet

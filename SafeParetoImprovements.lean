@@ -135,7 +135,18 @@ ruled on but not yet carried by any declaration.
   participation independence and foreknowledge independence stateable (RULING 9); in
   `Prog` it is "play `Πᵢ(Γ₀)`".  No theorem beyond non-vacuity is claimed for either
   notion.
-* `dd:complexity` — *planned*.  Theorem 9, Proposition 10, Lemma 11 and Proposition 12 are
+* `dd:feasible` — *realized* (`Coordination.lean`).  `C(Γ)` is defined by the paper's own
+  formula — the payoff vectors of correlated strategies (`Game.Correlated`, weights on the
+  outcomes) — and proved equal to Mathlib's `convexHull ℝ (u '' A)`; convexity and
+  membership of pure payoffs come from the formula, everything geometric from the hull.
+* `dd:room` — *realized* (`Coordination.lean`).  §5's token actions must be fresh,
+  `Aˢᵢ ∩ Aᵢ = ∅`; over a fixed universe (`dd:universe`) their existence is the hypothesis
+  `Game.HasRoom` (an injective copy of each action set outside itself), from which
+  `Game.tokenCopy` and its natural isomorphism are built.  The paper assumes the tokens
+  exist silently.
+* `dd:complexity` — *planned* for Theorem 9 / Proposition 10; *realized* for Lemma 11
+  (`Coordination.lean`: the LP characterization is the node's content, the "by linear
+  programming, in polynomial time" clause is disclosed as not rendered).  Theorem 9, Proposition 10, Lemma 11 and Proposition 12 are
   carried as **qualified** nodes: the paper-node label sits on the mathematical content
   (certificate characterizations, Lemma 28's reduction as an iff, the LP characterization,
   Algorithm 1's correctness) and the docstring says which complexity-class or runtime
@@ -163,6 +174,9 @@ ruled on but not yet carried by any declaration.
 | `SafeParetoImprovements/ProgramGame.lean` | Appendix A: mixed strategies and expected payoffs from EconCSLib, threat points and the minimax profile by compactness, the `ProgramGame` interface (`dd:exec-kernel`), program equilibrium as EconCSLib Nash, and Proposition 18 over the interface |
 | `SafeParetoImprovements/Instruction.lean` | Appendix A: the instruction language `Prog` (`dd:code-eq`), its execution, the realization theorem `Prog.programGame`, Algorithm 2 as a term, **Proposition 18** (`Prog.algorithm2_isProgramEquilibrium`) and **Theorem 1** (`Prog.exists_programEquilibrium_plays`) |
 | `SafeParetoImprovements/Independence.lean` | beyond the paper (RULING 9): default instructions (`dd:default-instr`), participation independence, the information stage and foreknowledge independence, with the dove-ish and punishing instructions as witnesses |
+| `SafeParetoImprovements/Coordination.lean` | §5.1: `C(Γ)` (`Game.feasible`, `dd:feasible`), perfect-coordination token games (`TokenGame`), **Definition 6** (`TokenGame.IsSPI`, `IsStrictSPI`), room and the token copy (`Game.HasRoom`, `Game.tokenCopy`, `Game.tokenIso`, `dd:room`), **Lemma 11** (`Game.paretoOptimalIn_feasible_iff`, LP characterization) |
+| `SafeParetoImprovements/Examples/Coin.lean` | the fair coin on `Bool`, shared by the examples that need a genuinely random `Π` |
+| `SafeParetoImprovements/Examples/Chicken.lean` | Table 7 and **Proposition 16** (`Examples.chicken_no_perfectCoordinationSPI`): a Pareto improvement that no perfect-coordination SPI achieves in expectation |
 | `SafeParetoImprovements/Examples/ProgramGameWitnesses.lean` | non-vacuity for the program-game layer: Theorem 1's hypotheses jointly satisfied in the Prisoner's Dilemma (pure Nash equilibrium ⇒ threat-point guarantee), and the PI/FI predicates neither constant-true nor constant-false |
 -/
 import SafeParetoImprovements.Game
@@ -185,3 +199,6 @@ import SafeParetoImprovements.ProgramGame
 import SafeParetoImprovements.Instruction
 import SafeParetoImprovements.Independence
 import SafeParetoImprovements.Examples.ProgramGameWitnesses
+import SafeParetoImprovements.Coordination
+import SafeParetoImprovements.Examples.Coin
+import SafeParetoImprovements.Examples.Chicken

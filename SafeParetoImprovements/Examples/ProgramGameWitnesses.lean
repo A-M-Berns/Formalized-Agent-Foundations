@@ -1,5 +1,6 @@
 import SafeParetoImprovements.Independence
 import SafeParetoImprovements.Examples.Witnesses
+import SafeParetoImprovements.Examples.Coin
 
 /-!
 # Non-vacuity witnesses for the program-game layer
@@ -116,12 +117,6 @@ lemma demandPages_mem : ∀ b, demandPages b ∈ demandGame.reducedGame.profiles
   intro b i
   cases b <;> cases i <;> rw [demandGame.reducedGame_S] <;> decide
 
-/-- The fair coin on `Bool`. -/
-noncomputable def coin : Measure Bool := (2 : ℝ≥0∞)⁻¹ • (Measure.dirac true + Measure.dirac false)
-
-instance : IsProbabilityMeasure coin := ⟨by
-  simp [coin, Measure.smul_apply, Measure.add_apply]
-  rw [ENNReal.inv_two_add_inv_two]⟩
 
 /-- The `ω`-dependent book prescribing `demandPages` for the class of the reduced Demand
 Game. -/
@@ -145,12 +140,6 @@ lemma demandRandom_play_ne :
   intro h
   have := congrFun h Two.two
   simp [demandPages, Two.pair] at this
-
-lemma integral_coin (f : Bool → ℝ) : (∫ ω, f ω ∂coin) = 2⁻¹ * (f true + f false) := by
-  rw [coin, integral_smul_measure,
-    integral_add_measure (Integrable.of_finite) (Integrable.of_finite),
-    integral_dirac, integral_dirac]
-  simp
 
 lemma demandRandom_integral (i : Two) :
     (∫ ω, demandGame.u (demandRandomRepresentatives.play demandGame ω) i
