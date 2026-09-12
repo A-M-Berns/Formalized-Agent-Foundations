@@ -181,6 +181,17 @@ lemma map_symm_map (φ : GameIso Γ Γ') {b : ∀ i, 𝒜 i} (hb : b ∈ Γ'.pro
   funext j
   exact (φ.bijOn j).invOn_invFunOn.2 (hb j)
 
+/-- The coordinate-level form of `map_symm_map`: `Φᵢ(Φᵢ⁻¹(x)) = x` for `x ∈ A'ᵢ`. -/
+lemma toFun_symm_toFun (φ : GameIso Γ Γ') {i : N} {x : 𝒜 i} (hx : x ∈ Γ'.S i) :
+    φ.toFun i (φ.symm.toFun i x) = x := by
+  haveI : ∀ i, Nonempty (𝒜 i) := Γ.nonempty_universe
+  exact (φ.bijOn i).invOn_invFunOn.2 hx
+
+/-- `Φᵢ⁻¹` maps `A'ᵢ` into `Aᵢ`. -/
+lemma symm_toFun_mem (φ : GameIso Γ Γ') {i : N} {x : 𝒜 i} (hx : x ∈ Γ'.S i) :
+    φ.symm.toFun i x ∈ Γ.S i :=
+  Finset.mem_coe.1 ((φ.symm.bijOn i).mapsTo (Finset.mem_coe.2 hx))
+
 end inv
 
 /-! ### Automorphisms preserve payoffs
@@ -328,5 +339,50 @@ theorem strictlyParetoImproving_of_strictlyParetoImproving (φ ψ : GameIso Γ �
 end lemma4
 
 end GameIso
+
+/-! ### Reducedness transports along an isomorphism
+
+Needed wherever a game is replaced by an isomorphic copy and the copy's play has to be
+computed: `Book.playReduced` reduces first, so "the representatives play the token copy"
+is only usable once the copy is known to be `Reduced` (§5.1, Lemma 13's relabelling). -/
+
+namespace Game
+
+variable [DecidableEq N] {Γ Γ' : Game N 𝒜}
+
+/-- **Reducedness transports along an isomorphism.**  If `Γ` has no strictly dominated
+action and `Φ : Γ → Γ'`, then neither has `Γ'`: pull a dominance in `Γ'` back along `Φ⁻¹`
+and use `λᵢ > 0`. -/
+lemma Reduced.of_iso (φ : GameIso Γ Γ') (h : Γ.Reduced) : Γ'.Reduced := by
+  rintro i a' ⟨b', hd⟩
+  rw [Game.strictlyDominates_iff] at hd
+  obtain ⟨hb', ha', hlt⟩ := hd
+  refine h i (φ.symm.toFun i a') ⟨φ.symm.toFun i b', ?_⟩
+  rw [Game.strictlyDominates_iff]
+  refine ⟨φ.symm_toFun_mem hb', φ.symm_toFun_mem ha', fun c hc => ?_⟩
+  have key : ∀ (x : 𝒜 i), x ∈ Γ'.S i →
+      Γ.u (Function.update c i (φ.symm.toFun i x)) i =
+        φ.scale i * Γ'.u (Function.update (φ.map c) i x) i + φ.shift i := by
+    intro x hx
+    have hmem : Function.update c i (φ.symm.toFun i x) ∈ Γ.profiles := by
+      intro j
+      rcases eq_or_ne j i with rfl | hj
+      · simpa using φ.symm_toFun_mem hx
+      · rw [Function.update_of_ne hj]; exact hc j
+    have hmap : (fun j => φ.toFun j (Function.update c i (φ.symm.toFun i x) j)) =
+        Function.update (φ.map c) i x := by
+      funext j
+      rcases eq_or_ne j i with rfl | hj
+      · simpa using φ.toFun_symm_toFun hx
+      · simp [GameIso.map, Function.update_of_ne hj]
+    have := φ.affine _ hmem i
+    rw [hmap] at this
+    exact this
+  rw [key a' ha', key b' hb']
+  have := hlt (φ.map c) (φ.map_mem hc)
+  have hs := φ.scale_pos i
+  nlinarith
+
+end Game
 
 end SafeParetoImprovements

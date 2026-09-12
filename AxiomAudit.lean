@@ -3715,8 +3715,12 @@ annotated surface is in the `#assert_axioms_clean` block.  The probability-one r
 (`Representatives.lean`), the canonical reduction (`Reduction.lean`) and the book
 representatives proving Assumptions 1 and 2 jointly satisfiable (`Book.lean`, `dd:book`)
 carry no `Paper node:` line — they are substrate and non-vacuity witnesses, not numbered
-nodes — and so are not inventoried here yet; when the consumer API lands they belong in
-the *Consumer API conveniences* section below.  See `SafeParetoImprovements/README.md`.
+nodes.  The book layer and the individual witnesses *are* nevertheless inventoried below,
+because a vacuous "under Assumptions 1 and 2" node is exactly what they exist to rule out
+and an axiom leak in them would be an axiom leak in the claim; what is not inventoried is
+the general substrate of `Representatives.lean` and `Reduction.lean`.  When the consumer
+API lands, the un-annotated conveniences belong in the *Consumer API conveniences* section
+below.  See `SafeParetoImprovements/README.md`.
 
 This is **not** the paper being `completed` in `scripts/papers.py`: that status
 additionally requires a curated `SafeParetoImprovements/API.lean` boundary, client tests
@@ -3813,7 +3817,10 @@ blocks, a stale entry, a malformed line, a non-empty block once the paper is
   SafeParetoImprovements.exists_play_satisfiesA1_satisfiesA2_hits
   SafeParetoImprovements.Examples.demandGame_isStrictSPI_of_deriv_witnessed
   -- The `EqOn`-invariance fact that answers R1-F01: under Assumption 2 no play family can
-  -- make one presentation of a game a strict SPI on another (SafeParetoImprovements/
+  -- make one presentation of a game a strict SPI on another *`EqOn`-equal, and reduced*,
+  -- presentation (Assumption 2 quantifies over games without strictly dominated actions,
+  -- so it says nothing about a non-reduced `EqOn`-equal pair -- R2-F02/F09; the underlying
+  -- `GameIso.payoff_eq_of_eqOn` is unconditional).  (SafeParetoImprovements/
   -- Assumptions.lean, Isomorphism.lean).
   SafeParetoImprovements.GameIso.ofEqOn SafeParetoImprovements.GameIso.payoff_eq_of_eqOn
   SafeParetoImprovements.Play.SatisfiesA2.not_isStrictSPI_of_eqOn
@@ -3866,19 +3873,66 @@ blocks, a stale entry, a malformed line, a non-empty block once the paper is
   SafeParetoImprovements.Game.lpObjective SafeParetoImprovements.Game.paretoOptimalIn_feasible_iff
   SafeParetoImprovements.TokenGame SafeParetoImprovements.TokenGame.IsSPI
   SafeParetoImprovements.TokenGame.IsStrictSPI
-  SafeParetoImprovements.Game.HasRoom SafeParetoImprovements.Game.tokenCopy
+  -- Room is parameterized by the set to AVOID (R4-F01): `HasRoom` is the `B := Γ.S` case,
+  -- and it is `HasRoomOutside` that §5 needs, since every construction tokenizes
+  -- `Γ.reduce` but must be fresh for `Γ`.  `hasRoomOutside_of_infinite` is the uniform
+  -- source of room the §5 example universes `X ⊕ ℕ` discharge it by.
+  SafeParetoImprovements.Game.HasRoomOutside SafeParetoImprovements.Game.HasRoom
+  SafeParetoImprovements.Game.hasRoomOutside_of_infinite
+  SafeParetoImprovements.Game.tokenCopy
   SafeParetoImprovements.Game.tokenCopy_fresh SafeParetoImprovements.Game.tokenIso
   SafeParetoImprovements.Game.tokenCopy_u_map
+  -- Reducedness transports along an isomorphism (SafeParetoImprovements/Isomorphism.lean):
+  -- load-bearing for every "the representatives play the token copy" argument, since
+  -- `Book.playReduced` reduces first.
+  SafeParetoImprovements.Game.Reduced.of_iso
   -- Proposition 16 with the paper's own witness (SafeParetoImprovements/Examples/Chicken.lean):
-  -- Table 7, its reduction, the fair-coin representatives, the two supporting half-planes.
+  -- Table 7 over `CAct ⊕ ℕ` (`dd:room`, RULING 13 -- over the bare `CAct` the game uses its
+  -- whole universe and `TokenGame chicken` is EMPTY, so the impossibility clause was
+  -- vacuous: round-4 blocker R4-F01), its reduction, the fair-coin representatives, the two
+  -- supporting half-planes, and the label-free kernel the impossibility actually runs on.
   SafeParetoImprovements.Examples.coin SafeParetoImprovements.Examples.integral_coin
   SafeParetoImprovements.Examples.ae_coin_iff
   SafeParetoImprovements.Examples.chicken SafeParetoImprovements.Examples.chicken.reduce_eq
+  SafeParetoImprovements.Examples.chicken.hasRoom
   SafeParetoImprovements.Examples.chicken.feasible_le₁ SafeParetoImprovements.Examples.chicken.feasible_le₂
   SafeParetoImprovements.Examples.chickenRepresentatives
   SafeParetoImprovements.Examples.chickenRepresentatives_play
   SafeParetoImprovements.Examples.chickenRepresentatives_integral
+  SafeParetoImprovements.Examples.chicken_no_feasible_dominating_of_mean_cc
   SafeParetoImprovements.Examples.chicken_no_perfectCoordinationSPI
+  -- Non-vacuity and contrast for Proposition 16's quantifier (R4-F01, R4-F05): token games
+  -- for `chicken` exist at every finite size, Definition 6 fails of one of them, and the
+  -- existential over `Π` is essential -- other Assumption-1/2 representatives over the SAME
+  -- game DO admit a perfect-coordination SPI with expectation `u(c, c) = (3, 3)`.
+  SafeParetoImprovements.Examples.chickenToken33
+  SafeParetoImprovements.Examples.nonempty_tokenGame_chicken
+  SafeParetoImprovements.Examples.chickenTokenOfSize
+  SafeParetoImprovements.Examples.chickenTokenOfSize_card
+  SafeParetoImprovements.Examples.chickenToken33_not_isSPI
+  SafeParetoImprovements.Examples.chickenRepresentativesBB
+  SafeParetoImprovements.Examples.chickenRepresentativesBB_play
+  SafeParetoImprovements.Examples.chicken_spi_for_other_representatives
+  -- The positive side of Definition 6 (SafeParetoImprovements/Examples/TokenWitnesses.lean,
+  -- R4-F05): a reduced `2 × 2` game over `Bool ⊕ ℕ` with an explicit fresh token copy, a
+  -- perfect-coordination SPI with equality at every sample point (hence not strict), and a
+  -- STRICT one built by the paper's Demand-Game recipe, with `uᵉ` defined along the
+  -- isomorphism the book supplies (erratum D6, RULING 10) and shown non-constant.
+  SafeParetoImprovements.Examples.conflictGame
+  SafeParetoImprovements.Examples.conflictTokenCopy
+  SafeParetoImprovements.Examples.conflictTokenCopy_reduced
+  SafeParetoImprovements.Examples.conflictTokenCopy_fresh
+  SafeParetoImprovements.Examples.conflictRepresentatives
+  SafeParetoImprovements.Examples.conflictBookIso
+  SafeParetoImprovements.Examples.conflictRepresentatives_play
+  SafeParetoImprovements.Examples.conflictRepresentatives_play_hat
+  SafeParetoImprovements.Examples.conflictPlainToken
+  SafeParetoImprovements.Examples.conflictPlainToken_isSPI
+  SafeParetoImprovements.Examples.conflictPlainToken_not_isStrictSPI
+  SafeParetoImprovements.Examples.conflictStrictToken
+  SafeParetoImprovements.Examples.conflictStrictToken_isSPI
+  SafeParetoImprovements.Examples.conflictStrictToken_isStrictSPI
+  SafeParetoImprovements.Examples.conflictStrictToken_ue_ne
   -- Beyond the paper (SafeParetoImprovements/Independence.lean, RULING 9,
   -- `dd:default-instr`): default instructions, participation independence, the
   -- information stage and foreknowledge independence, and their `Prog` witnesses.

@@ -19,7 +19,8 @@ space at which every hypothesis holds — and hence the conclusion is actually r
 Nothing here is a paper node: these are witnesses, not claims of the paper.  The general
 constructions they use live where they belong — `exists_play_satisfiesA1_satisfiesA2` and
 `Book.prescribed` in `Book.lean`, `demandGame.reduce_eq` in `DemandGame.lean` — and this
-file only instantiates them.  It is imported by the aggregator and by nothing else.
+file only instantiates them.  It is imported by the aggregator and by
+`Examples/ProgramGameWitnesses.lean`, which builds the Appendix-A witnesses on top of it.
 
 * Propositions 5, 7, 8 and the weak clause of 6 need only Assumptions 1 and 2, so the
   deterministic book (`Book.const`) discharges them.

@@ -480,8 +480,17 @@ may assign *different utilities* to the outcomes it keeps ("a subset game may as
 different utilities to outcomes than the original game", §2), so shifting every payoff of
 `reduce Γ` by `+1` produces a subset game whose full reduction is not equal to `reduce Γ`
 while the identity action map is an isomorphism between them, and is Pareto-improving
-with equality.  The clause is therefore satisfied by every game with at least one player,
-and the printed decision problems are constant-true.  The defect is the paper's, not the
+with equality.  The clause is therefore satisfied by every game with at least one player.
+That empties the non-triviality clause of all three printed predicates, and it makes the
+plain and unilateral printed decision problems outright **constant-true**
+(`spiDecisionPrinted_of_nonempty`, and `unilateralSPIDecisionPrinted_of_reduced` on fully
+reduced games).  The *strict* printed variant is **not** among them: its item-4 clause asks a player to gain
+strictly at some surviving outcome, which the payoff-shift witness does not supply (it
+improves with *equality*), and which a game whose players have one action each cannot
+supply at all.  So the erratum empties the non-triviality clause of all three, but only the
+plain and unilateral printed predicates are thereby constant-true; the strict one retains
+content.  The
+defect is the paper's, not the
 rendering's (the adjudication of R1-F18 confirmed the witness against the printed text);
 Appendix D's converse argument calls the identity action map *trivial*, which is what the
 intended clause is about.
@@ -625,9 +634,11 @@ relabelling that empties the printed clause.  Ruled by Anson, 2026-09-12 (erratu
 see `notes/paper-errata.md`.
 
 The repaired predicates are not constant: `not_spiDecision_of_card_le_one` gives a "no"
-instance, and the Demand Game is a "yes" instance of all three
-(`Examples.demandGame_spiDecision`, `Examples.demandGame_strictSPIDecision`, and — for the
-unilateral variant — `Examples.complicatedTemptation_unilateralSPIDecision`).
+instance, and each has a "yes" instance — the Demand Game for the plain and strict variants
+(`Examples.demandGame_spiDecision`, `Examples.demandGame_strictSPIDecision`) and the
+**Complicated Temptation Game** for the unilateral variant
+(`Examples.complicatedTemptation_unilateralSPIDecision`), which is the paper's own
+unilateral example (§4.5).
 
 Note that the payoff-shift witnesses above (`shiftReduce`, `bumpPayoff`) do **not** serve
 the repaired predicates: they leave `reduce.S` unchanged and therefore fail the repaired

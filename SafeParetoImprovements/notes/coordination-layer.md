@@ -1,6 +1,10 @@
 # Tranche D design note — §5, SPIs under improved coordination
 
-**Status:** design for review (2026-09-12). No Lean yet. Covers §5.1–§5.3 minus Theorem 15
+**Status:** rulings 10–13b given 2026-09-12 (`scoping.md` §8); D1 landed (`Coordination.lean`,
+`Examples/Chicken.lean`, `Examples/TokenWitnesses.lean`, with the round-4 blocker fixed per
+`.harness/adjudication/token-games-investigation.md`: §5 examples over `X ⊕ ℕ`, `HasRoomOutside`,
+label-free kernel for Proposition 16). D2–D4 to follow under those rulings; Corollary 14's
+polytope clause is to be attempted (RULING 12). Covers §5.1–§5.3 minus Theorem 15
 (RULING 8: deferred, erratum D12). Nodes: the unnumbered `C(Γ)` and token games, Definition 6,
 Definition 7 (RULING 7: "strict" read into the body, erratum D10), Lemma 11, Algorithm 1,
 Proposition 12, Lemma 13, Corollary 14, Proposition 16. Errata already recorded that bind the

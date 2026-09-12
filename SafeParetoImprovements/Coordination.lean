@@ -15,16 +15,41 @@ outcome (extraction l. 1278–1315).  This file carries:
   strategies) and shown equal to the convex hull of `u(A)` (`dd:feasible`);
 * `TokenGame` and Definition 6 (`TokenGame.IsSPI`, `TokenGame.IsStrictSPI`) at the
   certainty-filter level (`dd:certainty`);
-* `Game.HasRoom` and the **token copy** `Game.tokenCopy`: the paper assumes fresh tokens
-  `Aˢᵢ ∩ Aᵢ = ∅` exist silently; over a fixed universe (`dd:universe`) that is a hypothesis
-  on the universe, discharged in examples by a universe with spare elements (`dd:room`);
+* `Game.HasRoomOutside` (with `Game.HasRoom` its `B := Γ.S` case) and the **token copy**
+  `Game.tokenCopy`: the paper assumes fresh tokens `Aˢᵢ ∩ Aᵢ = ∅` exist silently; over a
+  fixed universe (`dd:universe`) that is a hypothesis on the universe, discharged in
+  examples by a universe with spare elements (`dd:room`);
 * **Lemma 11** as its mathematical content: `y ∈ C(Γ)` is Pareto-optimal in `C(Γ)` iff the
   paper's linear program has optimum `0`; the "by linear programming, hence in polynomial
   time" clause is not rendered (`dd:complexity`).
 
-The decision problem (Definition 7), Algorithm 1's correctness (Proposition 12), Lemma 13,
-Corollary 14 and Proposition 16 follow in later files of the tranche
-(`notes/coordination-layer.md`).
+The decision problem (Definition 7), Algorithm 1's correctness (Proposition 12), Lemma 13
+and Corollary 14 follow in later files of the tranche (`notes/coordination-layer.md`);
+Proposition 16 is `Examples/Chicken.lean`.
+
+## `dd:room` in full
+
+The paper assumes silently that fresh token actions `Aˢᵢ` with `Aˢᵢ ∩ Aᵢ = ∅` exist.  Over
+a fixed per-player universe (`dd:universe`) that is a property of the *universe*, not of
+the game, so it is a hypothesis (`Game.HasRoomOutside`) on §5 constructions and a choice of
+universe in §5 examples.  The §5 examples take `𝒜 i := X ⊕ ℕ` with the game's actions in
+`inl` and off-profile payoffs `0` (`dd:total-utility`), so freshness confines token sets to
+the `inr` copy of `ℕ` and every finite token action set is realized up to relabelling; the
+token-game class over that universe is therefore the paper's class, and an impossibility
+statement `¬ ∃ T : TokenGame Γ, …` is the paper's impossibility.
+
+**Disclosure:** a universe with only finitely many spare elements would truncate that class
+and weaken any such statement — indeed a game using its whole finite universe has
+`TokenGame Γ` *empty*, so an impossibility over it is vacuous (round-4 blocker R4-F01).
+Where the argument permits, the impossibility is additionally stated label-free, as a fact
+about `C(Γ)`-valued random variables, so that it does not depend on how rich the universe
+is (`Examples.chicken_no_feasible_dominating_of_mean_cc`).
+
+The predicate is parameterized by the set to *avoid*: every §5 construction tokenizes
+`Γ.reduce` (or a subset game) and hands the result back as a `TokenGame Γ`, whose `fresh`
+field demands disjointness from `Γ.S i ⊇ Γ.reduce.S i`.  `Γ.reduce.HasRoom` is strictly
+weaker than that and does **not** suffice (R4-F01, `dd:room`); the right hypothesis is
+`Γ.reduce.HasRoomOutside Γ.S`.
 -/
 
 universe u v w
@@ -45,7 +70,11 @@ structure Correlated where
   /-- `pₐ`. -/
   weight : (∀ i, 𝒜 i) → ℝ
   nonneg : ∀ a, 0 ≤ weight a
-  /-- Unplayable profiles carry no weight. -/
+  /-- Unplayable profiles carry no weight.  Note this field constrains nothing that
+  `Game.feasible` sees — `Correlated.payoff` sums over `Γ.profilesFinset`, so off-profile
+  weights never enter — but without it a `Correlated` would not be a distribution on `A`.
+  Do not "simplify" it away thinking it is doing work, and do not add a hypothesis
+  believing it is missing. -/
   support : ∀ a, a ∉ Γ.profiles → weight a = 0
   sum_eq_one : ∑ a ∈ Γ.profilesFinset, weight a = 1
 
@@ -125,10 +154,11 @@ noncomputable def lpObjective (y : N → ℝ) (p : Γ.Correlated) : ℝ :=
 
 /-- **Lemma 11**, mathematical content: `y` is Pareto-optimal in `C(Γ)` iff the paper's
 linear program — maximise `∑ᵢ (uᵢ(p) − yᵢ)` over correlated strategies `p` with
-`u(p) ≥ y` — has optimum `0`, i.e. every feasible `p` has objective `0`.  The paper asks
-this for `y ∈ C(Γ)`; the equivalence needs no membership hypothesis.  The clause "it can be
-decided by linear programming and thus in polynomial time" is not rendered
-(`dd:complexity`, RULING 6).
+`u(p) ≥ y` — has optimum `0`, i.e. every feasible `p` has objective `0`.  The paper states
+it for an arbitrary payoff vector `y ∈ ℝⁿ` (extraction l. 1360–1362), and so does this: no
+membership hypothesis is needed or imposed.  Above `C(Γ)` both sides are vacuously true and
+below it both are false.  The clause "it can be decided by linear programming and thus in
+polynomial time" is not rendered (`dd:complexity`, RULING 6).
 
 Paper node: `Lemma 11` -/
 theorem paretoOptimalIn_feasible_iff (y : N → ℝ) :
@@ -195,39 +225,60 @@ namespace Game
 
 variable (Γ : Game N 𝒜)
 
-/-- **Room for tokens** (`dd:room`): each player's universe has a copy of her action set
-disjoint from it.  The paper assumes fresh tokens exist; over a fixed universe this is a
-hypothesis. -/
-def HasRoom : Prop := ∀ i, ∃ t : 𝒜 i → 𝒜 i, InjOn t (Γ.S i) ∧ ∀ a ∈ Γ.S i, t a ∉ Γ.S i
+/-- **Room for tokens outside `B`** (`dd:room`): each player's universe carries an
+injective copy of her action set that avoids `B i`.  The paper assumes fresh tokens exist;
+over a fixed universe this is a hypothesis, and the set to avoid must be given separately
+from the game being copied — every §5 construction tokenizes `Γ.reduce` (or a subset game)
+and hands the result back as a `TokenGame Γ`, whose `fresh` field demands disjointness from
+`Γ.S i`, not merely from `Γ.reduce.S i` (R4-F01). -/
+def HasRoomOutside (B : ∀ i, Finset (𝒜 i)) : Prop :=
+  ∀ i, ∃ t : 𝒜 i → 𝒜 i, InjOn t (Γ.S i) ∧ ∀ a ∈ Γ.S i, t a ∉ B i
+
+/-- **Room for tokens** (`dd:room`): the special case of `Game.HasRoomOutside` in which the
+avoided set is the game's own action set — enough exactly when the token copy is handed
+back as a token game for `Γ` itself. -/
+def HasRoom : Prop := Γ.HasRoomOutside Γ.S
+
+lemma hasRoom_iff : Γ.HasRoom ↔ Γ.HasRoomOutside Γ.S := Iff.rfl
+
+variable {B : ∀ i, Finset (𝒜 i)}
 
 /-- A chosen family of token maps. -/
-noncomputable def tokenMap (h : Γ.HasRoom) (i : N) : 𝒜 i → 𝒜 i := (h i).choose
+noncomputable def tokenMap (h : Γ.HasRoomOutside B) (i : N) : 𝒜 i → 𝒜 i := (h i).choose
 
-lemma tokenMap_injOn (h : Γ.HasRoom) (i : N) : InjOn (Γ.tokenMap h i) (Γ.S i) := (h i).choose_spec.1
+lemma tokenMap_injOn (h : Γ.HasRoomOutside B) (i : N) : InjOn (Γ.tokenMap h i) (Γ.S i) :=
+  (h i).choose_spec.1
 
-lemma tokenMap_not_mem (h : Γ.HasRoom) (i : N) {a : 𝒜 i} (ha : a ∈ Γ.S i) :
-    Γ.tokenMap h i a ∉ Γ.S i := (h i).choose_spec.2 a ha
+lemma tokenMap_not_mem (h : Γ.HasRoomOutside B) (i : N) {a : 𝒜 i} (ha : a ∈ Γ.S i) :
+    Γ.tokenMap h i a ∉ B i := (h i).choose_spec.2 a ha
+
+/-- The inverse token map on the token set.  Off the tokens it is `Function.invFunOn`'s junk
+value, which nothing reads: `tokenCopy.S` is exactly the image, so `untoken` inverts
+correctly at every profile (`untoken_tokenMap`), and every consumer of a game's payoffs
+(`profiles`, `Correlated`, `feasible`, dominance, `Play.mem`) only evaluates `u` on
+profiles. -/
+noncomputable def untoken (h : Γ.HasRoomOutside B) (i : N) : 𝒜 i → 𝒜 i :=
+  haveI : Nonempty (𝒜 i) := Γ.nonempty_universe i
+  Function.invFunOn (Γ.tokenMap h i) (Γ.S i)
 
 variable [∀ i, DecidableEq (𝒜 i)]
 
-/-- The inverse token map on the token set. -/
-noncomputable def untoken [∀ i, Nonempty (𝒜 i)] (h : Γ.HasRoom) (i : N) : 𝒜 i → 𝒜 i :=
-  Function.invFunOn (Γ.tokenMap h i) (Γ.S i)
-
 /-- **The token copy of `Γ`** (the `(Â, û)` of Lemma 13): the same game on fresh tokens. -/
-noncomputable def tokenCopy [∀ i, Nonempty (𝒜 i)] (h : Γ.HasRoom) : Game N 𝒜 where
+noncomputable def tokenCopy (h : Γ.HasRoomOutside B) : Game N 𝒜 where
   S i := (Γ.S i).image (Γ.tokenMap h i)
   nonempty i := (Γ.nonempty i).image _
   u b i := Γ.u (fun j => Γ.untoken h j (b j)) i
 
-variable [∀ i, Nonempty (𝒜 i)] (h : Γ.HasRoom)
+variable (h : Γ.HasRoomOutside B)
 
 omit [∀ i, DecidableEq (𝒜 i)] in
 lemma untoken_tokenMap (i : N) {a : 𝒜 i} (ha : a ∈ Γ.S i) :
     Γ.untoken h i (Γ.tokenMap h i a) = a :=
+  haveI : Nonempty (𝒜 i) := Γ.nonempty_universe i
   (Γ.tokenMap_injOn h i).leftInvOn_invFunOn ha
 
-lemma tokenCopy_fresh (i : N) : Disjoint ((Γ.tokenCopy h).S i) (Γ.S i) := by
+/-- The token copy is fresh for the avoided set `B`. -/
+lemma tokenCopy_fresh (i : N) : Disjoint ((Γ.tokenCopy h).S i) (B i) := by
   rw [Finset.disjoint_left]
   intro b hb
   obtain ⟨a, ha, rfl⟩ := Finset.mem_image.1 hb
@@ -256,6 +307,38 @@ lemma tokenCopy_u_map (a : ∀ i, 𝒜 i) (ha : a ∈ Γ.profiles) :
   have := (Γ.tokenIso h).affine a ha i
   simp only [tokenIso, one_mul, add_zero] at this
   exact this.symm
+
+end Game
+
+/-! ### An infinite universe has room for anything
+
+The uniform source of room: over `𝒜 i` infinite, *every* finite set can be avoided.  This
+is what a §5 construction needing several mutually disjoint copies uses — take the copies
+in turn, each avoiding the union of the previous ones — and what the §5 example universes
+`X ⊕ ℕ` supply for free. -/
+
+namespace Game
+
+variable (Γ : Game N 𝒜)
+
+lemma hasRoomOutside_of_infinite [∀ i, Infinite (𝒜 i)] (B : ∀ i, Finset (𝒜 i)) :
+    Γ.HasRoomOutside B := by
+  classical
+  intro i
+  haveI : Infinite ((↑(B i) : Set (𝒜 i))ᶜ : Set (𝒜 i)) :=
+    ((B i).finite_toSet.infinite_compl).to_subtype
+  set e : ℕ ↪ ((↑(B i) : Set (𝒜 i))ᶜ : Set (𝒜 i)) := Infinite.natEmbedding _ with he
+  set g : {x : 𝒜 i // x ∈ Γ.S i} → 𝒜 i :=
+    fun x => (e ((Fintype.equivFin {x : 𝒜 i // x ∈ Γ.S i}) x : ℕ) : 𝒜 i) with hg
+  refine ⟨fun a => if ha : a ∈ Γ.S i then g ⟨a, ha⟩ else a, ?_, ?_⟩
+  · intro a ha b hb hab
+    simp only [dif_pos (Finset.mem_coe.1 ha), dif_pos (Finset.mem_coe.1 hb), hg] at hab
+    have h1 := e.injective (Subtype.ext hab)
+    have h2 := Fin.val_injective h1
+    simpa using (Fintype.equivFin {x : 𝒜 i // x ∈ Γ.S i}).injective h2
+  · intro a ha
+    simp only [dif_pos ha, hg]
+    exact (e _).2
 
 end Game
 

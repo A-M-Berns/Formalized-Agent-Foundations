@@ -9993,12 +9993,13 @@ players i, E [uei (Π(As , us ))] = ui (a).</pre>
       <div class="ep-slide"><div class="ep-head"><code class="ep-name">SafeParetoImprovements.Examples.chicken_no_perfectCoordinationSPI</code><span class="staged proved">axiom-clean</span><span class="ep-file">SafeParetoImprovements/Examples/Chicken.lean</span></div><pre class="sig">theorem chicken_no_perfectCoordinationSPI :
     chickenRepresentatives.toPlay.SatisfiesA1 chickenRepresentatives.certainty ∧
     chickenRepresentatives.toPlay.SatisfiesA2 chickenRepresentatives.certainty ∧
+    (pair (Sum.inl CAct.c) (Sum.inl CAct.c) : ∀ i, CUniverse i) ∈ chicken.profiles ∧
     (∀ i, ∫ ω, chicken.u (chickenRepresentatives.play chicken ω) i ∂chickenRepresentatives.μ &lt;
-      chicken.u (pair CAct.c CAct.c) i) ∧
+      chicken.u (pair (Sum.inl CAct.c) (Sum.inl CAct.c)) i) ∧
     ¬ ∃ T : TokenGame chicken,
       T.IsSPI chickenRepresentatives.toPlay chickenRepresentatives.certainty ∧
       ∀ i, ∫ ω, T.ue (chickenRepresentatives.play T.game ω) i ∂chickenRepresentatives.μ =
-        chicken.u (pair CAct.c CAct.c) i</pre></div>
+        chicken.u (pair (Sum.inl CAct.c) (Sum.inl CAct.c)) i</pre></div>
     </section>
   </div>
 </article>
@@ -10185,4 +10186,4 @@ symmetry), and Γ′m ∼Ξ Γ′m+1 by application of Assumption 2 such that
 
 <!-- trust-surface-papers: logical-induction=66 cartesian-frames=60 modal-agents=12 finite-factored-sets=88 factored-space-models=50 condensation=39 safe-pareto-improvements=22 -->
 
-<!-- trust-surface-sources: 4b4e33f25eb0767f3448bee5104a3b591de01da37938281a54d8e98737755fcd -->
+<!-- trust-surface-sources: 9a39cf2ec619d8271936f80916f7ded7542ebc269179a5c52f8b4e484135a870 -->
