@@ -580,6 +580,14 @@ C and E and the split "Theorem 17" header must be deduplicated by the parser).
 - `dd:complexity`: **RULING 6 = qualified nodes, tranche F deferred**.
 - EconCSLib as a pinned dependency with the two-way bridge: **RULING 1 = dependency**.
 
+- RULING 9 (2026-09-12): **yes** — participation independence and foreknowledge independence
+  should be *stateable* in this formalization. Tranche E's instruction layer is therefore in
+  scope and must carry what those notions need: an instruction type distinct from games with
+  a first-class default / non-participation instruction, per-player components, an execution
+  semantics parametric enough to compare counterfactual instruction profiles, and, for
+  foreknowledge independence, an information structure distinguishing what a player knows
+  when choosing an instruction from what is realized later. Design note to follow.
+
 **Still open:**
 
 0. Scope = §2–§6 with appendix proofs (no §8 exists) — assumed, not yet explicitly
@@ -587,8 +595,6 @@ C and E and the split "Theorem 17" header must be deduplicated by the parser).
 7. Definition 7: read "strict" into the body (recommended) vs. as printed.
 8. Theorem 15: projections onto `C(Γ)` rather than the strong frontier `PF(C(Γ))`
    (recommended, re-verifying Appendix E) vs. partial `πᵢ` with existence hypotheses.
-9. Tranche E's instruction layer designed for participation independence (default
-   instruction first-class) as part of this project vs. a separate follow-up.
 10. §5 modeling (token games, support-restricted Lemma 13, Corollary 14's explicit
    formula) — not yet walked through; discussion pending.
 
