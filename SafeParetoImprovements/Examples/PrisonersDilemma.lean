@@ -1,7 +1,4 @@
-import SafeParetoImprovements.Assumptions
-import SafeParetoImprovements.Reduction
-import Mathlib.Tactic.DeriveFintype
-import Mathlib.Tactic.NormNum
+import SafeParetoImprovements.Examples.TwoPlayer
 
 /-!
 # Proposition 5: the Prisoner's Dilemma (Table 3)
@@ -28,10 +25,6 @@ namespace Examples
 
 open Filter
 open scoped SetRel
-
-/-- The two players. -/
-inductive Two | one | two
-  deriving DecidableEq, Fintype
 
 /-- The Prisoner's Dilemma's actions. -/
 inductive PD | cooperate | defect
