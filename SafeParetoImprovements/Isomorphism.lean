@@ -191,7 +191,7 @@ the "same constants" step of Appendix C. -/
 
 section auto
 
-variable [Fintype N] [DecidableEq N]
+variable [Fintype N]
 
 /-- An automorphism `θ` of `Γ` preserves payoffs on `A`. -/
 lemma payoff_eq_of_self (θ : GameIso Γ Γ) {a : ∀ i, 𝒜 i} (ha : a ∈ Γ.profiles) (i : N) :
@@ -246,8 +246,11 @@ lemma payoff_eq_of_self (θ : GameIso Γ Γ) {a : ∀ i, 𝒜 i} (ha : a ∈ Γ.
 /-- **Any** isomorphism between two games that are equal in the paper's sense
 (`Game.EqOn`) preserves payoffs: it is an automorphism of `Γ` once the target's action
 sets and payoffs are identified with `Γ`'s, so `payoff_eq_of_self` applies.  This is what
-makes Assumption 2 forbid a strict SPI between two presentations of one paper game
-(`Play.SatisfiesA2.not_isStrictSPI_of_eqOn`, R1-F01). -/
+makes Assumption 2 forbid a strict SPI between two `EqOn`-equal **reduced** presentations
+of one paper game (`Play.SatisfiesA2.not_isStrictSPI_of_eqOn`, R1-F01).  The reducedness
+qualification comes from Assumption 2 itself, which is a hypothesis only about games
+without strictly dominated actions and constrains no non-reduced pair; this lemma is
+unconditional. -/
 lemma payoff_eq_of_eqOn (h : Γ.EqOn Γ') (φ : GameIso Γ Γ') {a : ∀ i, 𝒜 i}
     (ha : a ∈ Γ.profiles) (i : N) : Γ.u (φ.map a) i = Γ.u a i := by
   have hprof : Γ'.profiles = Γ.profiles := by ext b; simp [Game.profiles, h.1]
@@ -280,7 +283,7 @@ def StrictlyParetoImproving (φ : GameIso Γ Γ') : Prop :=
 
 section lemma4
 
-variable [Fintype N] [DecidableEq N]
+variable [Fintype N]
 
 /-- **Lemma 4**: if `Φ` and `Ψ` are isomorphisms between `Γ` and `Γ'` and `Φ` is
 Pareto-improving, so is `Ψ`.  (The lemma needs `Γ'` to be a subset game of `Γ` for

@@ -198,6 +198,20 @@ lemma reducedGame_reduced : reducedGame.Reduced := by
       norm_num [reducedGame_u, u_apply, ctPayoff, ctPayoff₂] at this
     · exact lt_irrefl _ (hlt .T1 (reducedGame_mem_one.2 (Or.inl rfl)))
 
+/-- The **full reduction** of the Complicated Temptation Game is `reducedGame`: the four
+eliminations `dom1`–`dom4` form an `ElimStar` chain to a game with no strictly dominated
+action, and the fully reduced game is unique
+(`Game.reduce_eq_of_reduced_of_elimStar`).  This is what lets the Definition 5 witness
+`complicatedTemptation_unilateralSPIDecision` compare the two reduced action sets. -/
+lemma reduce_eq : complicatedTemptation.reduce = reducedGame := by
+  have e1 : complicatedTemptation.ElimStar g1 :=
+    Relation.ReflTransGen.single ⟨.one, .R1, dom1, rfl⟩
+  have e2 : complicatedTemptation.ElimStar g2 := Relation.ReflTransGen.tail e1 ⟨.one, .R2, dom2, rfl⟩
+  have e3 : complicatedTemptation.ElimStar g3 := Relation.ReflTransGen.tail e2 ⟨.two, .F1, dom3, rfl⟩
+  have e4 : complicatedTemptation.ElimStar reducedGame :=
+    Relation.ReflTransGen.tail e3 ⟨.two, .F2, dom4, rfl⟩
+  exact Game.reduce_eq_of_reduced_of_elimStar e4 reducedGame_reduced
+
 end complicatedTemptation
 
 namespace complicatedTemptationSPI
@@ -268,6 +282,15 @@ lemma reducedGame_reduced : reducedGame.Reduced := by
     · have := hlt .R2 (reducedGame_mem_one.2 (Or.inr rfl))
       norm_num [reducedGame_u, u_apply, ctSPIPayoff, ctPayoff₂] at this
     · exact lt_irrefl _ (hlt .R1 (reducedGame_mem_one.2 (Or.inl rfl)))
+
+/-- The **full reduction** of Table 5's subset game is its `reducedGame`, by the two
+eliminations `dom1`–`dom2`. -/
+lemma reduce_eq : complicatedTemptationSPI.reduce = reducedGame := by
+  have e1 : complicatedTemptationSPI.ElimStar h1 :=
+    Relation.ReflTransGen.single ⟨.two, .C1, dom1, rfl⟩
+  have e2 : complicatedTemptationSPI.ElimStar reducedGame :=
+    Relation.ReflTransGen.tail e1 ⟨.two, .C2, dom2, rfl⟩
+  exact Game.reduce_eq_of_reduced_of_elimStar e2 reducedGame_reduced
 
 end complicatedTemptationSPI
 

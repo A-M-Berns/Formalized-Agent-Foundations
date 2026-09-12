@@ -19,7 +19,7 @@ data as a relation, and Mathlib's `SetRel M N` (a set of pairs, `m ~[Φ] n` for
 | `all_{M,N} : m ↦ N`           | `Set.univ` (or `M ×ˢ N` on the typed sets)      |
 | `Φ⁻¹`                         | `Φ.inv`                                         |
 | `Ψ ∘ Φ` (first `Φ`, then `Ψ`) | `Φ ○ Ψ` — **Mathlib composes diagrammatically** |
-| single-valued                 | `∀ m, ∃! n, m ~[Φ] n`                           |
+| single-valued                 | `∀ a ∈ Γ.profiles, ∃! b, a ~[Φ] b`              |
 
 The reversal of composition order is the one thing to keep in mind when reading Lemma 2.3
 against the paper.  A second thing: the paper's `id_A : A ⊸ A` is the identity on the
@@ -73,8 +73,11 @@ def Corresponds (Γ Γ' : Game N 𝒜) (Φ : SetRel (∀ i, 𝒜 i) (∀ i, 𝒜
 
 /-! ### Lemma 2 — the basic facts about `∼`
 
-All seven items hold for every filter; the printed proofs use nothing else.  Item 5 is
-the only one that uses the play family's membership constraint `Π(Γ') ∈ A'`. -/
+All seven items hold for every filter; the printed proofs use nothing else.  Items 1 and
+5 are the ones that use the play family's membership constraint `Π(Γ) ∈ A`: item 1
+because the paper's `id_A` is the *partial* identity on the outcomes of `Γ`
+(`Game.partialId`), so reflexivity says exactly `∀ᶠ ω in L, X.play Γ ω ∈ Γ.profiles`; item
+5 because `all_{A,A'}` is typed on both games' outcomes. -/
 
 variable {X L}
 
@@ -120,7 +123,8 @@ lemma Corresponds.mono_rel' {Γ Γ' : Game N 𝒜} {Φ Ξ : SetRel (∀ i, 𝒜 
   h.mono_rel fun _ _ _ hω => hΦΞ hω
 
 /-- Lemma 2.5, the **trivial correspondence**: `Γ ∼_{all_{A,A'}} Γ'` always.  This is the
-one item that uses `Π(Γ') ∈ A'`.
+one item that uses `Π(Γ') ∈ A'` (item 1 uses the membership constraint too, but only for
+`Γ`; see the section note).
 
 Paper node: `Lemma 2` -/
 theorem corresponds_allRel (X : Play N 𝒜 Ω) (L : Filter Ω) (Γ Γ' : Game N 𝒜) :

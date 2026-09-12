@@ -37,9 +37,10 @@ false.  What is true, and what the paper uses:
   D14): for the one-player game with actions `{0,1,2}` and `u(a) = a`, the chain that
   eliminates `0` consists of two games, while any normal-form chain must reach both full
   reductions, insert the isomorphism move and come back, which takes five.  (ii) The
-  normal form has the *same endpoints* and a composite that agrees with the original one
-  on the outcomes of `reduce Γ`; it is not the original composite (which may relate
-  outcomes killed by the reduction).  A chain with restricted move kinds *is* expressible
+  normal form has the *same endpoints* and a composite that is **contained in** the
+  original one on the outcomes of `reduce Γ` — for each such outcome `a`, the original
+  composite relates `a` to `ψ.map a`, not necessarily only to it; it is not the original
+  composite (which may relate outcomes killed by the reduction).  A chain with restricted move kinds *is* expressible
   in a `Prop`-valued system — the earlier claim that "the same chain reorganized is not
   expressible" was over-broad; what is genuinely not expressible is a statement about a
   *given* chain being permuted, since `Deriv` records no list of moves.
@@ -49,8 +50,11 @@ false.  What is true, and what the paper uses:
   This is the object Theorem 9's membership algorithm and Proposition 10's search enumerate.
 * **Soundness** (`isSPI_of_deriv`): a Pareto-improving derivation from `Γ₀` to `Γs`
   makes `Γs` an SPI on `Γ₀` under every play family satisfying Assumptions 1 and 2 — via
-  the structure theorem, Assumption 1 along the eliminations, Assumption 2 and Lemma 4 at
-  the isomorphism, and Theorem 3.
+  the certificate form `exists_paretoImproving_deriv_iff`, Assumption 1 along the
+  reductions (`SatisfiesA1.play_reduce`), Assumption 2 with Lemma 4 at the isomorphism
+  (`exists_paretoImproving_corresponds_of_assumption2`), and then the definition of
+  `Play.IsSPI` directly.  Theorem 3 is *not* used: the correspondence is produced
+  explicitly, so no appeal to the characterization is needed.
 
 Completeness (every SPI valid under the assumptions has a derivation) is neither claimed
 by the paper nor true, and is not stated.
@@ -360,28 +364,35 @@ lemma normal (hsub : Γ.IsSubsetGameOf Γ₀) (hsub' : Γ'.IsSubsetGameOf Γ₀)
 
 /-- **Lemma 21**: any derivation from `Γ` to `Γ'` inside `Γ₀` can be replaced by one in
 normal form with the same endpoints — *eliminations by Assumption 1, then one application
-of Assumption 2 between two fully reduced games, then reverse eliminations* — and the
-replacement relates each outcome of `reduce Γ` exactly as the original derivation does.
-The statement exhibits all four components: the isomorphism `ψ : reduce Γ ≅ reduce Γ'`,
-the two elimination-only chains (`ElimStar`, so no Assumption 2 move hides in them) into
-the two full reductions, which are reduced, the composite identity of the three phases,
-and the resulting derivation.
+of Assumption 2 between two fully reduced games, then reverse eliminations* — whose
+composite is **contained in** the original derivation's on the outcomes of `reduce Γ`.
+The statement exhibits every component: the isomorphism `ψ : reduce Γ ≅ reduce Γ'`, the
+two elimination-only chains (`ElimStar`, so no Assumption 2 move hides in them) into the
+two full reductions, which are reduced, the *single Assumption 2 move*
+`Step Γ₀ Γ.reduce Γ'.reduce ψ.rel` between those two fully reduced games, the composite
+identity of the three phases, and the resulting derivation.
 
 Two qualifications, both recorded in the module docstring.  The printed length bound
-`m ≤ k` is **not** rendered, and is false as printed (erratum D14).  And the normal form
-agrees with the original derivation on the outcomes of `reduce Γ` (last conjunct), not
-necessarily everywhere: the original composite may relate outcomes that the reduction
-kills.
+`m ≤ k` is **not** rendered, and is false as printed (erratum D14).  And the last
+conjunct is one-directional: on each outcome `a` of `reduce Γ` the *original* composite
+`Φ` relates `a` to the normal form's image `ψ.map a` — the normal form is contained in
+`Φ` there — not that the two relate `a` to exactly the same outcomes, and nothing is
+claimed off `reduce Γ`, where the original composite may relate outcomes that the
+reduction kills.
 
 Paper node: `Lemma 21` -/
 theorem exists_normalForm (d : Deriv Γ₀ Γ Γ' Φ) :
     ∃ ψ : GameIso Γ.reduce Γ'.reduce,
       Γ.ElimStar Γ.reduce ∧ Γ'.ElimStar Γ'.reduce ∧
         Γ.reduce.Reduced ∧ Γ'.reduce.Reduced ∧
+        Step Γ₀ Γ.reduce Γ'.reduce ψ.rel ∧
         Γ.reduce.partialId ○ (ψ.rel ○ Γ'.reduce.partialId) = normalRel ψ ∧
         Deriv Γ₀ Γ Γ' (normalRel ψ) ∧ ∀ a ∈ Γ.reduce.profiles, a ~[Φ] ψ.map a := by
   obtain ⟨ψ, hψ⟩ := d.exists_iso
   exact ⟨ψ, Γ.elimStar_reduce, Γ'.elimStar_reduce, Γ.reduce_reduced, Γ'.reduce_reduced,
+    Step.iso (Γ.reduce_isSubsetGameOf.trans d.isSubsetGameOf_left)
+      (Γ'.reduce_isSubsetGameOf.trans d.isSubsetGameOf_right)
+      Γ.reduce_reduced Γ'.reduce_reduced ψ,
     partialId_comp_rel_comp_partialId ψ, normal d.isSubsetGameOf_left d.isSubsetGameOf_right ψ,
     hψ⟩
 
@@ -614,7 +625,14 @@ relabelling that empties the printed clause.  Ruled by Anson, 2026-09-12 (erratu
 see `notes/paper-errata.md`.
 
 The repaired predicates are not constant: `not_spiDecision_of_card_le_one` gives a "no"
-instance, and the Demand Game (Proposition 6) is a "yes" instance. -/
+instance, and the Demand Game is a "yes" instance of all three
+(`Examples.demandGame_spiDecision`, `Examples.demandGame_strictSPIDecision`, and — for the
+unilateral variant — `Examples.complicatedTemptation_unilateralSPIDecision`).
+
+Note that the payoff-shift witnesses above (`shiftReduce`, `bumpPayoff`) do **not** serve
+the repaired predicates: they leave `reduce.S` unchanged and therefore fail the repaired
+non-triviality clause by construction.  They are exactly the erratum-D13 counterexamples
+and serve only the printed predicates. -/
 
 /-- **The SPI decision problem** (Definition 5, non-triviality repaired per erratum D13):
 does `Γ` have a subset game `Γs` such that (1) the reduced action sets differ,
@@ -623,7 +641,9 @@ Assumption 1 in reverse, or Assumption 2 leads from `Γ` to `Γs`, and (3) its c
 Pareto-improving under `Γ`'s payoffs?
 
 Soundness: `Play.isSPI_of_deriv` turns items (2)–(3) into `Play.IsSPI` under Assumptions
-1 and 2.
+1 and 2.  The Demand Game is a "yes" instance (`Examples.demandGame_spiDecision`); a game
+in which every player has one action is a "no" instance
+(`not_spiDecision_of_card_le_one`).
 
 Paper node: `Definition 5` -/
 def SPIDecision (Γ : Game N 𝒜) : Prop :=
@@ -640,7 +660,11 @@ survive iterated elimination occur with positive probability" (extraction l. 121
 That assumption is not part of the predicate — it is a hypothesis on the *representatives*
 — so it appears as an explicit hypothesis of the soundness result
 `Play.isStrictSPI_of_deriv`, in the form `∀ a ∈ Γ.reduce.profiles, ∃ᶠ ω in L,
-X.play Γ ω = a`.  Without it a "yes" instance need not give a strict SPI.
+X.play Γ ω = a`.  Without it a "yes" instance need not give a strict SPI.  It is
+satisfiable jointly with Assumptions 1 and 2
+(`exists_play_satisfiesA1_satisfiesA2_hits`), though not over a one-point sample space.
+
+The Demand Game is a "yes" instance (`Examples.demandGame_strictSPIDecision`).
 
 Paper node: `Definition 5` -/
 def StrictSPIDecision (Γ : Game N 𝒜) : Prop :=
@@ -651,7 +675,8 @@ def StrictSPIDecision (Γ : Game N 𝒜) : Prop :=
 /-- **The unilateral SPI decision problem** (Definition 5, item 5; non-triviality repaired
 per erratum D13): additionally `Γs` is a unilateral subset game of `Γ` (Definition 2).
 
-Soundness: `Play.isUnilateralSPI_of_deriv`.
+Soundness: `Play.isUnilateralSPI_of_deriv`.  The Complicated Temptation Game is a "yes"
+instance (`Examples.complicatedTemptation_unilateralSPIDecision`).
 
 Paper node: `Definition 5` -/
 def UnilateralSPIDecision (Γ : Game N 𝒜) : Prop :=
@@ -660,8 +685,10 @@ def UnilateralSPIDecision (Γ : Game N 𝒜) : Prop :=
 
 /-- A game in which every player has at most one action is a **"no" instance** of the
 repaired SPI decision problem: every subset game has the same (single) action sets, so no
-subset game can pass the repaired non-triviality clause.  With the payoff-shift witness
-above, this is what shows the repair is not vacuous in either direction. -/
+subset game can pass the repaired non-triviality clause.  The matching "yes" instance is
+`Examples.demandGame_spiDecision`; together the two show the repaired predicate is not
+constant in either direction.  (The payoff-shift witnesses above are *not* the "yes" half:
+they fail the repaired clause, being exactly the erratum-D13 counterexamples.) -/
 lemma not_spiDecision_of_card_le_one {Γ : Game N 𝒜} (h : ∀ i, (Γ.S i).card ≤ 1) :
     ¬ Γ.SPIDecision := by
   have hred : ∀ G : Game N 𝒜, (∀ i, (G.S i).card ≤ 1) → G.Reduced := by
@@ -706,13 +733,25 @@ lemma Play.SatisfiesA1.play_reduce [Fintype N] (hA1 : X.SatisfiesA1 L) (Γ : Gam
 
 /-- **Soundness of Definition 5's derivations**: if a Pareto-improving derivation leads
 from `Γ₀` to its subset game `Γs`, then `Γs` is an SPI on `Γ₀` under every play family
-satisfying Assumptions 1 and 2.  (Structure theorem, then Assumption 1 along the
-reductions, Assumption 2 with Lemma 4 at the isomorphism, Theorem 3.) -/
-lemma Play.isSPI_of_deriv [Fintype N] [∀ i, Nonempty (𝒜 i)] (hA1 : X.SatisfiesA1 L)
+satisfying Assumptions 1 and 2.
+
+*Provenance of the proof*: the certificate form of Definition 5
+(`Game.exists_paretoImproving_deriv_iff`) turns the derivation into a Pareto-improving
+isomorphism of the two full reductions; Assumption 1 identifies the play of each game with
+the play of its reduction (`SatisfiesA1.play_reduce`); Assumption 2 with Lemma 4 supplies a
+correspondence along *some* isomorphism, still Pareto-improving
+(`Play.exists_paretoImproving_corresponds_of_assumption2`); and `Play.IsSPI` is then
+discharged from its definition.  Theorem 3 is not used.
+
+The subset-game clause of Definition 5 is not a separate hypothesis: the derivation
+supplies it (`d.isSubsetGameOf_right`). -/
+lemma Play.isSPI_of_deriv [Fintype N] (hA1 : X.SatisfiesA1 L)
     (hA2 : X.SatisfiesA2 L)
-    {Γ₀ Γs : Game N 𝒜} (hsub : Γs.IsSubsetGameOf Γ₀)
+    {Γ₀ Γs : Game N 𝒜}
     {Φ : SetRel (∀ i, 𝒜 i) (∀ i, 𝒜 i)} (d : Game.Deriv Γ₀ Γ₀ Γs Φ)
     (hΦ : Game.ParetoImprovingFor Γ₀ Φ) : X.IsSPI L Γ₀ Γs := by
+  haveI : ∀ i, Nonempty (𝒜 i) := Γ₀.nonempty_universe
+  have hsub : Γs.IsSubsetGameOf Γ₀ := d.isSubsetGameOf_right
   obtain ⟨ψ, hψ⟩ := (Game.exists_paretoImproving_deriv_iff Γ₀ Γs hsub).1 ⟨Φ, d, hΦ⟩
   obtain ⟨ψ', hψ', hc⟩ := Play.exists_paretoImproving_corresponds_of_assumption2 hA2
     Γ₀.reduce_reduced Γs.reduce_reduced ψ hψ
@@ -726,11 +765,11 @@ lemma Play.isSPI_of_deriv [Fintype N] [∀ i, Nonempty (𝒜 i)] (hA1 : X.Satisf
 /-- **Soundness for the unilateral variant** (Definition 5, item 5): a Pareto-improving
 derivation onto a *unilateral* subset game makes that game a unilateral SPI, under every
 play family satisfying Assumptions 1 and 2. -/
-lemma Play.isUnilateralSPI_of_deriv [Fintype N] [∀ i, Nonempty (𝒜 i)] (hA1 : X.SatisfiesA1 L)
+lemma Play.isUnilateralSPI_of_deriv [Fintype N] (hA1 : X.SatisfiesA1 L)
     (hA2 : X.SatisfiesA2 L) {Γ₀ Γs : Game N 𝒜} (huni : Γ₀.Unilateral Γs)
     {Φ : SetRel (∀ i, 𝒜 i) (∀ i, 𝒜 i)} (d : Game.Deriv Γ₀ Γ₀ Γs Φ)
     (hΦ : Game.ParetoImprovingFor Γ₀ Φ) : X.IsUnilateralSPI L Γ₀ Γs :=
-  ⟨huni, Play.isSPI_of_deriv hA1 hA2 huni.1 d hΦ⟩
+  ⟨huni, Play.isSPI_of_deriv hA1 hA2 d hΦ⟩
 
 /-- **Soundness for the strict variant** (Definition 5, item 4): a Pareto-improving
 derivation whose composite is *strictly* improving for player `i` at some surviving
@@ -741,15 +780,23 @@ outcome of `reduce Γ₀` to a positive-probability event; without it the strict
 Definition 1 can fail at a "yes" instance.
 
 Note that the recorded `Φ` does not have to be the correspondence Assumption 2 supplies:
-strictness transfers to whichever isomorphism it supplies by Lemma 4 (the strict form). -/
-lemma Play.isStrictSPI_of_deriv [Fintype N] [∀ i, Nonempty (𝒜 i)] (hA1 : X.SatisfiesA1 L)
-    (hA2 : X.SatisfiesA2 L) {Γ₀ Γs : Game N 𝒜} (hsub : Γs.IsSubsetGameOf Γ₀)
+strictness transfers to whichever isomorphism it supplies by Lemma 4 (the strict form).
+
+The side condition is not vacuous, but it does rule out the one-point sample space as soon
+as the reduction has two outcomes: the witness is the page-varying book
+(`exists_play_satisfiesA1_satisfiesA2_hits`), and
+`Examples.demandGame_isStrictSPI_of_deriv_witnessed` exhibits every hypothesis of this
+lemma holding at once (R2-F18). -/
+lemma Play.isStrictSPI_of_deriv [Fintype N] (hA1 : X.SatisfiesA1 L)
+    (hA2 : X.SatisfiesA2 L) {Γ₀ Γs : Game N 𝒜}
     {Φ : SetRel (∀ i, 𝒜 i) (∀ i, 𝒜 i)} (d : Game.Deriv Γ₀ Γ₀ Γs Φ)
     (hΦ : Game.ParetoImprovingFor Γ₀ Φ)
     (hpos : ∀ a ∈ Γ₀.reduce.profiles, ∃ᶠ ω in L, X.play Γ₀ ω = a)
     {i : N} {a : ∀ i, 𝒜 i} (ha : a ∈ Γ₀.reduce.profiles)
     (hstrict : ∀ b, a ~[Φ] b → Γ₀.u a i < Γ₀.u b i) : X.IsStrictSPI L Γ₀ Γs := by
-  refine ⟨Play.isSPI_of_deriv hA1 hA2 hsub d hΦ, ?_⟩
+  haveI : ∀ i, Nonempty (𝒜 i) := Γ₀.nonempty_universe
+  have hsub : Γs.IsSubsetGameOf Γ₀ := d.isSubsetGameOf_right
+  refine ⟨Play.isSPI_of_deriv hA1 hA2 d hΦ, ?_⟩
   obtain ⟨ψ₀, hψ₀⟩ := (Game.exists_paretoImproving_deriv_iff Γ₀ Γs hsub).1 ⟨Φ, d, hΦ⟩
   obtain ⟨ψ, hψ⟩ := d.exists_iso
   have hPI : ψ.ParetoImproving := GameIso.paretoImproving_of_paretoImproving ψ₀ ψ hψ₀

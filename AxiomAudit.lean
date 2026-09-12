@@ -3780,6 +3780,7 @@ blocks, a stale entry, a malformed line, a non-empty block once the paper is
   SafeParetoImprovements.Examples.demandGame_isSPI
   SafeParetoImprovements.Examples.demandGame_isStrictSPI
   SafeParetoImprovements.Examples.temptation_isStrictSPI
+  SafeParetoImprovements.Examples.temptation_isUnilateralSPI
   SafeParetoImprovements.Examples.complicatedTemptation_isUnilateralSPI
   -- Non-vacuity witnesses (R1-F14, R1-F15, R1-F32).  These are not paper nodes: they are
   -- the inhabitants that make the propositions' hypotheses -- and the `Representatives`
@@ -3795,6 +3796,22 @@ blocks, a stale entry, a malformed line, a non-empty block once the paper is
   SafeParetoImprovements.Examples.temptation_isStrictSPI_witnessed
   SafeParetoImprovements.Examples.complicatedTemptation_isUnilateralSPI_witnessed
   SafeParetoImprovements.Examples.unitRepresentatives
+  -- The "yes" instances of the repaired Definition 5 predicates (R2-F05): without these
+  -- the repaired non-triviality clause could be uniformly false, and the payoff-shift
+  -- witnesses of erratum D13 do not serve it (they leave `reduce.S` unchanged).  With
+  -- `not_spiDecision_of_card_le_one` they bracket the repaired predicates on both sides.
+  SafeParetoImprovements.Examples.complicatedTemptation.reduce_eq
+  SafeParetoImprovements.Examples.complicatedTemptationSPI.reduce_eq
+  SafeParetoImprovements.Examples.demandGame_spiDecision
+  SafeParetoImprovements.Examples.demandGame_strictSPIDecision
+  SafeParetoImprovements.Examples.complicatedTemptation_unilateralSPIDecision
+  -- The page-varying book and the witness that `Play.isStrictSPI_of_deriv`'s side
+  -- condition is satisfiable jointly with Assumptions 1 and 2 (R2-F18): on a one-point
+  -- sample space no play family reaches two distinct reduced outcomes, so the
+  -- deterministic book cannot discharge it.
+  SafeParetoImprovements.Book.varying SafeParetoImprovements.Book.varying_play_eq
+  SafeParetoImprovements.exists_play_satisfiesA1_satisfiesA2_hits
+  SafeParetoImprovements.Examples.demandGame_isStrictSPI_of_deriv_witnessed
   -- The `EqOn`-invariance fact that answers R1-F01: under Assumption 2 no play family can
   -- make one presentation of a game a strict SPI on another (SafeParetoImprovements/
   -- Assumptions.lean, Isomorphism.lean).

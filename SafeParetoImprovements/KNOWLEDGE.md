@@ -12,7 +12,7 @@ from an audit. The scoping note (`notes/scoping.md`) and the errata file
 |---|---|---|
 | §2 game `(A, u)`, `A = A₁ × ⋯ × Aₙ` | `Game N 𝒜` (`S i : Finset (𝒜 i)`, `u : (∀ i, 𝒜 i) → N → ℝ`) | over a fixed per-player universe `𝒜` (`dd:universe`); `u` total (`dd:total-utility`) |
 | §2 outcomes `A` | `Game.profiles`, `Game.profilesFinset` | |
-| §2 equality of games | `Game.EqOn` | **never** Lean `=` |
+| §2 equality of games | `Game.EqOn` | **never** Lean `=`; transports dominance and reducedness (`Game.EqOn.reduced_iff`, R2-F01) |
 | §2 subset game `A'ᵢ ⊆ Aᵢ` | `Game.IsSubsetGameOf Γ' Γ` | payoffs unconstrained |
 | §2 `(A₋ᵢ, Aᵢ − {ãᵢ}, u\|…)` | `Game.erase Γ i ã h` | `h` = nonemptiness of the remainder |
 | §2 strict dominance | `Game.StrictlyDominates`, `Game.IsStrictlyDominated` | EconCSLib's notion on `Game.toStrategic`; `strictlyDominates_iff` is the paper's sentence |
@@ -33,13 +33,13 @@ from an audit. The scoping note (`notes/scoping.md`) and the errata file
 | Assumption 1's `Φ` | `Game.elimRel` | |
 | Lemma 4 | `GameIso.paretoImproving_of_paretoImproving`, `…strictly…` | via the automorphism `Φ⁻¹ ∘ Ψ` (`GameIso.payoff_eq_of_self`) |
 | "`Γ ∼_Φ Γ'` by Assumption 2" (lax use) | `Play.exists_paretoImproving_corresponds_of_assumption2` (+ `paretoImprovingCorrespondence_of_iso`) | `isSPI_of_assumption2` deleted (R1-F12: its hypotheses forced equal action sets) |
-| §4.4.3 book representatives | `Book`, `Book.toPlay`, `Book.satisfiesA1/2`, `exists_play_satisfiesA1_satisfiesA2`, `exists_representatives_satisfiesA1_satisfiesA2`, `Book.prescribed` | `dd:book`; pages parametric; `Book.prescribed` plays a chosen outcome on every game with a given reduction (Prop 6 strict witness in `Examples/Witnesses.lean`) |
+| §4.4.3 book representatives | `Book`, `Book.toPlay`, `Book.satisfiesA1/2`, `exists_play_satisfiesA1_satisfiesA2`, `exists_representatives_satisfiesA1_satisfiesA2`, `Book.prescribed`, `Book.varying` | `dd:book`; pages parametric; `Book.prescribed` plays a chosen outcome on every game with a given reduction (Prop 6 strict witness in `Examples/Witnesses.lean`); `Book.varying` (sample space `∀ i, 𝒜 i`) hits every surviving outcome — `exists_play_satisfiesA1_satisfiesA2_hits` is the generic A1 ∧ A2 ∧ positive-probability witness (R2-F18) |
 | iterated elimination / "fully reduce" | `Game.Elim`, `Game.ElimStar`, `Game.reduce`, `Game.Reduced` | `reduce` canonical by `reduced_unique` (Church–Rosser) |
 | Lemma 19 | `Game.isStrictlyDominated_erase` | |
 | Lemma 20 | (absorbed) `Game.elim_diamond` | |
-| Lemma 21 / 22 | `Game.Deriv.exists_normalForm` / `Game.exists_paretoImproving_normalForm` | `dd:derivation`; supporting: `Deriv.exists_iso`, `Deriv.normal`, `exists_paretoImproving_deriv_iff` (no labels) |
-| Def 5 | `Game.Step`, `Game.Deriv`; `Game.SPIDecision`, `StrictSPIDecision`, `UnilateralSPIDecision` (repaired, `dd:nontrivial`); `…Printed` variants (constant-true, D13) | soundness: `Play.isSPI_of_deriv`, `isUnilateralSPI_of_deriv`, `isStrictSPI_of_deriv` |
-| Props 5, 6, 7, 8 | `Examples.prisonersDilemma_isStrictSPI`, `demandGame_isSPI`/`_isStrictSPI`, `temptation_isStrictSPI`, `complicatedTemptation_isUnilateralSPI` | |
+| Lemma 21 / 22 | `Game.Deriv.exists_normalForm` / `Game.exists_paretoImproving_normalForm` | `dd:derivation`; supporting: `Deriv.exists_iso`, `Deriv.normal`, `exists_paretoImproving_deriv_iff` (no labels). Lemma 21's wrapper has eight components; the `Step Γ₀ Γ.reduce Γ'.reduce ψ.rel` conjunct is the single Assumption 2 move (R2-F14). Lemma 22 does not tie `ψ` back to the input `Φ` — the paper only asks the new composite to be Pareto-improving |
+| Def 5 | `Game.Step`, `Game.Deriv`; `Game.SPIDecision`, `StrictSPIDecision`, `UnilateralSPIDecision` (repaired, `dd:nontrivial`); `…Printed` variants (constant-true, D13) | soundness: `Play.isSPI_of_deriv`, `isUnilateralSPI_of_deriv`, `isStrictSPI_of_deriv` (no `[Nonempty]`, no separate subset-game hypothesis — the derivation supplies it). Yes-instances of all three repaired predicates: `Examples.demandGame_spiDecision`, `demandGame_strictSPIDecision`, `complicatedTemptation_unilateralSPIDecision` (R2-F05); `Step.iso` requires both endpoints `Reduced`, matching Assumption 2 as printed |
+| Props 5, 6, 7, 8 | `Examples.prisonersDilemma_isStrictSPI`, `demandGame_isSPI`/`_isStrictSPI`, `temptation_isStrictSPI` + `temptation_isUnilateralSPI` (unilaterality is §4.5 prose, l. 1116), `complicatedTemptation_isUnilateralSPI` | non-vacuity witnesses in `Examples/Witnesses.lean` carry `SatisfiesA1 ⊤ ∧ SatisfiesA2 ⊤` inside their statements (R2-F11) |
 | footnote 5 | `Play.isSPI_of_paretoDominant` | |
 | `supp Π(Γ)` (§5) | `Representatives.support` | |
 
@@ -68,6 +68,9 @@ Full rationale in `notes/scoping.md` §3; rulings by Anson 2026-09-12 in its §8
 - **Definition 5's non-triviality clause is repaired** (R1-F18, ruled 2026-09-12, erratum D13): the carrier requires the reduced *action sets* to differ (`Γs.reduce.S ≠ Γ.reduce.S`, `dd:nontrivial`); the printed clause (reductions not `EqOn`) is constant-true under payoff shifts and is carried alongside as `…Printed` with its triviality theorem.
 - **`Play` is a larger class than the paper's `Π`** (R1-F01, refuted by cross-examination): it need not respect `Game.EqOn`, so a hand-built play can distinguish two Lean games that are the same paper game. Every paper node quantifies universally over `X : Play`, so this only strengthens them (same pattern as `dd:certainty`), and Assumption 2 forbids the phenomenon: any `GameIso` between `EqOn`-equal games preserves payoffs, so under A2 there is no strict SPI between `EqOn`-equal reduced games (library lemma). The book witness is `EqOn`-invariant up to payoffs, not outcomes (`Game.chosenIso` is chosen per Lean game). Do NOT add a `play_eqOn` field.
 - **Proposition 6's strictness clause** is proved for *whichever* isomorphism Assumption 2 supplies (all of Table 2's outcomes are worth more than `−3` to player 1), not by identifying the isomorphism.
+- **Assumption 2's R1-F01 corollary is about *reduced* `EqOn`-equal presentations only** (R2-F02/F09): Assumption 2 quantifies over games without strictly dominated actions, so it says nothing about a non-reduced `EqOn`-equal pair, on which a `Play` family may still exhibit the phenomenon. `GameIso.payoff_eq_of_eqOn` itself is unconditional.
+- **`dd:nontrivial` is narrower than Appendix D's "the identity action map is trivial"** — it also excludes a Pareto-improving *permutation* of the same reduced action set. Nothing is lost (R2, lenses A and C, cleared): such a permutation is a bijection of the finite reduced profile set, so the payoff sum is invariant and pointwise weak improvement forces equality; for the strict problem the two readings coincide.
+- **`Representatives.measurableSet_fiber` is exercised only trivially** (R2-F10): every sample space the development instantiates (`Unit`, the finite profile space of `Book.varying`) is discrete, so the field is discharged by `trivial`. Disclosed at `exists_representatives_satisfiesA1_satisfiesA2` and `Book.toRepresentatives`; a non-discrete witness would be cosmetic until a probabilistic result needs it.
 
 - **Definition 4's carrier is typed** (R1-F05): `Play.ParetoImprovingCorrespondence` carries `typed : Φ ⊆ Γ.profiles ×ˢ Γs.profiles`; Theorem 3 quantifies over the structure alone.
 - **Lemma 2.1 uses the typed identity** `Game.partialId` (the paper's `id_A`), and Lemma 2.4's hypothesis is containment at outcomes of `Γ` only (R1-F06/F07/F35).
@@ -79,7 +82,7 @@ None.
 
 ## Paper errata
 
-See `notes/paper-errata.md` (D1–D12). Statement-level: D1, D2, D5, D8, D10, D12. Rulings pending on D10 (Definition 7's "strict") and D12 (Theorem 15's projections).
+See `notes/paper-errata.md` (D1–D14). Statement-level: D1, D2, D5, D8, D10, D12, D13. D10 ruled (Definition 7 reads "strict"); D12 deferred with Theorem 15. Erratum D2 covers two separate defects (Definition 4's `Γ ∼_Φ Γ'` for `Γ ∼_Φ Γˢ`, and Lemma 4's "Pareto-improving" on non-subset targets).
 
 ## Pitfalls
 
@@ -101,4 +104,23 @@ Round-1 audit clearances (checked, do not re-raise): Mathlib `SetRel` compositio
 - In `cases s with | @elim Γ i ã …`, names for constructor arguments already determined by unification are silently dropped; refer to the outer binder instead.
 - `norm_num [game, …]` unfolds the game *inside* `X.play game ω` and breaks rewriting with play hypotheses; use a `u_apply` lemma and `simp only [u_apply, h…]` first.
 - Lake: the repo does not `require` Mathlib directly, so `lake update <newdep>` re-resolves Mathlib from the new dependency's manifest and downgrades everything. Add manifest entries by hand.
-- The worktree-isolation hook refuses `lake`/`git` invocations that mention the main checkout, shell variables, heredocs containing the word `git`, or `.git` paths; run scripts from files with `lake env bash /abs/path.sh`.
+- The worktree-isolation hook refuses `lake`/`git` invocations that mention the main checkout, shell variables, heredocs containing the word `git`, or `.git` paths; run scripts from files with `lake env bash /abs/path.sh`. It also refuses heredocs whose body contains `{`, `~`, a bare `<`, or double quotes — write files with the Write tool and run them by absolute path.
+
+Round-2 audit clearances and traps (checked, do not re-raise):
+
+- **Non-vacuity witnesses must carry the assumption clauses in their statements** (R2-F11): a bare `∃ X, <conclusion>` is provable by a hand-built play family (`play G _ i := if a₀ ∈ G.S i then a₀ else a₁`) that violates Assumption 1, so it witnesses nothing about the proposition's hypotheses. Reusable adversarial probe.
+- **The D13 payoff-shift witnesses (`Game.shiftReduce`, `Game.bumpPayoff`) never serve the repaired Definition 5**: both are `Reduced` with `reduce.S` unchanged, so they fail `Γs.reduce.S ≠ Γ.reduce.S` by construction. A yes-instance must change the action labels of the reduction (`demandIso`, `ctIso` do).
+- **Deterministic books cannot witness positive-probability side conditions**: `Book.const`/`Book.prescribed` pages ignore `ω`, and on `Ω = Unit` no play family hits two distinct outcomes. `Play.isStrictSPI_of_deriv`'s `hpos` (every surviving outcome with positive probability) is witnessed by `Book.varying` on `Ω := ∀ i, 𝒜 i` (`exists_play_satisfiesA1_satisfiesA2_hits`); `hpos` already implies `L.NeBot` since `reduce.profiles` is nonempty.
+- `[L.NeBot]` on an endpoint whose conclusion *negates* strictness is removable (`Play.IsStrictSPI` is `False` at `⊥`): `rcases L.eq_or_neBot with rfl | hne`, `⊥` branch by `simp` on the `∃ᶠ`. The round-1 note about carrying `[L.NeBot]` applies to *positive* strictness conclusions only.
+- `[DecidableEq N]` is spurious on `Fintype N`-indexed results unless the *statement* mentions `profilesFinset`, `erase`, `reduce`, `Reduced` or dominance; inside proofs `classical` supplies it (R2-F08). Removing an instance binder never breaks call sites.
+- `GameIso.symm` bakes its `Nonempty` instance in from the game; no downstream hazard (`Nonempty` is a `Prop`, `Function.invFunOn` built from any instance is defeq). Do not re-add `[∀ i, Nonempty (𝒜 i)]` to callers; `Game.nonempty_universe` derives it wherever needed.
+- `Game.reduce_of_reduced h : G.reduce = G` rewrites the whole game; a goal about `.S` then usually needs a trailing `rfl`.
+- `Book.prescribed_play` needs `Γ.reduce = T` in Lean's `=`, not `EqOn` (elimination keeps `u` literally); a game only `EqOn`-equal to one reducing to `T` is played through a possibly different `chosenIso`.
+- `Game.Deriv.normalRel ψ` (namespace `Game.Deriv`) with `mem_normalRel` is the practical `Φ` for concrete Definition 5 instances; `GameIso.cast`/`cast_map` move an example's isomorphism between `reducedGame` and `Γ.reduce`. `Play.isStrictSPI_of_deriv`'s player index is implicit — pass `(i := …)` when `hstrict` is a `by` block.
+- `Examples/Witnesses.lean` imports `SafeParetoImprovements.Derivation` (added R2); missing-import errors there read like missing declarations ("Invalid field cast").
+- `Play.Improves` uses *global* monotonicity while `ParetoImprovingCorrespondence.improving` is typed; not drift — `Φ` is existential in `Improves` and the global form is what `Improves.trans` needs. Do not harmonize.
+- `hsub` in Theorem 3 cannot be dropped even with `typed`: at `L = ⊥`, `Φ = ∅` inhabits the right-hand side for any pair of games.
+- `Game.Unilateral` (`∃ i, ∀ j ≠ i, …`) permits the degenerate all-agree case exactly as the paper's "all but one" does; `Game.ParetoOptimalIn` over Mathlib's `Pi` strict order is the paper's "strictly Pareto-dominates"; `Game.Reduced` quantifies over the universe type harmlessly (domination entails membership).
+- `MeasurableSpace Unit` (and every discrete space) is `⊤`: `MeasurableSet s` closes by `trivial`, and `ae (dirac ())` on `Unit` is `⊤`, so witnesses at `L = ⊤` are the paper's probability-one instance.
+- `scripts/check-safe-pareto-improvements-nodes.py` does not check that inventory names resolve — only `#assert_axioms_clean` does, at build time. Eight declarations cite `Definition 5` (legal; printed vs repaired carriers are distinguished only in docstrings).
+- `Reduction.lean` was in no round-2 shard although `Book.satisfiesA1/A2` rest on `reduce_erase`/`reduce_of_reduced`; shard it explicitly in the next round.

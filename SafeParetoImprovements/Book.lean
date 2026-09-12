@@ -36,7 +36,11 @@ certainty".
 deterministic book (`Book.const`) proves joint satisfiability outright, and books with
 prescribed page distributions are what Proposition 16 and the strictness clause of
 Proposition 6 need — `Book.prescribed` is one, pinning the page of a single class to a
-chosen outcome (`Book.prescribed_play`).  `Book.toRepresentatives` packages a book with a
+chosen outcome (`Book.prescribed_play`).  `Book.varying` goes further and is the one book
+here whose play depends on the sample point: over the sample space of profiles it reaches
+*every* outcome of *every* game's full reduction, which is what the side condition of
+`Play.isStrictSPI_of_deriv` needs (`exists_play_satisfiesA1_satisfiesA2_hits`).
+`Book.toRepresentatives` packages a book with a
 probability measure whose page fibers are measurable into a `Representatives` model, and
 `exists_representatives_satisfiesA1_satisfiesA2` states §4.4.3's consistency claim at that
 level rather than only for a bare play family.
@@ -201,6 +205,35 @@ lemma prescribed_play (T : Game N 𝒜) {a : ∀ i, 𝒜 i} (ha : a ∈ T.profil
   rw [dif_pos rfl]
   exact GameIso.symm_map_map _ ha
 
+/-- The **varying book**: the sample space is the space of profiles itself, and the page of
+a class at a sample point `ω` is `ω` whenever that is an outcome of the class's
+representative (and an arbitrary outcome otherwise).  Unlike `const` and `prescribed`,
+whose pages do not depend on `ω`, this book's play genuinely varies with the sample point:
+`varying_play_eq` shows that *every* outcome of *every* game's full reduction is played at
+some sample point.  That is what the side condition of `Play.isStrictSPI_of_deriv` — all
+outcomes surviving iterated elimination occur with positive probability — asks for. -/
+noncomputable def varying : Book N 𝒜 (∀ i, 𝒜 i) where
+  page q ω := open Classical in
+    if _ : ω ∈ q.rep.profiles then ω else (q.rep.profiles_nonempty).choose
+  page_mem q ω := by
+    classical
+    by_cases h : ω ∈ q.rep.profiles
+    · rw [dif_pos h]; exact h
+    · rw [dif_neg h]; exact (q.rep.profiles_nonempty).choose_spec
+
+/-- The varying book plays any prescribed outcome of a game's full reduction at a suitable
+sample point: the sample point is the outcome's image in the class representative. -/
+lemma varying_play_eq (Γ : Game N 𝒜) {a : ∀ i, 𝒜 i} (ha : a ∈ Γ.reduce.profiles) :
+    (varying (N := N) (𝒜 := 𝒜)).toPlay.play Γ
+      ((Γ.reduce.chosenIso Γ.reduce.cls rfl).map a) = a := by
+  classical
+  set φ := Γ.reduce.chosenIso Γ.reduce.cls rfl with hφ
+  have hmem : φ.map a ∈ (Γ.reduce.cls).rep.profiles := φ.map_mem ha
+  rw [toPlay_play, playReduced]
+  show φ.symm.map (varying.page Γ.reduce.cls (φ.map a)) = a
+  rw [show varying.page Γ.reduce.cls (φ.map a) = φ.map a from dif_pos hmem]
+  exact φ.symm_map_map ha
+
 /-! ### Books as probabilistic representatives -/
 
 section representatives
@@ -230,7 +263,9 @@ lemma measurableSet_fiber (hB : ∀ q a, MeasurableSet {ω | B.page q ω = a})
       exact ha (B.playReduced_mem _ ω)
     rw [this]; exact MeasurableSet.empty
 
-/-- A book with measurable pages, as a `Representatives` model on `(Ω, μ)`. -/
+/-- A book with measurable pages, as a `Representatives` model on `(Ω, μ)`.  Note that on a
+discrete sample space — every `Ω` this development instantiates it at — the measurability
+hypothesis `hB` is trivially satisfiable, so it constrains nothing there. -/
 noncomputable def toRepresentatives (hB : ∀ q a, MeasurableSet {ω | B.page q ω = a}) :
     Representatives.{u, v, w} N 𝒜 where
   Ω := Ω
@@ -249,11 +284,32 @@ lemma exists_play_satisfiesA1_satisfiesA2 (Ω : Type w) :
     ∃ X : Play N 𝒜 Ω, ∀ L : Filter Ω, X.SatisfiesA1 L ∧ X.SatisfiesA2 L :=
   ⟨(Book.const Ω).toPlay, fun L => ⟨(Book.const Ω).satisfiesA1 L, (Book.const Ω).satisfiesA2 L⟩⟩
 
+/-- **The side condition of `Play.isStrictSPI_of_deriv` is satisfiable together with
+Assumptions 1 and 2, for every game at once**: over the sample space of profiles there is a
+play family that satisfies both assumptions at the non-degenerate filter `⊤` and, for every
+game `Γ` and every outcome `a` surviving `Γ`'s iterated elimination, plays `a` in `Γ` with
+positive probability.  Without this the strict soundness result could be vacuous: on a
+one-point sample space no play family reaches two distinct reduced outcomes.  The witness
+is `Book.varying`. -/
+lemma exists_play_satisfiesA1_satisfiesA2_hits :
+    ∃ X : Play N 𝒜 (∀ i, 𝒜 i), X.SatisfiesA1 ⊤ ∧ X.SatisfiesA2 ⊤ ∧
+      ∀ Γ : Game N 𝒜, ∀ a ∈ Γ.reduce.profiles, ∃ᶠ ω in (⊤ : Filter (∀ i, 𝒜 i)),
+        X.play Γ ω = a :=
+  ⟨Book.varying.toPlay, Book.varying.satisfiesA1 ⊤, Book.varying.satisfiesA2 ⊤,
+    fun Γ _ ha => frequently_top.2 ⟨_, Book.varying_play_eq Γ ha⟩⟩
+
 /-- **Assumptions 1 and 2 are jointly satisfiable by *representatives*** — a probability
 space with measurable outcome fibers, which is what §3 models the representatives as — and
 not merely by a bare play family (R1-F14).  The witness is the deterministic book on a
 one-point probability space; its pages are constant, hence its fibers measurable, and the
-assumptions hold at every sample point and so at the model's own certainty filter. -/
+assumptions hold at every sample point and so at the model's own certainty filter.
+
+**Disclosure.**  The sample space here is `Unit`, which carries the discrete σ-algebra, so
+the `measurableSet_fiber` field is satisfied by `trivial` and is content-free at this
+witness.  The same is true of any book on a discrete `Ω` — including the finite profile
+space `∀ i, 𝒜 i` used by `Book.varying`.  `measurableSet_fiber` is exercised
+non-trivially only over a non-discrete sample space, of which this development supplies no
+instance. -/
 lemma exists_representatives_satisfiesA1_satisfiesA2 :
     ∃ R : Representatives.{u, v, 0} N 𝒜,
       R.toPlay.SatisfiesA1 R.certainty ∧ R.toPlay.SatisfiesA2 R.certainty :=

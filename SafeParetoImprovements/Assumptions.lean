@@ -108,26 +108,36 @@ lemma paretoImprovingCorrespondence_of_iso {Γ Γ' : Game N 𝒜} (ψ : GameIso 
       exact hψ a ha
     typed := fun p hp => ⟨hp.1, hp.2 ▸ ψ.map_mem hp.1⟩ }
 
-/-- **Assumption 2 forbids a strict SPI between two presentations of the same game**
-(R1-F01).  `Play` is deliberately a larger class than the paper's `Π`: the paper's payoff
-function is defined only on `A`, so `Π` cannot depend on off-domain payoff values, whereas
-a `Play` family may distinguish two games that are equal in the paper's sense
+/-- **Assumption 2 forbids a strict SPI between two *reduced* presentations of the same
+game** (R1-F01).  `Play` is deliberately a larger class than the paper's `Π`: the paper's
+payoff function is defined only on `A`, so `Π` cannot depend on off-domain payoff values,
+whereas a `Play` family may distinguish two games that are equal in the paper's sense
 (`Game.EqOn`).  Every paper node here quantifies universally over the play family, so the
 larger class only *strengthens* those statements; and the phenomenon the extra freedom
-allows -- one presentation being a strict SPI on another -- is ruled out for any family
-satisfying Assumption 2, because every isomorphism between `EqOn`-equal games preserves
-payoffs (`GameIso.payoff_eq_of_eqOn`).  The book witness is `EqOn`-invariant in exactly
-this sense: it plays two `EqOn`-equal games through the same page, so no `EqOn`-difference
-is visible in payoff terms. -/
-lemma SatisfiesA2.not_isStrictSPI_of_eqOn [Fintype N] [L.NeBot] (hA2 : X.SatisfiesA2 L)
-    {Γ Γ' : Game N 𝒜} (h : Γ.EqOn Γ') (hΓ : Γ.Reduced) (hΓ' : Γ'.Reduced) :
+allows -- one presentation being a strict SPI on another -- is ruled out for
+`EqOn`-equal **reduced** presentations, because every isomorphism between `EqOn`-equal
+games preserves payoffs (`GameIso.payoff_eq_of_eqOn`).
+
+The reducedness qualification is not decoration: Assumption 2 is a hypothesis *about
+games without strictly dominated actions* and says nothing whatever about a non-reduced
+`EqOn`-equal pair, on which a `Play` family may still exhibit the phenomenon.  Only one
+of the two reducedness hypotheses is taken, since `EqOn` transports it
+(`Game.EqOn.reduced_iff`).
+
+The book witness is `EqOn`-invariant in exactly this sense: it plays two `EqOn`-equal
+games through the same page, so no `EqOn`-difference is visible in payoff terms. -/
+lemma SatisfiesA2.not_isStrictSPI_of_eqOn [Fintype N] (hA2 : X.SatisfiesA2 L)
+    {Γ Γ' : Game N 𝒜} (h : Γ.EqOn Γ') (hΓ : Γ.Reduced) :
     ¬ X.IsStrictSPI L Γ Γ' := by
-  rintro ⟨-, i, hstrict⟩
-  obtain ⟨φ, hc⟩ := hA2 Γ Γ' hΓ hΓ' ⟨GameIso.ofEqOn h⟩
-  obtain ⟨ω, hlt, hω⟩ := (hstrict.and_eventually hc).exists
-  obtain ⟨hmem, hmap⟩ := (φ.mem_rel _ _).1 hω
-  rw [hmap, GameIso.payoff_eq_of_eqOn h φ hmem i] at hlt
-  exact lt_irrefl _ hlt
+  rcases L.eq_or_neBot with rfl | hne
+  · rintro ⟨-, i, hfreq⟩
+    simp at hfreq
+  · rintro ⟨-, i, hstrict⟩
+    obtain ⟨φ, hc⟩ := hA2 Γ Γ' hΓ (h.reduced_iff.1 hΓ) ⟨GameIso.ofEqOn h⟩
+    obtain ⟨ω, hlt, hω⟩ := (hstrict.and_eventually hc).exists
+    obtain ⟨hmem, hmap⟩ := (φ.mem_rel _ _).1 hω
+    rw [hmap, GameIso.payoff_eq_of_eqOn h φ hmem i] at hlt
+    exact lt_irrefl _ hlt
 
 end Play
 

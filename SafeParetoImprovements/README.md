@@ -70,7 +70,13 @@ measure, and Definitions 1 and 3 at `L = ae μ` unfold to the printed statements
 (`isSPI_iff`, `isStrictSPI_iff`, `corresponds_iff` in `Representatives.lean`); the
 canonical full reduction `Game.reduce` with confluence and uniqueness (`Reduction.lean`);
 and the **book representatives** of §4.4.3, proving that Assumptions 1 and 2 are jointly
-satisfiable with the page distribution as a parameter (`Book.lean`, `dd:book`).
+satisfiable with the page distribution as a parameter (`Book.lean`, `dd:book`); and the
+**non-vacuity witnesses** (`Examples/Witnesses.lean`): every Proposition 5–8 conclusion is
+reached by a play family that *also* satisfies Assumptions 1 and 2 inside the same
+statement, the repaired Definition 5 predicates have proved yes-instances (the Demand Game
+and the Complicated Temptation Game) alongside their no-instance, and the strict soundness
+result's positive-probability side condition is discharged by the page-varying book
+`Book.varying`, which hits every surviving outcome.
 
 **Not yet formalized:** Theorem 1 and Proposition 18 (tranche E, `dd:program-game`);
 Theorem 9, Proposition 10 and the rest of the Appendix D chain (Propositions 23–26,

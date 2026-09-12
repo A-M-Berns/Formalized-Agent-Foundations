@@ -239,6 +239,31 @@ lemma IsStrictlyDominated.erase_nonempty [DecidableEq N] [∀ i, DecidableEq (�
 /-- `Γ` **contains no strictly dominated actions** ("fully reduced", §4.4.2). -/
 def Reduced [DecidableEq N] : Prop := ∀ i (a : 𝒜 i), ¬ Γ.IsStrictlyDominated i a
 
+/-- Strict dominance sees only the action sets and the payoffs *on outcomes*
+(`strictlyDominates_iff`), so it transports along the paper's equality of games. -/
+lemma strictlyDominates_of_eqOn [DecidableEq N] {Γ Γ' : Game N 𝒜} (h : Γ.EqOn Γ')
+    {i : N} {a a' : 𝒜 i} (hd : Γ.StrictlyDominates i a a') :
+    Γ'.StrictlyDominates i a a' := by
+  have hS : ∀ j, Γ.S j = Γ'.S j := congrFun h.1
+  rw [strictlyDominates_iff] at hd ⊢
+  obtain ⟨ha, ha', hlt⟩ := hd
+  refine ⟨by rw [← hS i]; exact ha, by rw [← hS i]; exact ha', fun b hb => ?_⟩
+  have hb' : b ∈ Γ.profiles := fun j => by rw [hS j]; exact hb j
+  have hmem : ∀ c ∈ Γ.S i, Function.update b i c ∈ Γ.profiles := by
+    intro c hc j
+    rcases eq_or_ne j i with rfl | hj
+    · simpa using hc
+    · rw [Function.update_of_ne hj]; exact hb' j
+  rw [← h.2 _ (hmem a' ha'), ← h.2 _ (hmem a ha)]
+  exact hlt b hb'
+
+/-- Being fully reduced is a property of the paper's game, not of the presentation:
+`EqOn`-equal games have the same strictly dominated actions. -/
+lemma EqOn.reduced_iff [DecidableEq N] {Γ Γ' : Game N 𝒜} (h : Γ.EqOn Γ') :
+    Γ.Reduced ↔ Γ'.Reduced :=
+  ⟨fun hr i a ha => hr i a (ha.imp fun _ => strictlyDominates_of_eqOn h.symm),
+   fun hr i a ha => hr i a (ha.imp fun _ => strictlyDominates_of_eqOn h)⟩
+
 end Game
 
 end SafeParetoImprovements
