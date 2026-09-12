@@ -632,6 +632,13 @@ C and E and the split "Theorem 17" header must be deduplicated by the parser).
    D6 relabelling), RULING 11 (Assumption 1 added alongside Assumption 2 where `Γ` is not
    assumed reduced), RULING 12 (Corollary 14 carried as convex-and-compact with the explicit
    weighted Minkowski-sum formula; the polytope clause not rendered).
+   **RULING 13 (harness round 4 BLOCKER R4-F01, 2026-09-12):** the first Proposition 16
+   carrier was vacuous — Table 7 over `CAct` leaves no room for tokens, so
+   `TokenGame chicken` is empty. Recommended remedy: re-base the §5 examples on universes
+   with *infinite* room (`CAct ⊕ ℕ`, off-profile payoffs `0` per `dd:total-utility`), so the
+   token-game class is the paper's up to relabelling (R4-F02), and add positive witnesses
+   (a `HasRoom` game, a strict perfect-coordination SPI) so Definition 6 is two-sided
+   (R4-F05). Awaiting the ruling; `Chicken.lean` stays as committed until then.
 
 ## 9. Codex review, 2026-09-04
 
