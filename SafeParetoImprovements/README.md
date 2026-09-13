@@ -113,7 +113,35 @@ the threat-point hypothesis is shown to have content (it fails for the book that
 makes participation independence and foreknowledge independence stateable (RULING 9,
 `dd:default-instr`): definitions, the dove-ish and punishing `Prog` instructions as
 two-sided witnesses (including that Algorithm 2 is *not* participation independent in the
-Demand Game), and no theorem about either.
+Demand Game), and no theorem of the paper about either.  The research-facing content
+built on them is the **dove profile** — comply with the SPI when everybody submits the
+same code, otherwise play the baseline — which is participation independent for every
+player and a program equilibrium whenever each player's expected best reply to the
+baseline is at most her expected SPI payoff (`Prog.dove_isProgramEquilibrium`, from the
+interface-level `ProgramGame.isProgramEquilibrium_of_fallback`); a participation-independent
+instruction paired with the default as the informed choice is foreknowledge independent
+(`Prog.foreknowledgeIndependent_of_participationIndependent`).
+`Examples/IndependenceExamples.lean` runs this on the paper's two headline examples,
+including the Demand Game at the conflict outcome, where Proposition 18's threat-point
+hypothesis fails and Algorithm 2 is not participation independent, yet the dove profile
+is a participation-independent program equilibrium executing the SPI.
+
+The same two notions as Anthony DiGiovanni's research agenda states them (*CLR's Safe
+Pareto Improvements Research Agenda*, LessWrong, 20 April 2026, Appendix B) live in
+`FullStrategy.lean`: an SPI as a transformation of program profiles (B.1), full
+strategies `(𝐟, 𝐩)`, and demand preservation, participation independence and
+foreknowledge independence defined through the two counterfactual program choices
+`𝐩ᴾᵢ(𝐟)` and `𝐩ᶠᵢ(𝐟)` (B.2), which are rendered as data of a *choice model* since the
+source leaves "would have chosen" informal.  `Examples/Renegotiation.lean` formalizes
+B.4's renegotiation example with the source's pseudocode as an execution model over the
+`ProgramGame` interface — its own program space, not the paper's `Prog` — and proves
+demand preservation, the 50%/80%/doomsday numbers, that `rn` is a B.1 SPI on all
+base-strategy profiles (for `d ≤ t`, the source giving no conflict payoffs), participation
+independence at both levels, and B.2's "PI but not FI" agent (60% regardless, 50% with
+foreknowledge) at both levels.  One boundary is recorded there: the source's baseline
+outcome is a *commitment* (an unconditional doomsday device is strictly dominated in the
+one-shot game), so those representatives are not claimed to satisfy Assumption 1, and
+none of the paper's theorems is applied to them.
 
 **The complexity nodes** (§4.6, Appendix D.2–D.3; tranche F, design note
 `notes/complexity-layer.md`) are carried as *qualified* nodes under RULING 6.

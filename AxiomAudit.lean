@@ -4026,6 +4026,33 @@ blocks, a stale entry, a malformed line, a non-empty block once the paper is
   SafeParetoImprovements.Prog.not_participationIndependent_of_punish_play
   SafeParetoImprovements.Prog.not_participationIndependent_algorithm2
   SafeParetoImprovements.Prog.not_foreknowledgeIndependent_of_switch
+  -- The dove profile as a participation-independent implementation: best replies to a
+  -- pure profile, the fall-back equilibrium criterion over the interface, and its `Prog`
+  -- instance; participation independence yields foreknowledge independence for the
+  -- fall-back policy.
+  SafeParetoImprovements.Game.bestReply SafeParetoImprovements.Game.u_update_le_bestReply
+  SafeParetoImprovements.Game.bestReply_le SafeParetoImprovements.Game.expected_le_bestReply
+  SafeParetoImprovements.ProgramGame.isProgramEquilibrium_of_fallback
+  SafeParetoImprovements.Prog.plays_dove SafeParetoImprovements.Prog.exec_update_dove
+  SafeParetoImprovements.Prog.participationIndependent_dove_all
+  SafeParetoImprovements.Prog.dove_isProgramEquilibrium
+  SafeParetoImprovements.Prog.exec_update_default SafeParetoImprovements.Prog.exec_default
+  SafeParetoImprovements.Prog.foreknowledgeIndependent_of_participationIndependent
+  -- The same notions at the level of program choice, after DiGiovanni (2026, Appendix
+  -- B.1-B.2; SafeParetoImprovements/FullStrategy.lean): SPI transformations, full
+  -- strategies, choice models, demand preservation, participation and foreknowledge
+  -- independence, the simultaneous-commitment reduction and the demand-mismatch
+  -- refutation.
+  SafeParetoImprovements.IsSPITransformation SafeParetoImprovements.FullStrategy
+  SafeParetoImprovements.ChoiceModel SafeParetoImprovements.ChoiceModel.Simultaneous
+  SafeParetoImprovements.FullStrategy.used SafeParetoImprovements.FullStrategy.counterfactualP
+  SafeParetoImprovements.FullStrategy.counterfactualF SafeParetoImprovements.FullStrategy.Consistent
+  SafeParetoImprovements.FullStrategy.DemandPreserving
+  SafeParetoImprovements.FullStrategy.ParticipationIndependent
+  SafeParetoImprovements.FullStrategy.ForeknowledgeIndependent
+  SafeParetoImprovements.FullStrategy.participationIndependent_of_simultaneous
+  SafeParetoImprovements.FullStrategy.not_foreknowledgeIndependent_of_demand_ne
+  SafeParetoImprovements.FullStrategy.ForeknowledgeIndependent.demand_counterfactualF
   -- Non-vacuity for the program-game layer (SafeParetoImprovements/Examples/
   -- ProgramGameWitnesses.lean): Theorem 1's hypotheses jointly satisfied twice over --
   -- deterministically in the Prisoner's Dilemma and with a genuinely random `Π` in the
@@ -4057,6 +4084,89 @@ blocks, a stale entry, a malformed line, a non-empty block once the paper is
   SafeParetoImprovements.Examples.not_foreknowledgeIndependent_pd
   SafeParetoImprovements.Examples.pdFallbackPolicy
   SafeParetoImprovements.Examples.foreknowledgeIndependent_pd
+  -- The dove profile on the paper's own examples (SafeParetoImprovements/Examples/
+  -- IndependenceExamples.lean): a participation-independent program equilibrium executing
+  -- the SPI in the Prisoner's Dilemma and in the Demand Game at the conflict outcome,
+  -- where Proposition 18's threat-point hypothesis fails; the fall-back policies'
+  -- foreknowledge independence; the random-coin case where the criterion is silent.
+  SafeParetoImprovements.Examples.pdDove SafeParetoImprovements.Examples.pdDove_plays
+  SafeParetoImprovements.Examples.pdDove_participationIndependent
+  SafeParetoImprovements.Examples.pdRepresentatives_play_cooperate
+  SafeParetoImprovements.Examples.pd_bestReply_defect_le
+  SafeParetoImprovements.Examples.pd_dove_isProgramEquilibrium
+  SafeParetoImprovements.Examples.pd_dove_spi_participationIndependent_equilibrium
+  SafeParetoImprovements.Examples.pd_fallbackPolicy_foreknowledgeIndependent
+  SafeParetoImprovements.Examples.demandDove SafeParetoImprovements.Examples.demandDove_plays
+  SafeParetoImprovements.Examples.demandDove_participationIndependent
+  SafeParetoImprovements.Examples.demand_bestReply_conflict_le
+  SafeParetoImprovements.Examples.demandSPI_u_nonneg
+  SafeParetoImprovements.Examples.demand_dove_isProgramEquilibrium
+  SafeParetoImprovements.Examples.demand_dove_where_algorithm2_is_uncertified
+  SafeParetoImprovements.Examples.demandFallbackPolicy
+  SafeParetoImprovements.Examples.demandFallbackPolicy_foreknowledgeIndependent
+  SafeParetoImprovements.Examples.demandRandom_bestReply_integral
+  -- DiGiovanni's Appendix B.4 renegotiation example (SafeParetoImprovements/Examples/
+  -- Renegotiation.lean): the negotiation game, the pseudocode as an execution model over
+  -- the `ProgramGame` interface, demand preservation at both levels, the 50%/80%/doomsday
+  -- numbers, `rn` as a B.1 SPI, participation independence at both levels, the fall-back
+  -- policy's foreknowledge independence, and the "PI but not FI" agent at both levels.
+  SafeParetoImprovements.Examples.Renegotiation.Share
+  SafeParetoImprovements.Examples.Renegotiation.Share.toReal
+  SafeParetoImprovements.Examples.Renegotiation.Share.compatible
+  SafeParetoImprovements.Examples.Renegotiation.Share.compatible_iff
+  SafeParetoImprovements.Examples.Renegotiation.Device
+  SafeParetoImprovements.Examples.Renegotiation.Outcome
+  SafeParetoImprovements.Examples.Renegotiation.outcome
+  SafeParetoImprovements.Examples.Renegotiation.Outcome.payoff
+  SafeParetoImprovements.Examples.Renegotiation.negotiation
+  SafeParetoImprovements.Examples.Renegotiation.fair SafeParetoImprovements.Examples.Renegotiation.hawk
+  SafeParetoImprovements.Examples.Renegotiation.outcome_fair_hawk
+  SafeParetoImprovements.Examples.Renegotiation.RnProg
+  SafeParetoImprovements.Examples.Renegotiation.RnProg.baseOf
+  SafeParetoImprovements.Examples.Renegotiation.RnProg.isRn
+  SafeParetoImprovements.Examples.Renegotiation.RnProg.demand
+  SafeParetoImprovements.Examples.Renegotiation.renegotiationLogic
+  SafeParetoImprovements.Examples.Renegotiation.enact
+  SafeParetoImprovements.Examples.Renegotiation.run
+  SafeParetoImprovements.Examples.Renegotiation.run_rn_fst
+  SafeParetoImprovements.Examples.Renegotiation.run_base
+  SafeParetoImprovements.Examples.Renegotiation.run_rn_base
+  SafeParetoImprovements.Examples.Renegotiation.run_rn_fair_hawk
+  SafeParetoImprovements.Examples.Renegotiation.run_rn_hawk_fair
+  SafeParetoImprovements.Examples.Renegotiation.outcome_rn_fair_hawk
+  SafeParetoImprovements.Examples.Renegotiation.realised
+  SafeParetoImprovements.Examples.Renegotiation.programPayoff
+  SafeParetoImprovements.Examples.Renegotiation.rnTransform
+  SafeParetoImprovements.Examples.Renegotiation.rnStrategy
+  SafeParetoImprovements.Examples.Renegotiation.demands
+  SafeParetoImprovements.Examples.Renegotiation.rnStrategy_demandPreserving
+  SafeParetoImprovements.Examples.Renegotiation.baseProfiles
+  SafeParetoImprovements.Examples.Renegotiation.realised_of_base
+  SafeParetoImprovements.Examples.Renegotiation.rn_isSPITransformation
+  SafeParetoImprovements.Examples.Renegotiation.rnRepresentatives
+  SafeParetoImprovements.Examples.Renegotiation.rnRepresentatives_play
+  SafeParetoImprovements.Examples.Renegotiation.rnProgramGame
+  SafeParetoImprovements.Examples.Renegotiation.rnProgramGame_exec
+  SafeParetoImprovements.Examples.Renegotiation.rnDefault
+  SafeParetoImprovements.Examples.Renegotiation.realised_update_rn
+  SafeParetoImprovements.Examples.Renegotiation.rn_participationIndependent
+  SafeParetoImprovements.Examples.Renegotiation.rnStrategy_participationIndependent
+  SafeParetoImprovements.Examples.Renegotiation.fairHawkRn
+  SafeParetoImprovements.Examples.Renegotiation.fairHawk
+  SafeParetoImprovements.Examples.Renegotiation.fairHawkRn_participationIndependent
+  SafeParetoImprovements.Examples.Renegotiation.fairHawkRn_plays
+  SafeParetoImprovements.Examples.Renegotiation.rnFallbackPolicy
+  SafeParetoImprovements.Examples.Renegotiation.rnFallbackPolicy_foreknowledgeIndependent
+  SafeParetoImprovements.Examples.Renegotiation.sixtyFifty
+  SafeParetoImprovements.Examples.Renegotiation.sixtyFiftyStrategy
+  SafeParetoImprovements.Examples.Renegotiation.sixtyFifty_simultaneous
+  SafeParetoImprovements.Examples.Renegotiation.sixtyFifty_consistent
+  SafeParetoImprovements.Examples.Renegotiation.sixtyFifty_participationIndependent
+  SafeParetoImprovements.Examples.Renegotiation.sixtyFifty_counterfactualF
+  SafeParetoImprovements.Examples.Renegotiation.sixtyFifty_not_foreknowledgeIndependent
+  SafeParetoImprovements.Examples.Renegotiation.sixtyFiftyPolicy
+  SafeParetoImprovements.Examples.Renegotiation.rn_sixty_participationIndependent
+  SafeParetoImprovements.Examples.Renegotiation.sixtyFiftyPolicy_not_foreknowledgeIndependent
   -- §4.6 and Appendix D.2 (SafeParetoImprovements/Complexity.lean, tranche F, RULING 6,
   -- `dd:complexity`): the elimination-chain transfer and dominated-set elimination lemmas,
   -- certificates and their checks, the identity certificate (erratum D17), Propositions 23
@@ -4297,6 +4407,10 @@ execution kernel (`dd:exec-kernel`) whose product structure Proposition 18 rests
   default plays_default
 #assert_fields SafeParetoImprovements.ProgramGame.Policy
   Signal noInfo willNotParticipate policy
+#assert_fields SafeParetoImprovements.FullStrategy
+  transform progs
+#assert_fields SafeParetoImprovements.ChoiceModel
+  ofParticipation ofBelief
 #assert_fields SafeParetoImprovements.Game.Correlated
   weight nonneg support sum_eq_one
 #assert_fields SafeParetoImprovements.TokenGame

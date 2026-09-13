@@ -146,6 +146,100 @@ lemma participationIndependent_dove (Γs : Game N 𝒜) (h : Γs.IsSubsetGameOf 
     (programGame Γ₀ R).ParticipationIndependent (defaultInstr Γ₀ R) c i :=
   participationIndependent_of_punish_default R c i _ hc
 
+/-! ### The dove profile: participation-independent implementation of an SPI
+
+When everybody submits the dove-ish instruction for `Γˢ`, the execution is `Π(Γˢ)`
+(`plays_dove`); against a unilateral deviation every other player falls back to the
+baseline play `Πⱼ(Γ₀)` (`exec_update_dove`).  So the dove profile is participation
+independent for every player, and it is a program equilibrium whenever the SPI beats each
+player's expected best reply to the baseline (`ProgramGame.isProgramEquilibrium_of_fallback`).
+This is the participation-independent counterpart of Proposition 18: Algorithm 2 punishes
+with the minimax profile, which is what makes it a program equilibrium under the
+threat-point hypothesis and what makes it fail participation independence
+(`not_participationIndependent_algorithm2`). -/
+
+variable {Γs : Game N 𝒜} (h : Γs.IsSubsetGameOf Γ₀)
+
+/-- When everybody submits the dove-ish instruction, the execution is `Π(Γˢ)`. -/
+lemma plays_dove :
+    (programGame Γ₀ R).Plays (fun _ => dove Γs h) fun ω => R.play Γs ω := by
+  intro ω k b
+  rw [programGame_exec, dove, execAt_ifAllSame_of_all R (fun _ => rfl), execAt_delegate,
+    Game.pureMixed_val]
+
+/-- Against a unilateral deviation by `i`, every other dove falls back to the baseline play
+`Πⱼ(Γ₀)`. -/
+lemma exec_update_dove (i : N) (c' : Prog Γ₀) (hc : c' ≠ dove Γs h) (ω : R.Ω) (j : N)
+    (hj : j ≠ i) :
+    (programGame Γ₀ R).exec (Function.update (fun _ => dove Γs h) i c') ω j =
+      Γ₀.pureMixed (R.play Γ₀ ω j) (R.toPlay.mem Γ₀ ω j) := by
+  have hne : ¬ ∀ l, Function.update (fun _ : N => dove Γs h) i c' l =
+      Function.update (fun _ : N => dove Γs h) i c' j := fun hall => by
+    have := hall i
+    rw [Function.update_self, Function.update_of_ne hj] at this
+    exact hc this
+  rw [programGame_exec]
+  show execAt R (Function.update (fun _ : N => dove Γs h) i c') j
+    (Function.update (fun _ : N => dove Γs h) i c' j) ω = _
+  rw [Function.update_of_ne hj]
+  show execAt R _ j (ifAllSame (delegate Γs h) fun _ => default Γ₀) ω = _
+  obtain ⟨l, -, hexec⟩ :=
+    execAt_ifAllSame_of_ne R hne (delegate Γs h) (fun _ => default Γ₀) ω
+  rw [hexec, default, execAt_delegate]
+
+/-- The dove profile is participation independent for every player. -/
+lemma participationIndependent_dove_all (i : N) :
+    (programGame Γ₀ R).ParticipationIndependent (defaultInstr Γ₀ R) (fun _ => dove Γs h) i :=
+  participationIndependent_dove R Γs h _ i rfl
+
+/-- **The dove profile is a program equilibrium** as soon as, for every player, the expected
+best reply to the baseline play `Π(Γ₀)` is at most the expected payoff of the SPI play
+`Π(Γˢ)`.  Together with `participationIndependent_dove_all` and `plays_dove`: under this
+criterion the SPI is implementable by a participation-independent program equilibrium, with
+no punishment at all. -/
+lemma dove_isProgramEquilibrium
+    (hcrit : ∀ i, ∫ ω, Γ₀.bestReply i (R.play Γ₀ ω) ∂R.μ ≤ ∫ ω, Γ₀.u (R.play Γs ω) i ∂R.μ) :
+    (programGame Γ₀ R).IsProgramEquilibrium (fun _ => dove Γs h) :=
+  (programGame Γ₀ R).isProgramEquilibrium_of_fallback h _ (plays_dove R h)
+    (fun i c' hc ω j hj => exec_update_dove R h i c' hc ω j hj) hcrit
+
+/-! ### Participation independence yields foreknowledge independence -/
+
+/-- The default instruction executes as the baseline play whatever the others submit. -/
+lemma exec_update_default (c : N → Prog Γ₀) (i : N) (ω : R.Ω) :
+    (programGame Γ₀ R).exec (Function.update c i (default Γ₀)) ω i =
+      Γ₀.pureMixed (R.play Γ₀ ω i) (R.toPlay.mem Γ₀ ω i) := by
+  rw [programGame_exec]
+  show execAt R _ i (Function.update c i (default Γ₀) i) ω = _
+  rw [Function.update_self, default, execAt_delegate]
+
+/-- Everybody at the default executes as the baseline play, as a mixed action. -/
+lemma exec_default (i : N) (ω : R.Ω) :
+    (programGame Γ₀ R).exec (fun _ => default Γ₀) ω i =
+      Γ₀.pureMixed (R.play Γ₀ ω i) (R.toPlay.mem Γ₀ ω i) := by
+  rw [programGame_exec]
+  show execAt R _ i (default Γ₀) ω = _
+  rw [default, execAt_delegate]
+
+/-- **A participation-independent instruction, paired with the default as the informed
+choice, is foreknowledge independent**: if player `i`'s uninformed instruction `c i` is
+participation independent and her policy switches to the default instruction on learning
+that `j` will not participate, then her realised action once `j` has dropped out is the
+baseline play either way.  This is the general form of `Examples.foreknowledgeIndependent_pd`
+and the reason the two notions are not independent of each other. -/
+lemma foreknowledgeIndependent_of_participationIndependent (c : N → Prog Γ₀) {i : N}
+    (π : (programGame Γ₀ R).Policy i) (hno : π.policy π.noInfo = c i)
+    (hinf : ∀ j, π.policy (π.willNotParticipate j) = default Γ₀)
+    (hpi : (programGame Γ₀ R).ParticipationIndependent (defaultInstr Γ₀ R) c i) :
+    (programGame Γ₀ R).ForeknowledgeIndependent (defaultInstr Γ₀ R) c π := by
+  intro j hj ω
+  rw [hno, hinf j, exec_update_default]
+  have hself : (Function.update (Function.update c j ((defaultInstr Γ₀ R).default j)) i (c i) :
+      ∀ a, (programGame Γ₀ R).Instr a) = Function.update c j ((defaultInstr Γ₀ R).default j) :=
+    Function.update_eq_self_iff.2 (Function.update_of_ne (Ne.symm hj) _ _).symm
+  rw [hself]
+  exact (hpi j hj ω).trans (exec_default R i ω)
+
 /-- An instruction that punishes any deviation with the fixed mixed action `σ` is *not*
 participation independent as soon as `σᵢ` differs from the default play at some sample
 point (and there is somebody to drop out). -/

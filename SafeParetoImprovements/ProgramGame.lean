@@ -184,6 +184,55 @@ lemma sum_prod_mixed (σ : ∀ j, Γ.Mixed j) :
   rw [← Fintype.prod_sum]
   exact Finset.prod_eq_one fun j _ => (σ j).2.2
 
+/-! ### Best replies to a pure profile -/
+
+/-- **The best-reply value** of player `i` against the pure profile `b` (whose `i`-th
+coordinate is immaterial): `max_{aᵢ ∈ Aᵢ} uᵢ(aᵢ, b₋ᵢ)`. -/
+noncomputable def bestReply (i : N) (b : ∀ j, 𝒜 j) : ℝ :=
+  (Γ.S i).sup' (Γ.nonempty i) fun a => Γ.u (Function.update b i a) i
+
+omit [Fintype N] in
+lemma u_update_le_bestReply (i : N) (b : ∀ j, 𝒜 j) {a : 𝒜 i} (ha : a ∈ Γ.S i) :
+    Γ.u (Function.update b i a) i ≤ Γ.bestReply i b :=
+  Finset.le_sup' (fun a => Γ.u (Function.update b i a) i) ha
+
+omit [Fintype N] in
+lemma bestReply_le (i : N) (b : ∀ j, 𝒜 j) {M : ℝ}
+    (h : ∀ a ∈ Γ.S i, Γ.u (Function.update b i a) i ≤ M) : Γ.bestReply i b ≤ M :=
+  Finset.sup'_le _ _ h
+
+/-- **Against pure opponents, no mixture beats the best reply**: if every `j ≠ i` plays the
+pure action `b j`, then player `i`'s expected payoff from any mixed action is at most
+`bestReply i b`.  The product weight of a strategic profile vanishes unless the profile
+agrees with `b` off `i`, and the weights sum to one. -/
+lemma expected_le_bestReply [∀ i, DecidableEq (𝒜 i)] (i : N) {b : ∀ j, 𝒜 j} (hb : b ∈ Γ.profiles)
+    (p : Γ.Mixed i) :
+    Γ.expected (Function.update (fun j => Γ.pureMixed (b j) (hb j)) i p) i ≤ Γ.bestReply i b := by
+  set σ := Function.update (fun j => Γ.pureMixed (b j) (hb j)) i p with hσ
+  rw [expected_eq]
+  calc ∑ s : Γ.toStrategic.Profile, (∏ j, (σ j).val (s j)) * Γ.u (Γ.ofStrategicProfile s) i
+      ≤ ∑ s : Γ.toStrategic.Profile, (∏ j, (σ j).val (s j)) * Γ.bestReply i b := by
+        refine Finset.sum_le_sum fun s _ => ?_
+        have h0 : 0 ≤ ∏ j, (σ j).val (s j) :=
+          Finset.prod_nonneg fun j _ => (mem_Icc_of_mem_stdSimplex (σ j).2 (s j)).1
+        by_cases hz : ∏ j, (σ j).val (s j) = 0
+        · rw [hz, zero_mul, zero_mul]
+        · refine mul_le_mul_of_nonneg_left ?_ h0
+          have hcoord : ∀ j, j ≠ i → (s j : 𝒜 j) = b j := by
+            intro j hj
+            have hne := Finset.prod_ne_zero_iff.1 hz j (Finset.mem_univ j)
+            rw [hσ, Function.update_of_ne hj, Γ.pureMixed_val] at hne
+            by_contra hcontra
+            exact hne (if_neg hcontra)
+          have heq : Γ.ofStrategicProfile s = Function.update b i (s i : 𝒜 i) := by
+            funext j
+            by_cases hj : j = i
+            · subst hj; simp [Game.ofStrategicProfile]
+            · rw [Function.update_of_ne hj]; exact hcoord j hj
+          rw [heq]
+          exact Γ.u_update_le_bestReply i b (s i).2
+    _ = Γ.bestReply i b := by rw [← Finset.sum_mul, Γ.sum_prod_mixed, one_mul]
+
 /-- If `aᵢ` is a best response to `a₋ᵢ` among pure actions, then no mixture of `i`'s earns
 more than `uᵢ(a)` against the pure profile `a₋ᵢ`. -/
 lemma expected_update_pure_le [∀ i, DecidableEq (𝒜 i)] {a : ∀ i, 𝒜 i} (ha : a ∈ Γ.profiles)
@@ -402,6 +451,43 @@ lemma isProgramEquilibrium_of_algorithm2 {Γs : Game N 𝒜}
     filter_upwards [hSPI.2] with ω hω
     exact hω i
   exact hdev.trans ((hthreat i).trans hspi)
+
+/-- **An equilibrium criterion for fall-back profiles** (the substrate for participation
+independence, `Independence.lean`).  Let `c` execute as `Π(Γˢ)` for a subset game `Γˢ`, and
+against any unilateral deviation by `i` let every other player fall back to *the baseline
+play* `Πⱼ(Γ₀)` — no punishment.  If, for every player, the expected best reply to the
+baseline `Π(Γ₀)` is at most the expected payoff of `Π(Γˢ)`, then `c` is a program
+equilibrium: a deviator's mixed action at each sample point earns at most the best reply
+to that sample point's baseline play (`Game.expected_le_bestReply`).  The criterion is
+sufficient, not necessary — the bound lets the deviator best-respond sample point by sample
+point, which a program need not be able to do. -/
+lemma isProgramEquilibrium_of_fallback {Γs : Game N 𝒜} (hsub : Γs.IsSubsetGameOf Γ₀)
+    (c : ∀ i, P.Instr i) (hcoop : P.Plays c fun ω => R.play Γs ω)
+    (hfall : ∀ i (c' : P.Instr i), c' ≠ c i → ∀ ω j, j ≠ i →
+      P.exec (Function.update c i c') ω j = Γ₀.pureMixed (R.play Γ₀ ω j) (R.toPlay.mem Γ₀ ω j))
+    (hcrit : ∀ i, ∫ ω, Γ₀.bestReply i (R.play Γ₀ ω) ∂R.μ ≤ ∫ ω, Γ₀.u (R.play Γs ω) i ∂R.μ) :
+    P.IsProgramEquilibrium c := by
+  rw [P.isProgramEquilibrium_iff]
+  intro i c'
+  by_cases hc : c' = c i
+  · rw [hc, Function.update_eq_self]
+  have hmem : ∀ ω, R.play Γs ω ∈ Γ₀.profiles :=
+    fun ω => hsub.profiles_subset (R.toPlay.mem Γs ω)
+  rw [P.payoff_of_plays hcoop hmem i]
+  have hdev : P.payoff (Function.update c i c') i ≤ ∫ ω, Γ₀.bestReply i (R.play Γ₀ ω) ∂R.μ := by
+    unfold payoff
+    refine integral_mono (P.integrable_expected_exec _ i)
+      (R.integrable_comp_play Γ₀ (Γ₀.bestReply i)) fun ω => ?_
+    have : P.exec (Function.update c i c') ω =
+        Function.update (fun j => Γ₀.pureMixed (R.play Γ₀ ω j) (R.toPlay.mem Γ₀ ω j)) i
+          (P.exec (Function.update c i c') ω i) := by
+      funext j
+      by_cases hj : j = i
+      · subst hj; simp
+      · rw [Function.update_of_ne hj, hfall i c' hc ω j hj]
+    rw [this]
+    exact Γ₀.expected_le_bestReply i (R.toPlay.mem Γ₀ ω) _
+  exact hdev.trans (hcrit i)
 
 end ProgramGame
 

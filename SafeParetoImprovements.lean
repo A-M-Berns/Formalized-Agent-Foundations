@@ -134,8 +134,13 @@ ruled on but not yet carried by any declaration.
 * `dd:default-instr` — *realized* (`Independence.lean`, beyond the paper).  A distinguished
   non-participation instruction per player, executing as `Π(Γ₀)`, is what makes
   participation independence and foreknowledge independence stateable (RULING 9); in
-  `Prog` it is "play `Πᵢ(Γ₀)`".  No theorem beyond non-vacuity is claimed for either
-  notion.
+  `Prog` it is "play `Πᵢ(Γ₀)`".  The dove profile (comply with the SPI when everybody
+  submits the same code, otherwise the default) is the participation-independent
+  implementation, a program equilibrium under the best-reply criterion
+  `Prog.dove_isProgramEquilibrium`.  DiGiovanni's program-choice-level definitions of the
+  same notions (`FullStrategy.lean`) and his renegotiation example
+  (`Examples/Renegotiation.lean`) sit alongside as a second execution model over the same
+  `ProgramGame` interface; no theorem of the paper is claimed for any of this.
 * `dd:feasible` — *realized* (`Coordination.lean`).  `C(Γ)` is defined by the paper's own
   formula — the payoff vectors of correlated strategies (`Game.Correlated`, weights on the
   outcomes) — and proved equal to Mathlib's `convexHull ℝ (u '' A)`; convexity and
@@ -191,7 +196,8 @@ ruled on but not yet carried by any declaration.
 | `SafeParetoImprovements/Examples/Witnesses.lean` | non-vacuity witnesses: a play family over `Unit` at which each of Propositions 5–8 has all its hypotheses satisfied (the strict clause of 6 through `Book.prescribed`), the yes-instances of the repaired Definition 5, and the `Representatives` inhabitant `Examples.unitRepresentatives` |
 | `SafeParetoImprovements/ProgramGame.lean` | Appendix A: mixed strategies and expected payoffs from EconCSLib, threat points and the minimax profile by compactness, the `ProgramGame` interface (`dd:exec-kernel`), program equilibrium as EconCSLib Nash, and Proposition 18 over the interface |
 | `SafeParetoImprovements/Instruction.lean` | Appendix A: the instruction language `Prog` (`dd:code-eq`), its execution, the realization theorem `Prog.programGame`, Algorithm 2 as a term, **Proposition 18** (`Prog.algorithm2_isProgramEquilibrium`) and **Theorem 1** (`Prog.exists_programEquilibrium_plays`) |
-| `SafeParetoImprovements/Independence.lean` | beyond the paper (RULING 9): default instructions (`dd:default-instr`), participation independence, the information stage and foreknowledge independence, with the dove-ish and punishing instructions as witnesses |
+| `SafeParetoImprovements/Independence.lean` | beyond the paper (RULING 9): default instructions (`dd:default-instr`), participation independence, the information stage and foreknowledge independence, with the dove-ish and punishing instructions as witnesses; the dove profile as a participation-independent program equilibrium under the best-reply criterion, and participation independence yielding foreknowledge independence for the fall-back policy |
+| `SafeParetoImprovements/FullStrategy.lean` | beyond the paper: DiGiovanni's (2026, Appendix B.1–B.2) SPI transformations, full strategies, choice models, demand preservation, and participation / foreknowledge independence at the level of program choice, with the simultaneous-commitment reduction of PI to demand preservation |
 | `SafeParetoImprovements/Coordination.lean` | §5.1: `C(Γ)` (`Game.feasible`, `dd:feasible`), perfect-coordination token games (`TokenGame`), **Definition 6** (`TokenGame.IsSPI`, `IsStrictSPI`), room and the token copy (`Game.HasRoomOutside`, `Game.HasRoom`, `Game.hasRoomOutside_of_infinite`, `Game.tokenCopy`, `Game.tokenIso`, `dd:room`), **Lemma 11** (`Game.paretoOptimalIn_feasible_iff`, LP characterization) |
 | `SafeParetoImprovements/PerfectCoordination.lean` | §5.2: **Definition 7** (`Play.StrictPerfectCoordinationSPIDecision`, RULINGS 7/10), the reassignment construction (`TokenGame.reassign`, `Play.exists_tokenGame_ue_eq`: `uᵉ` along the isomorphism Assumption 2 supplies), **Proposition 12** as Algorithm 1's correctness iff (`Representatives.strictPerfectCoordinationSPIDecision_iff`, RULING 11, `dd:complexity`) |
 | `SafeParetoImprovements/Polytope.lean` | Mathlib-shaped substrate: polytopes as convex hulls of finite sets, closure under scaling and Minkowski sums, and the half-space / orthant section theorems (`IsPolytope.inter_halfspace`, `inter_Ici`) that Corollary 14's polytope clause needs and Mathlib lacks |
@@ -206,6 +212,8 @@ ruled on but not yet carried by any declaration.
 | `SafeParetoImprovements/Examples/Chicken.lean` | Table 7 over `CAct ⊕ ℕ` (`dd:room`) and **Proposition 16** (`Examples.chicken_no_perfectCoordinationSPI`): a Pareto improvement that no perfect-coordination SPI achieves in expectation, with its label-free kernel (`chicken_no_feasible_dominating_of_mean_cc`), the token games of every size that make the class non-empty, and the `Π`-dependence disclosure |
 | `SafeParetoImprovements/Examples/TokenWitnesses.lean` | the positive side of **Definition 6**: a `2 × 2` game over `Bool ⊕ ℕ` with a fresh token copy, a perfect-coordination SPI with equality at every sample point, and a *strict* one built by the paper's Demand-Game recipe with `uᵉ` defined along the book's isomorphism (erratum D6, RULING 10) |
 | `SafeParetoImprovements/Examples/ProgramGameWitnesses.lean` | non-vacuity for the program-game layer: Theorem 1's hypotheses jointly satisfied in the Prisoner's Dilemma (pure Nash equilibrium ⇒ threat-point guarantee), and the PI/FI predicates neither constant-true nor constant-false |
+| `SafeParetoImprovements/Examples/IndependenceExamples.lean` | the dove profile on the paper's own examples: a participation-independent program equilibrium executing the SPI in the Prisoner's Dilemma and in the Demand Game at the conflict outcome (where Proposition 18's threat-point hypothesis fails), and the fall-back policies' foreknowledge independence |
+| `SafeParetoImprovements/Examples/Renegotiation.lean` | DiGiovanni's Appendix B.4 renegotiation example with the pseudocode as execution model over the `ProgramGame` interface: demand preservation, the 50%/80%/doomsday numbers, `rn` as a B.1 SPI, participation independence at both levels, and the "PI but not FI" agent (60% regardless, 50% with foreknowledge) at both levels |
 -/
 import SafeParetoImprovements.Game
 import SafeParetoImprovements.Play
@@ -227,6 +235,9 @@ import SafeParetoImprovements.ProgramGame
 import SafeParetoImprovements.Instruction
 import SafeParetoImprovements.Independence
 import SafeParetoImprovements.Examples.ProgramGameWitnesses
+import SafeParetoImprovements.Examples.IndependenceExamples
+import SafeParetoImprovements.FullStrategy
+import SafeParetoImprovements.Examples.Renegotiation
 import SafeParetoImprovements.Coordination
 import SafeParetoImprovements.Examples.Coin
 import SafeParetoImprovements.Examples.Chicken

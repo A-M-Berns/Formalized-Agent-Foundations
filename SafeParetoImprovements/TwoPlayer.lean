@@ -38,6 +38,19 @@ def pair (a : 𝒜 .one) (x : 𝒜 .two) : ∀ i, 𝒜 i
 lemma eq_pair (b : ∀ i, 𝒜 i) : b = pair (b .one) (b .two) := by
   funext i; cases i <;> rfl
 
+/-- The other player. -/
+def other : Two → Two
+  | .one => .two
+  | .two => .one
+
+@[simp] lemma other_one : other .one = .two := rfl
+@[simp] lemma other_two : other .two = .one := rfl
+
+lemma other_ne (i : Two) : other i ≠ i := by cases i <;> decide
+
+lemma eq_other_of_ne {i j : Two} (h : j ≠ i) : j = other i := by
+  cases i <;> cases j <;> first | rfl | exact absurd rfl h
+
 @[simp] lemma update_one (b : ∀ i, 𝒜 i) (a : 𝒜 .one) :
     Function.update b .one a = pair a (b .two) := by
   funext i; cases i <;> simp [pair]

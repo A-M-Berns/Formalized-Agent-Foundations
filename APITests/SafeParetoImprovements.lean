@@ -191,4 +191,67 @@ example : coord.threatPoint .one ≤ 2 ∧ 0 ≤ coord.threatPoint .one := by
     cases (coord.ofStrategicProfile s) .one <;> cases (coord.ofStrategicProfile s) .two <;>
       simp [coord_u, coordPayoff]
 
+/-! ### Program-choice-level independence over a client program space -/
+
+/-- A client program space: each of two agents submits a demand in `ℕ`, and the SPI
+transformation `capAt k` caps every demand at `k`. -/
+def capAt (k : ℕ) (p : Two → ℕ) : Two → ℕ := fun i => min (p i) k
+
+/-- A choice model in which agent 1's choice depends only on what she believes the other
+demands (she demands one more than her belief about the counterpart, capped at `5`), and
+agent 2 always demands `3`. -/
+def clientChoice : ChoiceModel (fun _ : Two => ℕ) where
+  ofParticipation
+    | .one, _ => 4
+    | .two, _ => 3
+  ofBelief
+    | .one, q => min (q .two + 1) 5
+    | .two, _ => 3
+
+/-- The full strategy `(capAt 10, (4, 3))`. -/
+def clientStrategy : FullStrategy (fun _ : Two => ℕ) := ⟨capAt 10, fun i => clientChoice.ofParticipation i (fun _ => 0)⟩
+
+/-- Demands are read off directly. -/
+def clientDemands : ∀ _ : Two, ℕ → ℕ := fun _ n => n
+
+/-- Nothing exceeds the cap, so `capAt 10` preserves demands. -/
+lemma clientStrategy_demandPreserving : clientStrategy.DemandPreserving clientDemands := by
+  intro i; cases i <;> rfl
+
+/-- The model is a simultaneous-commitment one and the strategy is consistent with it, so
+participation independence follows from demand preservation alone. -/
+example : clientStrategy.ParticipationIndependent clientDemands clientChoice :=
+  clientStrategy.participationIndependent_of_simultaneous clientDemands clientChoice
+    (fun i _ _ => by cases i <;> rfl) (fun i => by cases i <;> exact ⟨rfl, rfl⟩)
+    clientStrategy_demandPreserving
+
+/-- With the cap lowered to `2`, agent 1's actual choice `3` was made against the capped
+counterpart `2`; had she believed the counterpart would use his *input* program `3`, she
+would have demanded `4`.  Different demands, so not foreknowledge independent — while the
+participation clause is unaffected. -/
+def clientStrategy' : FullStrategy (fun _ : Two => ℕ) := ⟨capAt 2, Two.pair 3 3⟩
+
+example : ¬ clientStrategy'.ForeknowledgeIndependent clientDemands clientChoice :=
+  clientStrategy'.not_foreknowledgeIndependent_of_demand_ne clientDemands clientChoice
+    (i := .one) (by show (4 : ℕ) ≠ 3; decide)
+
+/-- A payoff rewarding modest demands: each agent is paid `10 - demand` when the pair sums
+to at most `10`, else `0`. -/
+def clientPayoff (p : Two → ℕ) (i : Two) : ℝ :=
+  if p .one + p .two ≤ 10 then 10 - (p i : ℝ) else 0
+
+/-- Capping at `5` is an SPI on *every* program profile: a compatible pair only gets
+cheaper, and an incompatible pair becomes compatible. -/
+example : IsSPITransformation clientPayoff Set.univ (capAt 5) := by
+  intro p _ i
+  have hcap : ((min (p i) 5 : ℕ) : ℝ) ≤ p i := by exact_mod_cast min_le_left _ _
+  have hcap5 : ((min (p i) 5 : ℕ) : ℝ) ≤ 5 := by exact_mod_cast min_le_right _ _
+  have hsum : min (p .one) 5 + min (p .two) 5 ≤ 10 :=
+    add_le_add (min_le_right _ _) (min_le_right _ _)
+  unfold clientPayoff capAt
+  rw [if_pos hsum]
+  split_ifs with h
+  · linarith
+  · linarith
+
 end APITests.SafeParetoImprovements

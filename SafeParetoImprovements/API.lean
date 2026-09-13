@@ -12,6 +12,7 @@ import SafeParetoImprovements.TwoPlayer
 import SafeParetoImprovements.ProgramGame
 import SafeParetoImprovements.Instruction
 import SafeParetoImprovements.Independence
+import SafeParetoImprovements.FullStrategy
 import SafeParetoImprovements.Coordination
 import SafeParetoImprovements.PerfectCoordination
 import SafeParetoImprovements.Polytope
@@ -155,7 +156,18 @@ The concrete instruction language is `Prog Γ₀` (`play`, `delegate`, `ifAllSam
 `ProgramGame.isProgramEquilibrium_of_algorithm2`) and **Theorem 1**
 `Prog.exists_programEquilibrium_plays`.  Beyond the paper (RULING 9): default instructions
 `ProgramGame.DefaultInstr`, `ParticipationIndependent`, information stages `Policy` and
-`ForeknowledgeIndependent` (`Independence.lean`), with `Prog.default`, `Prog.dove`.
+`ForeknowledgeIndependent` (`Independence.lean`), with `Prog.default`, `Prog.dove`, the
+best-reply value `Game.bestReply` (`expected_le_bestReply`), the fall-back equilibrium
+criterion `ProgramGame.isProgramEquilibrium_of_fallback`, and the dove profile as a
+participation-independent program equilibrium (`Prog.plays_dove`,
+`participationIndependent_dove_all`, `dove_isProgramEquilibrium`,
+`foreknowledgeIndependent_of_participationIndependent`).  The same two notions at the level
+of program *choice*, after DiGiovanni (2026, Appendix B.2), are `FullStrategy`,
+`ChoiceModel`, `FullStrategy.DemandPreserving`/`ParticipationIndependent`/
+`ForeknowledgeIndependent`, with `IsSPITransformation` (B.1),
+`participationIndependent_of_simultaneous` and `not_foreknowledgeIndependent_of_demand_ne`
+(`FullStrategy.lean`); the worked B.4 renegotiation example is
+`Examples/Renegotiation.lean`, outside this import.
 
 ## Coordination (§5)
 
