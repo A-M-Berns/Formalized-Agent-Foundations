@@ -1,4 +1,4 @@
-import SafeParetoImprovements.Examples.TwoPlayer
+import SafeParetoImprovements.TwoPlayer
 
 /-!
 # Proposition 5: the Prisoner's Dilemma (Table 3)

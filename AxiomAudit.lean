@@ -4118,6 +4118,12 @@ blocks, a stale entry, a malformed line, a non-empty block once the paper is
   SafeParetoImprovements.Game.strictUnilateralSPIDecision_iff_certificate
   SafeParetoImprovements.Game.card_unilateralCertificate_le
   SafeParetoImprovements.Game.unilateralSPIDecision_search
+  -- supporting lemmas of Complexity.lean (every public declaration is inventoried, R6-F14)
+  SafeParetoImprovements.Game.withPayoffs_S SafeParetoImprovements.Game.withPayoffs_u
+  SafeParetoImprovements.Game.Certificate.game_S SafeParetoImprovements.Game.Certificate.game_u
+  SafeParetoImprovements.Game.Certificate.imageGame_S
+  SafeParetoImprovements.Game.Certificate.imageGame_u SafeParetoImprovements.Game.card_le_size
+  SafeParetoImprovements.Game.card_unilateralCertificate_le'
   -- Appendix D.3 (SafeParetoImprovements/Hardness.lean): graphs and Definition 8, Tables 9
   -- and 10 (following the table where it disagrees with the printed formula, erratum D18),
   -- the full reduction of `Γᶜ`, Lemma 28 in its four forms, and Theorem 9's carrier.
@@ -4140,6 +4146,34 @@ blocks, a stale entry, a malformed line, a non-empty block once the paper is
   SafeParetoImprovements.Hardness.subgraphIsoProblem_iff_strictSPIDecision
   SafeParetoImprovements.Hardness.subgraphIsoProblem_iff_unilateralSPIDecision
   SafeParetoImprovements.Hardness.theorem9
+  -- supporting lemmas of Hardness.lean (payoff bounds, block membership, the certificate
+  -- evaluation helpers and the extraction helpers of Lemma 28's second claim; R6-F14)
+  SafeParetoImprovements.Hardness.TableAct.c₁ SafeParetoImprovements.Hardness.TableAct.c₂
+  SafeParetoImprovements.Hardness.hardnessGame_S SafeParetoImprovements.Hardness.hardnessGame_u
+  SafeParetoImprovements.Hardness.gammaBlock_S SafeParetoImprovements.Hardness.gammaBlock_u
+  SafeParetoImprovements.Hardness.mem_blockActions
+  SafeParetoImprovements.Hardness.inl_mem_blockActions
+  SafeParetoImprovements.Hardness.inr_not_mem_blockActions
+  SafeParetoImprovements.Hardness.block_mul_le SafeParetoImprovements.Hardness.succ_mul_le
+  SafeParetoImprovements.Hardness.block_mul_nonneg
+  SafeParetoImprovements.Hardness.succ_mul_nonneg SafeParetoImprovements.Hardness.adj_nonneg
+  SafeParetoImprovements.Hardness.adj_le_one SafeParetoImprovements.Hardness.neg_one_le_tableU₁
+  SafeParetoImprovements.Hardness.neg_one_le_tableU₂
+  SafeParetoImprovements.Hardness.tableU₁_le_six
+  SafeParetoImprovements.Hardness.neg_one_lt_tableU₂_c₁
+  SafeParetoImprovements.Hardness.psiT_inl SafeParetoImprovements.Hardness.psiT_inr_inl
+  SafeParetoImprovements.Hardness.psiT_inr_inr SafeParetoImprovements.Hardness.psiT_injective
+  SafeParetoImprovements.Hardness.psi_inl SafeParetoImprovements.Hardness.adj_le_adj
+  SafeParetoImprovements.Hardness.mem_reduce_S_iff
+  SafeParetoImprovements.Hardness.mem_reduce_profiles_iff
+  SafeParetoImprovements.Hardness.cert_toFun SafeParetoImprovements.Hardness.cert_map
+  SafeParetoImprovements.Hardness.mem_cert_image_iff
+  SafeParetoImprovements.Hardness.eq_c₁_of_six_le
+  SafeParetoImprovements.Hardness.eq_c₂_of_six_le
+  SafeParetoImprovements.Hardness.eq_inl_of_pos_row
+  SafeParetoImprovements.Hardness.eq_inl_of_pos_col
+  SafeParetoImprovements.Hardness.eq_of_one_lt_block
+  SafeParetoImprovements.Hardness.le_of_adj_le
   -- Non-vacuity for the complexity nodes (SafeParetoImprovements/Examples/
   -- ComplexityWitnesses.lean): the Demand Game's certificate passing the strict and
   -- non-triviality checks, the one-action game whose only certificate is the identity
@@ -4157,13 +4191,38 @@ blocks, a stale entry, a malformed line, a non-empty block once the paper is
   SafeParetoImprovements.Examples.card_demandCertificate SafeParetoImprovements.Examples.demandGame_size
   SafeParetoImprovements.Examples.demandGame_reduce_size
   SafeParetoImprovements.Examples.card_demandCertificate_le
-  SafeParetoImprovements.Examples.emptyTwo SafeParetoImprovements.Examples.completeTwo
-  SafeParetoImprovements.Examples.subgraphIso_emptyTwo_completeTwo
-  SafeParetoImprovements.Examples.not_subgraphIso_completeTwo_emptyTwo
   SafeParetoImprovements.Examples.hardYes SafeParetoImprovements.Examples.hardNo
   SafeParetoImprovements.Examples.size_hardGame
   SafeParetoImprovements.Examples.hardYes_strictUnilateralSPIDecision
   SafeParetoImprovements.Examples.hardNo_not_spiDecision
+  -- round-6 witnesses: the non-degenerate graph pair (one edge into the two-cycle, R6-F07),
+  -- check 2 rejecting the Demand Game certificate (R6-F08), and the four-action game whose
+  -- certificate passes Proposition 25's checks with the affine scale forced to 2 (R6-F09).
+  SafeParetoImprovements.Examples.oneEdge SafeParetoImprovements.Examples.twoCycle
+  SafeParetoImprovements.Examples.subgraphIso_oneEdge_twoCycle
+  SafeParetoImprovements.Examples.not_subgraphIso_twoCycle_oneEdge
+  SafeParetoImprovements.Examples.demandCertificate_map
+  SafeParetoImprovements.Examples.demandCertificate_not_affine
+  SafeParetoImprovements.Examples.SUniverse SafeParetoImprovements.Examples.scaledU₁
+  SafeParetoImprovements.Examples.scaledU₂ SafeParetoImprovements.Examples.scaledGame
+  SafeParetoImprovements.Examples.scaledGame.u_pair
+  SafeParetoImprovements.Examples.scaledGame.block
+  SafeParetoImprovements.Examples.scaledGame.reducedGame
+  SafeParetoImprovements.Examples.scaledGame.reducedGame_reduced
+  SafeParetoImprovements.Examples.scaledGame.reduce_eq
+  SafeParetoImprovements.Examples.scaledGame.mem_reduce_S_iff
+  SafeParetoImprovements.Examples.scaledGame.shift
+  SafeParetoImprovements.Examples.scaledGame.cert
+  SafeParetoImprovements.Examples.scaledGame.cert_toFun
+  SafeParetoImprovements.Examples.scaledGame.cert_map
+  SafeParetoImprovements.Examples.scaledGame.mem_reduce_profiles_iff
+  SafeParetoImprovements.Examples.scaledGame.mem_cert_image_iff
+  SafeParetoImprovements.Examples.scaledGame.cert_paretoImproving
+  SafeParetoImprovements.Examples.scaledGame.cert_nontrivial
+  SafeParetoImprovements.Examples.scaledGame.cert_affine
+  SafeParetoImprovements.Examples.scaledGame.cert_affine_scale_eq_two
+  SafeParetoImprovements.Examples.scaledGame.cert_reducesToImage
+  SafeParetoImprovements.Examples.scaledGame.strictUnilateralSPIDecision
 -- SPI-INVENTORY-END
 
 /-! Tier-2 freezes for Safe Pareto Improvements (R1-F10, R1-F25, R1-F33).  The mechanical

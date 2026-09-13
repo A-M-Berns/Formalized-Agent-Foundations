@@ -1,6 +1,6 @@
 import SafeParetoImprovements.Coordination
 import SafeParetoImprovements.Book
-import SafeParetoImprovements.Examples.TwoPlayer
+import SafeParetoImprovements.TwoPlayer
 import SafeParetoImprovements.Examples.Coin
 
 /-!

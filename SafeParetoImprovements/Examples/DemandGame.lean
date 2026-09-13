@@ -1,4 +1,4 @@
-import SafeParetoImprovements.Examples.TwoPlayer
+import SafeParetoImprovements.TwoPlayer
 
 /-!
 # Proposition 6: the Demand Game (Tables 1 and 2)

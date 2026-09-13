@@ -81,14 +81,10 @@ lemma ElimStar.transfer {Γ Γ₁ : Game N 𝒜} (h : Γ.ElimStar Γ₁) (Γ' : 
   induction h using Relation.ReflTransGen.head_induction_on generalizing Γ' with
   | refl =>
     have : Γ₁.withPayoffs Γ' = Γ' := by
-      have hSeq : Γ₁.S = Γ'.S := by
-        funext j
-        by_cases hj : j = i
-        · subst hj; exact hSi.symm
-        · exact (hS j hj).symm
-      cases Γ₁; cases Γ'
-      simp only [withPayoffs, Game.mk.injEq, and_true]
-      exact hSeq
+      refine Game.ext' (funext fun j => ?_) rfl
+      by_cases hj : j = i
+      · subst hj; exact hSi.symm
+      · exact (hS j hj).symm
     rw [this]
     exact Relation.ReflTransGen.refl
   | @head Γ G hΓG hG ih =>
@@ -147,10 +143,7 @@ lemma elimStar_of_dominated [Fintype N] (Γ : Game N 𝒜) (T : ∀ j, Finset (�
   | _ m ih =>
     intro Γ hm hT hdom
     by_cases hall : ∀ j, Γ.S j = T j
-    · have : (⟨T, hne, Γ.u⟩ : Game N 𝒜) = Γ := by
-        cases Γ
-        simp only [Game.mk.injEq, and_true]
-        exact (funext hall).symm
+    · have : (⟨T, hne, Γ.u⟩ : Game N 𝒜) = Γ := Game.ext' (funext hall).symm rfl
       rw [this]
       exact Relation.ReflTransGen.refl
     · push Not at hall
@@ -487,12 +480,7 @@ lemma imageGame_reduced (hA : c.Affine i) : (c.imageGame i).Reduced :=
 
 lemma reduce_unilateralGame_eq (hR : c.ReducesToImage i) :
     (c.unilateralGame i).reduce = c.imageGame i := by
-  have hu := (c.unilateralGame i).reduce_u
-  have hS : (c.unilateralGame i).reduce.S = c.image := hR
-  generalize (c.unilateralGame i).reduce = G at hS hu
-  cases G
-  simp only [imageGame, Game.mk.injEq]
-  exact ⟨hS, hu⟩
+  exact Game.ext' hR (c.unilateralGame i).reduce_u
 
 /-- The isomorphism `reduce Γ ≅ reduce Γˢ` that checks 2 and 3 provide. -/
 def unilateralIso (hA : c.Affine i) (hR : c.ReducesToImage i) :
@@ -533,12 +521,12 @@ lemma unilateralGame_reduce_S_ne (hnt : c.Nontrivial) (hR : c.ReducesToImage i) 
 section ofUnilateral
 
 variable {Γs : Game N 𝒜} (hsub : Γs.IsSubsetGameOf Γ) (ψ : GameIso Γ.reduce Γs.reduce)
-  (hi : ∀ j, j ≠ i → Γs.S j = Γ.S j ∧ ∀ a ∈ Γs.profiles, Γs.u a j = Γ.u a j)
 
-include hi in
 /-- Check 2 holds for the certificate read off an isomorphism onto a unilateral subset
-game: the other players keep `Γ`'s payoffs, so `ψ`'s affine constants are theirs. -/
-lemma ofIso_affine : (ofIso hsub ψ).Affine i := by
+game (`hi` is Definition 2's clause for the players other than `i`): the other players
+keep `Γ`'s payoffs, so `ψ`'s affine constants are theirs. -/
+lemma ofIso_affine (hi : ∀ j, j ≠ i → Γs.S j = Γ.S j ∧ ∀ a ∈ Γs.profiles, Γs.u a j = Γ.u a j) :
+    (ofIso hsub ψ).Affine i := by
   intro j hj
   refine ⟨ψ.scale j, ψ.scale_pos j, ψ.shift j, fun a ha => ?_⟩
   have h := ψ.affine a ha j
@@ -547,12 +535,13 @@ lemma ofIso_affine : (ofIso hsub ψ).Affine i := by
   rw [h, ofIso_map hsub ψ ha, (hi j hj).2 _
     (Γs.reduce_isSubsetGameOf.profiles_subset (ψ.map_mem ha))]
 
-include hi in
 /-- Check 3 holds for the certificate read off an isomorphism onto a unilateral subset
-game `Γs`: transfer `Γs →* reduce Γs` to the candidate (`ElimStar.transfer`), then note that
-the transferred endpoint is isomorphic to `reduce Γs` by the identity on actions with
-player `i`'s payoffs rescaled, hence reduced. -/
-lemma ofIso_reducesToImage : (ofIso hsub ψ).ReducesToImage i := by
+game `Γs` (`hi` as in `ofIso_affine`): transfer `Γs →* reduce Γs` to the candidate
+(`ElimStar.transfer`), then note that the transferred endpoint is isomorphic to `reduce Γs`
+by the identity on actions with player `i`'s payoffs rescaled, hence reduced. -/
+lemma ofIso_reducesToImage
+    (hi : ∀ j, j ≠ i → Γs.S j = Γ.S j ∧ ∀ a ∈ Γs.profiles, Γs.u a j = Γ.u a j) :
+    (ofIso hsub ψ).ReducesToImage i := by
   set c := ofIso hsub ψ with hc
   have himg : ∀ j, c.image j = Γs.reduce.S j := ofIso_image hsub ψ
   set G := c.unilateralGame i with hG
@@ -752,12 +741,27 @@ lemma card_unilateralCertificate_le (Γ : Game N 𝒜) :
   rw [Fintype.card_prod]
   exact Nat.mul_le_mul_left _ Γ.card_certificate_le
 
+omit [DecidableEq N] [∀ i, DecidableEq (𝒜 i)] in
+/-- Every player has an action, so `n ≤ m`. -/
+lemma card_le_size (Γ : Game N 𝒜) : Fintype.card N ≤ Γ.size := by
+  rw [Game.size, ← Finset.card_univ, Finset.card_eq_sum_ones]
+  exact Finset.sum_le_sum fun i _ => Finset.one_le_card.2 (Γ.nonempty i)
+
+/-- The unilateral search space has at most `m ^ (l + 1)` elements, since `n ≤ m`. -/
+lemma card_unilateralCertificate_le' (Γ : Game N 𝒜) :
+    Fintype.card (N × Γ.Certificate) ≤ Γ.size ^ (Γ.reduce.size + 1) := by
+  rw [pow_succ, mul_comm]
+  exact Γ.card_unilateralCertificate_le.trans (Nat.mul_le_mul_right _ Γ.card_le_size)
+
 /-- **Proposition 26** (and **Proposition 10**, unilateral case): the (strict) unilateral SPI
 decision problem is decided by searching the pairs (player, certificate), of which there
-are at most `n · m ^ l`, for one passing the checks of Proposition 25.  Qualified node
-(`dd:complexity`) exactly as `spiDecision_search`; the paper's `O(m^l)` absorbs the factor
-`n`, and the polynomial cost of the three checks (check 3 is a full reduction) is the
-clause not rendered.
+are at most `n · m ^ l ≤ m ^ (l+1)`, for one passing the checks of Proposition 25.
+Qualified node (`dd:complexity`) exactly as `spiDecision_search`; the polynomial cost of the
+three checks (check 3 is a full reduction) is the clause not rendered.  The factor `n`
+(bounded by `m`, `card_le_size`) is real: the appendix's algorithm (D.2.2, l. 2426) is
+"given an `n`-player game `Γ` and a player `i`", while Definition 5's unilateral problem
+quantifies over the player, so deciding the latter searches every `i` and the printed
+`O(m^l)` is `O(m^l)` per player (R6-F11).
 
 Paper node: `Proposition 26`, `Proposition 10` -/
 theorem unilateralSPIDecision_search (Γ : Game N 𝒜) :
@@ -765,9 +769,10 @@ theorem unilateralSPIDecision_search (Γ : Game N 𝒜) :
         c.ParetoImproving ∧ c.Nontrivial ∧ c.Affine i ∧ c.ReducesToImage i) ∧
       (Γ.StrictUnilateralSPIDecision ↔ ∃ (i : N) (c : Γ.Certificate),
         c.StrictlyParetoImproving ∧ c.Nontrivial ∧ c.Affine i ∧ c.ReducesToImage i) ∧
-      Fintype.card (N × Γ.Certificate) ≤ Fintype.card N * Γ.size ^ Γ.reduce.size :=
+      Fintype.card (N × Γ.Certificate) ≤ Fintype.card N * Γ.size ^ Γ.reduce.size ∧
+      Fintype.card (N × Γ.Certificate) ≤ Γ.size ^ (Γ.reduce.size + 1) :=
   ⟨Γ.unilateralSPIDecision_iff_certificate, Γ.strictUnilateralSPIDecision_iff_certificate,
-    Γ.card_unilateralCertificate_le⟩
+    Γ.card_unilateralCertificate_le, Γ.card_unilateralCertificate_le'⟩
 
 end Game
 

@@ -1,5 +1,5 @@
 import SafeParetoImprovements.Complexity
-import SafeParetoImprovements.Examples.TwoPlayer
+import SafeParetoImprovements.TwoPlayer
 
 /-!
 # The SPI decision problems are as hard as subgraph isomorphism (Appendix D.3)
@@ -29,8 +29,12 @@ sets move" (`dd:nontrivial`), the case in which `Ψ` keeps to the `Γ` block is 
 outright, and the printed `ε`-ladder is not needed.
 
 The hypotheses on `ε` are the paper's `0 < ε < 1/(2n)` for `Γ` and `ε < 1/(2n̂)` for `Γ̂`;
-`n ≥ 1` replaces the printed "WLOG `n, n̂ ≥ 2`" and is needed only for the strict problems
-(with `n = 0` the empty subgraph isomorphism exists but no strict SPI does).
+`n ≥ 1` replaces the printed "WLOG `n, n̂ ≥ 2`" and is assumed by all four forms of Lemma 28
+(the proof route needs `ε < 1`, which the `Γ`-side bound gives only when `n ≥ 1`).  It is
+mathematically necessary for the two strict forms: with `n = 0` the empty subgraph
+isomorphism exists but no strict SPI does, since the `Γ` block is then the two corner
+actions and `Ψ` carries their payoffs exactly.  The plain and unilateral forms would
+survive `n = 0` under `ε < 1` assumed separately; no declaration states that.
 
 * `Hardness.Graph`, `SubgraphIso`, `SubgraphIsoProblem` — Definition 8.
 * `Hardness.tableU₁`, `tableU₂` — Table 9's payoffs, with the shift `δ` that turns `Γ`
@@ -47,7 +51,7 @@ namespace SafeParetoImprovements
 
 namespace Hardness
 
-open Examples Examples.Two Set
+open Two Set
 
 /-! ### Graphs and subgraph isomorphism (Definition 8) -/
 
@@ -335,15 +339,16 @@ section construction
 
 variable (φ : Fin n ↪ Fin n')
 
-/-- `Ψ` on the actions of Table 9: `i ↦ φ(i)`, `n+i ↦ n̂+φ(i)`, corners to corners. -/
-def psiT : TableAct n → TableAct n'
-  | .inl i => .inl (φ i)
-  | .inr (.inl i) => .inr (.inl (φ i))
-  | .inr (.inr b) => .inr (.inr b)
+/-- `Ψ` on the actions of Table 9: `i ↦ φ(i)`, `n+i ↦ n̂+φ(i)`, corners to corners — the
+embedding `φ ⊕ φ ⊕ id` (Mathlib's `Function.Embedding.sumMap`, R6-F15). -/
+def psiT : TableAct n ↪ TableAct n' := φ.sumMap (φ.sumMap (Function.Embedding.refl Bool))
 
-lemma psiT_injective : Function.Injective (psiT φ) := by
-  rintro (i | i | b) (j | j | b') h <;> simp only [psiT, Sum.inl.injEq, Sum.inr.injEq,
-    reduceCtorEq, φ.apply_eq_iff_eq] at h <;> simp [h]
+@[simp] lemma psiT_inl (i : Fin n) : psiT φ (Sum.inl i) = Sum.inl (φ i) := rfl
+@[simp] lemma psiT_inr_inl (i : Fin n) : psiT φ (Sum.inr (Sum.inl i)) = Sum.inr (Sum.inl (φ i)) :=
+  rfl
+@[simp] lemma psiT_inr_inr (b : Bool) : psiT φ (Sum.inr (Sum.inr b)) = Sum.inr (Sum.inr b) := rfl
+
+lemma psiT_injective : Function.Injective (psiT φ) := (psiT φ).injective
 
 /-- `Ψ` on the universe of `Γᶜ`: the `T`/`D` block into the `R`/`P` block along `psiT`
 (the identity elsewhere, where it is never used). -/
@@ -357,7 +362,7 @@ def psi : HardAct n n' → HardAct n n'
 lemma tableU₂_psiT (t t' : TableAct n) :
     tableU₂ n' ε (psiT φ t) (psiT φ t') = tableU₂ n ε t t' := by
   rcases t with i | i | b <;> rcases t' with j | j | b' <;>
-    simp [psiT, tableU₂, φ.apply_eq_iff_eq]
+    simp [tableU₂, φ.apply_eq_iff_eq]
 
 lemma adj_le_adj {i j : Fin n} {k l : Fin n'} (h : a i j ≤ a' k l) : adj a i j ≤ adj a' k l := by
   unfold adj
@@ -371,7 +376,7 @@ case `i ≠ j ∈ [n]` is the subgraph condition `a(i, j) ≤ â(φ(i), φ(j))`)
 lemma tableU₁_le_psiT (hε : 0 ≤ ε) (hεn : ε * (2 * n) < 1) (hφ : SubgraphIso a a' φ)
     (t t' : TableAct n) : tableU₁ a ε 0 t t' ≤ tableU₁ a' ε 1 (psiT φ t) (psiT φ t') := by
   rcases t with i | i | b <;> rcases t' with j | j | b' <;>
-    simp only [psiT, tableU₁, φ.apply_eq_iff_eq] <;> (try split_ifs) <;> (try subst_vars) <;>
+    simp only [psiT_inl, psiT_inr_inl, psiT_inr_inr, tableU₁, φ.apply_eq_iff_eq] <;> (try split_ifs) <;> (try subst_vars) <;>
     first
     | linarith
     | (rename_i hij; exact adj_le_adj a a' (hφ _ _ hij))
@@ -480,7 +485,7 @@ lemma strictUnilateralSPIDecision_of_subgraphIso (hn : 1 ≤ n) (hε : 0 < ε)
     rw [hc, cert_map]
     show tableU₁ a ε 0 TableAct.c₁ (Sum.inl ⟨0, hn⟩) <
       tableU₁ a' ε 1 (psiT φ TableAct.c₁) (psiT φ (Sum.inl ⟨0, hn⟩))
-    simp [psiT, tableU₁]
+    simp [tableU₁]
   · -- non-trivial: `(T, 2n+1)` survives in `reduce Γᶜ` but is not in `Ψ₁(T)`
     refine ⟨.one, fun h => ?_⟩
     have : Sum.inl TableAct.c₁ ∈ c.image .one := by
@@ -509,10 +514,10 @@ lemma strictUnilateralSPIDecision_of_subgraphIso (hn : 1 ≤ n) (hε : 0 < ε)
         hardU a a' ε (Sum.inr (psiT φ t)) (Sum.inr TableAct.c₁) .two
       simp only [hardU, pair_two]
       rcases p with k | k | b
-      · have hk : ∀ i, φ i ≠ k := fun i h => hp (Sum.inl i) (by simp [psiT, h])
-        rcases t with i | i | b <;> simp [psiT, tableU₂, hk] <;> linarith
-      · have hk : ∀ i, φ i ≠ k := fun i h => hp (Sum.inr (Sum.inl i)) (by simp [psiT, h])
-        rcases t with i | i | b <;> simp [psiT, tableU₂, hk] <;> linarith
+      · have hk : ∀ i, φ i ≠ k := fun i h => hp (Sum.inl i) (by simp [h])
+        rcases t with i | i | b <;> simp [tableU₂, hk] <;> linarith
+      · have hk : ∀ i, φ i ≠ k := fun i h => hp (Sum.inr (Sum.inl i)) (by simp [h])
+        rcases t with i | i | b <;> simp [tableU₂, hk] <;> linarith
       · exact absurd rfl (hp (Sum.inr (Sum.inr b)))
 
 end certificate
@@ -745,7 +750,8 @@ produces a strict unilateral SPI from a subgraph isomorphism and its second extr
 subgraph isomorphism from any SPI at all — and the other three follow from it.  Qualified
 node (`dd:complexity`): "reducible in linear time" and "NP-hard" (which needs Lemma 27) are
 not rendered; the instance size is `size_hardnessGame`.  The hypotheses are the paper's
-`0 < ε < 1/(2n)`, `ε < 1/(2n̂)`, and `n ≥ 1` in place of its "WLOG `n, n̂ ≥ 2`".
+`0 < ε < 1/(2n)`, `ε < 1/(2n̂)`, and `n ≥ 1` in place of its "WLOG `n, n̂ ≥ 2`" (necessary
+here: at `n = 0` the empty subgraph isomorphism exists and no strict SPI does).
 
 Paper node: `Lemma 28`, `Theorem 9` -/
 theorem subgraphIsoProblem_iff_strictUnilateralSPIDecision :
@@ -762,13 +768,11 @@ Paper node: `Lemma 28`, `Theorem 9` -/
 theorem subgraphIsoProblem_iff_spiDecision :
     SubgraphIsoProblem a a' ↔ (hardnessGame a a' ε).SPIDecision :=
   ⟨fun h => ((subgraphIsoProblem_iff_strictUnilateralSPIDecision a a' hn hε hεn hε').1 h).strict.spi,
-    fun h => (subgraphIsoProblem_iff_strictUnilateralSPIDecision a a' hn hε hεn hε').2
-      (by
-        have hε1 : ε < 1 := by
-          have : (1 : ℝ) ≤ n := by exact_mod_cast hn
-          nlinarith
-        obtain ⟨φ, hφ⟩ := subgraphIsoProblem_of_spiDecision a a' hε hε1 hε' h
-        exact strictUnilateralSPIDecision_of_subgraphIso a a' φ hn hε hεn hε' hφ)⟩
+    fun h => by
+      have hε1 : ε < 1 := by
+        have : (1 : ℝ) ≤ n := by exact_mod_cast hn
+        nlinarith
+      exact subgraphIsoProblem_of_spiDecision a a' hε hε1 hε' h⟩
 
 /-- **Lemma 28** for the strict SPI decision problem.
 
@@ -791,26 +795,27 @@ end lemma28
 
 /-! ### Theorem 9 -/
 
-universe v
+universe u v
 
-/-- **Theorem 9**, as carried here (`dd:complexity`, RULING 6): for two-player games,
-**membership** — each of the four (strict) (unilateral) SPI decision problems is
+/-- **Theorem 9**, as carried here (`dd:complexity`, RULING 6): **membership** — for games
+over any finite player set, each of the four (strict) (unilateral) SPI decision problems is
 equivalent to the existence of a certificate (Propositions 23 and 25; the certificates
 form a finite type of size at most `m ^ l`, `card_certificate_le`) — together with
-**hardness** — the subgraph isomorphism problem reduces to each of the four problems on
-the two-player games of Table 10 (Lemma 28).  NP-completeness itself is these two facts
-plus Cook's theorem for subgraph isomorphism (Lemma 27, cited and not carried) plus a cost
-model for games given as explicit payoff matrices, which the paper does not fix and this
-formalization does not render.
+**hardness, "even for 2-player games"** — the subgraph isomorphism problem reduces to each
+of the four problems on the two-player games of Table 10 (Lemma 28).  NP-completeness
+itself is these two facts plus Cook's theorem for subgraph isomorphism (Lemma 27, cited and
+not carried) plus a cost model for games given as explicit payoff matrices, which the
+paper does not fix and this formalization does not render.
 
 Paper node: `Theorem 9` -/
 theorem theorem9 :
-    (∀ (𝒜 : Two → Type v) [∀ i, DecidableEq (𝒜 i)] (Γ : Game Two 𝒜),
+    (∀ (N : Type u) (𝒜 : N → Type v) [Fintype N] [DecidableEq N] [∀ i, DecidableEq (𝒜 i)]
+      (Γ : Game N 𝒜),
       (Γ.SPIDecision ↔ ∃ c : Γ.Certificate, c.ParetoImproving ∧ c.Nontrivial) ∧
       (Γ.StrictSPIDecision ↔ ∃ c : Γ.Certificate, c.StrictlyParetoImproving ∧ c.Nontrivial) ∧
-      (Γ.UnilateralSPIDecision ↔ ∃ (i : Two) (c : Γ.Certificate),
+      (Γ.UnilateralSPIDecision ↔ ∃ (i : N) (c : Γ.Certificate),
         c.ParetoImproving ∧ c.Nontrivial ∧ c.Affine i ∧ c.ReducesToImage i) ∧
-      (Γ.StrictUnilateralSPIDecision ↔ ∃ (i : Two) (c : Γ.Certificate),
+      (Γ.StrictUnilateralSPIDecision ↔ ∃ (i : N) (c : Γ.Certificate),
         c.StrictlyParetoImproving ∧ c.Nontrivial ∧ c.Affine i ∧ c.ReducesToImage i)) ∧
     ∀ {n n' : ℕ} (a : Graph n) (a' : Graph n') (ε : ℝ), 1 ≤ n → 0 < ε → ε * (2 * n) < 1 →
       ε * (2 * n') < 1 →
@@ -818,7 +823,7 @@ theorem theorem9 :
       (SubgraphIsoProblem a a' ↔ (hardnessGame a a' ε).StrictSPIDecision) ∧
       (SubgraphIsoProblem a a' ↔ (hardnessGame a a' ε).UnilateralSPIDecision) ∧
       (SubgraphIsoProblem a a' ↔ (hardnessGame a a' ε).StrictUnilateralSPIDecision) :=
-  ⟨fun _ _ Γ => ⟨Γ.spiDecision_iff_certificate, Γ.strictSPIDecision_iff_certificate,
+  ⟨fun _ _ _ _ _ Γ => ⟨Γ.spiDecision_iff_certificate, Γ.strictSPIDecision_iff_certificate,
       Γ.unilateralSPIDecision_iff_certificate, Γ.strictUnilateralSPIDecision_iff_certificate⟩,
     fun a a' _ hn hε hεn hε' => ⟨subgraphIsoProblem_iff_spiDecision a a' hn hε hεn hε',
       subgraphIsoProblem_iff_strictSPIDecision a a' hn hε hεn hε',

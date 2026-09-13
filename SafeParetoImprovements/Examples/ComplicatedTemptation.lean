@@ -1,4 +1,4 @@
-import SafeParetoImprovements.Examples.TwoPlayer
+import SafeParetoImprovements.TwoPlayer
 
 /-!
 # Proposition 8: the Complicated Temptation Game (Tables 4 and 5)

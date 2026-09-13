@@ -15,30 +15,32 @@ no declaration cites it, and no axiom stands in for it.
 
 | Node | Printed content | Rendered content | Not rendered |
 |---|---|---|---|
-| Prop 23 | the guess-injections algorithm "runs in NP time and returns True iff there is a (strict) SPI" | `SPIDecision Γ ↔ ∃ c : Certificate Γ, c.Check`, and the strict variant | "NP time" |
-| Prop 25 | the unilateral algorithm (three checks) "… iff there is a (strict) unilateral SPI" | `UnilateralSPIDecision Γ ↔ ∃ i c, c.UnilateralCheck i`, and the strict variant | "NP time" |
+| Prop 23 | the guess-injections algorithm "runs in NP time and returns True iff there is a (strict) SPI" | `SPIDecision Γ ↔ ∃ c : Certificate Γ, c.ParetoImproving ∧ c.Nontrivial`, and the strict variant | "NP time" |
+| Prop 25 | the unilateral algorithm (three checks) "… iff there is a (strict) unilateral SPI" | `UnilateralSPIDecision Γ ↔ ∃ i c, c.ParetoImproving ∧ c.Nontrivial ∧ c.Affine i ∧ c.ReducesToImage i`, and the strict variant | "NP time" |
 | Prop 24 / Prop 10 | omnilateral problem solvable in `O(m^l)` | `Fintype.card (Certificate Γ) ≤ m ^ l` with `m = Σᵢ|Aᵢ|`, `l = Σᵢ|Aʳᵉᵈᵢ|`; the decision is a search over that finite type | "solved in `O(m^l)`" |
-| Prop 26 / Prop 10 | unilateral problem in `O(m^l)` | `Fintype.card (N × Certificate Γ) ≤ n · m ^ l` | same |
+| Prop 26 / Prop 10 | unilateral problem in `O(m^l)` | `Fintype.card (N × Certificate Γ) ≤ n · m ^ l ≤ m ^ (l+1)` | same |
 | Def 8 | subgraph isomorphism problem | `Graph.SubgraphIso a â φ`, `Graph.SubgraphIsoProblem a â` | — |
 | Lemma 27 | subgraph isomorphism is NP-complete | cited, not carried | all of it |
 | Lemma 28 | linear-time reduction, so the four SPI problems are NP-hard | `SubgraphIsoProblem a â ↔ (hardnessGame a â ε).SPIDecision`, and the same for the strict, unilateral and strict-unilateral problems; the instance size of the constructed game | "linear time", "NP-hard" (needs Lemma 27) |
-| Thm 9 | the four problems are NP-complete, even for 2 players | the conjunction: membership certificates (Props 23/25, any `n`) and the hardness reduction (Lemma 28, `N = Two`) | "NP-complete" |
+| Thm 9 | the four problems are NP-complete, even for 2 players | the conjunction: membership certificates (Props 23/25, any finite player set) and the hardness reduction (Lemma 28, `N = Two`) — `Hardness.theorem9` | "NP-complete" |
 
 Theorem 9 therefore gets its `Paper node:` on the same declarations that carry
 Propositions 23/25 and Lemma 28 (a `Paper node:` line may list several labels) plus a
-wrapper theorem `spiDecision_theorem9` stating the conjunction over `Two`-player games,
-so the trust surface has one place that says what "Theorem 9" means here.
+wrapper theorem `Hardness.theorem9` stating the conjunction (membership over any finite
+player set, the reduction over `Two`), so the trust surface has one place that says what
+"Theorem 9" means here.
 
 ## 2. Certificates (D.2.1, D.2.2)
 
 ```
-structure Game.Certificate (Γ) :=            -- per-player injections Φᵢ : Aʳᵉᵈᵢ ↪ Aᵢ
-  Φ : ∀ i, {x // x ∈ Γ.reduce.S i} ↪ {x // x ∈ Γ.S i}
+abbrev Game.Certificate (Γ) := ∀ i, {x // x ∈ Γ.reduce.S i} ↪ {x // x ∈ Γ.S i}
 ```
 
-As a `Fintype` it is the search space of Propositions 24/26.  `c.toFun i : 𝒜 i → 𝒜 i` is
-`Φᵢ` on `Aʳᵉᵈᵢ` and the identity elsewhere; `c.map a = (Φ₁(a₁), …, Φₙ(aₙ))`;
-`c.image i = (Γ.reduce.S i).map (c.Φ i)`.
+(an abbreviation, not a structure, so that `Fintype` is inferred through `Pi` and
+`Function.Embedding.fintype`; a certificate `c` is applied as `c i`).  As a `Fintype` it is
+the search space of Propositions 24/26.  `c.toFun i : 𝒜 i → 𝒜 i` is `Φᵢ` on `Aʳᵉᵈᵢ` and the
+identity elsewhere; `c.map a = (Φ₁(a₁), …, Φₙ(aₙ))`; `c.image i = (Γ.reduce.S i).image
+(c.toFun i)`.
 
 * `c.ParetoImproving : ∀ a ∈ Γ.reduce.profiles, Γ.u a ≤ Γ.u (c.map a)` and
   `c.StrictlyParetoImproving` (some `a` with `Γ.u a < Γ.u (c.map a)`, `<` on `ℝⁿ`).
@@ -62,10 +64,11 @@ paper's "arbitrary"), `uˢⱼ = uⱼ`.  The three checks:
 
 1. `c.ParetoImproving` (resp. strict);
 2. `c.Affine i : ∀ j ≠ i, ∃ λ > 0, ∃ κ, ∀ a ∈ Γ.reduce.profiles, Γ.u a j = λ * Γ.u (c.map a) j + κ`;
-3. `c.ReducesToImage i : ∀ j, (c.unilateralGame i).reduce.S j = c.image i`.
+3. `c.ReducesToImage i : (c.unilateralGame i).reduce.S = c.image` (at every player: the
+   printed check 3's target is the full product image `Φ(Aʳᵉᵈ)`).
 
 Proposition 25: `Γ.UnilateralSPIDecision ↔ ∃ i c, c.ParetoImproving ∧ c.Nontrivial ∧
-c.Affine i ∧ c.ReducesToImage i`, strict likewise.  The `←` direction builds the
+c.Affine i ∧ c.ReducesToImage i` (the shipped names), strict likewise.  The `←` direction builds the
 isomorphism `reduce Γ ≅ reduce (c.unilateralGame i)` with scale `1` for `i` and the
 `(λⱼ, κⱼ)` of check 2 for the others.  The `→` direction is where the paper says "we can
 assume `Γˢ,ʳᵉᵈ` and `Γˢ` have the same action sets for Player `i`": the Lean proof does
@@ -74,7 +77,10 @@ player `i` cut down to `c.image i` (every step removes an action of some `j ≠ 
 dominator survives because player `j`'s actions and payoffs are untouched, and
 removing player `i`'s actions only shrinks the opponent profiles a dominator must beat;
 steps removing player `i`'s own actions are skipped).  That transfer lemma
-(`ElimStar.restrictPlayer`) is the one piece of new general reduction theory.
+(`Game.ElimStar.transfer`, shipped name) is the one piece of new general reduction theory,
+together with `Game.elimStar_of_dominated` (eliminating a whole dominated set at once) and
+`Certificate.reducesToImage_of_dominated` (check 3 from a domination of every non-image
+action, the form in which the appendix verifies it).
 
 The fourth problem of Definition 5, the **strict unilateral** one, has had no carrier so
 far; `Game.StrictUnilateralSPIDecision` is added to `Derivation.lean` with a
@@ -85,9 +91,12 @@ far; `Game.StrictUnilateralSPIDecision` is added to `Derivation.lean` with a
 `Fintype.card (Γ.Certificate) = ∏ᵢ mᵢ.descFactorial lᵢ ≤ ∏ᵢ mᵢ ^ lᵢ ≤ m ^ l`.  The
 paper's `O(m^l)` is this cardinality together with "each certificate is checked in
 polynomial time", which is the clause not rendered.  The unilateral search space is
-`N × Certificate Γ`, of cardinality `≤ n · m ^ l`; the paper absorbs the factor `n` into
-its `O`, and the docstring says so.  Proposition 10 is the main-text restatement of
-Propositions 24 and 26 and shares their declarations.
+`N × Certificate Γ`, of cardinality `≤ n · m ^ l ≤ m ^ (l+1)` (`card_le_size`: every player
+has an action).  The factor `n` is real and is not absorbed: the appendix's algorithm is
+"given an `n`-player game and a player `i`" (per player, `m^l`), whereas Definition 5's
+unilateral problem quantifies over the player, so deciding it searches every `i`
+(R6-F11/F17).  Proposition 10 is the main-text restatement of Propositions 24 and 26 and
+shares their declarations.
 
 ## 4. Hardness (D.3): graphs, Table 9, Table 10, Lemma 28
 
@@ -117,14 +126,17 @@ fails; the unilateral half of Lemma 28's first claim is then false for the formu
 game.  The carrier follows the **table** (`0`), under which every step of the printed
 proof checks.  Recorded as erratum D18.  The other entries agree.
 
-*`ε`.*  The paper fixes `ε < 1/2n` for `Γ` and builds `Γ̂` "analogously".  Where the
-constraint is actually used is in `Γ̂`: `5 + (n̂+i)ε < 6` for `i ≤ n̂`, so that
-`(2n̂+1, 2n̂+1)` is the only outcome of `Γ̂` worth `6` to player 1.  The carrier takes
-`ε` as a parameter with `0 < ε` and `ε * (2 * n̂) < 1`; the `Γ`-side bound is not needed
-for any step of the formal proof and is not assumed.  Positivity is used for
-`0 < ε` (the corner entries beat the table's `0`).  The "WLOG `n, n̂ ≥ 2`" is not needed
-either — the two opponent moves the proof of item (c) wants are `(D, i)` and
-`(D, n+i)`, which exist for every `i ∈ [n]`.
+*`ε`.*  The paper fixes `ε < 1/2n` for `Γ` and builds `Γ̂` "analogously".  The carrier
+takes `ε` as a parameter with `0 < ε`, `ε * (2 * n) < 1` and `ε * (2 * n̂) < 1`, and each
+is used: the `n̂`-side bound makes `(2n̂+1, 2n̂+1)` the only outcome of `Γ̂` worth `6` to
+player 1 (`5 + (n̂+i)ε < 6`); the `n`-side bound gives `4 + (n+i)ε ≤ 5 + (n̂+φ i)ε` in the
+Pareto-improvement check and, with `n ≥ 1`, `ε < 1`; positivity makes the corner rows beat
+the table's `0`s.  The "WLOG `n, n̂ ≥ 2`" is weakened to `1 ≤ n`: the two opponent moves
+the proof of item (c) wants are `(D, i)` and `(D, n+i)`, which exist for every `i ∈ [n]`,
+and `1 ≤ n` is what the strict forms need (at `n = 0` the empty subgraph isomorphism exists
+but no strict SPI does; the plain and unilateral forms would survive `n = 0` under `ε < 1`,
+which no declaration states).  (This paragraph was corrected after round 6, R6-F02/F16:
+the first draft claimed the `n`-side bound was unused.)
 
 *Lemma 28 as an iff.*  `subgraphIsoProblem_iff_spiDecision : SubgraphIsoProblem a â ↔
 (hardnessGame a â ε).SPIDecision` and the three variants.  The proof has the paper's two
@@ -165,10 +177,14 @@ than the printed items (a)–(d):
   lemma, the Theorem 9 wrapper.
 * `Hardness.lean` — graphs, Definition 8, `tableNine`, `hardnessGame`, Lemma 28.
 * `Examples/ComplexityWitnesses.lean` — a Demand-Game certificate (Proposition 23
-  two-sided through the existing yes/no instances), the transfer lemma exercised on the
-  Complicated Temptation Game (Proposition 25's "yes"), and Lemma 28 on concrete graphs:
-  the one-edge graph into the two-cycle (yes) and the two-cycle into the one-edge graph
-  (no), each carried through to the `SPIDecision` verdict on the constructed game.
+  two-sided with the one-action game), the transfer lemma exercised on the Complicated
+  Temptation Game (Proposition 25's "yes"), the Demand Game certificate failing check 2
+  and a four-action game whose check 2 needs the scale `λ = 2` (round 6), and Lemma 28 on
+  concrete graphs: the one-edge graph into the two-cycle (yes) and the two-cycle into the
+  one-edge graph (no), each carried through to the `SPIDecision` verdict on the
+  constructed game.
+* `SafeParetoImprovements/TwoPlayer.lean` — the player type `Two`, promoted from the
+  examples directory because Theorem 9 is stated over it (R6-F01).
 
 ## 6. Rulings
 

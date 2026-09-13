@@ -4,18 +4,20 @@ import Mathlib.Tactic.DeriveFintype
 import Mathlib.Tactic.NormNum
 
 /-!
-# Two-player helpers for the worked examples (§4.5)
+# Two-player games
 
-The paper's examples are all two-player games given as payoff tables.  This file fixes the
-two-element player type `Two` and provides the handful of lemmas that turn the general
-set-based definitions into finite checks over the table: a profile of a two-player game
-is a pair, strict dominance for one player is a quantifier over the other player's
-actions, and a game is reduced when no action of either player is dominated.
+The paper's worked examples (§4.5, §5) and its hardness construction (Appendix D.3,
+Theorem 9's "even for 2-player games") are two-player games given as payoff tables.  This
+file fixes the two-element player type `Two` and provides the handful of lemmas that turn
+the general set-based definitions into finite checks over the table: a profile of a
+two-player game is a pair, strict dominance for one player is a quantifier over the other
+player's actions, an action that is a weak best response to some opponent action is not
+strictly dominated, and a game is reduced when no action of either player is dominated.
+It is library-level (not an example file) because `Hardness.lean` states paper nodes over
+`Two` (R6-F01).
 -/
 
 namespace SafeParetoImprovements
-
-namespace Examples
 
 /-- The two players. -/
 inductive Two | one | two
@@ -106,7 +108,5 @@ lemma reduced_iff (Γ : Game Two 𝒜) :
     · exact h2
 
 end Two
-
-end Examples
 
 end SafeParetoImprovements

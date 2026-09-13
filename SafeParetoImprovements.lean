@@ -182,7 +182,7 @@ ruled on but not yet carried by any declaration.
 | `SafeParetoImprovements/Reduction.lean` | Appendix D.1: single-step elimination `Game.Elim` and its closure, **Lemma 19** (`Game.isStrictlyDominated_erase`), confluence, uniqueness of the fully reduced game, and the canonical `Game.reduce` |
 | `SafeParetoImprovements/Representatives.lean` | `Representatives`: the probabilistic model, support, and the realization of the certainty interface at `ae μ` |
 | `SafeParetoImprovements/Book.lean` | §4.4.3: the book representatives and the joint satisfiability of Assumptions 1 and 2 (`dd:book`), with the page distribution as a parameter |
-| `SafeParetoImprovements/Examples/TwoPlayer.lean` | the two-element player type and the finite-check lemmas the §4.5 tables need |
+| `SafeParetoImprovements/TwoPlayer.lean` | the two-element player type `Two` and the finite-check lemmas the §4.5 tables and the Appendix D hardness games need (library-level: Theorem 9 is stated over it) |
 | `SafeParetoImprovements/Examples/PrisonersDilemma.lean` | Table 3 and **Proposition 5** (`Examples.prisonersDilemma_isStrictSPI`), also the non-vacuity witness for `Play.IsStrictSPI` |
 | `SafeParetoImprovements/Examples/DemandGame.lean` | Tables 1–2 and **Proposition 6**, both clauses (`Examples.demandGame_isSPI`, `Examples.demandGame_isStrictSPI`) |
 | `SafeParetoImprovements/Examples/Temptation.lean` | Table 6 and **Proposition 7** (`Examples.temptation_isStrictSPI`) |
@@ -198,7 +198,7 @@ ruled on but not yet carried by any declaration.
 | `SafeParetoImprovements/Examples/DecisionWitnesses.lean` | Definition 7 two-sided through Proposition 12: the conflict game is a "yes" instance, Table 7 a "no" instance |
 | `SafeParetoImprovements/Complexity.lean` | §4.6, Appendix D.2: certificates (`Game.Certificate`) and their checks, the elimination-chain transfer and dominated-set lemmas, **Propositions 23 and 25** as certificate iffs (`spiDecision_iff_certificate` and variants), **Propositions 24 and 26 / Proposition 10** as the search bound (`card_certificate_le`, `spiDecision_search`); the identity certificate as erratum D17 |
 | `SafeParetoImprovements/Hardness.lean` | Appendix D.3: graphs and **Definition 8**, Tables 9–10 (`tableU₁`, `tableU₂`, `hardnessGame`; erratum D18), the full reduction of `Γᶜ` (`reduce_hardnessGame`), **Lemma 28** in four forms (`subgraphIsoProblem_iff_spiDecision`, …), **Theorem 9**'s carrier (`theorem9`) |
-| `SafeParetoImprovements/Examples/ComplexityWitnesses.lean` | non-vacuity for the complexity nodes: the Demand Game's certificate, the one-action game's identity certificate, a unilateral certificate for the Complicated Temptation Game, the count `144 ≤ 4096`, and Lemma 28 carried to a "yes" and a "no" instance on two-vertex graphs |
+| `SafeParetoImprovements/Examples/ComplexityWitnesses.lean` | non-vacuity for the complexity nodes: the Demand Game's certificate (passing Proposition 23's checks, failing check 2), the one-action game's identity certificate, a unilateral certificate for the Complicated Temptation Game, the four-action `scaledGame` whose check 2 forces `λ = 2`, the count `144 ≤ 4096`, and Lemma 28 carried to a "yes" (one edge into the two-cycle) and a "no" (the two-cycle into one edge) instance |
 | `SafeParetoImprovements/Examples/CharacterizationWitnesses.lean` | non-vacuity for §5.3: Lemma 13 and Corollary 14 applied on the conflict game (including to a three-action perfect-coordination SPI that is *not* isomorphic to the reduction), `achievable` shown not a singleton and wider than the constant reassignments, and the hand-built play family for which `Representatives.condExp` is a strict average rather than a point evaluation (R5-F11) |
 | `SafeParetoImprovements/Examples/Coin.lean` | the fair coin on `Bool`, shared by the examples that need a genuinely random `Π` |
 | `SafeParetoImprovements/Examples/Chicken.lean` | Table 7 over `CAct ⊕ ℕ` (`dd:room`) and **Proposition 16** (`Examples.chicken_no_perfectCoordinationSPI`): a Pareto improvement that no perfect-coordination SPI achieves in expectation, with its label-free kernel (`chicken_no_feasible_dominating_of_mean_cc`), the token games of every size that make the class non-empty, and the `Π`-dependence disclosure |
@@ -215,7 +215,7 @@ import SafeParetoImprovements.Reduction
 import SafeParetoImprovements.Representatives
 import SafeParetoImprovements.Book
 import SafeParetoImprovements.Derivation
-import SafeParetoImprovements.Examples.TwoPlayer
+import SafeParetoImprovements.TwoPlayer
 import SafeParetoImprovements.Examples.PrisonersDilemma
 import SafeParetoImprovements.Examples.DemandGame
 import SafeParetoImprovements.Examples.Temptation

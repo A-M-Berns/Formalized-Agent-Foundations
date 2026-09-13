@@ -9964,12 +9964,13 @@ even for 2-player games.</pre>
     SubgraphIsoProblem a a&#x27; ↔ (hardnessGame a a&#x27; ε).SPIDecision</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">SafeParetoImprovements.Hardness.subgraphIsoProblem_iff_strictSPIDecision</code><span class="staged proved">axiom-clean</span><span class="ep-file">SafeParetoImprovements/Hardness.lean</span></div><pre class="sig">theorem subgraphIsoProblem_iff_strictSPIDecision :
     SubgraphIsoProblem a a&#x27; ↔ (hardnessGame a a&#x27; ε).StrictSPIDecision</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">SafeParetoImprovements.Hardness.subgraphIsoProblem_iff_unilateralSPIDecision</code><span class="staged proved">axiom-clean</span><span class="ep-file">SafeParetoImprovements/Hardness.lean</span></div><pre class="sig">theorem subgraphIsoProblem_iff_unilateralSPIDecision :
     SubgraphIsoProblem a a&#x27; ↔ (hardnessGame a a&#x27; ε).UnilateralSPIDecision</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">SafeParetoImprovements.Hardness.theorem9</code><span class="staged proved">axiom-clean</span><span class="ep-file">SafeParetoImprovements/Hardness.lean</span></div><pre class="sig">theorem theorem9 :
-    (∀ (𝒜 : Two → Type v) [∀ i, DecidableEq (𝒜 i)] (Γ : Game Two 𝒜),
+    (∀ (N : Type u) (𝒜 : N → Type v) [Fintype N] [DecidableEq N] [∀ i, DecidableEq (𝒜 i)]
+      (Γ : Game N 𝒜),
       (Γ.SPIDecision ↔ ∃ c : Γ.Certificate, c.ParetoImproving ∧ c.Nontrivial) ∧
       (Γ.StrictSPIDecision ↔ ∃ c : Γ.Certificate, c.StrictlyParetoImproving ∧ c.Nontrivial) ∧
-      (Γ.UnilateralSPIDecision ↔ ∃ (i : Two) (c : Γ.Certificate),
+      (Γ.UnilateralSPIDecision ↔ ∃ (i : N) (c : Γ.Certificate),
         c.ParetoImproving ∧ c.Nontrivial ∧ c.Affine i ∧ c.ReducesToImage i) ∧
-      (Γ.StrictUnilateralSPIDecision ↔ ∃ (i : Two) (c : Γ.Certificate),
+      (Γ.StrictUnilateralSPIDecision ↔ ∃ (i : N) (c : Γ.Certificate),
         c.StrictlyParetoImproving ∧ c.Nontrivial ∧ c.Affine i ∧ c.ReducesToImage i)) ∧
     ∀ {n n&#x27; : ℕ} (a : Graph n) (a&#x27; : Graph n&#x27;) (ε : ℝ), 1 ≤ n → 0 &lt; ε → ε * (2 * n) &lt; 1 →
       ε * (2 * n&#x27;) &lt; 1 →
@@ -10006,7 +10007,8 @@ O(ml ).</pre>
         c.ParetoImproving ∧ c.Nontrivial ∧ c.Affine i ∧ c.ReducesToImage i) ∧
       (Γ.StrictUnilateralSPIDecision ↔ ∃ (i : N) (c : Γ.Certificate),
         c.StrictlyParetoImproving ∧ c.Nontrivial ∧ c.Affine i ∧ c.ReducesToImage i) ∧
-      Fintype.card (N × Γ.Certificate) ≤ Fintype.card N * Γ.size ^ Γ.reduce.size</pre></div>
+      Fintype.card (N × Γ.Certificate) ≤ Fintype.card N * Γ.size ^ Γ.reduce.size ∧
+      Fintype.card (N × Γ.Certificate) ≤ Γ.size ^ (Γ.reduce.size + 1)</pre></div>
     </section>
   </div>
 </article>
@@ -10428,7 +10430,8 @@ time and returns True if and only if there is a (strict) unilateral SPI.</pre>
         c.ParetoImproving ∧ c.Nontrivial ∧ c.Affine i ∧ c.ReducesToImage i) ∧
       (Γ.StrictUnilateralSPIDecision ↔ ∃ (i : N) (c : Γ.Certificate),
         c.StrictlyParetoImproving ∧ c.Nontrivial ∧ c.Affine i ∧ c.ReducesToImage i) ∧
-      Fintype.card (N × Γ.Certificate) ≤ Fintype.card N * Γ.size ^ Γ.reduce.size</pre></div>
+      Fintype.card (N × Γ.Certificate) ≤ Fintype.card N * Γ.size ^ Γ.reduce.size ∧
+      Fintype.card (N × Γ.Certificate) ≤ Γ.size ^ (Γ.reduce.size + 1)</pre></div>
     </section>
   </div>
 </article>
@@ -10539,4 +10542,4 @@ Pareto improvement problem for two players. As a consequence, the (strict)
 
 <!-- trust-surface-papers: logical-induction=66 cartesian-frames=60 modal-agents=12 finite-factored-sets=88 factored-space-models=50 condensation=39 safe-pareto-improvements=34 -->
 
-<!-- trust-surface-sources: 9ee15da04ea3f65cb6760f63678ae9174190faeb81ae38adc82cc21e1779c645 -->
+<!-- trust-surface-sources: f7ff2f2259c18c459b21fe2733d875385cc5b1e53d431295bbc93580440ac7cb -->
