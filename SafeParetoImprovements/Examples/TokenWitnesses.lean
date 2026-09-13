@@ -10,7 +10,7 @@ Proposition 16 (`Examples/Chicken.lean`) says a particular Pareto improvement is
 achievable by a perfect-coordination SPI.  This file supplies the other side of Definition 6
 — token games that **are** perfect-coordination SPIs, one of them strictly so — so that
 `TokenGame.IsSPI` and `TokenGame.IsStrictSPI` are two-sided rather than provably-false
-predicates (R4-F05).  Table 7 cannot host the strict witness: there the two default
+predicates.  Table 7 cannot host the strict witness: there the two default
 outcomes are already Pareto-optimal in `C(Γ)`, so no strict improvement exists at all.
 
 The base game `conflictGame` is a reduced `2 × 2` game over `Bool ⊕ ℕ` (`dd:room`), with

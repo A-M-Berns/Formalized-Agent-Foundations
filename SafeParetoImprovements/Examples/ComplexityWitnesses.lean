@@ -14,14 +14,14 @@ import SafeParetoImprovements.Examples.Witnesses
   bound `8 ^ 4 = 4096` (`card_demandCertificate`).
 * **Lemma 28 is two-sided on concrete graphs.**  The one-edge graph on two vertices embeds
   in the two-cycle, so the constructed game has a strict unilateral SPI (the edge condition
-  is checked at a true edge, R6-F07); the two-cycle does not embed in the one-edge graph,
+  is checked at a true edge); the two-cycle does not embed in the one-edge graph,
   so the constructed game has no SPI at all.  Both verdicts are carried through Lemma 28 to
   the `Game.SPIDecision` predicates themselves, on games with twelve actions per player
   (`size_hardGame`).
 * **The unilateral checks bite.**  The Demand Game's certificate fails check 2 for either
-  player (`demandCertificate_not_affine`, R6-F08), and `scaledGame` is a four-action game
+  player (`demandCertificate_not_affine`), and `scaledGame` is a four-action game
   whose certificate passes all of Proposition 25's checks with the affine scale forced to
-  `λ = 2` (`scaledGame.cert_affine_scale_eq_two`, R6-F09).
+  `λ = 2` (`scaledGame.cert_affine_scale_eq_two`).
 -/
 
 namespace SafeParetoImprovements
@@ -162,7 +162,7 @@ lemma size_hardGame : hardYes.size = 24 ∧ hardNo.size = 24 := by
 
 /-- **A "yes" instance of every SPI decision problem through Lemma 28**: the game built from
 `(oneEdge, twoCycle)` has a strict unilateral SPI.  The source graph has an edge, so the
-subgraph condition `a(0,1) ≤ â(φ 0, φ 1)` is genuinely checked at a true edge (R6-F07). -/
+subgraph condition `a(0,1) ≤ â(φ 0, φ 1)` is genuinely checked at a true edge. -/
 lemma hardYes_strictUnilateralSPIDecision : hardYes.StrictUnilateralSPIDecision :=
   (subgraphIsoProblem_iff_strictUnilateralSPIDecision oneEdge twoCycle (by norm_num)
     (by norm_num) (by norm_num) (by norm_num)).1 subgraphIso_oneEdge_twoCycle
@@ -190,7 +190,7 @@ lemma demandCertificate_map {a b : DAct} (ha : a = .DM ∨ a = .RM) (hb : b = .D
 /-- **Check 2 bites**: the Demand Game's certificate passes Proposition 23's checks
 (`demandCertificate_check`) but fails the affine check of Proposition 25 for either
 player, because the other player's payoffs on `{DL, RL}²` are not a positive affine image
-of hers on `{DM, RM}²` (R6-F08): for player 2, `(−3, 0, 2, 1)` against `(1, 0, 2, 1)`
+of hers on `{DM, RM}²`: for player 2, `(−3, 0, 2, 1)` against `(1, 0, 2, 1)`
 forces `κ = 0` and then `λ = −3`. -/
 lemma demandCertificate_not_affine :
     ¬ demandCertificate.Affine .one ∧ ¬ demandCertificate.Affine .two := by
@@ -226,7 +226,7 @@ lemma demandCertificate_not_affine :
 A four-action game whose reduction is the `{a0, a1}` block and whose `{a2, a3}` block is
 player 2's payoffs halved: the certificate `a0 ↦ a2`, `a1 ↦ a3` passes all of
 Proposition 25's checks for `i = player 1`, and its check-2 scale for player 2 is forced to
-be `λ = 2` (R6-F09). -/
+be `λ = 2`. -/
 
 /-- The four actions. -/
 inductive SAct | a0 | a1 | a2 | a3
@@ -409,7 +409,7 @@ lemma cert_affine : cert.Affine .one := by
     simp [u_pair, scaledU₂, shift] <;> norm_num
 
 /-- **The scale is forced to be `2`**: any `(λ, κ)` witnessing check 2 for player 2 has
-`λ = 2` (and `κ = 0`), so `Certificate.affineScale` is not always `1` (R6-F09). -/
+`λ = 2` (and `κ = 0`), so `Certificate.affineScale` is not always `1`. -/
 lemma cert_affine_scale_eq_two (l k : ℝ)
     (h : ∀ b ∈ scaledGame.reduce.profiles, scaledGame.u b .two = l * scaledGame.u (cert.map b) .two + k) :
     l = 2 ∧ k = 0 := by

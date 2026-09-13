@@ -696,22 +696,44 @@ code.fld { font-size: 10.5px; margin: 0 2px 2px 0; display: inline-block; }
 
   <div class="method">
     <div class="no-tier"><b>This formalization is in progress, and no strength
-    classification exists for this paper.</b> It is at milestone M0: the §3–§4.5 spine —
-    Definitions 1–4, Lemma 2, Theorem 3, Assumptions 1–2, Lemma 4, the four worked examples
-    Propositions 5–8 — together with Lemma 19, stated and proved at the <em>certainty-filter</em> level
+    classification exists for this paper.</b> Every in-scope node except Theorem 15
+    (deferred by ruling) carries a Lean statement: §2–§4 (Definitions 1–5, Lemma 2, Theorem 3,
+    Assumptions 1–2, Lemma 4, Propositions 5–8, Lemmas 19–22), §5 (Definitions 6–7, Lemma 11,
+    Proposition 12, Lemma 13, Corollary 14, Proposition 16), Appendix A (Theorem 1,
+    Proposition 18) and Appendix D (Propositions 23–26, Proposition 10, Definition 8, Lemma 28,
+    Theorem 9). The §2–§4 nodes are stated at the <em>certainty-filter</em> level
     (<code>dd:certainty</code>: "with certainty" is <code>∀ᶠ ω in L</code> for a filter
-    <code>L</code>, so these nodes are <em>strengthened</em> relative to the printed ones,
-    and the paper's probability-one instance <code>ae μ</code> is recovered by realization
-    iffs in <code>Representatives.lean</code>). A card appearing here asserts that the Lean
-    statement shown carries that paper node; the badge on each declaration says whether it
-    is <span class="staged proved">axiom-clean</span> or <span class="staged">staged</span>
-    (statement final, proof still <code>sorry</code>), read from the <code>SPI-INVENTORY</code>
-    and <code>SPI-PENDING</code> blocks of <code>AxiomAudit.lean</code>. Two disclosed
-    modelling choices a reader must hold in mind: every game lives over a fixed per-player
-    action universe (<code>dd:universe</code>), and <code>Game.u</code> is total on universe
-    profiles, so Lean's <code>=</code> on <code>Game</code> is <b>not</b> the paper's
-    equality of games — that is <code>Game.EqOn</code> (<code>dd:total-utility</code>). The
-    full glossary is in <code>SafeParetoImprovements.lean</code> and the trust surface in
+    <code>L</code>, so they are <em>strengthened</em> relative to the printed ones, and the
+    paper's probability-one instance <code>ae μ</code> is recovered by realization iffs in
+    <code>Representatives.lean</code>). A card appearing here asserts that the Lean statement
+    shown carries that paper node <em>as qualified in its docstring</em>; the page prints
+    signatures without docstrings, so the qualifications below must be read alongside the
+    cards. <b>Qualified nodes</b> (<code>dd:complexity</code>): Theorem 9, Proposition 10,
+    Lemma 11 and Proposition 12 carry the exact mathematics of their statements — certificate
+    characterizations, the search bound <code>card ≤ m ^ l</code>, the linear program, the
+    correctness iff of Algorithm 1 — and <em>not</em> their complexity-class or running-time
+    clauses; in particular the Theorem 9 card's "NP-complete" is not rendered, and
+    <code>Hardness.theorem9</code> is a conjunction of certificate iffs and Lemma 28's
+    reductions. <b>Repaired nodes:</b> Definition 5's non-triviality clause is read as
+    "different reduced action sets" (<code>dd:nontrivial</code>; the printed clause is
+    constant-true for the plain and unilateral problems); Algorithm 2's punishment index is
+    corrected; Table 9 is followed over the printed formula. <b>Narrowed nodes:</b> Theorem 1
+    is carried for the program game whose instructions are exactly the three-instruction
+    language <code>Prog</code>, not for an arbitrary programming language; Proposition 18's
+    deviator bound is "at most the threat point". Every such deviation is a recorded erratum
+    or design decision in <code>SafeParetoImprovements/notes/paper-errata.md</code> and the
+    glossary of <code>SafeParetoImprovements.lean</code>. The badge on each declaration says
+    whether it is <span class="staged proved">axiom-clean</span> or
+    <span class="staged">staged</span> (statement final, proof still <code>sorry</code>), read
+    from the <code>SPI-INVENTORY</code> and <code>SPI-PENDING</code> blocks of
+    <code>AxiomAudit.lean</code>. Two disclosed modelling choices a reader must hold in mind:
+    every game lives over a fixed per-player action universe (<code>dd:universe</code>), and
+    <code>Game.u</code> is total on universe profiles, so Lean's <code>=</code> on
+    <code>Game</code> is <b>not</b> the paper's equality of games — that is
+    <code>Game.EqOn</code> (<code>dd:total-utility</code>). The research-facing layer beyond
+    the paper (participation and foreknowledge independence, and DiGiovanni's renegotiation
+    example) carries no paper node and appears on no card. The full glossary is in
+    <code>SafeParetoImprovements.lean</code> and the trust surface in
     <code>SafeParetoImprovements/README.md</code>.
     Numbered nodes with no Lean statement annotated to them: %%SPI_MISSING%%.</div>
 

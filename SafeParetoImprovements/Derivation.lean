@@ -163,7 +163,7 @@ lemma mem_right_of_rel (d : Deriv Γ₀ Γ Γ' Φ) {a b : ∀ i, 𝒜 i} (h : a 
     obtain ⟨c, -, hc⟩ := h
     exact ih hc
 
-/-- **Derivations are single-valued** (R7-F05): every move of Definition 5 is a partial
+/-- **Derivations are single-valued**: every move of Definition 5 is a partial
 identity, the inverse of one, or the graph of a bijection, so a composite relates an
 outcome to at most one outcome.  Hence the containment `a ~[Φ] ψ.map a` of Lemma 21's last
 conjunct is in fact an equality of images on the outcomes of `reduce Γ`. -/
@@ -408,7 +408,7 @@ conjunct is stated as a containment: on each outcome `a` of `reduce Γ` the *ori
 composite `Φ` relates `a` to the normal form's image `ψ.map a`.  Since every derivation
 is single-valued (`Deriv.eq_of_rel`), this is in fact the only outcome `Φ` relates `a` to,
 so on `reduce Γ` the two composites agree; nothing is claimed off `reduce Γ`, where the
-original composite may relate outcomes that the reduction kills (R7-F05).
+original composite may relate outcomes that the reduction kills.
 
 Paper node: `Lemma 21` -/
 theorem exists_normalForm (d : Deriv Γ₀ Γ Γ' Φ) :
@@ -521,14 +521,15 @@ supply at all.  So the erratum empties the non-triviality clause of all three, b
 plain and unilateral printed predicates are thereby constant-true; the strict one retains
 content.  The
 defect is the paper's, not the
-rendering's (the adjudication of R1-F18 confirmed the witness against the printed text);
+rendering's (the witness was checked against the printed text);
 Appendix D's converse argument calls the identity action map *trivial*, which is what the
 intended clause is about.
 
 The predicates below render the printed clause verbatim, and
 `spiDecisionPrinted_of_nonempty` / `unilateralSPIDecisionPrinted_of_reduced` are the
 erratum's witnesses, and `not_strictSPIDecisionPrinted_of_card_le_one` is the carrier of
-the claim that the strict printed variant is *not* constant-true.  `SPIDecision`, `StrictSPIDecision` and `UnilateralSPIDecision`
+the claim that the strict printed variant is *not* constant-true.  `SPIDecision`,
+`StrictSPIDecision` and `UnilateralSPIDecision`
 further below are the repaired predicates that the rest of the development uses. -/
 
 /-- **The SPI decision problem, exactly as printed** (Definition 5): does `Γ` have a
@@ -785,7 +786,7 @@ lemma exists_strictParetoImproving_deriv_iff (Γ₀ Γs : Game N 𝒜) (hsub : �
 /-- **The strict printed variant is not constant-true** (in contrast to `SPIDecisionPrinted`
 and `UnilateralSPIDecisionPrinted`, erratum D13): a game in which every player has one
 action is a "no" instance, because every derivation from it lands on its single outcome
-(`Deriv.mem_right_of_rel`), where nobody can gain (R7-F35). -/
+(`Deriv.mem_right_of_rel`), where nobody can gain. -/
 lemma not_strictSPIDecisionPrinted_of_card_le_one {Γ : Game N 𝒜} (h : ∀ i, (Γ.S i).card ≤ 1) :
     ¬ Γ.StrictSPIDecisionPrinted := by
   rintro ⟨Γs, hsub, -, Φ, d, -, i, a, ha, hlt⟩
@@ -901,7 +902,7 @@ The side condition is not vacuous, but it does rule out the one-point sample spa
 as the reduction has two outcomes: the witness is the page-varying book
 (`exists_play_satisfiesA1_satisfiesA2_hits`), and
 `Examples.demandGame_isStrictSPI_of_deriv_witnessed` exhibits every hypothesis of this
-lemma holding at once (R2-F18). -/
+lemma holding at once. -/
 lemma Play.isStrictSPI_of_deriv [Fintype N] (hA1 : X.SatisfiesA1 L)
     (hA2 : X.SatisfiesA2 L) {Γ₀ Γs : Game N 𝒜}
     {Φ : SetRel (∀ i, 𝒜 i) (∀ i, 𝒜 i)} (d : Game.Deriv Γ₀ Γ₀ Γs Φ)

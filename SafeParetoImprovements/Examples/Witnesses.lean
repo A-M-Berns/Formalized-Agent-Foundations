@@ -13,8 +13,7 @@ Propositions 5–8 are stated "under Assumptions 1 and 2" (and, for the strictne
 Proposition 6, under a positive-probability hypothesis on the play of the Demand Game).
 The repository standard is that a statement is only honest if its hypotheses are
 satisfiable, so this file exhibits, for each of them, a play family over a one-point sample
-space at which every hypothesis holds — and hence the conclusion is actually reached
-(R1-F15, R1-F32).
+space at which every hypothesis holds — and hence the conclusion is actually reached.
 
 Nothing here is a paper node: these are witnesses, not claims of the paper.  The general
 constructions they use live where they belong — `exists_play_satisfiesA1_satisfiesA2` and
@@ -37,11 +36,11 @@ file only instantiates them.  It is imported by the aggregator and by
   and uses the page-varying book (`Book.varying`).
 
 Each of the four "not vacuous" statements carries the Assumption 1 and 2 clauses of the
-proposition it witnesses inside its own statement (R2-F11): a bare `∃ X, <conclusion>` is
+proposition it witnesses inside its own statement: a bare `∃ X, <conclusion>` is
 provable by a hand-built play family that violates Assumption 1 and would witness nothing.
 
-This file also carries the "yes" instances of the repaired Definition 5 predicates
-(R2-F05), for the same reason: `Game.not_spiDecision_of_card_le_one` alone would leave
+This file also carries the "yes" instances of the repaired Definition 5 predicates, for the
+same reason: `Game.not_spiDecision_of_card_le_one` alone would leave
 open that the repaired clause is never satisfied.
 -/
 
@@ -62,7 +61,7 @@ def prisonersDilemmaCooperate : Game Two PDUniverse where
 
 /-- **Proposition 5 is not vacuous**: some play family satisfies Assumptions 1 and 2 at a
 non-degenerate filter, and for it the cooperative subset game really is a strict SPI on the
-Prisoner's Dilemma.  The assumption clauses are part of the statement (R2-F11): without
+Prisoner's Dilemma.  The assumption clauses are part of the statement: without
 them the same conclusion is reachable by a hand-built play family that violates
 Assumption 1, and the witness would say nothing about the proposition's hypotheses. -/
 lemma prisonersDilemma_isStrictSPI_witnessed :
@@ -71,22 +70,21 @@ lemma prisonersDilemma_isStrictSPI_witnessed :
   obtain ⟨X, -, hX⟩ := exists_play_satisfiesA1_satisfiesA2 (N := Two) (𝒜 := PDUniverse) Unit
   exact ⟨X, (hX ⊤).1, (hX ⊤).2, prisonersDilemma_isStrictSPI X ⊤ (hX ⊤).1 _ fun _ => rfl⟩
 
-/-- **The weak clause of Proposition 6 is not vacuous** (with its assumption clauses,
-R2-F11). -/
+/-- **The weak clause of Proposition 6 is not vacuous** (with its assumption clauses). -/
 lemma demandGame_isSPI_witnessed :
     ∃ X : Play Two DUniverse Unit, X.SatisfiesA1 ⊤ ∧ X.SatisfiesA2 ⊤ ∧
       X.IsSPI ⊤ demandGame demandSPI := by
   obtain ⟨X, -, hX⟩ := exists_play_satisfiesA1_satisfiesA2 (N := Two) (𝒜 := DUniverse) Unit
   exact ⟨X, (hX ⊤).1, (hX ⊤).2, demandGame_isSPI X ⊤ (hX ⊤).1 (hX ⊤).2⟩
 
-/-- **Proposition 7 is not vacuous** (with its assumption clauses, R2-F11). -/
+/-- **Proposition 7 is not vacuous** (with its assumption clauses). -/
 lemma temptation_isStrictSPI_witnessed :
     ∃ X : Play Two TemptUniverse Unit, X.SatisfiesA1 ⊤ ∧ X.SatisfiesA2 ⊤ ∧
       X.IsStrictSPI ⊤ temptation temptationCommit := by
   obtain ⟨X, -, hX⟩ := exists_play_satisfiesA1_satisfiesA2 (N := Two) (𝒜 := TemptUniverse) Unit
   exact ⟨X, (hX ⊤).1, (hX ⊤).2, temptation_isStrictSPI X ⊤ (hX ⊤).1⟩
 
-/-- **Proposition 8 is not vacuous** (with its assumption clauses, R2-F11). -/
+/-- **Proposition 8 is not vacuous** (with its assumption clauses). -/
 lemma complicatedTemptation_isUnilateralSPI_witnessed :
     ∃ X : Play Two CTUniverse Unit, X.SatisfiesA1 ⊤ ∧ X.SatisfiesA2 ⊤ ∧
       X.IsUnilateralSPI ⊤ complicatedTemptation complicatedTemptationSPI := by
@@ -105,7 +103,7 @@ noncomputable def demandBook : Book Two DUniverse Unit :=
 
 /-- **The strictness hypotheses of Proposition 6 are jointly satisfiable**: `demandBook`
 satisfies Assumptions 1 and 2 at the non-degenerate filter `⊤` and plays `(DM, DM)` in the
-Demand Game with positive probability (R1-F15). -/
+Demand Game with positive probability. -/
 lemma demandGame_strictSPI_hypotheses_satisfiable :
     ∃ X : Play Two DUniverse Unit,
       X.SatisfiesA1 ⊤ ∧ X.SatisfiesA2 ⊤ ∧
@@ -125,7 +123,7 @@ lemma demandGame_isStrictSPI_witnessed :
 
 `Game.not_spiDecision_of_card_le_one` gives a "no" instance of the repaired SPI decision
 problem; these are the matching "yes" instances, without which the repaired predicates
-could be uniformly false (R2-F05).  The payoff-shift witnesses of erratum D13
+could be uniformly false.  The payoff-shift witnesses of erratum D13
 (`Game.shiftReduce`, `Game.bumpPayoff`) do *not* serve here: they leave `reduce.S`
 unchanged and so fail the repaired non-triviality clause by construction. -/
 
@@ -209,7 +207,7 @@ lemma complicatedTemptation_unilateralSPIDecision :
     simpa [complicatedTemptation.reducedGame_u] using ctIso_paretoImproving a ha'
 
 /-- **The hypotheses of `Play.isStrictSPI_of_deriv` are jointly satisfiable, side condition
-included, and its conclusion is reached** (R2-F18).  The side condition — every outcome
+included, and its conclusion is reached**.  The side condition — every outcome
 surviving iterated elimination is played with positive probability — is unsatisfiable on a
 one-point sample space as soon as the reduction has two outcomes, so the witness is the
 page-varying book on the profile space (`Book.varying`), not the deterministic one. -/
@@ -238,7 +236,7 @@ lemma demandGame_isStrictSPI_of_deriv_witnessed :
 /-! ### `Representatives` is inhabited -/
 
 /-- The **representatives model** of the deterministic book on a one-point probability
-space: the `Representatives` structure of §3 is inhabited (R1-F32).  `MeasurableSpace Unit`
+space: the `Representatives` structure of §3 is inhabited.  `MeasurableSpace Unit`
 is `⊤`, so every fiber is measurable. -/
 noncomputable def unitRepresentatives : Representatives.{0, 0, 0} Two DUniverse :=
   (Book.const (N := Two) (𝒜 := DUniverse) Unit).toRepresentatives

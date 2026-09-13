@@ -337,7 +337,7 @@ the profiles.  Strict dominance respects it (`strictlyDominates_of_eqOn`), hence
 every elimination step and the full reduction: `reduce Γ'` is `reduce Γ` with `Γ'`'s payoffs
 (`EqOn.reduce_eq_withPayoffs`), in particular `EqOn`-equal to it.  This is what lets a play
 family built from reductions be a function of the paper's game rather than of its
-presentation (`Play.RespectsEqOn`, R7-F01). -/
+presentation (`Play.RespectsEqOn`). -/
 
 omit [DecidableEq N] [∀ i, DecidableEq (𝒜 i)] in
 /-- The game with the action sets of `Γ₁` and the payoffs of `Γ'`. -/

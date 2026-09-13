@@ -4,7 +4,7 @@ Formalization of Caspar Oesterheld and Vincent Conitzer, *Safe Pareto Improvemen
 Delegated Game Playing*, Autonomous Agents and Multi-Agent Systems 36 (2022),
 doi [10.1007/s10458-022-09574-6](https://doi.org/10.1007/s10458-022-09574-6); short
 version at AAMAS 2021.  Registered as `safe-pareto-improvements` in `scripts/papers.py`,
-library `SafeParetoImprovements/`, status **`in-progress`**, milestone **M0**.
+library `SafeParetoImprovements/`, status **`in-progress`** (every in-scope node except the deferred Theorem 15 is carried; the human read-through is outstanding).
 
 This file is the trust surface: what is claimed, what is disclosed, and what is not yet
 there.  `SafeParetoImprovements.lean` carries the `dd:` glossary;
@@ -53,7 +53,7 @@ proved — there is no `sorry` in `SafeParetoImprovements/`:
 | Assumption 1, Assumption 2 | `Play.SatisfiesA1`, `Play.SatisfiesA2` | `Assumptions.lean` |
 | Lemma 4 (weak and strict forms) | `GameIso.paretoImproving_of_paretoImproving`, `GameIso.strictlyParetoImproving_of_strictlyParetoImproving` | `Isomorphism.lean` |
 | Lemma 19 (path independence, local form) | `Game.isStrictlyDominated_erase` | `Reduction.lean` |
-| Definition 5 (SPI decision problem, strict and unilateral variants) as a derivation system | `Game.Step`, `Game.Deriv`; repaired non-triviality (`dd:nontrivial`, erratum D13): `Game.SPIDecision`, `Game.StrictSPIDecision`, `Game.UnilateralSPIDecision`; printed, constant-true: `Game.SPIDecisionPrinted`, `…StrictSPIDecisionPrinted`, `…UnilateralSPIDecisionPrinted` | `Derivation.lean` |
+| Definition 5 (SPI decision problem, strict and unilateral variants) as a derivation system | `Game.Step`, `Game.Deriv`; repaired non-triviality (`dd:nontrivial`, erratum D13): `Game.SPIDecision`, `Game.StrictSPIDecision`, `Game.UnilateralSPIDecision`; printed forms kept alongside: `Game.SPIDecisionPrinted` (constant-true for non-empty `N`, `Game.spiDecisionPrinted_of_nonempty`), `…UnilateralSPIDecisionPrinted` (constant-true on fully reduced games, `unilateralSPIDecisionPrinted_of_reduced`), and `…StrictSPIDecisionPrinted`, which *keeps content* — it fails on one-action games, `not_strictSPIDecisionPrinted_of_card_le_one` | `Derivation.lean` |
 | Lemma 21 (normal form of derivations: eliminations, one isomorphism, reverse eliminations; the printed length bound is not rendered, erratum D14) | `Game.Deriv.exists_normalForm` | `Derivation.lean` |
 | Lemma 22 (symmetry-free Pareto-improving chain to the reduction of the SPI candidate) | `Game.exists_paretoImproving_normalForm` | `Derivation.lean` |
 | **Proposition 18** (Algorithm 2 is a program equilibrium executing `Π(Γˢ)`; the deviator's payoff is *at most* the threat point, erratum D8; Algorithm 2's punishment index repaired, erratum D15) | `Prog.algorithm2_isProgramEquilibrium` | `Instruction.lean` |
@@ -63,7 +63,7 @@ proved — there is no `sorry` in `SafeParetoImprovements/`:
 | **Propositions 24, 26** and **Proposition 10** (the search bound `card ≤ m ^ l`, for the unilateral pairs (player, certificate) as well; "solved in `O(m^l)`" not rendered) | `Game.spiDecision_search`, `Game.unilateralSPIDecision_search` (bounds `Game.card_certificate_le`, `card_unilateralCertificate_le'`) | `Complexity.lean` |
 | **Definition 8** (subgraph isomorphism problem) | `Hardness.SubgraphIsoProblem` | `Hardness.lean` |
 | **Lemma 28** (subgraph isomorphism reduces to each of the four SPI problems on the two-player game of Table 10, as an iff; "linear time" and "NP-hard" not rendered; Table 9 followed over the printed formula, erratum D18) | `Hardness.subgraphIsoProblem_iff_spiDecision` and the strict / unilateral / strict-unilateral variants | `Hardness.lean` |
-| **Theorem 9** (membership for the four problems together with the reduction, over two-player games; "NP-complete" not rendered) | `Hardness.theorem9` | `Hardness.lean` |
+| **Theorem 9** (the certificate characterizations of the four problems together with Lemma 28's reductions, over two-player games; the size bound that makes the characterizations membership-shaped is `Game.card_certificate_le`, stated separately; "NP-complete" not rendered) | `Hardness.theorem9` | `Hardness.lean` |
 | **Definition 6** (perfect-coordination SPI, strict variant) | `TokenGame.IsSPI`, `TokenGame.IsStrictSPI` | `Coordination.lean` |
 | Lemma 11 (Pareto-optimality in `C(Γ)` as a linear program; the polynomial-time clause not rendered, `dd:complexity`) | `Game.paretoOptimalIn_feasible_iff` | `Coordination.lean` |
 | Definition 6 witnesses (strict and equality-only perfect-coordination SPIs with `uᵉ` defined along the book's isomorphism) | `Examples.conflictStrictToken_isStrictSPI`, `conflictPlainToken_isSPI` | `Examples/TokenWitnesses.lean` |
@@ -134,14 +134,23 @@ foreknowledge independence defined through the two counterfactual program choice
 `𝐩ᴾᵢ(𝐟)` and `𝐩ᶠᵢ(𝐟)` (B.2), which are rendered as data of a *choice model* since the
 source leaves "would have chosen" informal.  `Examples/Renegotiation.lean` formalizes
 B.4's renegotiation example with the source's pseudocode as an execution model over the
-`ProgramGame` interface — its own program space, not the paper's `Prog` — and proves
-demand preservation, the 50%/80%/doomsday numbers, that `rn` is a B.1 SPI on all
-base-strategy profiles (for `d ≤ t`, the source giving no conflict payoffs), participation
-independence at both levels, and B.2's "PI but not FI" agent (60% regardless, 50% with
-foreknowledge) at both levels.  One boundary is recorded there: the source's baseline
-outcome is a *commitment* (an unconditional doomsday device is strictly dominated in the
-one-shot game), so those representatives are not claimed to satisfy Assumption 1, and
-none of the paper's theorems is applied to them.
+`ProgramGame` interface — its own program space, not the paper's `Prog`, with each
+renegotiation program carrying its own renegotiation logic so that the pseudocode's
+agreement test has content — and proves demand preservation (a property of B.4's logic,
+not of the semantics), the 50%/80%/doomsday numbers, that `rn` is a B.1 SPI on all
+base-strategy profiles (for `d ≤ t`, the source giving no conflict payoffs; strictly for
+`d < t` on the B.4 profile), participation independence at both levels together
+(`rnStrategy_participationIndependent_both`), and B.2's "PI but not FI" agent (60%
+regardless, 50% with foreknowledge) at both levels.  The two levels are different
+properties: the execution-level notions compare realised actions *towards a
+non-participant* and say nothing about demands during participation, which is what B.2's
+demand-preservation clause adds; at the program-choice level participation independence
+is immediate from demand preservation under simultaneous commitment, exactly as B.2 says.
+Two boundaries are recorded there: those representatives supply only the baseline and are
+not claimed to satisfy Assumptions 1–2 (the negotiation game has no strictly dominated
+action, so Assumption 1 is not what separates them from the paper's results; the
+arbitrary play on other games is), and B.3 (surrogate goals, concession equivalence) is
+not rendered.
 
 **The complexity nodes** (§4.6, Appendix D.2–D.3; tranche F, design note
 `notes/complexity-layer.md`) are carried as *qualified* nodes under RULING 6.
@@ -197,9 +206,13 @@ appendix-only nodes in scope exactly insofar as Theorem 9 is.  Condensed from
 | App. B | no nodes (Sen / Raub discussion) | out |
 | App. D | Lemmas 19–22, Propositions 23–26, Definition 8, Lemma 27 (Cook 1971, cited), Lemma 28 | **all landed** except Lemma 27 (cited external, RULING 14) — Lemmas 19, 21, 22 in `Reduction.lean` / `Derivation.lean` (Lemma 20 is absorbed by the confluence proof), Propositions 23–26 in `Complexity.lean`, Definition 8 and Lemma 28 in `Hardness.lean` |
 
-Open rulings (`notes/scoping.md` §8): scope confirmation (0); Definition 7's missing
-"strict" (7); Theorem 15's projections onto `C(Γ)` rather than the strong frontier (8);
-the instruction layer of tranche E (9); the §5 modelling walk-through (10).
+Rulings (`notes/scoping.md` §8, all recorded): scope confirmed as §2–§6 with the appendix
+proofs, complexity nodes qualified (0); Definition 7 reads "strict" into its body (7);
+Theorem 15 deferred (8); participation and foreknowledge independence stateable in the
+instruction layer (9); the §5 modelling decisions (10–13); Lemma 27 cited, not axiomatized
+(14); Table 9 followed over the printed formula (15).  Nothing is open except the
+`completed` flip itself, which waits on the human read-through and on a ruling that
+Theorem 15 stays deferred.
 
 ## Numbering and provenance
 
@@ -230,7 +243,7 @@ occurrence of each id.
 
 Every annotated declaration is listed in `AxiomAudit.lean`'s `SPI-INVENTORY` block
 (`#assert_axioms_clean`) or staged in its `SPI-PENDING` block (statement final, proof
-pending; empty at M0).  `scripts/lint_paper_labels.py` requires every `theorem` in this
+pending; currently empty).  `scripts/lint_paper_labels.py` requires every `theorem` in this
 library to name a result node (`Theorem`/`Lemma`/`Proposition`/`Corollary`, bare integer).
 
 ## Standing design decisions
@@ -258,10 +271,23 @@ Full rationale in `notes/scoping.md` §3, rulings in §8, one-line glossary in
   scaling; both readings are forced by later use (erratum D5).
 * **`dd:book`** — joint satisfiability of Assumptions 1 and 2 is a theorem (N±), with the
   page distribution parametric (RULING 5).
-* **`dd:derivation`**, **`dd:program-game`**, **`dd:complexity`** — see the glossary in
-  `SafeParetoImprovements.lean`; `dd:complexity` is now realized for every complexity node
-  (Lemma 11, Proposition 12, Propositions 23–26, Proposition 10, Lemma 28, Theorem 9), each
-  a qualified node whose docstring names the clause not rendered.
+* **`dd:derivation`** — Definition 5 is an inductive derivation system (`Game.Deriv`) with
+  Lemma 21 as its normal form; **`dd:nontrivial`** — its non-triviality clause reads
+  "different reduced action sets" (erratum D13).
+* **`dd:program-game`**, **`dd:exec-kernel`**, **`dd:code-eq`** — Appendix A's program game
+  is an interface whose execution returns per-player mixed actions, *independent given the
+  representatives' sample point* (a disclosed narrowing: Theorem 1 and Proposition 18 over
+  the interface cover independent-execution program games), realized by the
+  three-instruction language `Prog` with classical code equality — so **Theorem 1 is
+  carried for that language, not for an arbitrary programming language**.
+* **`dd:feasible`**, **`dd:room`** — `C(Γ)` is the paper's formula (proved equal to a convex
+  hull); §5's fresh tokens exist by the hypothesis `Game.HasRoom`, supplied over `X ⊕ ℕ`.
+* **`dd:default-instr`** — a per-player non-participation instruction executing as `Π(Γ₀)`,
+  the hook for participation and foreknowledge independence (beyond the paper).
+* **`dd:complexity`** — realized for every complexity node (Lemma 11, Proposition 12,
+  Propositions 23–26, Proposition 10, Lemma 28, Theorem 9), each a qualified node whose
+  docstring names the clause not rendered.  The full glossary is in
+  `SafeParetoImprovements.lean`.
 
 Payoffs are in `ℝ`; players are finite; action sets are finite and nonempty.  The §2
 vocabulary comes from EconCSLib (pinned in `lakefile.lean`, RULING 1) through the bridge

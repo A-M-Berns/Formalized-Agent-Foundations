@@ -4038,6 +4038,9 @@ blocks, a stale entry, a malformed line, a non-empty block once the paper is
   SafeParetoImprovements.Prog.dove_isProgramEquilibrium
   SafeParetoImprovements.Prog.exec_update_default SafeParetoImprovements.Prog.exec_default
   SafeParetoImprovements.Prog.foreknowledgeIndependent_of_participationIndependent
+  SafeParetoImprovements.Two.other SafeParetoImprovements.Two.other_one
+  SafeParetoImprovements.Two.other_two SafeParetoImprovements.Two.other_ne
+  SafeParetoImprovements.Two.eq_other_of_ne
   -- The same notions at the level of program choice, after DiGiovanni (2026, Appendix
   -- B.1-B.2; SafeParetoImprovements/FullStrategy.lean): SPI transformations, full
   -- strategies, choice models, demand preservation, participation and foreknowledge
@@ -4045,7 +4048,9 @@ blocks, a stale entry, a malformed line, a non-empty block once the paper is
   -- refutation.
   SafeParetoImprovements.IsSPITransformation SafeParetoImprovements.FullStrategy
   SafeParetoImprovements.ChoiceModel SafeParetoImprovements.ChoiceModel.Simultaneous
-  SafeParetoImprovements.FullStrategy.used SafeParetoImprovements.FullStrategy.counterfactualP
+  SafeParetoImprovements.others
+  SafeParetoImprovements.FullStrategy.used SafeParetoImprovements.FullStrategy.IsSPI
+  SafeParetoImprovements.FullStrategy.counterfactualP
   SafeParetoImprovements.FullStrategy.counterfactualF SafeParetoImprovements.FullStrategy.Consistent
   SafeParetoImprovements.FullStrategy.DemandPreserving
   SafeParetoImprovements.FullStrategy.ParticipationIndependent
@@ -4117,6 +4122,19 @@ blocks, a stale entry, a malformed line, a non-empty block once the paper is
   SafeParetoImprovements.Examples.Renegotiation.Device
   SafeParetoImprovements.Examples.Renegotiation.Outcome
   SafeParetoImprovements.Examples.Renegotiation.outcome
+  SafeParetoImprovements.Examples.Renegotiation.negotiation_reduced
+  SafeParetoImprovements.Examples.Renegotiation.Logic
+  SafeParetoImprovements.Examples.Renegotiation.takeoverLogic
+  SafeParetoImprovements.Examples.Renegotiation.concedeLogic
+  SafeParetoImprovements.Examples.Renegotiation.Outcome.myDemand
+  SafeParetoImprovements.Examples.Renegotiation.outcome_myDemand
+  SafeParetoImprovements.Examples.Renegotiation.Logic.DemandPreserving
+  SafeParetoImprovements.Examples.Renegotiation.takeoverLogic_demandPreserving
+  SafeParetoImprovements.Examples.Renegotiation.run_rn_mismatch
+  SafeParetoImprovements.Examples.Renegotiation.run_rn_concede_fst_ne
+  SafeParetoImprovements.Examples.Renegotiation.rnStrategy_basePreserving
+  SafeParetoImprovements.Examples.Renegotiation.programPayoff_fair_hawk_lt
+  SafeParetoImprovements.Examples.Renegotiation.rnStrategy_participationIndependent_both
   SafeParetoImprovements.Examples.Renegotiation.Outcome.payoff
   SafeParetoImprovements.Examples.Renegotiation.negotiation
   SafeParetoImprovements.Examples.Renegotiation.fair SafeParetoImprovements.Examples.Renegotiation.hawk
@@ -4125,8 +4143,6 @@ blocks, a stale entry, a malformed line, a non-empty block once the paper is
   SafeParetoImprovements.Examples.Renegotiation.RnProg.baseOf
   SafeParetoImprovements.Examples.Renegotiation.RnProg.isRn
   SafeParetoImprovements.Examples.Renegotiation.RnProg.demand
-  SafeParetoImprovements.Examples.Renegotiation.renegotiationLogic
-  SafeParetoImprovements.Examples.Renegotiation.enact
   SafeParetoImprovements.Examples.Renegotiation.run
   SafeParetoImprovements.Examples.Renegotiation.run_rn_fst
   SafeParetoImprovements.Examples.Renegotiation.run_base

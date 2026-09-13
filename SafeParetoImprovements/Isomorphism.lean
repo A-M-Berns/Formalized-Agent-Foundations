@@ -45,8 +45,8 @@ variable {N : Type u} {𝒜 : N → Type v}
 
 /-- A game inhabits every player's slice of the action universe: `Aᵢ` is a nonempty subset
 of `𝒜 i`.  This is what `Function.invFunOn` needs to invert an isomorphism, so `GameIso.symm`
-takes it from the game in scope instead of asking callers for `[∀ i, Nonempty (𝒜 i)]`
-(R1-F03, R1-F13).  Not an instance: instance search cannot guess which game to use. -/
+takes it from the game in scope instead of asking callers for `[∀ i, Nonempty (𝒜 i)]`.  Not
+an instance: instance search cannot guess which game to use. -/
 lemma Game.nonempty_universe (Γ : Game N 𝒜) (i : N) : Nonempty (𝒜 i) :=
   ⟨(Γ.nonempty i).choose⟩
 
@@ -259,7 +259,7 @@ lemma payoff_eq_of_self (θ : GameIso Γ Γ) {a : ∀ i, 𝒜 i} (ha : a ∈ Γ.
 (`Game.EqOn`) preserves payoffs: it is an automorphism of `Γ` once the target's action
 sets and payoffs are identified with `Γ`'s, so `payoff_eq_of_self` applies.  This is what
 makes Assumption 2 forbid a strict SPI between two `EqOn`-equal **reduced** presentations
-of one paper game (`Play.SatisfiesA2.not_isStrictSPI_of_eqOn`, R1-F01).  The reducedness
+of one paper game (`Play.SatisfiesA2.not_isStrictSPI_of_eqOn`).  The reducedness
 qualification comes from Assumption 2 itself, which is a hypothesis only about games
 without strictly dominated actions and constrains no non-reduced pair; this lemma is
 unconditional. -/
@@ -418,7 +418,7 @@ to the subset game `Φ(G)` of `Γ'` (`GameIso.imageGame`), restricts to an isomo
 `G ≅ Φ(G)` with the same constants (`GameIso.restrict`), and commutes with iterated
 elimination: `reduce Γ' = Φ(reduce Γ)` (`GameIso.reduce_eq_imageGame`).  This is what lets
 a token copy of a *whole* game be reduced through the copy (Lemma 13's `(Â, û)` is a copy
-of `Γ`, not of `reduce Γ`; R7-F02). -/
+of `Γ`, not of `reduce Γ`;). -/
 
 namespace GameIso
 

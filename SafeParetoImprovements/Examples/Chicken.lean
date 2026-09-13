@@ -23,8 +23,8 @@ Table 7's three actions do **not** exhaust the players' universe here: the game 
 `CUniverse i := CAct ⊕ ℕ`, with the board in the `inl` copy and off-profile payoffs `0`
 (`dd:total-utility`).  This is forced.  Over the bare `CAct` the game uses its whole finite
 universe, so `TokenGame chicken` is *empty* (freshness contradicts `Game.nonempty`) and the
-impossibility clause of Proposition 16 would be vacuously true — the round-4 blocker
-R4-F01.  Over `CAct ⊕ ℕ`, freshness confines token action sets to the `inr` copy of `ℕ`, so
+impossibility clause of Proposition 16 would be vacuously true.  Over `CAct ⊕ ℕ`, freshness
+confines token action sets to the `inr` copy of `ℕ`, so
 every finite token action set is realized up to relabelling (`chickenTokenOfSize`, of every
 cardinality) and the class quantified over is the paper's.  The disclosure is written out
 in `Coordination.lean`'s `dd:room` paragraph.
@@ -379,7 +379,7 @@ theorem chicken_no_perfectCoordinationSPI :
 
 Non-vacuity in both directions: token games exist, at every finite size, and Definition 6
 holds of some of them and fails of others.  Without these the impossibility clause of
-Proposition 16 would be an assertion about an empty or truncated class (R4-F01, R4-F05). -/
+Proposition 16 would be an assertion about an empty or truncated class. -/
 
 /-- A one-token-per-player token game with `uᵉ ≡ u(c, c) = (3, 3)`. -/
 noncomputable def chickenToken33 : TokenGame chicken where

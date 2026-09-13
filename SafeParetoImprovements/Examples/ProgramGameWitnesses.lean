@@ -19,7 +19,7 @@ the way that matters for the paper's reading of `Π`:
   a non-constant random variable (`demandRandom_play_ne`), and the threat-point hypothesis
   is discharged from the *expectation* of a genuinely mixed play, not from a single
   outcome.  This is the witness that Theorem 1 is not silently a statement about
-  deterministic representatives (R3-F11).
+  deterministic representatives.
 
 The threat-point hypothesis is not automatic: `demandBook_not_threatPoint_le` shows it
 *fails* for the `(DM, DM)`-prescribing book of Proposition 6's strictness clause, so it has
@@ -78,7 +78,7 @@ lemma pdRepresentatives_threatPoint_le (i : Two) :
     fun b _ => prisonersDilemma_defect_bestResponse i b
 
 /-- **Theorem 1 is not vacuous, deterministic instance** (hypotheses carried inside the
-statement, R2-F11/R3-F02): in the Prisoner's Dilemma with the cooperative subset game, the
+statement): in the Prisoner's Dilemma with the cooperative subset game, the
 SPI hypothesis and the threat-point hypothesis both hold for `pdRepresentatives`, and
 Algorithm 2 is a program equilibrium executing as `Π(Γˢ)`.  Here `Π` is deterministic — the
 sample space is a point. -/
@@ -173,8 +173,8 @@ lemma demandRandom_threatPoint_le (i : Two) :
     refine h.trans ?_
     norm_num [demandGame.u_apply, demandPayoff, demandPages, Two.pair]
 
-/-- **Theorem 1 is not vacuous, random instance** (R3-F11, hypotheses carried inside the
-statement per R2-F11): in the Demand Game with the paper's SPI, the SPI hypothesis and the
+/-- **Theorem 1 is not vacuous, random instance** (hypotheses carried inside the
+statement): in the Demand Game with the paper's SPI, the SPI hypothesis and the
 threat-point hypothesis both hold for `demandRandomRepresentatives`, whose `Π(Γ₀)` is a
 non-constant random variable, and the conclusion of Theorem 1 is reached. -/
 lemma demandRandom_algorithm2_isProgramEquilibrium :
@@ -228,7 +228,7 @@ lemma demandRepresentatives_integral :
 /-- **Theorem 1's threat-point hypothesis is not automatic**: it *fails* in the paper's own
 Demand-Game example whenever the representatives play the conflict outcome `(DM, DM)` — and
 `demandBook`, the Proposition 6 strictness witness, is such a book, satisfying Assumptions
-1 and 2.  So the hypothesis carries content rather than being derivable (R3-F11). -/
+1 and 2.  So the hypothesis carries content rather than being derivable. -/
 lemma demandBook_not_threatPoint_le :
     ¬ (∀ i, demandGame.threatPoint i ≤
         ∫ ω, demandGame.u (demandRepresentatives.play demandGame ω) i
@@ -274,7 +274,7 @@ lemma participationIndependent_pd :
 `Prog.not_participationIndependent_algorithm2` is conditional on the minimax punishment
 differing from the default play.  In the Prisoner's Dilemma that hypothesis is false —
 `Defect` is both the minimax punishment and the default play — so the Demand Game supplies
-the instance (R3-F12).  Nothing here computes `Game.minimax`: the upper bound
+the instance.  Nothing here computes `Game.minimax`: the upper bound
 `demandGame_threatPoint_two_le` (from a pure Nash best response) plus
 `Game.expected_minimax_le_threatPoint` rule out the value `RM` for the punishment. -/
 
@@ -313,7 +313,7 @@ lemma demandGame_minimax_two_one_ne_RM :
 
 /-- **Algorithm 2 is not participation independent**, as an instance rather than a
 hypothesis: in the Demand Game with the random representatives, player 1's punishment of a
-non-participating player 2 differs from her default play `RM` (R3-F12). -/
+non-participating player 2 differs from her default play `RM`. -/
 lemma demandGame_algorithm2_not_participationIndependent :
     ¬ (programGame demandGame demandRandomRepresentatives).ParticipationIndependent
         (defaultInstr demandGame demandRandomRepresentatives)
@@ -366,7 +366,7 @@ lemma dove_ne_default :
   unfold dove Prog.default at h
   cases h
 
-/-- **Foreknowledge independence is not constant-false**, non-degenerately (R3-F07/F13):
+/-- **Foreknowledge independence is not constant-false**, non-degenerately:
 `pdFallbackPolicy` reads its signal and chooses two syntactically different instructions,
 yet once player 2 has dropped out player 1's realised action is the same either way —
 the dove-ish instruction's own fall-back branch is the default instruction.  Unlike a

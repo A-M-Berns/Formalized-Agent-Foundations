@@ -237,30 +237,8 @@ lemma expected_le_bestReply [∀ i, DecidableEq (𝒜 i)] (i : N) {b : ∀ j, �
 more than `uᵢ(a)` against the pure profile `a₋ᵢ`. -/
 lemma expected_update_pure_le [∀ i, DecidableEq (𝒜 i)] {a : ∀ i, 𝒜 i} (ha : a ∈ Γ.profiles)
     (i : N) (hbr : ∀ b ∈ Γ.S i, Γ.u (Function.update a i b) i ≤ Γ.u a i) (p : Γ.Mixed i) :
-    Γ.expected (Function.update (fun j => Γ.pureMixed (a j) (ha j)) i p) i ≤ Γ.u a i := by
-  set σ := Function.update (fun j => Γ.pureMixed (a j) (ha j)) i p with hσ
-  rw [expected_eq]
-  calc ∑ s : Γ.toStrategic.Profile, (∏ j, (σ j).val (s j)) * Γ.u (Γ.ofStrategicProfile s) i
-      ≤ ∑ s : Γ.toStrategic.Profile, (∏ j, (σ j).val (s j)) * Γ.u a i := by
-        refine Finset.sum_le_sum fun s _ => ?_
-        have h0 : 0 ≤ ∏ j, (σ j).val (s j) :=
-          Finset.prod_nonneg fun j _ => (mem_Icc_of_mem_stdSimplex (σ j).2 (s j)).1
-        rcases h0.lt_or_eq with hpos | hzero
-        · refine mul_le_mul_of_nonneg_left ?_ h0
-          have hs : Γ.ofStrategicProfile s = Function.update a i (s i) := by
-            funext j
-            by_cases hj : j = i
-            · subst hj; simp
-            · rw [Function.update_of_ne hj]
-              have hne : (σ j).val (s j) ≠ 0 :=
-                fun h => hpos.ne' (Finset.prod_eq_zero (Finset.mem_univ j) h)
-              rw [hσ, Function.update_of_ne hj, pureMixed_val] at hne
-              by_contra hcontra
-              exact hne (if_neg hcontra)
-          rw [hs]
-          exact hbr _ (s i).2
-        · rw [← hzero, zero_mul, zero_mul]
-    _ = Γ.u a i := by rw [← Finset.sum_mul, sum_prod_mixed, one_mul]
+    Γ.expected (Function.update (fun j => Γ.pureMixed (a j) (ha j)) i p) i ≤ Γ.u a i :=
+  (Γ.expected_le_bestReply i ha p).trans (Γ.bestReply_le i a hbr)
 
 /-- **The threat point is metered from above by one player's best response**: if `aᵢ` is a
 best response to `a₋ᵢ` among `i`'s pure actions, then `vᵢ ≤ uᵢ(a)`.  This is a statement

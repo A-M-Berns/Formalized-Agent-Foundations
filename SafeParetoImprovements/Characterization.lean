@@ -20,15 +20,16 @@ support the paper's conditional expectations are undefined (erratum D7) and the 
 stated on the support.
 
 * **Lemma 13** (`Representatives.exists_reassignment_condExp_eq`): under Assumptions 1–2
-  with room, every perfect-coordination SPI `Γ′` can be replaced by a token copy of the
-  reduced game — `TokenGame.reassign`, with `uᵉ` defined *along the isomorphism Assumption 2
-  supplies* (erratum D6, RULING 10) — that is again a perfect-coordination SPI and has the
-  same conditional expected payoff on every supported outcome, hence the same expected
-  payoff.  The copy is of `reduce Γ`, not of `Γ`: Assumption 2 speaks only about reduced
-  games, so the paper's "(Â, û) is isomorphic to Γ, thus by Assumption 2 …" needs
-  Assumption 1 to first move the play into the reduction (RULING 11).  The relabeling is
+  with room, every perfect-coordination SPI `Γ′` can be replaced by an exact token copy of
+  `Γ` itself — `TokenGame.reassign` on `Game.tokenCopy`, with `uᵉ` defined *along the
+  isomorphism Assumption 2 supplies* (erratum D6, RULING 10) — that is again a
+  perfect-coordination SPI and has the same conditional expected payoff on every supported
+  outcome, hence the same expected payoff.  Assumption 2 speaks only about reduced games,
+  so the paper's "(Â, û) is isomorphic to Γ, thus by Assumption 2 …" needs Assumption 1 to
+  first move the play into the reduction, and the isomorphism of reductions is transported
+  to the copy (RULING 11).  The relabeling is
   *exact* — the paper prints `û(â) = u(a)` — so the isomorphism is exposed with scale `1`
-  and shift `0` (`Game.ExactCopy`), not merely as `Game.Isomorphic` (R5-F01/F07).
+  and shift `0` (`Game.ExactCopy`), not merely as `Game.Isomorphic`.
 * **Corollary 14** (`Representatives.achievable_eq_improvementSum`, `convex_achievable`,
   `isCompact_achievable`, `isPolytope_achievable`): the set of expected payoffs safely
   achievable with perfect coordination is the weighted Minkowski sum
@@ -49,8 +50,7 @@ definition — `condExp` averaging strictly between the values it integrates is 
 the hand-built family
 `Examples.mixPlay` / `Examples.mixToken` of `Examples/CharacterizationWitnesses.lean`,
 whose play reads the *size* of the game it is handed, so the token play is not a function
-of `Π(Γ)` and the conditional expectation `(½, ½)` is a value the integrand never takes
-(R5-F11).
+of `Π(Γ)` and the conditional expectation `(½, ½)` is a value the integrand never takes.
 -/
 
 universe u v w
@@ -85,14 +85,14 @@ lemma fiber_disjoint (Γ : Game N 𝒜) {a b : ∀ i, 𝒜 i} (hab : a ≠ b) :
 
 -- The conditional measure on a fiber is finite (total mass `1` on a supported fiber, `0`
 -- off the support): Mathlib's `IsZeroOrProbabilityMeasure (μ[|s])` instance already gives
--- `IsFiniteMeasure`, so no local instance is declared (R5-F13).
+-- `IsFiniteMeasure`, so no local instance is declared.
 
 lemma condExp_isProbabilityMeasure (Γ : Game N 𝒜) {a : ∀ i, 𝒜 i} (ha : a ∈ R.support Γ) :
     IsProbabilityMeasure (R.μ[|R.fiber Γ a]) :=
   cond_isProbabilityMeasure ha
 
 /-- On the fiber, the conditional measure sees `Π(Γ) = a` almost everywhere: Mathlib's
-`ProbabilityTheory.ae_cond_mem`, since membership in the fiber is `R.play Γ ω = a` (R5-F14). -/
+`ProbabilityTheory.ae_cond_mem`, since membership in the fiber is `R.play Γ ω = a`. -/
 lemma ae_play_eq_cond (Γ : Game N 𝒜) (a : ∀ i, 𝒜 i) :
     ∀ᵐ ω ∂(R.μ[|R.fiber Γ a]), R.play Γ ω = a :=
   ae_cond_mem (R.measurableSet_fiber' Γ a)
@@ -134,7 +134,7 @@ the fiber `{Π(Γ) = a}` carries a single token payoff (`condExp_comp_play` is t
 ever needs).  That is a property of the book
 construction, not of this definition: `Examples.condExp_genuine_average` exhibits a play
 family for which `E[uᵉ(Π(Aˢ,uˢ)) | Π(Γ) = a] = (½, ½)` while the integrand takes only the
-values `(0,0)` and `(1,1)` (R5-F11). -/
+values `(0,0)` and `(1,1)`. -/
 noncomputable def condExp (Γ : Game N 𝒜) (a : ∀ i, 𝒜 i) (g : R.Ω → N → ℝ) : N → ℝ :=
   ∫ ω, g ω ∂(R.μ[|R.fiber Γ a])
 
@@ -151,7 +151,7 @@ lemma condExp_comp_play (Γ : Game N 𝒜) {a : ∀ i, 𝒜 i} (ha : a ∈ R.sup
 
 A coordinate of a vector-valued integral is the integral of the coordinate: that is
 Mathlib's `MeasureTheory.eval_integral` (`Mathlib/MeasureTheory/SpecificCodomains/Pi.lean`),
-not a lemma of this development (R5-F05). -/
+not a lemma of this development. -/
 lemma condExp_mono (Γ : Game N 𝒜) (a : ∀ i, 𝒜 i) {g₁ g₂ : R.Ω → N → ℝ}
     (h₁ : Integrable g₁ (R.μ[|R.fiber Γ a])) (h₂ : Integrable g₂ (R.μ[|R.fiber Γ a]))
     (h : ∀ᵐ ω ∂(R.μ[|R.fiber Γ a]), g₁ ω ≤ g₂ ω) :
@@ -228,12 +228,11 @@ reassignment there is `u` itself; the paper's display writes `u` for `uᵉ` on t
 
 The copy is exposed as a `Game.ExactCopy` of `Γ` — an isomorphism with scale `1` and shift
 `0`, i.e. the paper's `û(â) = u(a)` — and not merely as `Game.Isomorphic`: the witness the
-proof builds is the token relabeling `Game.tokenCopy` along `Game.tokenIso` (R5-F01/F07).
+proof builds is the token relabeling `Game.tokenCopy` along `Game.tokenIso`.
 What is *not* exposed is which relabeling: the token map is chosen from the room
 hypothesis, and `uᵉ` is defined along whichever isomorphism Assumption 2 supplies (D6,
 RULING 10).  Assumption 1 is what lets the copy be played through its reduction
-(RULING 11); an earlier version copied `reduce Γ` instead of `Γ`, which the paper does not
-do (R7-F02).
+(RULING 11).  The copy is of `Γ` itself, as the paper's `(Â, û)` is — not of `reduce Γ`.
 
 Paper node: `Lemma 13` -/
 theorem exists_reassignment_condExp_eq (Γ : Game N 𝒜)
@@ -322,6 +321,12 @@ def improvementSum (Γ : Game N 𝒜) : Set (N → ℝ) :=
 with room for tokens, the safely achievable expected payoffs are exactly the weighted
 Minkowski sum `∑ₐ P(Π(Γ) = a) • {y ∈ C(Γ) | y ≥ u(a)}`.  "⊆" is Lemma 13's conditional
 expectations; "⊇" is the reassignment of each outcome to its chosen improvement.
+
+*Strengthened relative to the print.*  The paper says Lemma 13 "directly implies a
+characterization of the expected utilities that can be achieved" and *omits its
+statement*, printing as Corollary 14 only the consequence that the set is a convex polygon
+(carried by `isPolytope_achievable`).  This declaration states and proves the omitted
+characterization; the printed clause is the corollary of it.
 
 Paper node: `Corollary 14` -/
 theorem achievable_eq_improvementSum (Γ : Game N 𝒜)

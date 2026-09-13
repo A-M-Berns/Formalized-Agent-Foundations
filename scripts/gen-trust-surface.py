@@ -1470,13 +1470,15 @@ def main():
     # Likewise generated for Safe Pareto Improvements, so the proved/staged split it quotes
     # is the one the audit blocks hold at generation time.
     if spi['staging'] is None:
-        spi_editorial = '<strong>in progress (milestone M0)</strong> — no staging block'
+        spi_editorial = '<strong>in progress (read-through outstanding)</strong> — no staging block'
     else:
         spi_proved, spi_staged = spi['staging'].counts(spi['rendered'])
         spi_editorial = (
-            '<strong>in progress (milestone M0)</strong> — the §3–§4.5 spine at the '
-            'certainty-filter level, each declaration badged: %d <em>axiom-clean</em>, '
-            '%d <em>staged</em> (statement final, proof still <code>sorry</code>)'
+            '<strong>in progress (read-through outstanding)</strong> — every in-scope '
+            'node except the deferred Theorem 15, the §2–§4 nodes at the certainty-filter '
+            'level and the complexity nodes qualified, each declaration badged: '
+            '%d <em>axiom-clean</em>, %d <em>staged</em> (statement final, proof still '
+            '<code>sorry</code>)'
             % (spi_proved, spi_staged))
     spi_editorial += ('. The correspondence view of what has landed so far; '
                       '<strong>no strength classification exists for this paper</strong>')

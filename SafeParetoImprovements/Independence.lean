@@ -4,8 +4,9 @@ import SafeParetoImprovements.Instruction
 # Participation independence and foreknowledge independence (substrate beyond the paper)
 
 The 2022 paper has no counterpart for these notions; they are research-facing hooks added
-so that later work on SPI *selection* can be stated against this formalization (RULING 9).
-Nothing here carries a `Paper node`, and no theorem beyond non-vacuity is claimed.  The
+so that later work on SPI *selection* can be stated against this formalization (the
+scoping ruling recorded in `notes/scoping.md` §8).  Nothing here carries a `Paper node`,
+and no theorem *of the paper* is claimed about them; what is proved is stated below.  The
 informal notions being rendered:
 
 * **Participation independence (PI)**: a player's behaviour when a counterpart does *not*
@@ -28,9 +29,30 @@ In the concrete language, `Prog.default` is "play `Πᵢ(Γ₀)`", the dove-ish 
 `Prog.dove` (comply with the SPI when everybody does, otherwise fall back to the default)
 satisfies PI, and any instruction that punishes with a mixed action differing from the
 default play — Algorithm 2 whenever its minimax punishment differs from `Π(Γ₀)` — fails it.
+
+**What these execution-level notions are, and are not.**  Both compare *realised actions
+towards a non-participant*: PI says a player meets a drop-out with the baseline play
+rather than a punishment, which is the premise of the source's argument for PI ("the
+counterpart's bargaining position is no worse than if they'd refused the SPI"); FI says
+the realised action towards a drop-out does not depend on whether the drop-out was
+foreseen.  Neither constrains what a player *demands while everybody participates*: the
+source's definitions (DiGiovanni 2026, Appendix B.2) add **demand preservation** to both,
+and that clause lives at the level of program choice in `FullStrategy.lean`, not here.  An
+instruction that raises its demand whenever the counterpart participates, and falls back
+to the default otherwise, satisfies the execution-level PI below and is not
+demand-preserving.  The two levels are exhibited together on one example in
+`Examples/Renegotiation.lean`.
+
+**What is proved here beyond definitions and witnesses.**  The dove profile executes the
+SPI (`plays_dove`), is participation independent for every player
+(`participationIndependent_dove_all`), and is a program equilibrium whenever each player's
+expected best reply to the baseline is at most her expected SPI payoff
+(`dove_isProgramEquilibrium`, a sufficient criterion); a participation-independent
+instruction paired with the default as the informed choice is foreknowledge independent
+(`foreknowledgeIndependent_of_participationIndependent`).
 -/
 
-universe u v w x
+universe u v w x y
 
 namespace SafeParetoImprovements
 
@@ -63,7 +85,7 @@ a value announcing each counterpart's non-participation, and a policy choosing t
 instruction from the signal. -/
 structure Policy (i : N) where
   /-- The signals player `i` may receive before choosing an instruction. -/
-  Signal : Type
+  Signal : Type y
   /-- The uninformative signal. -/
   noInfo : Signal
   /-- The signal "player `j` will not participate". -/
@@ -85,8 +107,7 @@ def ForeknowledgeIndependent (D : P.DefaultInstr) (c : ∀ i, P.Instr i) {i : N}
 **degenerate** case and is worth nothing as a non-vacuity witness: both sides of
 `ForeknowledgeIndependent` are then literally the same term, so the predicate holds by
 `rfl` whatever the execution model does.  A witness with content needs a policy whose two
-signals select *different* instructions; `Examples.foreknowledgeIndependent_pd` is one
-(R3-F07/F13). -/
+signals select *different* instructions; `Examples.foreknowledgeIndependent_pd` is one. -/
 lemma foreknowledgeIndependent_of_const (D : P.DefaultInstr) (c : ∀ i, P.Instr i) {i : N}
     (π : P.Policy i) (hπ : ∀ s, π.policy s = π.policy π.noInfo) :
     P.ForeknowledgeIndependent D c π := by
@@ -226,7 +247,7 @@ choice, is foreknowledge independent**: if player `i`'s uninformed instruction `
 participation independent and her policy switches to the default instruction on learning
 that `j` will not participate, then her realised action once `j` has dropped out is the
 baseline play either way.  This is the general form of `Examples.foreknowledgeIndependent_pd`
-and the reason the two notions are not independent of each other. -/
+and one way the two notions interact; it needs the informed branch to be the default. -/
 lemma foreknowledgeIndependent_of_participationIndependent (c : N → Prog Γ₀) {i : N}
     (π : (programGame Γ₀ R).Policy i) (hno : π.policy π.noInfo = c i)
     (hinf : ∀ j, π.policy (π.willNotParticipate j) = default Γ₀)
@@ -264,8 +285,9 @@ lemma not_participationIndependent_of_punish_play (c : N → Prog Γ₀) (i : N)
 /-- **Algorithm 2 is not participation independent** whenever its punishment of a
 non-participating `j` — `i`'s coordinate of the minimax profile against `j` — differs
 from the default play at some sample point.  The hypothesis is satisfiable: it is
-discharged in the Demand Game by `Examples.demandGame_algorithm2_not_participationIndependent`
-(R3-F12).  It genuinely fails in the Prisoner's Dilemma, where the minimax punishment and
+discharged in the Demand Game by
+`Examples.demandGame_algorithm2_not_participationIndependent`.  It genuinely fails in the
+Prisoner's Dilemma, where the minimax punishment and
 the default play are both `Defect`. -/
 lemma not_participationIndependent_algorithm2 (Γs : Game N 𝒜) (h : Γs.IsSubsetGameOf Γ₀)
     (i : N) {j : N} (hj : j ≠ i)

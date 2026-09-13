@@ -6,8 +6,8 @@ import SafeParetoImprovements.Representatives
 # Finding perfect-coordination SPIs (§5.2): Definition 7, Algorithm 1, Proposition 12
 
 Under Assumptions 1 and 2, the original players can *reassign* the outcomes of the base
-game: hand the representatives a fresh isomorphic copy of the reduced game and assign to
-each token outcome any feasible payoff vector they like.  This file builds that
+game: hand the representatives a fresh exact copy of the game and assign to each token
+outcome any feasible payoff vector they like.  This file builds that
 reassignment once (`TokenGame.reassign`, `Play.exists_tokenGame_ue_eq`) and uses it for
 Proposition 12; Lemma 13 and Corollary 14 (`Characterization.lean`) reuse it.
 
@@ -22,8 +22,9 @@ Proposition 12; Lemma 13 and Corollary 14 (`Characterization.lean`) reuse it.
   `reduce Γ`.  The paper writes "under Assumption 2" and works under both throughout.
 * **RULING 7** — Definition 7 reads "strict" into its body (erratum D10).
 * **`dd:room`** — the token copy needs room outside the base game's action sets
-  (`Γ.reduce.HasRoomOutside Γ.S`); the direction of Proposition 12 that constructs a token
-  game carries that hypothesis, the direction that reads one off does not.
+  (`Γ.HasRoom`, i.e. `Γ.HasRoomOutside Γ.S`); the direction of Proposition 12 that
+  constructs a token game carries that hypothesis, the direction that reads one off does
+  not.
 * **`dd:complexity`** — Proposition 12's "in polynomial time" clause is not rendered; the
   node's content is Algorithm 1's correctness as an iff, whose right-hand side is the test
   Algorithm 1 performs (a supported outcome that is Pareto-suboptimal in `C(Γ)`).
@@ -61,7 +62,7 @@ Lemma 13 prints `û(â) = u(a)`: the token game it produces is not merely *isomo
 reduced game, it is a relabeling that keeps the payoffs on the nose.  `Game.ExactCopy` is
 that stronger relation — an isomorphism with scale `1` and shift `0` — and it is what the
 §5.2/§5.3 constructions actually deliver, since they hand back `Game.tokenCopy` along
-`Game.tokenIso` (R5-F01/F07). -/
+`Game.tokenIso`. -/
 
 namespace Game
 
@@ -131,8 +132,8 @@ variable {X : Play N 𝒜 Ω} {L : Filter Ω}
 game — an *exact* copy of `Γ` in the sense of `Game.ExactCopy`, the paper's `û(â) = u(a)` —
 whose original-player payoff at the representatives' token play is `f` at the
 representatives' play of `Γ`, with certainty.  The token game is `TokenGame.reassign`: the
-copy `Game.tokenCopy` along `Game.tokenIso` (a relabelling, so scale `1` and shift `0`,
-R5-F01/F07); by Assumption 1 the representatives play the copy as they play its reduction,
+copy `Game.tokenCopy` along `Game.tokenIso` (a relabelling, so scale `1` and shift `0`); by
+Assumption 1 the representatives play the copy as they play its reduction,
 which is the relabelled `reduce Γ` (`GameIso.reduce_eq_imageGame`), and by Assumption 2 they
 play that isomorphically to `reduce Γ` along the isomorphism `uᵉ` is defined with. -/
 lemma exists_tokenGame_ue_eq (hA1 : X.SatisfiesA1 L) (hA2 : X.SatisfiesA2 L) (Γ : Game N 𝒜)

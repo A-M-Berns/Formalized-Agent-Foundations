@@ -109,7 +109,7 @@ lemma paretoImprovingCorrespondence_of_iso {Γ Γ' : Game N 𝒜} (ψ : GameIso 
     typed := fun p hp => ⟨hp.1, hp.2 ▸ ψ.map_mem hp.1⟩ }
 
 /-- **Assumption 2 forbids a strict SPI between two *reduced* presentations of the same
-game** (R1-F01).  `Play` is deliberately a larger class than the paper's `Π`: the paper's
+game**.  `Play` is deliberately a larger class than the paper's `Π`: the paper's
 payoff function is defined only on `A`, so `Π` cannot depend on off-domain payoff values,
 whereas a `Play` family may distinguish two games that are equal in the paper's sense
 (`Game.EqOn`).  Every paper node here quantifies universally over the play family, so the

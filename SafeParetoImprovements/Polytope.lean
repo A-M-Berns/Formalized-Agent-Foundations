@@ -30,7 +30,7 @@ The inclusion `⊆` is the content.  Given `x = ∑ λᵥ v` in the half-space, 
 Nothing here is specific to games; it is Mathlib-shaped material kept in this
 formalization's directory because the repository has no shared convex-geometry library and
 this paper is its only consumer; it is the first candidate for a shared library the moment
-a second consumer appears (final audit, R7-F33).
+a second consumer appears (final audit).
 -/
 
 open Finset Set
@@ -283,7 +283,8 @@ lemma IsPolytope.inter_Ici {ι : Type*} [Fintype ι] {s : Set (ι → ℝ)} (hs 
     | empty => simpa using hs
     | insert i T hi ih =>
       have : s ∩ {y | ∀ j ∈ insert i T, c j ≤ y j} =
-          (s ∩ {y | ∀ j ∈ T, c j ≤ y j}) ∩ {y | c i ≤ LinearMap.proj (R := ℝ) (φ := fun _ : ι => ℝ) i y} := by
+          (s ∩ {y | ∀ j ∈ T, c j ≤ y j}) ∩ {y | c i ≤ LinearMap.proj (R := ℝ) (φ := fun _ :
+          ι => ℝ) i y} := by
         ext y
         simp only [mem_inter_iff, mem_setOf_eq, Finset.mem_insert, forall_eq_or_imp,
           LinearMap.proj_apply]

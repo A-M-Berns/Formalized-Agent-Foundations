@@ -761,8 +761,8 @@ lemma card_mul_prod_le_pow (f : N → ℕ) :
     _ = (∑ i, f i) ^ Fintype.card N := by
         rw [← Finset.sum_mul, ← pow_succ', Nat.sub_add_cancel hpos]
 
-/-- **The unilateral search space is bounded by `m ^ l` itself**, with no factor `n`
-(R7-F04): `n · ∏ᵢ mᵢ^{lᵢ} ≤ n · (∏ᵢ mᵢ) · m^{l−n} ≤ mⁿ · m^{l−n}`, using `lᵢ ≥ 1` (every
+/-- **The unilateral search space is bounded by `m ^ l` itself**, with no factor `n`: `n ·
+∏ᵢ mᵢ^{lᵢ} ≤ n · (∏ᵢ mᵢ) · m^{l−n} ≤ mⁿ · m^{l−n}`, using `lᵢ ≥ 1` (every
 reduced action set is nonempty) and `card_mul_prod_le_pow`. -/
 lemma card_unilateralCertificate_le' (Γ : Game N 𝒜) :
     Fintype.card (N × Γ.Certificate) ≤ Γ.size ^ Γ.reduce.size := by
@@ -800,7 +800,7 @@ lemma card_unilateralCertificate_le' (Γ : Game N 𝒜) :
 /-- **Proposition 26** (and **Proposition 10**, unilateral case): the (strict) unilateral SPI
 decision problem is decided by searching the pairs (player, certificate), of which there
 are at most `m ^ l` — the paper's `O(m^l)` on the nose, with the factor `n` from the choice
-of player absorbed by the certificate count (`card_unilateralCertificate_le'`, R7-F04) —
+of player absorbed by the certificate count (`card_unilateralCertificate_le'`) —
 for one passing the checks of Proposition 25.  Qualified node (`dd:complexity`) exactly
 as `spiDecision_search`; the polynomial cost of the three checks (check 3 is a full
 reduction) is the clause not rendered.

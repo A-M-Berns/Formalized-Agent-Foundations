@@ -30,7 +30,8 @@ game playing and program equilibria is:
 import SafeParetoImprovements.API
 ```
 
-**Status.**  §2–§6 and the appendix proofs of Oesterheld & Conitzer 2022 are formalized
+**Status.**  §2–§5 and the appendix proofs of Oesterheld & Conitzer 2022 are formalized
+(§6, the SPI selection problem, is prose and contributes no nodes),
 with two boundaries the README records: **Theorem 15** (the two-player geometric
 characterization of the safely achievable payoffs) is *deferred* by ruling — its printed
 statement projects onto a Pareto frontier where the projection need not exist (erratum

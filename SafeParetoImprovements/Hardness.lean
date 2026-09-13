@@ -36,11 +36,12 @@ together with `0 < ε`, which the paper never states and the construction needs 
 `ε = 0` the corner rows no longer strictly dominate anything against the table's `0`s;
 erratum D21);
 `n ≥ 1` replaces the printed "WLOG `n, n̂ ≥ 2`" and is assumed by all four forms of Lemma 28
-(the proof route needs `ε < 1`, which the `Γ`-side bound gives only when `n ≥ 1`).  It is
-mathematically necessary for the two strict forms: with `n = 0` the empty subgraph
-isomorphism exists but no strict SPI does, since the `Γ` block is then the two corner
-actions and `Ψ` carries their payoffs exactly.  The plain and unilateral forms would
-survive `n = 0` under `ε < 1` assumed separately; no declaration states that.
+(the proof route needs `ε < 1`, which the `Γ`-side bound gives only when `n ≥ 1`).  Two
+remarks about `n = 0` that no declaration carries: the two strict forms appear to need it
+(the empty subgraph isomorphism exists, while the `Γ` block is then the two corner actions
+and `Ψ` carries their payoffs exactly, leaving no strict improvement), and the plain and
+unilateral forms would survive with `ε < 1` assumed separately.  Both are unverified
+side remarks, not claims of this formalization.
 
 * `Hardness.Graph`, `SubgraphIso`, `SubgraphIsoProblem` — Definition 8.
 * `Hardness.tableU₁`, `tableU₂` — Table 9's payoffs, with the shift `δ` that turns `Γ`
@@ -347,7 +348,7 @@ section construction
 variable (φ : Fin n ↪ Fin n')
 
 /-- `Ψ` on the actions of Table 9: `i ↦ φ(i)`, `n+i ↦ n̂+φ(i)`, corners to corners — the
-embedding `φ ⊕ φ ⊕ id` (Mathlib's `Function.Embedding.sumMap`, R6-F15). -/
+embedding `φ ⊕ φ ⊕ id` (Mathlib's `Function.Embedding.sumMap`). -/
 def psiT : TableAct n ↪ TableAct n' := φ.sumMap (φ.sumMap (Function.Embedding.refl Bool))
 
 @[simp] lemma psiT_inl (i : Fin n) : psiT φ (Sum.inl i) = Sum.inl (φ i) := rfl
@@ -383,7 +384,8 @@ case `i ≠ j ∈ [n]` is the subgraph condition `a(i, j) ≤ â(φ(i), φ(j))`)
 lemma tableU₁_le_psiT (hε : 0 ≤ ε) (hεn : ε * (2 * n) < 1) (hφ : SubgraphIso a a' φ)
     (t t' : TableAct n) : tableU₁ a ε 0 t t' ≤ tableU₁ a' ε 1 (psiT φ t) (psiT φ t') := by
   rcases t with i | i | b <;> rcases t' with j | j | b' <;>
-    simp only [psiT_inl, psiT_inr_inl, psiT_inr_inr, tableU₁, φ.apply_eq_iff_eq] <;> (try split_ifs) <;> (try subst_vars) <;>
+    simp only [psiT_inl, psiT_inr_inl, psiT_inr_inr, tableU₁, φ.apply_eq_iff_eq] <;> (try
+    split_ifs) <;> (try subst_vars) <;>
     first
     | linarith
     | (rename_i hij; exact adj_le_adj a a' (hφ _ _ hij))
@@ -805,15 +807,17 @@ end lemma28
 
 universe u v
 
-/-- **Theorem 9**, as carried here (`dd:complexity`, RULING 6): **membership** — for games
-over any finite player set, each of the four (strict) (unilateral) SPI decision problems is
-equivalent to the existence of a certificate (Propositions 23 and 25; the certificates
-form a finite type of size at most `m ^ l`, `card_certificate_le`) — together with
-**hardness, "even for 2-player games"** — the subgraph isomorphism problem reduces to each
-of the four problems on the two-player games of Table 10 (Lemma 28).  NP-completeness
-itself is these two facts plus Cook's theorem for subgraph isomorphism (Lemma 27, cited and
-not carried) plus a cost model for games given as explicit payoff matrices, which the
-paper does not fix and this formalization does not render.
+/-- **Theorem 9**, as carried here (`dd:complexity`, RULING 6): the **certificate
+characterizations** — for games over any finite player set, each of the four (strict)
+(unilateral) SPI decision problems is equivalent to the existence of a certificate
+(Propositions 23 and 25) — together with **the reductions, "even for 2-player games"** —
+the subgraph isomorphism problem reduces to each of the four problems on the two-player
+games of Table 10 (Lemma 28).  What makes the characterizations *membership*-shaped, the
+bound `card ≤ m ^ l` on the certificate type, is `card_certificate_le`, stated separately
+and not a conjunct here.  NP-completeness itself is these facts plus Cook's theorem for
+subgraph isomorphism (Lemma 27, cited and not carried) plus a cost model for games given
+as explicit payoff matrices, which the paper does not fix and this formalization does not
+render.
 
 Paper node: `Theorem 9` -/
 theorem theorem9 :

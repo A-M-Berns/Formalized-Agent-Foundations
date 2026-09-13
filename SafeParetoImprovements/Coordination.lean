@@ -41,16 +41,16 @@ statement `¬ ∃ T : TokenGame Γ, …` is the paper's impossibility.
 
 **Disclosure:** a universe with only finitely many spare elements would truncate that class
 and weaken any such statement — indeed a game using its whole finite universe has
-`TokenGame Γ` *empty*, so an impossibility over it is vacuous (round-4 blocker R4-F01).
+`TokenGame Γ` *empty*, so an impossibility over it is vacuous.
 Where the argument permits, the impossibility is additionally stated label-free, as a fact
 about `C(Γ)`-valued random variables, so that it does not depend on how rich the universe
 is (`Examples.chicken_no_feasible_dominating_of_mean_cc`).
 
-The predicate is parameterized by the set to *avoid*: every §5 construction tokenizes
-`Γ.reduce` (or a subset game) and hands the result back as a `TokenGame Γ`, whose `fresh`
-field demands disjointness from `Γ.S i ⊇ Γ.reduce.S i`.  `Γ.reduce.HasRoom` is strictly
-weaker than that and does **not** suffice (R4-F01, `dd:room`); the right hypothesis is
-`Γ.reduce.HasRoomOutside Γ.S`.
+The predicate is parameterized by the set to *avoid*: every §5 construction hands its
+token game back as a `TokenGame Γ`, whose `fresh` field demands disjointness from `Γ.S i`.
+Room for a *subset* game's tokens, avoiding only that subset's action sets, is strictly
+weaker and does **not** suffice (`dd:room`); every §5 endpoint takes `Γ.HasRoom`, which is
+`Γ.HasRoomOutside Γ.S`, and `hasRoomOutside_of_infinite` supplies it over `X ⊕ ℕ`.
 -/
 
 universe u v w
@@ -128,8 +128,8 @@ lemma Correlated.mix_payoff (p q : Γ.Correlated) {θ : ℝ} (h0 : 0 ≤ θ) (h1
 
 /-! #### Interoperability with Mathlib's standard simplex
 
-A correlated strategy is a point of `stdSimplex ℝ A` on the outcomes `A = Γ.profilesFinset`
-(R5-F15): `Correlated.toStdSimplex` restricts the weights to the outcomes, `Correlated.ofStdSimplex`
+A correlated strategy is a point of `stdSimplex ℝ A` on the outcomes `A = Γ.profilesFinset`:
+`Correlated.toStdSimplex` restricts the weights to the outcomes, `Correlated.ofStdSimplex`
 zero-extends a simplex point to the universe, and the two are inverse (`ofStdSimplex_toStdSimplex`,
 `toStdSimplex_ofStdSimplex`), so Mathlib's simplex API (`convex_stdSimplex`, `isCompact_stdSimplex`,
 …) is available for `Correlated` without a second representation. -/
@@ -214,8 +214,8 @@ correlated strategy `p` that is feasible for the paper's linear program — maxi
 `∑ᵢ (uᵢ(p) − yᵢ)` subject to `u(p) ≥ y` — has objective `0`.  That is the paper's "the
 program has optimum `0`" wherever the program is feasible; when it is infeasible (`y` above
 `C(Γ)`) the program has no optimum at all, both sides here hold vacuously, and
-`ParetoOptimalIn` is true, which is the reading the paper's use of the lemma needs
-(R7-F03).  The paper states it for an arbitrary payoff vector `y ∈ ℝⁿ` (extraction
+`ParetoOptimalIn` is true, which is the reading the paper's use of the lemma needs.  The
+paper states it for an arbitrary payoff vector `y ∈ ℝⁿ` (extraction
 l. 1360–1362), and so does this: no membership hypothesis is needed or imposed.  Below
 `C(Γ)` both sides are false.  The clause "it can be decided by linear programming and thus in
 polynomial time" is not rendered (`dd:complexity`, RULING 6).
@@ -290,7 +290,7 @@ injective copy of her action set that avoids `B i`.  The paper assumes fresh tok
 over a fixed universe this is a hypothesis, and the set to avoid must be given separately
 from the game being copied — every §5 construction tokenizes `Γ.reduce` (or a subset game)
 and hands the result back as a `TokenGame Γ`, whose `fresh` field demands disjointness from
-`Γ.S i`, not merely from `Γ.reduce.S i` (R4-F01). -/
+`Γ.S i`, not merely from `Γ.reduce.S i`. -/
 def HasRoomOutside (B : ∀ i, Finset (𝒜 i)) : Prop :=
   ∀ i, ∃ t : 𝒜 i → 𝒜 i, InjOn t (Γ.S i) ∧ ∀ a ∈ Γ.S i, t a ∉ B i
 

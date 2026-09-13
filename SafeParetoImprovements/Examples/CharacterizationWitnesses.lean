@@ -21,11 +21,12 @@ conditional expectation is a genuine average rather than a point evaluation.
   strict token game is worth `(1, 1)` and the plain one `(½, ½)`.  The latter value is not
   attained by any token game with a *constant* `uᵉ` (`conflict_plain_not_constant_ue`), so
   Corollary 14's set is genuinely wider than the constant reassignments.
-* **`condExp` is a genuine average** (`condExp_genuine_average`, R5-F11).  In the *book*
+* **`condExp` is a genuine average** (`condExp_genuine_average`).  In the *book*
   models of this development the conditional expectation collapses to a point evaluation
   whenever the token game is isomorphic to the reduced base game (Lemma 13's case), because
   a `Book` page is chosen per isomorphism class and the token play is then a function of
-  `Π(Γ)`.  That is a property of the book construction, not of `Representatives.condExp`: the hand-built family `mixPlay` reads the *size* of the game
+  `Π(Γ)`.  That is a property of the book construction, not of `Representatives.condExp`:
+  the hand-built family `mixPlay` reads the *size* of the game
   it is handed, so on the (full-measure) fiber `Π(mixBase) = (0,0)` the token payoff still
   varies with `ω`, and `E[uᵉ(Π(Aˢ,uˢ)) | Π(Γ) = (0,0)] = (½, ½)` is a value the integrand
   never takes (`condExp_ne_values`).
@@ -152,7 +153,7 @@ lemma conflict_plain_not_constant_ue (T : TokenGame conflictGame) (c : Two → �
 /-! ### A perfect-coordination SPI that is not a copy of the reduction
 
 Lemma 13's content is that an *arbitrary* perfect-coordination SPI can be replaced by an
-exact copy of the reduced game.  On the conflict game the two witnesses above are already
+exact copy of the game itself.  On the conflict game the two witnesses above are already
 built on `conflictTokenCopy`, so they do not exercise that; this one has three actions per
 player and is therefore not isomorphic to the two-action reduction. -/
 
@@ -219,7 +220,7 @@ The play family below is *not* a book: it reads the size of the game it is hande
 base game (two actions per player) it always plays the smallest action; on the token game
 (three actions) it plays the largest on heads and the smallest on tails.  So the fiber
 `Π(base) = (0, 0)` is the whole sample space while the token payoff still varies, and the
-conditional expectation there is a strict average (R5-F11). -/
+conditional expectation there is a strict average. -/
 
 /-- The universe for the averaging witness: `ℕ` for both players. -/
 abbrev MixUniverse : Two → Type := fun _ => ℕ
@@ -285,7 +286,7 @@ lemma mixBase_mem (a x : ℕ) (ha : a = 0 ∨ a = 1) (hx : x = 0 ∨ x = 1) :
 
 /-- A perfect-coordination SPI whose token payoff is *not* determined by `Π(mixBase)`: it
 pays `(1, 1)` whenever player 1's token action is `4` (the profiles `(4, 2)`, `(4, 3)` and
-`(4, 4)`, of which the play uses only `(4, 4)`) and `(0, 0)` otherwise (R5-F17). -/
+`(4, 4)`, of which the play uses only `(4, 4)`) and `(0, 0)` otherwise. -/
 noncomputable def mixToken : TokenGame mixBase where
   game := mixTok
   fresh i := by
@@ -334,7 +335,7 @@ lemma mixBase_mem_support : (pair 0 0 : ∀ i, MixUniverse i) ∈ mixRepresentat
   rw [h, show mixRepresentatives.μ Set.univ = 1 from measure_univ]
   exact one_ne_zero
 
-/-- **`condExp` is a genuine average, not a point mass** (R5-F11): on the supported fiber
+/-- **`condExp` is a genuine average, not a point mass**: on the supported fiber
 `Π(mixBase) = (0, 0)` — which is the whole sample space — the conditional expectation of the
 token payoff is `(½, ½)`, while the token payoff itself only ever takes the values `(0, 0)`
 and `(1, 1)`.  The book models of this development collapse `condExp` to a point

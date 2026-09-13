@@ -191,7 +191,7 @@ lemma reducedGame_reduced : reducedGame.Reduced := by
 /-- The **full reduction** of the Demand Game is `reducedGame`: the four eliminations
 `dom1`–`dom4` form an `ElimStar` chain to a game with no strictly dominated action, and
 the fully reduced game is unique (`Game.reduce_eq_of_reduced_of_elimStar`).  This is what
-lets a book prescribe the play of the Demand Game (R1-F15). -/
+lets a book prescribe the play of the Demand Game. -/
 lemma reduce_eq : demandGame.reduce = reducedGame := by
   have e1 : demandGame.ElimStar g1 :=
     Relation.ReflTransGen.single ⟨.one, .DL, dom1, rfl⟩

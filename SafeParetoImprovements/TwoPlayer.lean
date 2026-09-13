@@ -14,7 +14,7 @@ two-player game is a pair, strict dominance for one player is a quantifier over 
 player's actions, an action that is a weak best response to some opponent action is not
 strictly dominated, and a game is reduced when no action of either player is dominated.
 It is library-level (not an example file) because `Hardness.lean` states paper nodes over
-`Two` (R6-F01).
+`Two`.
 -/
 
 namespace SafeParetoImprovements

@@ -20,9 +20,12 @@ determine their actions; `u 𝐩 i` is agent `i`'s payoff when they all follow `
 `𝐏`, the payoffs under `𝐟(𝐩)` weakly Pareto-dominate those under `𝐩`
 (`IsSPITransformation`).
 
-**B.2.**  A **full strategy** is a pair `(𝐟, 𝐩)`: an SPI together with the programs the
-agents in fact apply it to (`FullStrategy`).  Write `d(𝐪ᵢ)` for the demands made by a
-program.  Two counterfactuals are the primitives of the definitions:
+**B.2.**  A **full strategy** is a pair `(𝐟, 𝐩)`: a transformation — an SPI, in the
+source's intended use — together with the programs the agents in fact apply it to
+(`FullStrategy`).  The structure carries no SPI condition of its own; the SPI property is
+`IsSPITransformation`, stated and proved separately, so that the three properties below
+can be discussed for any transformation.  Write `d(𝐪ᵢ)` for the demands made by a program.
+Two counterfactuals are the primitives of the definitions:
 
 * `𝐩ᴾᵢ(𝐟)`, the program `i` would have chosen had each other agent `j` *used* `𝐩ⱼ` rather
   than `𝐟(𝐩)ⱼ`;
@@ -30,11 +33,12 @@ program.  Two counterfactuals are the primitives of the definitions:
   would use `𝐩ⱼ` rather than `𝐟(𝐩)ⱼ`.
 
 The source leaves "would have chosen" informal.  Here it is data: a **choice model**
-(`ChoiceModel`) records, for each agent, the input program she chooses as a function of
-the programs the others actually use, and as a function of the programs she believes they
-use (beliefs are point beliefs — a profile — which is all the source's counterfactual
-needs).  The full strategy is **consistent** with the model when `𝐩ᵢ` is what the model
-chooses in the actual situation, where the others use `𝐟(𝐩)ⱼ` (`Consistent`).  Then
+(`ChoiceModel`) records, for each agent `i`, the input program she chooses as a function of
+the programs the *other* agents `j ≠ i` actually use, and as a function of the programs she
+believes they use (beliefs are point beliefs — the others' profile — which is all the
+source's counterfactual needs).  The agent's own coordinate is what is being chosen, so it
+is not an input.  The full strategy is **consistent** with the model when `𝐩ᵢ` is what the
+model chooses in the actual situation, where the others use `𝐟(𝐩)ⱼ` (`Consistent`).  Then
 
 * `(𝐟, 𝐩)` is **demand-preserving** if `d(𝐟(𝐩)ᵢ) = d(𝐩ᵢ)` for each `i`;
 * **participation-independent** if demand-preserving and `𝐩ᵢ = 𝐩ᴾᵢ(𝐟)` for each `i`;
@@ -47,7 +51,9 @@ reduces to demand preservation.  Foreknowledge independence does not reduce the 
 `not_foreknowledgeIndependent_of_demand_ne` is the shape of B.2's "PI but not FI" agent,
 who demands the same whatever the counterpart does but would have demanded less had she
 known.  The worked instance with the source's numbers is
-`Examples/Renegotiation.lean`.
+`Examples/Renegotiation.lean`, which also exhibits the execution-level notions of
+`Independence.lean` on the same example; no general bridge between the two levels is
+claimed, and Appendix B.3 (surrogate goals, concession equivalence) is not rendered.
 -/
 
 universe u v w
@@ -70,14 +76,16 @@ structure FullStrategy (P : N → Type v) where
   /-- The input programs `𝐩`. -/
   progs : ∀ i, P i
 
+/-- The programs of everybody but `i`, read off a profile. -/
+def others (p : ∀ j, P j) (i : N) : ∀ j, j ≠ i → P j := fun j _ => p j
+
 /-- **A choice model**: the two counterfactual program choices of B.2, as functions of the
-program profile the others use, resp. the one the agent believes they use.  Only the
-coordinates `j ≠ i` of the argument are meant to matter. -/
+programs the *other* agents use, resp. the ones the agent believes they use. -/
 structure ChoiceModel (P : N → Type v) where
   /-- `i`'s chosen input program when the others *use* the given programs. -/
-  ofParticipation : ∀ i, (∀ j, P j) → P i
+  ofParticipation : ∀ i, (∀ j, j ≠ i → P j) → P i
   /-- `i`'s chosen input program when she *believes* the others use the given programs. -/
-  ofBelief : ∀ i, (∀ j, P j) → P i
+  ofBelief : ∀ i, (∀ j, j ≠ i → P j) → P i
 
 namespace ChoiceModel
 
@@ -96,16 +104,22 @@ variable (d : ∀ i, P i → D i) (s : FullStrategy P) (χ : ChoiceModel P)
 /-- The programs actually used, `𝐟(𝐩)`. -/
 def used : ∀ i, P i := s.transform s.progs
 
+/-- The full strategy's transformation is an SPI on `space` for the payoff `u` (B.2's
+standing hypothesis "if `𝐟` is an SPI"). -/
+def IsSPI (u : (∀ i, P i) → N → ℝ) (space : Set (∀ i, P i)) : Prop :=
+  IsSPITransformation u space s.transform
+
 /-- `𝐩ᴾᵢ(𝐟)`: what `i` would have chosen had the others used `𝐩ⱼ`. -/
-def counterfactualP (i : N) : P i := χ.ofParticipation i s.progs
+def counterfactualP (i : N) : P i := χ.ofParticipation i (others s.progs i)
 
 /-- `𝐩ᶠᵢ(𝐟)`: what `i` would have chosen had she believed the others would use `𝐩ⱼ`. -/
-def counterfactualF (i : N) : P i := χ.ofBelief i s.progs
+def counterfactualF (i : N) : P i := χ.ofBelief i (others s.progs i)
 
 /-- The full strategy is what the choice model produces in the actual situation, where the
 others use (and are believed to use) `𝐟(𝐩)ⱼ`. -/
 def Consistent : Prop :=
-  ∀ i, χ.ofParticipation i s.used = s.progs i ∧ χ.ofBelief i s.used = s.progs i
+  ∀ i, χ.ofParticipation i (others s.used i) = s.progs i ∧
+    χ.ofBelief i (others s.used i) = s.progs i
 
 /-- **Demand-preserving**: `d(𝐟(𝐩)ᵢ) = d(𝐩ᵢ)` for each agent. -/
 def DemandPreserving : Prop := ∀ i, d i (s.used i) = d i (s.progs i)
@@ -124,7 +138,7 @@ immediate because `i`'s choice does not depend on what the others use. -/
 lemma participationIndependent_of_simultaneous (hsim : χ.Simultaneous)
     (hcons : s.Consistent χ) (hd : s.DemandPreserving d) :
     s.ParticipationIndependent d χ :=
-  ⟨hd, fun i => ((hcons i).1.symm.trans (hsim i s.used s.progs))⟩
+  ⟨hd, fun i => ((hcons i).1.symm.trans (hsim i _ _))⟩
 
 /-- An agent who would have made a *different demand* had she known the others would not
 participate breaks foreknowledge independence, whatever the transformation does. -/
@@ -134,8 +148,9 @@ lemma not_foreknowledgeIndependent_of_demand_ne {i : N}
   fun hfi => h (congrArg (d i) (hfi.2 i)).symm
 
 /-- Program-level foreknowledge independence pins the counterfactual demand to the actual
-one: this is the only content the source's clause `𝐩ᵢ = 𝐩ᶠᵢ(𝐟)` adds beyond demand
-preservation once demands are all one looks at. -/
+one.  The source's clause `𝐩ᵢ = 𝐩ᶠᵢ(𝐟)` is an equality of *programs*, strictly stronger
+than this demand equality (distinct programs can share a demand); this is the consequence
+of it that the demand-level examples use. -/
 lemma ForeknowledgeIndependent.demand_counterfactualF (h : s.ForeknowledgeIndependent d χ)
     (i : N) : d i (s.counterfactualF χ i) = d i (s.progs i) :=
   (congrArg (d i) (h.2 i)).symm

@@ -129,7 +129,7 @@ variable {Ω : Type w} (B : Book N 𝒜 Ω)
 /-- How the book representatives play a game `G` *that is already fully reduced*: read
 the page of its class and translate back through the isomorphism chosen for `G`'s
 **canonical presentation** `G.canon` — so that the play depends only on the paper's game,
-not on payoffs off the profiles (`playReduced_eqOn`, R7-F01). -/
+not on payoffs off the profiles (`playReduced_eqOn`). -/
 noncomputable def playReduced (G : Game N 𝒜) (ω : Ω) : ∀ i, 𝒜 i :=
   (G.canon.chosenIso G.cls G.cls_canon).symm.map (B.page G.cls ω)
 
@@ -213,7 +213,7 @@ point: the page of the class of the reduced game `T` is the outcome `a ω` of `T
 translated onto the class representative; every other class gets an arbitrary outcome.
 Unlike `Book.prescribed` (the constant case, `a` independent of `ω`) this book's play can
 be genuinely random on the games reducing to `T`, which is what a non-degenerate instance
-of Theorem 1 needs (R3-F11). -/
+of Theorem 1 needs. -/
 noncomputable def prescribedRandom (T : Game N 𝒜) {a : Ω → ∀ i, 𝒜 i}
     (ha : ∀ ω, a ω ∈ T.profiles) : Book N 𝒜 Ω where
   page q ω := open Classical in
@@ -238,8 +238,8 @@ lemma prescribedRandom_play (T : Game N 𝒜) {a : Ω → ∀ i, 𝒜 i} (ha : �
 /-- The **prescribed book** for one target class: the page of the class of the reduced
 game `T` is a chosen outcome `a` of `T`, translated onto the class representative; every
 other class gets an arbitrary outcome.  This is the "book with a prescribed page
-distribution" that Proposition 16 and the strictness clause of Proposition 6 need
-(R1-F15).  It is the constant case of `Book.prescribedRandom`. -/
+distribution" that Proposition 16 and the strictness clause of Proposition 6 need.  It is
+the constant case of `Book.prescribedRandom`. -/
 noncomputable def prescribed (T : Game N 𝒜) {a : ∀ i, 𝒜 i} (ha : a ∈ T.profiles)
     (Ω : Type w) : Book N 𝒜 Ω :=
   prescribedRandom (Ω := Ω) T (a := fun _ => a) (fun _ => ha)
@@ -347,7 +347,7 @@ lemma exists_play_satisfiesA1_satisfiesA2_hits :
 
 /-- **Assumptions 1 and 2 are jointly satisfiable by *representatives*** — a probability
 space with measurable outcome fibers, which is what §3 models the representatives as — and
-not merely by a bare play family (R1-F14).  The witness is the deterministic book on a
+not merely by a bare play family.  The witness is the deterministic book on a
 one-point probability space; its pages are constant, hence its fibers measurable, and the
 assumptions hold at every sample point and so at the model's own certainty filter.
 
@@ -355,7 +355,7 @@ assumptions hold at every sample point and so at the model's own certainty filte
 the `measurableSet_fiber` field is satisfied by `trivial` and is content-free at this
 witness.  The same is true of any book on a discrete `Ω` — including the profile space
 `∀ i, 𝒜 i` used by `Book.varying`, which is infinite over the `X ⊕ ℕ` universes of §5 but
-is given the discrete σ-algebra wherever it is used (R7-F06).  `measurableSet_fiber` is exercised
+is given the discrete σ-algebra wherever it is used.  `measurableSet_fiber` is exercised
 non-trivially only over a non-discrete sample space, of which this development supplies no
 instance. -/
 lemma exists_representatives_satisfiesA1_satisfiesA2 :
