@@ -77,6 +77,12 @@ lemma measurableSet_fiber' (Γ : Game N 𝒜) (a : ∀ i, 𝒜 i) : MeasurableSe
 lemma mem_support_iff (Γ : Game N 𝒜) (a : ∀ i, 𝒜 i) : a ∈ R.support Γ ↔ R.μ (R.fiber Γ a) ≠ 0 :=
   Iff.rfl
 
+/-- Outside the support a fiber has measure zero, so its weight in any fiber sum is `0`. -/
+lemma measureReal_fiber_eq_zero_of_not_mem_support (Γ : Game N 𝒜) {a : ∀ i, 𝒜 i}
+    (hs : a ∉ R.support Γ) : R.μ.real (R.fiber Γ a) = 0 := by
+  have : R.μ (R.fiber Γ a) = 0 := not_not.1 ((R.mem_support_iff Γ a).not.1 hs)
+  rw [Measure.real, this, ENNReal.toReal_zero]
+
 lemma fiber_disjoint (Γ : Game N 𝒜) {a b : ∀ i, 𝒜 i} (hab : a ≠ b) :
     Disjoint (R.fiber Γ a) (R.fiber Γ b) := by
   rw [Set.disjoint_left]
@@ -277,10 +283,32 @@ theorem exists_reassignment_condExp_eq (Γ : Game N 𝒜)
     refine Finset.sum_congr rfl fun a _ => ?_
     by_cases hs : a ∈ R.support Γ
     · rw [hcond a hs]
-    · have h0 : R.μ.real (R.fiber Γ a) = 0 := by
-        have : R.μ (R.fiber Γ a) = 0 := not_not.1 ((R.mem_support_iff Γ a).not.1 hs)
-        rw [Measure.real, this, ENNReal.toReal_zero]
-      rw [h0, zero_smul, zero_smul]
+    · rw [R.measureReal_fiber_eq_zero_of_not_mem_support Γ hs, zero_smul, zero_smul]
+
+omit [∀ i, DecidableEq (𝒜 i)] in
+/-- **The expectation of a function of the play is a fiber sum**:
+`E[g(Π(Γ))] = ∑ₐ P(Π(Γ) = a) • g a`, the sum over the outcomes of `Γ` (unsupported outcomes
+contribute `0`).  This is the law of total expectation `integral_eq_sum_condExp` with the
+conditional expectations evaluated by `condExp_comp_play`. -/
+lemma integral_comp_play_eq_sum (Γ : Game N 𝒜) (g : (∀ i, 𝒜 i) → N → ℝ) :
+    ∫ ω, g (R.play Γ ω) ∂R.μ = ∑ a ∈ Γ.profilesFinset, R.μ.real (R.fiber Γ a) • g a := by
+  rw [R.integral_eq_sum_condExp Γ _ (R.integrable_comp_play_pi Γ g _)]
+  refine Finset.sum_congr rfl fun a _ => ?_
+  by_cases hs : a ∈ R.support Γ
+  · rw [R.condExp_comp_play Γ hs]
+  · rw [R.measureReal_fiber_eq_zero_of_not_mem_support Γ hs, zero_smul, zero_smul]
+
+omit [∀ i, DecidableEq (𝒜 i)] in
+/-- **The fiber masses sum to one**: `∑ₐ P(Π(Γ) = a) = 1` over the outcomes of `Γ`, since
+the fibers partition the sample space. -/
+lemma sum_measureReal_fiber (Γ : Game N 𝒜) :
+    ∑ a ∈ Γ.profilesFinset, R.μ.real (R.fiber Γ a) = 1 := by
+  have hcover : (⋃ a ∈ Γ.profilesFinset, R.fiber Γ a) = univ := by
+    ext ω
+    simp only [mem_iUnion, mem_univ, iff_true, exists_prop]
+    exact ⟨R.play Γ ω, Γ.mem_profilesFinset.2 (R.toPlay.mem Γ ω), rfl⟩
+  rw [← measureReal_biUnion_finset (fun a _ b _ hab => R.fiber_disjoint Γ hab)
+    (fun a _ => R.measurableSet_fiber' Γ a), hcover, probReal_univ]
 
 /-! ### Corollary 14 -/
 
@@ -342,10 +370,7 @@ theorem achievable_eq_improvementSum (Γ : Game N 𝒜)
     by_cases hs : a ∈ R.support Γ
     · exact Set.smul_mem_smul_set ⟨R.condExp_mem_feasible Γ hs fun b hb => T.ue_mem b hb,
         R.le_condExp_of_isSPI Γ hs hT⟩
-    · have h0 : R.μ.real (R.fiber Γ a) = 0 := by
-        have : R.μ (R.fiber Γ a) = 0 := not_not.1 ((R.mem_support_iff Γ a).not.1 hs)
-        rw [Measure.real, this, ENNReal.toReal_zero]
-      rw [h0, zero_smul]
+    · rw [R.measureReal_fiber_eq_zero_of_not_mem_support Γ hs, zero_smul]
       have := Set.smul_mem_smul_set (a := (0 : ℝ))
         (Γ.u_mem_improvementSet (Γ.mem_profilesFinset.1 ha))
       rwa [zero_smul] at this
@@ -379,12 +404,31 @@ theorem achievable_eq_improvementSum (Γ : Game N 𝒜)
           integral_congr_ae (R.ae_cond_of_ae Γ a hT)
         rw [e, R.condExp_comp_play Γ hs]
         simp only [hfdef, dif_pos ha]
-      · have h0 : R.μ.real (R.fiber Γ a) = 0 := by
-          have : R.μ (R.fiber Γ a) = 0 := not_not.1 ((R.mem_support_iff Γ a).not.1 hs)
-          rw [Measure.real, this, ENNReal.toReal_zero]
-        rw [h0, zero_smul, zero_smul]
+      · rw [R.measureReal_fiber_eq_zero_of_not_mem_support Γ hs, zero_smul, zero_smul]
 
-/-- **Corollary 14, convexity**: the safely achievable set is convex.
+/-- **The safely achievable payoffs are feasible**: `achievable ⊆ C(Γ)`, since each
+achievable vector is a convex combination, with the fiber masses as weights, of points of
+`C(Γ)`.  This is the upper bound on Corollary 14's set that its inner description leaves
+implicit. -/
+lemma achievable_subset_feasible (Γ : Game N 𝒜)
+    (hA1 : R.toPlay.SatisfiesA1 R.certainty) (hA2 : R.toPlay.SatisfiesA2 R.certainty)
+    (h : Γ.HasRoom) : R.achievable Γ ⊆ Γ.feasible := by
+  rw [R.achievable_eq_improvementSum Γ hA1 hA2 h]
+  intro y hy
+  obtain ⟨g, hg, rfl⟩ := (Set.mem_finsetSum _ _ _).1 hy
+  choose k hk hgk using fun a (ha : a ∈ Γ.profilesFinset) => Set.mem_smul_set.1 (hg ha)
+  have hsum : ∑ a ∈ Γ.profilesFinset, g a =
+      ∑ a ∈ Γ.profilesFinset.attach, R.μ.real (R.fiber Γ a.1) • k a.1 a.2 := by
+    rw [← Finset.sum_attach]
+    exact Finset.sum_congr rfl fun a _ => (hgk a.1 a.2).symm
+  rw [hsum]
+  refine Γ.convex_feasible.sum_mem (fun a _ => ENNReal.toReal_nonneg) ?_
+    fun a _ => (hk a.1 a.2).1
+  exact (Finset.sum_attach _ _).trans (R.sum_measureReal_fiber Γ)
+
+/-- **Corollary 14, convexity**: the safely achievable set is convex.  Hypotheses as for
+`achievable_eq_improvementSum`: Assumptions 1 and 2 (the paper prints "under Assumption 2";
+Assumption 1 is the addition RULING 11 records) and room for tokens.
 
 Paper node: `Corollary 14` -/
 theorem convex_achievable (Γ : Game N 𝒜)
@@ -422,6 +466,8 @@ lemma _root_.SafeParetoImprovements.Game.isPolytope_improvementSet (Γ : Game N 
 hull of finitely many points — the paper's "convex polygon", for any number of players.
 Each summand `{y ∈ C(Γ) | y ≥ u(a)}` is a polytope cut by an orthant
 (`IsPolytope.inter_Ici`), and polytopes are closed under scaling and Minkowski sums.
+Hypotheses as for `achievable_eq_improvementSum`: Assumptions 1 and 2 (Assumption 1 is the
+addition RULING 11 records) and room for tokens.
 
 Paper node: `Corollary 14` -/
 theorem isPolytope_achievable (Γ : Game N 𝒜)

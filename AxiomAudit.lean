@@ -3761,8 +3761,160 @@ blocks, a stale entry, a malformed line, a non-empty block once the paper is
   -- §4.4.2 / Appendix C: Lemma 4, weak and strict forms (SafeParetoImprovements/Isomorphism.lean).
   SafeParetoImprovements.GameIso.paretoImproving_of_paretoImproving
   SafeParetoImprovements.GameIso.strictlyParetoImproving_of_strictlyParetoImproving
-  -- Appendix D.1: Lemma 19 (SafeParetoImprovements/Reduction.lean).
+  -- Appendix D.1: Lemma 19 and Lemma 20 (SafeParetoImprovements/Reduction.lean); the
+  -- diamond property in the printed shape (erratum D20's correction) and in the shape the
+  -- Church-Rosser argument consumes.
   SafeParetoImprovements.Game.isStrictlyDominated_erase
+  SafeParetoImprovements.Game.elim_diamond SafeParetoImprovements.Game.elim_diamond_reflGen
+  -- Every remaining public declaration of the library, named so that the gate's coverage
+  -- is literal rather than transitive: the §2 vocabulary (profiles, `EqOn`, subset games,
+  -- dominance, `Reduced`), the reduction machinery, the realization iffs and support of
+  -- `Representatives`, the isomorphism transport lemmas, the correlated-strategy and
+  -- token helpers, the polytope substrate, and the two-player table lemmas.
+  SafeParetoImprovements.Game.elimRel
+  SafeParetoImprovements.Play.SatisfiesA1.ne_of_isStrictlyDominated
+  SafeParetoImprovements.Play.SatisfiesA1.play_erase
+  SafeParetoImprovements.Play.exists_paretoImproving_corresponds_of_assumption2
+  SafeParetoImprovements.Play.paretoImprovingCorrespondence_of_iso
+  SafeParetoImprovements.Game.Isomorphic.refl SafeParetoImprovements.Game.Isomorphic.trans
+  SafeParetoImprovements.Game.Isomorphic.symm SafeParetoImprovements.isoSetoid
+  SafeParetoImprovements.IsoClass SafeParetoImprovements.Game.cls
+  SafeParetoImprovements.Game.cls_eq_of_isomorphic SafeParetoImprovements.IsoClass.rep
+  SafeParetoImprovements.Game.isomorphic_rep SafeParetoImprovements.Game.chosenIso
+  SafeParetoImprovements.Book.playReduced SafeParetoImprovements.Book.playReduced_mem
+  SafeParetoImprovements.Book.chosenIso_symm_map_page
+  SafeParetoImprovements.Book.measurableSet_fiber SafeParetoImprovements.Book.toRepresentatives
+  SafeParetoImprovements.Representatives.fiber
+  SafeParetoImprovements.Representatives.measurableSet_fiber'
+  SafeParetoImprovements.Representatives.mem_support_iff
+  SafeParetoImprovements.Representatives.measureReal_fiber_eq_zero_of_not_mem_support
+  SafeParetoImprovements.Representatives.fiber_disjoint
+  SafeParetoImprovements.Representatives.condExp_isProbabilityMeasure
+  SafeParetoImprovements.Representatives.ae_play_eq_cond
+  SafeParetoImprovements.Representatives.ae_cond_of_ae
+  SafeParetoImprovements.Representatives.measurable_comp_play_pi
+  SafeParetoImprovements.Representatives.integrable_comp_play_pi
+  SafeParetoImprovements.Representatives.condExp_mono
+  SafeParetoImprovements.Representatives.integral_comp_play_eq_sum
+  SafeParetoImprovements.Representatives.sum_measureReal_fiber
+  SafeParetoImprovements.Game.u_mem_improvementSet
+  SafeParetoImprovements.Game.convex_improvementSet
+  SafeParetoImprovements.Game.isCompact_improvementSet
+  SafeParetoImprovements.Representatives.achievable_subset_feasible
+  SafeParetoImprovements.Game.Correlated.pure
+  SafeParetoImprovements.Game.Correlated.pure_payoff SafeParetoImprovements.Game.Correlated.mix
+  SafeParetoImprovements.Game.Correlated.mix_payoff SafeParetoImprovements.Game.hasRoom_iff
+  SafeParetoImprovements.Game.tokenMap SafeParetoImprovements.Game.tokenMap_injOn
+  SafeParetoImprovements.Game.tokenMap_not_mem SafeParetoImprovements.Game.untoken
+  SafeParetoImprovements.Game.untoken_tokenMap SafeParetoImprovements.Game.allRel
+  SafeParetoImprovements.Game.partialId SafeParetoImprovements.Play.Corresponds.mono_rel'
+  SafeParetoImprovements.Game.Step.isSubsetGameOf_left
+  SafeParetoImprovements.Game.Step.isSubsetGameOf_right
+  SafeParetoImprovements.Game.Step.mem_of_rel
+  SafeParetoImprovements.Game.Deriv.isSubsetGameOf_left
+  SafeParetoImprovements.Game.Deriv.isSubsetGameOf_right
+  SafeParetoImprovements.Game.Deriv.mem_of_rel SafeParetoImprovements.Game.Deriv.comp_partialId
+  SafeParetoImprovements.Game.Deriv.partialId_comp SafeParetoImprovements.Game.Deriv.trans
+  SafeParetoImprovements.Game.Step.comp_partialId SafeParetoImprovements.Game.Deriv.single
+  SafeParetoImprovements.Game.Deriv.partialId_comp_elimRel
+  SafeParetoImprovements.Game.Deriv.elimRel_inv_comp_partialId
+  SafeParetoImprovements.Game.Deriv.ofElimStar SafeParetoImprovements.Game.Deriv.ofElimStar_rev
+  SafeParetoImprovements.Game.Deriv.exists_iso SafeParetoImprovements.Game.Deriv.normalRel
+  SafeParetoImprovements.Game.Deriv.partialId_comp_rel_comp_partialId
+  SafeParetoImprovements.Game.Deriv.normal SafeParetoImprovements.Game.ParetoImprovingFor
+  SafeParetoImprovements.Game.exists_paretoImproving_deriv_iff
+  SafeParetoImprovements.Game.shiftReduce SafeParetoImprovements.Game.shiftReduce_reduced
+  SafeParetoImprovements.Game.shiftReduceIso SafeParetoImprovements.Game.bumpPayoff
+  SafeParetoImprovements.Game.bumpPayoff_reduced SafeParetoImprovements.Game.bumpPayoffIso
+  SafeParetoImprovements.Play.SatisfiesA1.play_elimStar
+  SafeParetoImprovements.Play.SatisfiesA1.play_reduce
+  SafeParetoImprovements.Game.profiles SafeParetoImprovements.Game.profilesFinset
+  SafeParetoImprovements.Game.profiles_nonempty SafeParetoImprovements.Game.payoff
+  SafeParetoImprovements.Game.EqOn.refl SafeParetoImprovements.Game.EqOn.symm
+  SafeParetoImprovements.Game.EqOn.trans SafeParetoImprovements.Game.IsSubsetGameOf
+  SafeParetoImprovements.Game.IsSubsetGameOf.refl
+  SafeParetoImprovements.Game.IsSubsetGameOf.trans
+  SafeParetoImprovements.Game.IsSubsetGameOf.profiles_subset
+  SafeParetoImprovements.Game.restrict SafeParetoImprovements.Game.restrict_isSubsetGameOf
+  SafeParetoImprovements.Game.erase SafeParetoImprovements.Game.erase_isSubsetGameOf
+  SafeParetoImprovements.Game.ParetoOptimalIn SafeParetoImprovements.Game.toStrategic
+  SafeParetoImprovements.Game.ofStrategicProfile
+  SafeParetoImprovements.Game.ofStrategicProfile_mem
+  SafeParetoImprovements.Game.toStrategicProfile
+  SafeParetoImprovements.Game.ofStrategicProfile_deviate
+  SafeParetoImprovements.Game.StrictlyDominates
+  SafeParetoImprovements.Game.strictlyDominates_iff
+  SafeParetoImprovements.Game.IsStrictlyDominated
+  SafeParetoImprovements.Game.IsStrictlyDominated.mem
+  SafeParetoImprovements.Game.IsStrictlyDominated.erase_nonempty
+  SafeParetoImprovements.Game.strictlyDominates_of_eqOn
+  SafeParetoImprovements.Game.EqOn.reduced_iff SafeParetoImprovements.Prog.execAt_play
+  SafeParetoImprovements.Prog.execAt_delegate
+  SafeParetoImprovements.Prog.execAt_ifAllSame_of_all
+  SafeParetoImprovements.Prog.execAt_ifAllSame_of_ne
+  SafeParetoImprovements.Prog.measurableSet_coord_fiber
+  SafeParetoImprovements.Prog.measurable_execAt SafeParetoImprovements.Game.nonempty_universe
+  SafeParetoImprovements.Game.Isomorphic SafeParetoImprovements.GameIso.map
+  SafeParetoImprovements.GameIso.map_mem SafeParetoImprovements.GameIso.affine'
+  SafeParetoImprovements.GameIso.map_injOn SafeParetoImprovements.GameIso.map_surjOn
+  SafeParetoImprovements.GameIso.map_bijOn SafeParetoImprovements.GameIso.rel
+  SafeParetoImprovements.GameIso.refl SafeParetoImprovements.GameIso.trans
+  SafeParetoImprovements.GameIso.symm SafeParetoImprovements.GameIso.symm_map_map
+  SafeParetoImprovements.GameIso.map_symm_map SafeParetoImprovements.GameIso.toFun_symm_toFun
+  SafeParetoImprovements.GameIso.symm_toFun_mem
+  SafeParetoImprovements.GameIso.payoff_eq_of_self
+  SafeParetoImprovements.GameIso.ParetoImproving
+  SafeParetoImprovements.GameIso.StrictlyParetoImproving
+  SafeParetoImprovements.Play.IsStrictSPI.isSPI SafeParetoImprovements.Play.isSPI_self
+  SafeParetoImprovements.IsPolytope.of_finite SafeParetoImprovements.IsPolytope.singleton
+  SafeParetoImprovements.IsPolytope.zero SafeParetoImprovements.IsPolytope.smul
+  SafeParetoImprovements.IsPolytope.add SafeParetoImprovements.IsPolytope.convex
+  SafeParetoImprovements.crossing SafeParetoImprovements.crossing_mem_segment
+  SafeParetoImprovements.apply_crossing SafeParetoImprovements.Game.Mixed
+  SafeParetoImprovements.Game.pureMixed SafeParetoImprovements.Game.pureMixed_val
+  SafeParetoImprovements.Game.expected SafeParetoImprovements.Game.expected_eq
+  SafeParetoImprovements.Game.expected_pure SafeParetoImprovements.Game.abs_expected_le
+  SafeParetoImprovements.Game.continuous_expected SafeParetoImprovements.Game.bestValue
+  SafeParetoImprovements.Game.continuous_bestValue
+  SafeParetoImprovements.Game.expected_le_bestValue
+  SafeParetoImprovements.Game.exists_isMinOn_bestValue
+  SafeParetoImprovements.Game.isMinOn_minimax SafeParetoImprovements.Game.sum_prod_mixed
+  SafeParetoImprovements.Game.expected_update_pure_le
+  SafeParetoImprovements.ProgramGame.measurable_expected_exec
+  SafeParetoImprovements.ProgramGame.integrable_expected_exec
+  SafeParetoImprovements.ProgramGame.Plays.exec_eq SafeParetoImprovements.Game.ext'
+  SafeParetoImprovements.Game.strictlyDominates_of_subset
+  SafeParetoImprovements.Game.StrictlyDominates.trans
+  SafeParetoImprovements.Game.StrictlyDominates.ne SafeParetoImprovements.Game.erase_S_apply
+  SafeParetoImprovements.Game.erase_S_of_ne SafeParetoImprovements.Game.Elim
+  SafeParetoImprovements.Game.Elim.isSubsetGameOf SafeParetoImprovements.Game.Elim.u_eq
+  SafeParetoImprovements.Game.ElimStar.isSubsetGameOf SafeParetoImprovements.Game.ElimStar.u_eq
+  SafeParetoImprovements.Game.erase_erase_comm SafeParetoImprovements.Game.Reduced.not_elim
+  SafeParetoImprovements.Game.Reduced.eq_of_elimStar SafeParetoImprovements.Game.reduced_unique
+  SafeParetoImprovements.Game.size SafeParetoImprovements.Game.size_erase_lt
+  SafeParetoImprovements.Game.pickDominated SafeParetoImprovements.Game.eraseStep
+  SafeParetoImprovements.Game.elim_eraseStep SafeParetoImprovements.Game.size_eraseStep_lt
+  SafeParetoImprovements.Game.reduce SafeParetoImprovements.Game.reduce_of_reduced
+  SafeParetoImprovements.Game.reduce_of_not_reduced SafeParetoImprovements.Game.elimStar_reduce
+  SafeParetoImprovements.Game.reduce_reduced
+  SafeParetoImprovements.Game.reduce_eq_of_reduced_of_elimStar
+  SafeParetoImprovements.Game.reduce_erase SafeParetoImprovements.Game.reduce_isSubsetGameOf
+  SafeParetoImprovements.Representatives.play SafeParetoImprovements.Representatives.certainty
+  SafeParetoImprovements.Representatives.eventually_certainty_iff
+  SafeParetoImprovements.Representatives.frequently_certainty_iff
+  SafeParetoImprovements.Representatives.isSPI_iff
+  SafeParetoImprovements.Representatives.isSPI_iff_of_subset
+  SafeParetoImprovements.Representatives.isStrictSPI_iff
+  SafeParetoImprovements.Representatives.corresponds_iff
+  SafeParetoImprovements.Representatives.support
+  SafeParetoImprovements.Representatives.support_subset_profiles
+  SafeParetoImprovements.Two.pair SafeParetoImprovements.Two.eq_pair
+  SafeParetoImprovements.Two.mem_profiles_iff SafeParetoImprovements.Two.pair_mem_profiles_iff
+  SafeParetoImprovements.Two.strictlyDominates_one_iff
+  SafeParetoImprovements.Two.strictlyDominates_two_iff
+  SafeParetoImprovements.Two.not_isStrictlyDominated_one_of_bestResponse
+  SafeParetoImprovements.Two.not_isStrictlyDominated_two_of_bestResponse
+  SafeParetoImprovements.Two.reduced_iff
   -- §4.6 / Appendix D.1: Definition 5 as a derivation system (moves, chains, the three
   -- decision predicates as printed and with the non-triviality clause repaired per
   -- erratum D13), Lemma 21 (normal form) and Lemma 22 (symmetry-free chain)

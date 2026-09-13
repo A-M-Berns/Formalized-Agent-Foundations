@@ -538,8 +538,10 @@ paper's sense of equality, `Game.EqOn`), (2) some chain of single applications o
 Assumption 1, Assumption 1 in reverse, or Assumption 2 leads from `Γ` to `Γs`, and (3) its
 composite is Pareto-improving under `Γ`'s payoffs?
 
-This predicate is **constant-true** (`spiDecisionPrinted_of_nonempty`); erratum D13.  It
-is kept because it is what the paper prints; `SPIDecision` is the repaired predicate.
+This predicate is **constant-true for every game with at least one player**
+(`spiDecisionPrinted_of_nonempty`; with no players `EqOn` is vacuous and item 1 fails);
+erratum D13.  It is kept because it is what the paper prints; `SPIDecision` is the repaired
+predicate.
 
 Paper node: `Definition 5` -/
 def SPIDecisionPrinted (Γ : Game N 𝒜) : Prop :=
@@ -559,7 +561,8 @@ def StrictSPIDecisionPrinted (Γ : Game N 𝒜) : Prop :=
 
 /-- **The unilateral SPI decision problem, exactly as printed** (Definition 5, item 5):
 additionally `Γs` is a unilateral subset game of `Γ` (Definition 2).  Constant-true on
-fully reduced games (`unilateralSPIDecisionPrinted_of_reduced`); erratum D13.
+fully reduced games with at least one player (`unilateralSPIDecisionPrinted_of_reduced`
+takes the player); erratum D13.
 `UnilateralSPIDecision` is the repaired predicate.
 
 Paper node: `Definition 5` -/

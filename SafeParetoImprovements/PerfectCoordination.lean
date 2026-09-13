@@ -48,7 +48,12 @@ variable (X : Play N 𝒜 Ω) (L : Filter Ω)
 omit [∀ i, DecidableEq (𝒜 i)] in
 /-- **Definition 7** (RULING 7: "strict" read into the body, erratum D10; RULING 10: per
 play family): the strict perfect-coordination SPI decision problem asks, for a given game
-`Γ`, whether there is a strict perfect-coordination SPI for `Γ`.
+`Γ`, whether there is a strict perfect-coordination SPI for `Γ`.  The paper prints the
+problem's name as "strict full-coordination" and asks the question "under Assumption 2";
+the predicate is stated for an arbitrary play family and filter, and Assumption 2 (with
+Assumption 1 and room) enters as the hypotheses of Proposition 12
+(`Representatives.strictPerfectCoordinationSPIDecision_iff`), which is where the paper
+uses it.
 
 Paper node: `Definition 7` -/
 def StrictPerfectCoordinationSPIDecision (Γ : Game N 𝒜) : Prop :=

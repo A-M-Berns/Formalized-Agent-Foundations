@@ -78,8 +78,17 @@ always an outcome of the game) and a **certainty filter** `L : Filter Ω`
 `∃ᶠ ω in L`.  The probabilistic model of the paper is `Representatives N 𝒜` — a
 probability space with a play family — whose certainty filter is `R.certainty = ae R.μ`;
 `Representatives.isSPI_iff`, `isStrictSPI_iff`, `corresponds_iff` unfold the filter forms
-to the printed probability statements (`dd:representatives`).  `R.support Γ` is
-`supp Π(Γ)`; `R.fiber Γ a` the event `{Π(Γ) = a}`.
+to the printed probability statements (`dd:representatives`); `isSPI_iff` bundles the
+subset-game clause, `isSPI_iff_of_subset` is the almost-sure inequality alone once that
+clause is supplied.  `R.support Γ` is `supp Π(Γ)`; `R.fiber Γ a` the event `{Π(Γ) = a}`.
+
+Two practical notes for clients building their own representatives.  On a discrete sample
+space the intended route is to build the `Representatives` structure directly (the
+`Book` constructions prescribe the play of one reduction class each), with
+`measurableSet_fiber _ _ := trivial`; and since `R.Ω` is a structure field, sample-point
+binders in integrals must be typed `R.Ω`, not the underlying `Unit` or `Bool`, and
+instances on the sample space (`MeasurableSingletonClass R.Ω`) are supplied by `haveI`
+from the underlying type.  Universes are pinned by hand (`Representatives.{0, 0, 0}`).
 
 ## Outcome correspondence and Theorem 3 (§4.1–§4.3)
 
@@ -165,10 +174,14 @@ participation-independent program equilibrium (`Prog.plays_dove`,
 `foreknowledgeIndependent_of_participationIndependent`).  The same two notions at the level
 of program *choice*, after DiGiovanni (2026, Appendix B.2), are `FullStrategy`,
 `ChoiceModel`, `FullStrategy.DemandPreserving`/`ParticipationIndependent`/
-`ForeknowledgeIndependent`, with `IsSPITransformation` (B.1),
+`ForeknowledgeIndependent`, with `IsSPITransformation` (B.1; `FullStrategy.IsSPI` is
+the same predicate applied to a full strategy's transformation),
 `participationIndependent_of_simultaneous` and `not_foreknowledgeIndependent_of_demand_ne`
 (`FullStrategy.lean`); the worked B.4 renegotiation example is
-`Examples/Renegotiation.lean`, outside this import.
+`Examples/Renegotiation.lean`, outside this import.  Note the two namespaces: the
+execution-level `ProgramGame.ParticipationIndependent D c i` / `ForeknowledgeIndependent
+D c π` and the program-choice-level `FullStrategy.ParticipationIndependent d χ` /
+`ForeknowledgeIndependent d χ` share their short names and differ in arity; qualify them.
 
 ## Coordination (§5)
 
@@ -184,10 +197,17 @@ of program *choice*, after DiGiovanni (2026, Appendix B.2), are `FullStrategy`,
 `Representatives.strictPerfectCoordinationSPIDecision_iff` (Algorithm 1's correctness,
 under Assumptions 1–2 and room `Game.HasRoom`).  Conditional expectation on the play's fibers is
 `Representatives.condExp` (a Bochner integral against `ProbabilityTheory.cond`;
-`integral_eq_sum_condExp` is the law of total expectation), **Lemma 13** is
-`Representatives.exists_reassignment_condExp_eq` (the replacement is an exact token copy of
-`Γ` itself, `TokenGame.reassign`), the safely achievable payoffs are
-`Representatives.achievable` with **Corollary 14** `achievable_eq_improvementSum`,
-`convex_achievable`, `isCompact_achievable`, `isPolytope_achievable`, and the polytope
-substrate (`IsPolytope`, `IsPolytope.inter_halfspace`, `inter_Ici`) is `Polytope.lean`.
+`integral_eq_sum_condExp` is the law of total expectation, `integral_comp_play_eq_sum` its
+instance `E[g(Π(Γ))] = ∑ₐ P(Π(Γ) = a) • g a`, and `sum_measureReal_fiber` says the fiber
+masses sum to one), **Lemma 13** is `Representatives.exists_reassignment_condExp_eq` (the
+replacement is an exact token copy of `Γ` itself, `TokenGame.reassign`), the safely
+achievable payoffs are `Representatives.achievable` — the expected values
+`Representatives.tokenValue Γ T` of the perfect-coordination SPIs `T` — with
+**Corollary 14** `achievable_eq_improvementSum`, whose right-hand side is
+`Representatives.improvementSum Γ = ∑ₐ P(Π(Γ) = a) • Γ.improvementSet a` with
+`Game.improvementSet a = {y ∈ C(Γ) | y ≥ u a}` (`Game.u_mem_improvementSet`,
+`convex_improvementSet`, `isPolytope_improvementSet`); the bounds on the set are
+`convex_achievable`, `isCompact_achievable`, `isPolytope_achievable` from inside and
+`achievable_subset_feasible` from outside; the polytope substrate (`IsPolytope`,
+`IsPolytope.inter_halfspace`, `inter_Ici`) is `Polytope.lean`.
 -/

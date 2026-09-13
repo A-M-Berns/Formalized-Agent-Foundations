@@ -20,9 +20,11 @@ outcome (extraction l. 1278–1315).  This file carries:
   `Game.tokenCopy`: the paper assumes fresh tokens `Aˢᵢ ∩ Aᵢ = ∅` exist silently; over a
   fixed universe (`dd:universe`) that is a hypothesis on the universe, discharged in
   examples by a universe with spare elements (`dd:room`);
-* **Lemma 11** as its mathematical content: `y ∈ C(Γ)` is Pareto-optimal in `C(Γ)` iff the
-  paper's linear program has optimum `0`; the "by linear programming, hence in polynomial
-  time" clause is not rendered (`dd:complexity`).
+* **Lemma 11** as its mathematical content: for any payoff vector `y ∈ ℝⁿ`, `y` is
+  Pareto-optimal in `C(Γ)` iff every feasible point dominating `y` has zero total
+  improvement over it — the paper's linear program has optimum `0`; no membership
+  hypothesis, as printed (an infeasible `y` makes both sides hold vacuously); the "by
+  linear programming, hence in polynomial time" clause is not rendered (`dd:complexity`).
 
 The decision problem (Definition 7), Algorithm 1's correctness (Proposition 12), Lemma 13
 and Corollary 14 follow in later files of the tranche (`notes/coordination-layer.md`);

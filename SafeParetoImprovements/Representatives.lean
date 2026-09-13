@@ -85,6 +85,12 @@ lemma isSPI_iff (Γ Γs : Game N 𝒜) :
     R.toPlay.IsSPI R.certainty Γ Γs ↔
       Γs.IsSubsetGameOf Γ ∧ ∀ᵐ ω ∂R.μ, Γ.u (R.play Γ ω) ≤ Γ.u (R.play Γs ω) := Iff.rfl
 
+/-- Definition 1 at the paper's instance with the subset-game clause supplied: for a subset
+game, being an SPI is exactly the almost-sure Pareto inequality. -/
+lemma isSPI_iff_of_subset {Γ Γs : Game N 𝒜} (hsub : Γs.IsSubsetGameOf Γ) :
+    R.toPlay.IsSPI R.certainty Γ Γs ↔ ∀ᵐ ω ∂R.μ, Γ.u (R.play Γ ω) ≤ Γ.u (R.play Γs ω) :=
+  ⟨fun h => h.2, fun h => ⟨hsub, h⟩⟩
+
 /-- **Realization of Definition 1 (strictness)** at the paper's instance: a strict SPI is
 an SPI with some player `i` for whom `uᵢ(Π(Γs)) > uᵢ(Π(Γ))` has positive probability. -/
 lemma isStrictSPI_iff (Γ Γs : Game N 𝒜) :

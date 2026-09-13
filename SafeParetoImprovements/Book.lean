@@ -332,12 +332,15 @@ lemma exists_play_satisfiesA1_satisfiesA2 (Ω : Type w) :
     fun L => ⟨(Book.const Ω).satisfiesA1 L, (Book.const Ω).satisfiesA2 L⟩⟩
 
 /-- **The side condition of `Play.isStrictSPI_of_deriv` is satisfiable together with
-Assumptions 1 and 2, for every game at once**: over the sample space of profiles there is a
-play family that satisfies both assumptions at the non-degenerate filter `⊤` and, for every
-game `Γ` and every outcome `a` surviving `Γ`'s iterated elimination, plays `a` in `Γ` with
-positive probability.  Without this the strict soundness result could be vacuous: on a
+Assumptions 1 and 2, for every game at once**, at the filter `⊤` on the sample space of
+profiles: there is a play family that satisfies both assumptions at `⊤` (i.e. at every
+sample point) and, for every game `Γ` and every outcome `a` surviving `Γ`'s iterated
+elimination, plays `a` in `Γ` at some sample point (`∃ᶠ` at `⊤` is existence, not positive
+probability — this is the dominance-across-models reading of the paper's footnote 2, with no
+measure involved).  Without this the strict soundness result could be vacuous: on a
 one-point sample space no play family reaches two distinct reduced outcomes.  The witness
-is `Book.varying`. -/
+is `Book.varying`; the probability-one instance of the same side condition is discharged
+on the Demand Game by `Examples.demandGame_isStrictSPI_of_deriv_witnessed`. -/
 lemma exists_play_satisfiesA1_satisfiesA2_hits :
     ∃ X : Play N 𝒜 (∀ i, 𝒜 i), X.RespectsEqOn ∧ X.SatisfiesA1 ⊤ ∧ X.SatisfiesA2 ⊤ ∧
       ∀ Γ : Game N 𝒜, ∀ a ∈ Γ.reduce.profiles, ∃ᶠ ω in (⊤ : Filter (∀ i, 𝒜 i)),

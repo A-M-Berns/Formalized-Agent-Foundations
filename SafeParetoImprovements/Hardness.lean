@@ -760,8 +760,9 @@ subgraph isomorphism from any SPI at all — and the other three follow from it.
 node (`dd:complexity`): "reducible in linear time" and "NP-hard" (which needs Lemma 27) are
 not rendered; the action count of the instance is `size_hardnessGame`.  The hypotheses are
 the paper's `ε < 1/(2n)` and `ε < 1/(2n̂)`, the unprinted but necessary `0 < ε` (erratum
-D21), and `n ≥ 1` in place of its "WLOG `n, n̂ ≥ 2`" (necessary here: at `n = 0` the empty
-subgraph isomorphism exists and no strict SPI does).
+D21), and `n ≥ 1` in place of its "WLOG `n, n̂ ≥ 2`" (the proof route needs `ε < 1`; whether
+the strict forms fail at `n = 0` is a side remark in the module header, not a claim of
+this declaration).
 
 Paper node: `Lemma 28`, `Theorem 9` -/
 theorem subgraphIsoProblem_iff_strictUnilateralSPIDecision :

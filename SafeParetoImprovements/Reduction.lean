@@ -184,11 +184,17 @@ lemma erase_erase_comm (Γ : Game N 𝒜) {i : N} {a : 𝒜 i} {j : N} {b : 𝒜
           erase_S_of_ne _ _ _ _ hkj, erase_S_of_ne _ _ _ _ hki]
   exact ext' (funext hS) rfl
 
-/-- The **diamond property** of single-step elimination (Lemma 19 twice): two different
-single eliminations from `Γ` can be completed to a common game in at most one further
-step each. -/
-lemma elim_diamond (Γ Γ₁ Γ₂ : Game N 𝒜) (h₁ : Γ.Elim Γ₁) (h₂ : Γ.Elim Γ₂) :
-    ∃ Γ₃, ReflGen Elim Γ₁ Γ₃ ∧ ReflTransGen Elim Γ₂ Γ₃ := by
+/-- **Lemma 20** (the diamond property of single-step elimination, from Lemma 19 twice):
+if two single eliminations lead from `Γ` to `Γ₁` and to `Γ₂`, then either the two removed
+actions coincide and `Γ₁ = Γ₂`, or each of `Γ₁`, `Γ₂` eliminates in one further step to a
+common game.  The paper writes the outcome correspondences of Assumption 1 for the
+elimination steps; here a step is `Game.Elim`.  The printed first alternative reads
+`Γ = Γ̂` (the reduct equal to the game it came from), which its own proof shows must be
+`Γ = Γ̃`, the two reducts coinciding (erratum D20); that is what is stated.
+
+Paper node: `Lemma 20` -/
+theorem elim_diamond (Γ Γ₁ Γ₂ : Game N 𝒜) (h₁ : Γ.Elim Γ₁) (h₂ : Γ.Elim Γ₂) :
+    Γ₁ = Γ₂ ∨ ∃ Γ₃, Γ₁.Elim Γ₃ ∧ Γ₂.Elim Γ₃ := by
   obtain ⟨i, a, ha, rfl⟩ := h₁
   obtain ⟨j, b, hb, rfl⟩ := h₂
   by_cases hab : a ∈ (Γ.erase j b hb.erase_nonempty).S i
@@ -203,10 +209,10 @@ lemma elim_diamond (Γ Γ₁ Γ₂ : Game N 𝒜) (h₁ : Γ.Elim Γ₁) (h₂ :
         rw [erase_S_self] at hab
         exact (Finset.mem_erase.1 hab).1 rfl
       · rw [erase_S_of_ne _ _ _ _ hji]; exact hbmem
-    refine ⟨(Γ.erase i a ha.erase_nonempty).erase j b (isStrictlyDominated_erase hb ha hba).erase_nonempty,
-      ReflGen.single ⟨j, b, isStrictlyDominated_erase hb ha hba, rfl⟩, ?_⟩
-    exact ReflTransGen.single
-      ⟨i, a, isStrictlyDominated_erase ha hb hab, (erase_erase_comm Γ ha hb hab hba).symm⟩
+    refine Or.inr ⟨(Γ.erase i a ha.erase_nonempty).erase j b
+      (isStrictlyDominated_erase hb ha hba).erase_nonempty,
+      ⟨j, b, isStrictlyDominated_erase hb ha hba, rfl⟩, ?_⟩
+    exact ⟨i, a, isStrictlyDominated_erase ha hb hab, (erase_erase_comm Γ ha hb hab hba).symm⟩
   · -- the same action was removed both times: the two games coincide
     have hamem : a ∈ Γ.S i := ha.mem
     have hji : j = i := by
@@ -217,7 +223,14 @@ lemma elim_diamond (Γ Γ₁ Γ₂ : Game N 𝒜) (h₁ : Γ.Elim Γ₁) (h₂ :
       by_contra hne
       exact hab (by rw [erase_S_self]; exact Finset.mem_erase.2 ⟨Ne.symm hne, hamem⟩)
     subst hba
-    exact ⟨_, ReflGen.refl, ReflTransGen.refl⟩
+    exact Or.inl rfl
+
+/-- Lemma 20 in the shape Mathlib's Church–Rosser lemma consumes. -/
+lemma elim_diamond_reflGen (Γ Γ₁ Γ₂ : Game N 𝒜) (h₁ : Γ.Elim Γ₁) (h₂ : Γ.Elim Γ₂) :
+    ∃ Γ₃, ReflGen Elim Γ₁ Γ₃ ∧ ReflTransGen Elim Γ₂ Γ₃ := by
+  rcases elim_diamond Γ Γ₁ Γ₂ h₁ h₂ with rfl | ⟨Γ₃, h₁₃, h₂₃⟩
+  · exact ⟨_, ReflGen.refl, ReflTransGen.refl⟩
+  · exact ⟨Γ₃, ReflGen.single h₁₃, ReflTransGen.single h₂₃⟩
 
 /-- No elimination step leaves a fully reduced game. -/
 lemma Reduced.not_elim {Γ Γ' : Game N 𝒜} (h : Γ.Reduced) : ¬ Γ.Elim Γ' := by
@@ -232,10 +245,10 @@ lemma Reduced.eq_of_elimStar {Γ Γ' : Game N 𝒜} (h : Γ.Reduced) (hh : Γ.El
 /-- **Path independence of iterated strict dominance**: any two fully reduced games
 obtained from `Γ` by iterated elimination of strictly dominated actions are equal.  The
 paper cites this as well known [1, 19, 41] and gives Lemma 19 as its local core; here it
-is Lemma 19 → diamond property → Church–Rosser. -/
+is Lemma 19 → Lemma 20 (the diamond property) → Church–Rosser. -/
 lemma reduced_unique {Γ Γ₁ Γ₂ : Game N 𝒜} (h₁ : Γ.ElimStar Γ₁) (h₂ : Γ.ElimStar Γ₂)
     (r₁ : Γ₁.Reduced) (r₂ : Γ₂.Reduced) : Γ₁ = Γ₂ := by
-  obtain ⟨d, hd₁, hd₂⟩ := church_rosser elim_diamond h₁ h₂
+  obtain ⟨d, hd₁, hd₂⟩ := church_rosser elim_diamond_reflGen h₁ h₂
   exact (r₁.eq_of_elimStar hd₁).symm.trans (r₂.eq_of_elimStar hd₂)
 
 end elim

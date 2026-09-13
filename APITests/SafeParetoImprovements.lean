@@ -249,4 +249,62 @@ example : ¬ clientStrategy.ForeknowledgeIndependent clientDemands clientChoice 
   clientStrategy.not_foreknowledgeIndependent_of_demand_ne clientDemands clientChoice
     (i := .one) (by show (3 : ℕ) ≠ 4; decide)
 
+/-! ### Safely achievable payoffs: the baseline is achievable, and optimality transfers -/
+
+/-- The research question "is `y` safely achievable, and Pareto-optimal among the safely
+achievable payoffs?", for any representatives and game. -/
+def SafelyAchievableOptimal {N : Type} {𝒜 : N → Type} [Fintype N] [DecidableEq N]
+    [∀ i, DecidableEq (𝒜 i)] (R : Representatives.{0, 0, 0} N 𝒜) (Γ : Game N 𝒜)
+    (y : N → ℝ) : Prop :=
+  y ∈ R.achievable Γ ∧ Game.ParetoOptimalIn y (R.achievable Γ)
+
+/-- **The expected baseline payoff is always safely achievable** ("do nothing" reassigns
+each outcome to itself): Corollary 14's formula with `Game.u_mem_improvementSet`, and the
+expectation written as a fiber sum. -/
+theorem integral_u_mem_achievable {N : Type} {𝒜 : N → Type} [Fintype N] [DecidableEq N]
+    [∀ i, DecidableEq (𝒜 i)] (R : Representatives.{0, 0, 0} N 𝒜) (Γ : Game N 𝒜)
+    (hA1 : R.toPlay.SatisfiesA1 R.certainty) (hA2 : R.toPlay.SatisfiesA2 R.certainty)
+    (hroom : Γ.HasRoom) : (∫ ω, Γ.u (R.play Γ ω) ∂R.μ) ∈ R.achievable Γ := by
+  rw [R.integral_comp_play_eq_sum Γ Γ.u, R.achievable_eq_improvementSum Γ hA1 hA2 hroom]
+  exact Set.finsetSum_mem_finsetSum _ _ _ fun a ha =>
+    Set.smul_mem_smul_set (Γ.u_mem_improvementSet (Γ.mem_profilesFinset.1 ha))
+
+/-- **Pareto optimality in `C(Γ)` transfers to the achievable set**, because the achievable
+set sits inside `C(Γ)` (`achievable_subset_feasible`). -/
+theorem safelyAchievableOptimal_of_paretoOptimalIn_feasible {N : Type} {𝒜 : N → Type}
+    [Fintype N] [DecidableEq N] [∀ i, DecidableEq (𝒜 i)] (R : Representatives.{0, 0, 0} N 𝒜)
+    (Γ : Game N 𝒜) (hA1 : R.toPlay.SatisfiesA1 R.certainty)
+    (hA2 : R.toPlay.SatisfiesA2 R.certainty) (hroom : Γ.HasRoom) {y : N → ℝ}
+    (hy : y ∈ R.achievable Γ) (hopt : Game.ParetoOptimalIn y Γ.feasible) :
+    SafelyAchievableOptimal R Γ y :=
+  ⟨hy, fun ⟨y', hy', hlt⟩ => hopt ⟨y', R.achievable_subset_feasible Γ hA1 hA2 hroom hy', hlt⟩⟩
+
+/-- A client two-player game over `ℕ` (room for tokens): agreeing pays `2` each. -/
+def agree : Game Two (fun _ => ℕ) where
+  S _ := {0, 1}
+  nonempty _ := ⟨0, by simp⟩
+  u x _ := if x .one = x .two then 2 else 0
+
+/-- The question instantiated, non-vacuously: representatives satisfying Assumptions 1
+and 2 exist, and for every such the expected baseline payoff of `agree` is safely
+achievable. -/
+example : ∃ R : Representatives.{0, 0, 0} Two (fun _ => ℕ),
+    (∫ ω, agree.u (R.play agree ω) ∂R.μ) ∈ R.achievable agree := by
+  obtain ⟨R, -, hA1, hA2⟩ :=
+    exists_representatives_satisfiesA1_satisfiesA2 (N := Two) (𝒜 := fun _ => ℕ)
+  exact ⟨R, integral_u_mem_achievable R agree hA1 hA2 (agree.hasRoomOutside_of_infinite _)⟩
+
+/-! ### Theorem 3 in the printed probability-one vocabulary -/
+
+/-- **Theorem 3 at the paper's instance**: for a subset game, the play weakly
+Pareto-dominates the base play almost surely iff a Pareto-improving outcome correspondence
+exists.  `isSPI_iff_of_subset` supplies the bridge from `IsSPI` to the printed inequality. -/
+theorem theorem3_prob {N : Type} {𝒜 : N → Type} [Fintype N]
+    (R : Representatives.{0, 0, 0} N 𝒜) {Γ Γs : Game N 𝒜} (hsub : Γs.IsSubsetGameOf Γ) :
+    (∀ᵐ ω ∂R.μ, Γ.u (R.play Γ ω) ≤ Γ.u (R.play Γs ω)) ↔
+      ∃ Φ : SetRel (∀ i, 𝒜 i) (∀ i, 𝒜 i),
+        R.toPlay.ParetoImprovingCorrespondence R.certainty Γ Γs Φ := by
+  rw [← R.isSPI_iff_of_subset hsub]
+  exact R.toPlay.isSPI_iff_exists_paretoImprovingCorrespondence R.certainty hsub
+
 end APITests.SafeParetoImprovements

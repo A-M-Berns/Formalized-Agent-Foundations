@@ -32,8 +32,9 @@ proof does not assume it but transfers the elimination chain (`Game.ElimStar.tra
 * `Certificate.unilateralGame`, `Affine`, `ReducesToImage`;
   `Game.unilateralSPIDecision_iff_certificate`, `strictUnilateralSPIDecision_iff_certificate`
   — Proposition 25.
-* `Game.card_certificate_le`, `card_unilateralCertificate_le` — the search bounds of
-  Propositions 24 and 26, i.e. Proposition 10.
+* `Game.card_certificate_le`, `card_unilateralCertificate_le'` — the search bounds of
+  Propositions 24 and 26, i.e. Proposition 10 (`card_unilateralCertificate_le`, with a
+  factor `n`, is the weaker intermediate).
 * `Game.ElimStar.transfer` — the elimination chain of a game transfers to the game with one
   player's action set cut down to what survives, whatever that player's payoffs become.
 -/

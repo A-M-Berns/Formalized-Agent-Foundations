@@ -156,13 +156,18 @@ theorem Corresponds.ne_of_inv_at_eq_empty {Γ Γ' : Game N 𝒜}
 
 variable (X L)
 
-/-- `Φ` is a **Pareto-improving outcome correspondence** from `Γ` to its subset game
-`Γs`: `Γ ∼_Φ Γs`, and `u(aˢ) ≥ u(a)` (the *original* payoff `u`, pointwise) for every
-outcome `a` of `Γ` and every `aˢ ∈ Φ(a)`.  The paper's typing `Φ : A ⊸ Aˢ` is a
-requirement on the supplied `Φ`, not merely a restriction of the payoff obligation, and
-is carried by the field `typed`: `Φ` relates only outcomes of `Γ` to outcomes of `Γs`.
-(The printed definition writes `Γ ∼_Φ Γ'` for `Γ ∼_Φ Γˢ` and types `Φ` with an ordinary
-arrow — erratum D2(a).)
+/-- `Φ` is a **Pareto-improving outcome correspondence** from `Γ` to `Γs`: `Γ ∼_Φ Γs`, and
+`u(aˢ) ≥ u(a)` (the *original* payoff `u`, pointwise) for every outcome `a` of `Γ` and every
+`aˢ ∈ Φ(a)`.  The paper's typing `Φ : A ⊸ Aˢ` is a requirement on the supplied `Φ`, not
+merely a restriction of the payoff obligation, and is carried by the field `typed`: `Φ`
+relates only outcomes of `Γ` to outcomes of `Γs`.  (The printed definition writes
+`Γ ∼_Φ Γ'` for `Γ ∼_Φ Γˢ` and types `Φ` with an ordinary arrow — erratum D2(a).)
+
+The paper states the definition for a *subset game* `Γˢ` of `Γ`; since `u` is total on the
+universe (`dd:total-utility`), the structure makes sense for any target `Γs` and is stated
+so — the same generalization as Lemma 4's (erratum D2(b)) — with the subset-game clause
+supplied where a paper node needs it (Theorem 3 bundles it into `IsSPI`).  Theorem 3 and
+`paretoImprovingCorrespondence_of_iso` inhabit it on non-subset targets as well.
 
 `typed` is the *last* field so that the other two keep their order and meaning; an
 anonymous constructor must supply all three.

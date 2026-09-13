@@ -7,12 +7,13 @@ Improvements for Delegated Game Playing*, Autonomous Agents and Multi-Agent Syst
 with a research layer beyond the paper for participation independence and foreknowledge
 independence after the CLR safe-Pareto-improvements research agenda.
 
-**Status.**  Every numbered node of §2–§5 and of Appendices A and D except Theorem 15 has a
-proved Lean carrier; Theorem 15 is deferred by ruling as the final scope (§3 below).  There
-is no `sorry` and no axiom beyond Lean's three standard ones anywhere in the library; 643
-declarations are named on the axiom gate.  The registry status is `in-progress` because the
-human read-through of the statement surface is outstanding; nothing else gates
-`completed`.
+**Status.**  Of the paper's 37 numbered nodes, 35 carry a proved Lean statement annotated
+to them; the two that do not are Theorem 15, deferred by ruling as the final scope (§3
+below), and Lemma 27 (Cook's theorem), a cited external result that is neither re-proved
+nor assumed.  There is no `sorry` and no axiom beyond Lean's three standard ones anywhere
+in the library; every public declaration of the library (854) is named on the axiom gate.  The registry status is
+`in-progress` because the human read-through of the statement surface is outstanding;
+nothing else gates `completed`.
 
 This file is the trust surface: what is claimed, what is disclosed, what is deliberately
 not claimed, and why each modelling choice was made.  Companion documents:
@@ -39,11 +40,14 @@ python3 scripts/check_paper_wiring.py
 
 The first command elaborates the library, the client tests, and the axiom gate
 (`AxiomAudit.lean`, whose `SPI-INVENTORY` block names every endpoint under
-`#assert_axioms_clean` and freezes the field sets of the boundary structures under
-`#assert_fields`); the scripts check that every `Paper node:` annotation names a node the
-paper prints, that every printed node in scope has an inventoried carrier, that `theorem`
-is used only for paper-facing statements, and that the registry, API and tests are wired.
-All of this runs in CI on every push.
+`#assert_axioms_clean` and freezes the field *names* of the boundary structures under
+`#assert_fields`).  The node checker verifies that every `Paper node:` annotation names a
+node the paper prints and that every annotated declaration is on the axiom gate, and it
+*prints* which printed nodes have no annotated carrier (currently Theorem 15 and Lemma 27)
+without failing on them — coverage is a claim of this README, checked by reading that
+readout, not a gate.  The label linter requires `theorem` only for paper-facing statements;
+the wiring check that the registry, API and tests are in place.  All of this runs in CI on
+every push.
 
 ---
 
@@ -77,10 +81,11 @@ payoffs) instead.  A subset game is a **safe Pareto improvement** (SPI) on `Γ` 
 ## 2. What is formalized
 
 Every row is a Lean declaration whose docstring ends with a `Paper node:` line naming the
-printed node, checked both ways by the node checker.  Statements at the level of §3–§4 are
-made for an arbitrary *certainty filter* and are therefore strengthened relative to the
-printed ones (§4.2 below); the parenthetical notes give the statement-level qualifications
-a reader must hold in mind, each of which is also in the declaration's docstring.
+printed node, checked by the node checker.  Statements at the level of §3–§4 are made for
+an arbitrary *certainty filter* and are therefore strengthened relative to the printed ones
+(§4.2 below); the parenthetical notes give the statement-level qualifications a reader must
+hold in mind — hypotheses beyond the paper's, clauses not rendered — each of which is also
+in the declaration's docstring.
 
 | paper node | carrier(s) | file |
 |---|---|---|
@@ -93,6 +98,7 @@ a reader must hold in mind, each of which is also in the declaration's docstring
 | Assumption 1, Assumption 2 | `Play.SatisfiesA1`, `Play.SatisfiesA2` | `Assumptions.lean` |
 | Lemma 4 (weak and strict forms) | `GameIso.paretoImproving_of_paretoImproving`, `GameIso.strictlyParetoImproving_of_strictlyParetoImproving` | `Isomorphism.lean` |
 | Lemma 19 (path independence, local form) | `Game.isStrictlyDominated_erase` | `Reduction.lean` |
+| Lemma 20 (the diamond property of single-step elimination; the printed first alternative `Γ = Γ̂` corrected to `Γ = Γ̃`, erratum D20) | `Game.elim_diamond` | `Reduction.lean` |
 | Definition 5 (SPI decision problem, strict and unilateral variants) as a derivation system | `Game.Step`, `Game.Deriv`; repaired non-triviality (`dd:nontrivial`, erratum D13): `Game.SPIDecision`, `Game.StrictSPIDecision`, `Game.UnilateralSPIDecision`; printed forms kept alongside: `Game.SPIDecisionPrinted` (constant-true for non-empty `N`, `Game.spiDecisionPrinted_of_nonempty`), `…UnilateralSPIDecisionPrinted` (constant-true on fully reduced games, `unilateralSPIDecisionPrinted_of_reduced`), and `…StrictSPIDecisionPrinted`, which *keeps content* — it fails on one-action games, `not_strictSPIDecisionPrinted_of_card_le_one` | `Derivation.lean` |
 | Lemma 21 (normal form of derivations: eliminations, one isomorphism, reverse eliminations; the printed length bound is not rendered, erratum D14) | `Game.Deriv.exists_normalForm` | `Derivation.lean` |
 | Lemma 22 (symmetry-free Pareto-improving chain to the reduction of the SPI candidate) | `Game.exists_paretoImproving_normalForm` | `Derivation.lean` |
@@ -103,18 +109,17 @@ a reader must hold in mind, each of which is also in the declaration's docstring
 | **Propositions 24, 26** and **Proposition 10** (the search bound `card ≤ m ^ l`, for the unilateral pairs (player, certificate) as well; "solved in `O(m^l)`" not rendered) | `Game.spiDecision_search`, `Game.unilateralSPIDecision_search` (bounds `Game.card_certificate_le`, `card_unilateralCertificate_le'`) | `Complexity.lean` |
 | **Definition 8** (subgraph isomorphism problem) | `Hardness.SubgraphIsoProblem` | `Hardness.lean` |
 | **Lemma 28** (subgraph isomorphism reduces to each of the four SPI problems on the two-player game of Table 10, as an iff; "linear time" and "NP-hard" not rendered; Table 9 followed over the printed formula, erratum D18) | `Hardness.subgraphIsoProblem_iff_spiDecision` and the strict / unilateral / strict-unilateral variants | `Hardness.lean` |
-| **Theorem 9** (the certificate characterizations of the four problems together with Lemma 28's reductions, over two-player games; the size bound that makes the characterizations membership-shaped is `Game.card_certificate_le`, stated separately; "NP-complete" not rendered) | `Hardness.theorem9` | `Hardness.lean` |
+| **Theorem 9** (the certificate characterizations of the four problems over any finite player set, together with Lemma 28's reductions over two-player games; the size bound that makes the characterizations membership-shaped is `Game.card_certificate_le`, stated separately; "NP-complete" not rendered) | `Hardness.theorem9` | `Hardness.lean` |
 | **Definition 6** (perfect-coordination SPI, strict variant) | `TokenGame.IsSPI`, `TokenGame.IsStrictSPI` | `Coordination.lean` |
-| Lemma 11 (Pareto-optimality in `C(Γ)` as a linear program; the polynomial-time clause not rendered, `dd:complexity`) | `Game.paretoOptimalIn_feasible_iff` | `Coordination.lean` |
-| Definition 6 witnesses (strict and equality-only perfect-coordination SPIs with `uᵉ` defined along the book's isomorphism) | `Examples.conflictStrictToken_isStrictSPI`, `conflictPlainToken_isSPI` | `Examples/TokenWitnesses.lean` |
+| Lemma 11 (Pareto-optimality in `C(Γ)` as a linear program, stated for an arbitrary target vector `y` — an infeasible `y` makes both sides hold vacuously; the polynomial-time clause not rendered, `dd:complexity`) | `Game.paretoOptimalIn_feasible_iff` | `Coordination.lean` |
 | **Definition 7** (strict perfect-coordination SPI decision problem; "strict" read in, RULING 7; per play family, RULING 10) | `Play.StrictPerfectCoordinationSPIDecision` | `PerfectCoordination.lean` |
 | **Proposition 12** (Algorithm 1's correctness as an iff, under Assumptions 1–2 and room; the polynomial-time clause not rendered) | `Representatives.strictPerfectCoordinationSPIDecision_iff` | `PerfectCoordination.lean` |
-| **Lemma 13** (every perfect-coordination SPI is replaced by an exact token copy of `Γ` with `uᵉ` along Assumption 2's isomorphism between the reductions, same conditional expectations on the support; errata D6, D7, D19) | `Representatives.exists_reassignment_condExp_eq` | `Characterization.lean` |
-| **Corollary 14** (the safely achievable expected payoffs: the weighted Minkowski-sum formula, convex, compact, and a polytope) | `Representatives.achievable_eq_improvementSum`, `convex_achievable`, `isPolytope_achievable` | `Characterization.lean` |
-| **Proposition 16** (Table 7 over `CAct ⊕ ℕ`, `dd:room`: a Pareto improvement no perfect-coordination SPI achieves; also in label-free form `chicken_no_feasible_dominating_of_mean_cc`; `Π` existential, see `chicken_spi_for_other_representatives`) | `Examples.chicken_no_perfectCoordinationSPI` | `Examples/Chicken.lean` |
+| **Lemma 13** (every perfect-coordination SPI is replaced by an exact token copy of `Γ` with `uᵉ` along Assumption 2's isomorphism between the reductions, same conditional expectations on the support; hypotheses Assumption 1 — an addition to the printed "under Assumption 2", needed to move the play into the reduction — Assumption 2, and room `Γ.HasRoom`; errata D6, D7, D19) | `Representatives.exists_reassignment_condExp_eq` | `Characterization.lean` |
+| **Corollary 14** (the safely achievable expected payoffs: the weighted Minkowski-sum formula, convex, compact, and a polytope; the same three hypotheses as Lemma 13; the formula is the characterization the paper omits) | `Representatives.achievable_eq_improvementSum`, `convex_achievable`, `isCompact_achievable`, `isPolytope_achievable` | `Characterization.lean` |
+| **Proposition 16** (Table 7 over `CAct ⊕ ℕ`, `dd:room`: a Pareto improvement no perfect-coordination SPI achieves, for the one play family the paper's description determines — the fair coin at `p = ½`; the statement cannot be universalized over `Π`, since other representatives satisfying Assumptions 1–2 on the same game do admit the improvement, `chicken_spi_for_other_representatives`; also in a label-free form over feasible payoff vectors, `chicken_no_feasible_dominating_of_mean_cc`) | `Examples.chicken_no_perfectCoordinationSPI` | `Examples/Chicken.lean` |
 | **Theorem 1** (every SPI is played in a program equilibrium of the program game with delegation instructions, given the threat-point guarantee) | `Prog.exists_programEquilibrium_plays` | `Instruction.lean` |
 | Proposition 5 (Prisoner's Dilemma, Table 3) | `Examples.prisonersDilemma_isStrictSPI` | `Examples/PrisonersDilemma.lean` |
-| Proposition 6 (Demand Game, Tables 1–2), both clauses | `Examples.demandGame_isSPI`, `Examples.demandGame_isStrictSPI` | `Examples/DemandGame.lean` |
+| Proposition 6 (Demand Game, Tables 1–2), both clauses; the strict clause takes the paper's "if `(DM, DM)` is played with positive probability" as an explicit `∃ᶠ` hypothesis | `Examples.demandGame_isSPI`, `Examples.demandGame_isStrictSPI` | `Examples/DemandGame.lean` |
 | Proposition 7 (Temptation Game, Table 6) | `Examples.temptation_isStrictSPI` | `Examples/Temptation.lean` |
 | Proposition 8 (Complicated Temptation Game, Tables 4–5) | `Examples.complicatedTemptation_isUnilateralSPI` | `Examples/ComplicatedTemptation.lean` |
 
@@ -126,9 +131,12 @@ model `Representatives` with the **realization at probability one** — `ae μ` 
 non-degenerate for a probability measure, and Definitions 1 and 3 at `L = ae μ` unfold to the
 printed statements (`isSPI_iff`, `isStrictSPI_iff`, `corresponds_iff` in
 `Representatives.lean`); the canonical full reduction `Game.reduce`, with confluence and
-uniqueness (`Reduction.lean`; Lemma 20's content is the diamond lemma `Game.elim_diamond`);
-and the **book representatives** of §4.4.3, which prove Assumptions 1 and 2 jointly
-satisfiable with the page distribution as a parameter (`Book.lean`).
+uniqueness from Lemmas 19–20 (`Reduction.lean`); and the **book representatives** of
+§4.4.3, which prove Assumptions 1 and 2 jointly satisfiable with the page distribution as a
+parameter (`Book.lean`).  Every sample space the development instantiates is discrete
+(`Unit`, `Bool`, a finite profile space), so the measurability field of `Representatives`
+is discharged trivially in every witness; the probabilistic content exercised is the fair
+coin's genuinely random play, not a non-trivial σ-algebra.
 
 **Non-vacuity is proved, not asserted.**  Every Proposition 5–8 conclusion is reached by a
 play family that *also* satisfies Assumptions 1 and 2 inside the same statement
@@ -137,13 +145,20 @@ play family that *also* satisfies Assumptions 1 and 2 inside the same statement
 hypotheses are witnessed twice, deterministically in the Prisoner's Dilemma and with a
 genuinely random `Π(Γ₀)` in the Demand Game (a fair coin), and its threat-point hypothesis
 is shown to have content by a book that violates it (`Examples/ProgramGameWitnesses.lean`);
-Definition 6 has strict and equality-only witnesses (`Examples/TokenWitnesses.lean`);
-Definition 7 is two-sided through Proposition 12 (`Examples/DecisionWitnesses.lean`); Lemma
-13 and Corollary 14 are exercised on a game where the conditional expectation is a genuine
-average and the achievable set is not a singleton (`Examples/CharacterizationWitnesses.lean`);
-the complexity nodes have certificates that pass, certificates that fail a specific check,
-and a subgraph-isomorphism instance carried through Lemma 28 to an actual SPI
-(`Examples/ComplexityWitnesses.lean`).
+Definition 6 has strict and equality-only witnesses, with `uᵉ` defined along the book's
+isomorphism (`Examples.conflictStrictToken_isStrictSPI`, `conflictPlainToken_isSPI` in
+`Examples/TokenWitnesses.lean`); Definition 7 is two-sided through Proposition 12
+(`Examples/DecisionWitnesses.lean`); Lemma 13 and Corollary 14 are applied, with all their
+hypotheses discharged, on the conflict game with book representatives, where the
+achievable set is not a singleton, and — separately, on a hand-built play family that
+satisfies neither assumption — the conditional expectation `Representatives.condExp` is
+shown to be a genuine average rather than a point evaluation
+(`Examples/CharacterizationWitnesses.lean`); the complexity nodes have certificates that
+pass, certificates that fail a specific check, and a subgraph-isomorphism yes-instance
+carried through Lemma 28 to a yes-instance of the strict unilateral decision problem
+(`Examples/ComplexityWitnesses.lean`); the client tests then carry such an instance through
+soundness to an actual strict unilateral SPI at probability one
+(`APITests/SafeParetoImprovements.lean`).
 
 ## 3. What is not claimed
 
@@ -153,10 +168,12 @@ and a subgraph-isomorphism instance carried through Lemma 28 to an actual SPI
   cases and contains a step that is not a general fact.  Deferring it is the final scope by
   ruling (RULING 16); the substrate a future attempt would need is in place (Lemma 13,
   Corollary 14's formula, the feasible polytope).
-* **Complexity-class and running-time clauses** are not rendered anywhere.  Theorem 9,
-  Proposition 10, Lemma 11 and Proposition 12 are carried as *qualified* nodes: the exact
-  mathematics of their statements — certificate characterizations, the search bound
-  `card ≤ m ^ l`, the linear program, the correctness iff of Algorithm 1 — without
+* **Complexity-class and running-time clauses** are not rendered anywhere.  Nine nodes
+  are carried as *qualified* nodes — Theorem 9, Proposition 10, Lemma 11, Proposition 12,
+  Propositions 23–26, Lemma 28 (with Definition 8) — meaning the exact mathematics of their
+  statements is proved (certificate characterizations, the search bound `card ≤ m ^ l`
+  where `m` is the total number of actions of the game and `l` that of its full reduction,
+  the linear program, the correctness iff of Algorithm 1, the reductions) without
   "NP-complete", "in polynomial time", "`O(m^l)`" or "linear time".  `Hardness.theorem9` is
   a conjunction of certificate iffs and Lemma 28's reductions, nothing more.
 * **Cited external results are not re-proved**: Theorem 17 (Tennenholtz's folk theorem for
@@ -224,8 +241,17 @@ alongside where it has content, and says so in the docstring.
   the almost-everywhere filter `ae μ`, and `Representatives.lean` proves that at `L = ae μ`
   the definitions unfold to the printed statements — by iffs, never by a second copy of a
   theorem.  Footnote 2's dominance-across-models reading comes by instantiation.
-* **Strictness needs a non-trivial filter**: `[L.NeBot]` appears exactly where the paper's
-  "with positive probability" does, and `ae μ` is non-degenerate for a probability measure.
+* **What the generalization costs, and does not hide.**  At the trivial filter `L = ⊥`
+  every "with certainty" statement is vacuously true, so every subset game is an SPI there
+  and no strict SPI exists; the universally quantified nodes are therefore strictly
+  stronger than the print, while any *existence* statement is only as strong as the filter
+  it is made at.  Existence and strictness statements accordingly carry their filter
+  explicitly: the paper's "with positive probability" becomes an `∃ᶠ` hypothesis where the
+  print states one (Proposition 6's strict clause, strict soundness of derivations) and a
+  `[L.NeBot]` instance where the print's positive-probability claim is unconditional
+  (Propositions 5 and 7); `ae μ` is non-degenerate for a probability measure.  The client
+  tests demonstrate the `⊥` vacuity so that no reader takes an existence at an
+  unconstrained filter for a result.
 
 ### 4.3 Isomorphisms
 
@@ -237,9 +263,14 @@ alongside where it has content, and says so in the docstring.
 
 ### 4.4 Assumptions 1–2 and their consistency
 
-* **Assumption 1** is "the representatives never play an action that iterated strict
-  elimination removes"; **Assumption 2** is "isomorphic *reduced* games are played
-  isomorphically, with certainty".  Both are predicates on a play family and a filter.
+* **Assumption 1** is rendered as the paper states it, as an *outcome correspondence*:
+  for every game, player and strictly dominated action, the play of the game corresponds
+  with certainty to the play of the game with that action removed, under the relation that
+  deletes the dominated action and is the identity elsewhere — so the representatives never
+  play the dominated action *and* removing it leaves their play unchanged, which is
+  stronger than merely selecting surviving actions.  **Assumption 2** is "isomorphic
+  *reduced* games are played isomorphically, with certainty", with the isomorphism
+  existential.  Both are predicates on a play family and a filter.
 * **The book** (`dd:book`).  §4.4.3 sketches that the assumptions are jointly satisfiable
   by representatives who look up each reduced game's isomorphism class in a book of pages.
   `Book.lean` constructs those representatives with the page distribution as a *parameter*
@@ -257,9 +288,14 @@ alongside where it has content, and says so in the docstring.
   `Game.Step`/`Game.Deriv` are that chain as an inductive relation; Lemma 21 is its normal
   form (eliminations, one isomorphism, reverse eliminations; the printed length bound
   `m ≤ k` is false, erratum D14, and is not rendered), Lemma 22 the symmetry-free chain to
-  the reduction, and soundness (`Play.isSPI_of_deriv` and the strict and unilateral
-  variants) turns a derivation into an SPI under Assumptions 1–2 — the derivation supplies
-  the subset-game hypothesis itself.
+  the reduction, and soundness (`Play.isSPI_of_deriv` and the unilateral variant) turns a
+  derivation into an SPI under Assumptions 1–2 — the derivation supplies the subset-game
+  hypothesis itself; the strict variant needs in addition the paper's side condition that
+  every outcome surviving elimination is played with positive probability (an `∃ᶠ`
+  hypothesis; the paper states it in prose after Definition 5).  A derivation records the
+  correspondence it was built from, while Assumption 2 supplies *some* isomorphism of the
+  reductions, so soundness goes through Lemma 21's normal form rather than the recorded
+  relation directly.
 * **The non-triviality clause is repaired** (`dd:nontrivial`, erratum D13).  As printed,
   "the reductions are not equal" is satisfied by any payoff shift of a subset game, so the
   printed plain and unilateral problems are constant-true.  The carriers require the
@@ -296,19 +332,27 @@ alongside where it has content, and says so in the docstring.
 * **The feasible set** `C(Γ)` (`dd:feasible`) is the paper's own formula — payoff vectors
   of correlated strategies — proved equal to Mathlib's convex hull of the pure payoffs;
   convexity and membership come from the formula, everything geometric from the hull.
+* **Token games** (`TokenGame Γ`) carry two payoff maps, as §5 does: the game the
+  representatives are handed has its own payoff `uˢ`, and the original players assign each
+  token outcome a feasible payoff vector `uᵉ ∈ C(Γ)`; Definition 6 compares `uᵉ` of the
+  token play with `u` of the base play.
 * **Token games need room** (`dd:room`).  §5's token actions must be fresh, `Aˢᵢ ∩ Aᵢ = ∅`;
   over a fixed universe their existence is the hypothesis `Game.HasRoom Γ`, an injective
-  copy of each action set avoiding `Γ`'s own.  Every §5 example lives over `X ⊕ ℕ`, where
-  `hasRoomOutside_of_infinite` supplies room; over a finite universe the class of token
-  games can be *empty*, which would make every impossibility statement vacuous — the reason
-  Proposition 16's Chicken game is stated over `CAct ⊕ ℕ` and additionally carried in a
-  label-free form that quantifies over feasible payoff vectors rather than token games.
+  copy of each action set avoiding `Γ`'s own.  The §5 examples live over universes with
+  infinite room (`X ⊕ ℕ`, or `ℕ` itself), where `hasRoomOutside_of_infinite` supplies it;
+  over a finite universe the class of token games can be *empty*, which would make every
+  impossibility statement vacuous — the reason Proposition 16's Chicken game is stated over
+  `CAct ⊕ ℕ` and additionally carried in a label-free form that quantifies over feasible
+  payoff vectors rather than token games.
 * **Definition 7 reads "strict"** (erratum D10, RULING 7): the problem is named the strict
   problem but its body omits strictness.
 * **Lemma 13 copies `Γ` itself**, with the token payoff `uᵉ` defined along whichever
   isomorphism of reductions Assumption 2 supplies (errata D6, D19; RULINGS 10–11), and its
   conditional expectations are stated on the support of `Π(Γ)`, where they are defined
-  (erratum D7; `Representatives.condExp` through `ProbabilityTheory.cond`).
+  (erratum D7; `Representatives.condExp` through `ProbabilityTheory.cond`).  Lemma 13 and
+  Corollary 14 take **Assumption 1 in addition** to the printed "under Assumption 2":
+  Assumption 2 speaks only about reduced games, so Assumption 1 is what lets the copy be
+  played through its reduction (RULING 11).
 * **Corollary 14 is carried as the characterization the paper omits**: the safely
   achievable expected payoffs are exactly the weighted Minkowski sum
   `∑ₐ P(Π(Γ)=a) • {y ∈ C(Γ) | y ≥ u(a)}` (`achievable_eq_improvementSum`), from which
@@ -325,8 +369,9 @@ printed algorithms omit restored (erratum D17) — and Propositions 24, 26 and 1
 bound `card ≤ m ^ l` on the certificate type.  Definition 8 and Lemma 28 render the
 hardness construction: subgraph isomorphism reduces to each of the four problems on the
 two-player games of Tables 9–10, as an iff, following Table 9 where it disagrees with the
-printed formula (erratum D18, RULING 15), with the hypothesis `0 < ε` the paper omits
-(erratum D21).  Theorem 9 conjoins the characterizations and the reductions.
+printed formula (erratum D18, RULING 15), with the hypotheses `0 < ε` the paper omits
+(erratum D21) and `1 ≤ n` in place of the printed "WLOG `n, n̂ ≥ 2`".  Theorem 9 conjoins
+the characterizations and the reductions.
 
 ### 4.9 Rulings
 
@@ -347,9 +392,9 @@ All recorded in `notes/scoping.md` §8 with their dates.
 | 14 | Lemma 27 (Cook) cited, not axiomatized |
 | 15 | Table 9 followed over the printed formula |
 
-The remaining design tags (`dd:universe`, `dd:total-utility`, `dd:representatives`,
-`dd:iso`, `dd:derivation`) were accepted as proposed in the scoping note without a
-numbered ruling.
+No ruling numbered 4 was issued.  The remaining design tags (`dd:universe`,
+`dd:total-utility`, `dd:representatives`, `dd:iso`, `dd:derivation`) were accepted as
+proposed in the scoping note without a numbered ruling.
 
 ## 5. Defects found in the paper
 
@@ -357,13 +402,15 @@ Twenty-four, recorded in `notes/paper-errata.md` with extraction line numbers an
 the defect is a false claim, a counterexample.  The `Level` column there is authoritative.
 Statement-level defects carried as **disclosures** at the Lean statements: D1, D2, D5, D8,
 D10, D12, D13, D15, D17, D18, D21, D23.  Statement-level typos or clauses simply not
-rendered: D7, D9, D11, D14.  Proof- or notation-level only: D3, D4, D6, D16, D19, D20,
-D22, D24.  In brief:
+rendered: D7, D9, D11, D14, D20.  Proof- or notation-level: D3, D4, D6, D16, D19, D24.
+A false claim in the prose, affecting no node: D22.  In brief:
 
 * **D1** Definition 1's strictness clause compares `uᵢ(Π(Γˢ))` with itself; read
   `uᵢ(Π(Γˢ)) > uᵢ(Π(Γ))`.
 * **D2** Definition 4 writes `Γ'` for `Γˢ` and `→` for `⊸`; Lemma 4's hypothesis that `Γ'`
-  is a subset game of `Γ` is missing.
+  is a subset game of `Γ` is missing.  The Lean repair is not to add the hypothesis but to
+  define "Pareto-improving" with the source game's payoff on any target, so Definition 4's
+  structure and Lemma 4 hold for arbitrary targets and specialize to subset games.
 * **D3** Theorem 3's proof quantifies over `i = 1, 2` in an `n`-player statement and opens
   the ⇒ direction with the inequality reversed.
 * **D4** Proof-level slips: Lemma 2.7 cites reflexivity for symmetry; Proposition 6 writes
@@ -427,17 +474,22 @@ paper.
 **Execution level** (`Independence.lean`, `dd:default-instr`, RULING 9).  Over any
 `ProgramGame`, a *default instruction* per player executes as the paper's baseline
 `Π(Γ₀)`; "player `j` did not participate" is the profile with `j` at her default.
-`ParticipationIndependent` says that when `j` drops out, `i` realises the same action as
-under everybody's default; an *information stage* `Policy` chooses an instruction from a
-signal that may announce a counterpart's non-participation, and `ForeknowledgeIndependent`
-says the realised action towards a drop-out is the same whether the instruction was chosen
-uninformed or informed.  These compare realised actions *towards a non-participant* and
-say nothing about demands during participation.  What is proved: the **dove profile**
+`ParticipationIndependent` says that when `j` drops out, `i` realises the same mixed
+action as under everybody's default, at every sample point of the representatives; an
+*information stage* `Policy` chooses an instruction from a signal that may announce a
+counterpart's non-participation, and `ForeknowledgeIndependent` says the mixed action
+realised towards a drop-out is the same whether the instruction was chosen uninformed or
+informed.  Both are equalities of conditional action distributions given the
+representatives' sample point (the execution kernel has no private seeds to couple);
+they compare behaviour *towards a non-participant* and say nothing about demands during
+participation.  What is proved: the **dove profile**
 (comply with the SPI when everybody submits the same code, otherwise play the baseline)
 executes the SPI, is participation independent for every player, and is a program
-equilibrium whenever each player's expected best reply to the baseline is at most her
-expected SPI payoff (`Prog.dove_isProgramEquilibrium`, a sufficient criterion from the
-interface-level `ProgramGame.isProgramEquilibrium_of_fallback`); Algorithm 2 is *not*
+equilibrium whenever each player's expected *ex-post* best reply to the baseline — the
+best reply computed sample point by sample point, which a program need not be able to
+realise — is at most her expected SPI payoff (`Prog.dove_isProgramEquilibrium`, from the
+interface-level `ProgramGame.isProgramEquilibrium_of_fallback`; a sufficient criterion
+only, and a demanding one — failing it says nothing); Algorithm 2 is *not*
 participation independent whenever its minimax punishment differs from the baseline, which
 it does in the Demand Game; a participation-independent instruction paired with the
 default as the informed choice is foreknowledge independent.  On the paper's own examples
@@ -459,8 +511,10 @@ commitment participation independence is immediate from demand preservation — 
 
 **DiGiovanni's renegotiation example** (`Examples/Renegotiation.lean`, Appendix B.4) is
 formalized with the source's pseudocode as an execution model over the `ProgramGame`
-interface: a program is a base strategy (a demand and whether a doomsday device backs it)
-or a renegotiation program built on a base strategy *and its own renegotiation logic*;
+interface: a program is a base strategy (a demand from the three the source mentions,
+50%, 60%, 80%, and whether a doomsday device backs it) or a renegotiation program built on
+a base strategy *and its own renegotiation logic*; conflict pays both players alike (`t`
+for a takeover attempt, `d` for a doomsday);
 `run` forms both proposals with the two programs' logics, so the pseudocode's "take it if
 our proposals match" has content (a conceding logic makes the proposals differ and both
 fall back).  Proved: demand preservation as a property of B.4's logic; the 50%/80%/doomsday
@@ -520,23 +574,26 @@ mangles a header fails rather than silently shrinking the set of nodes an annota
 name.  Theorem 17's header is torn by a display delimiter in the extraction and is
 deliberately not parsed.
 
-**The axiom gate.**  `AxiomAudit.lean`'s `SPI-INVENTORY` block names every endpoint and
-supporting declaration (643) under `#assert_axioms_clean`, which fails the build on
-`sorryAx` or any axiom beyond `propext`, `Classical.choice` and `Quot.sound`, and freezes
-the field sets of the boundary structures (`Game`, `Play`, `Representatives`, `GameIso`,
+**The axiom gate.**  `AxiomAudit.lean`'s `SPI-INVENTORY` block names every public
+declaration of the library (854 names: paper-node carriers, witnesses, and every
+supporting definition and lemma) under `#assert_axioms_clean`, which fails the build on `sorryAx` or any axiom
+beyond `propext`, `Classical.choice` and `Quot.sound`, and freezes the field *names* of
+the boundary structures (`Game`, `Play`, `Representatives`, `GameIso`,
 `Play.ParetoImprovingCorrespondence`, `Book`, `ProgramGame`, `ProgramGame.DefaultInstr`,
 `ProgramGame.Policy`, `FullStrategy`, `ChoiceModel`, `Game.Correlated`, `TokenGame`, …)
-under `#assert_fields`, so that a premise cannot be added to a structure without the gate
-noticing.  `theorem` is reserved for paper-facing statements; supporting results are
-`lemma`s.
+under `#assert_fields`, so that a premise cannot be added as a new field without the gate
+noticing; a strengthening hidden inside an existing field's type would pass it, which is
+why the boundary structures are part of the human read-through.  `theorem` is reserved for
+paper-facing statements; supporting results are `lemma`s.
 
-**Audit history.**  The formalization was built under an orchestrated audit loop: eight
-rounds of fresh-context adversarial audits over statements, definitions and proofs, each
-round combining auditors from two independent model families, with the final two rounds
-run blind to this project's own conclusions (the pre-publication audit was given the
-paper, the source and the user's rulings, but not the knowledge base or errata, and
-rediscovered twenty of the recorded errata independently) and with a final round reviewing
-the whole surface as a CLR final project.  Across the rounds 202 findings were raised, 198
+**Audit history.**  The formalization was built under an orchestrated audit loop: nine
+rounds of fresh-context adversarial audits over statements, definitions and proofs,
+combining auditors from two independent model families in every round where the second
+family's channel was available (two rounds ran on one family only, and are recorded as
+such), with the pre-publication audit run blind to this project's own conclusions (given
+the paper, the source and the user's rulings, but not the knowledge base or errata; it
+rediscovered twenty of the recorded errata independently) and the last two rounds reviewing
+the whole written surface as a CLR final project.  Across the rounds 202 findings were raised, 198
 fixed and 4 refuted with a recorded reason.  Four were blockers when raised — a source
 defect (Definition 5's printed non-triviality clause, D13), a vacuous impossibility
 statement caught before anything relied on it (Proposition 16's first carrier lived over a

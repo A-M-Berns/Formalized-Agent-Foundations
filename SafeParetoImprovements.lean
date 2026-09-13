@@ -9,9 +9,10 @@ This module is the *aggregator*: it re-exports every file of the formalization a
 the `dd:` glossary, but it is not a curated boundary and says nothing about what is
 supported.  The supported consumer entrypoint is `SafeParetoImprovements/API.lean`
 (client tests in `APITests/SafeParetoImprovements.lean`), registered in
-`scripts/papers.py`, where the paper is `in-progress` until Theorem 15's deferral is
-ruled to be the final scope, the human read-through is done and the final fresh-context
-audit is closed (root `CLAUDE.md`, *Consumer readiness is part of paper completion*).
+`scripts/papers.py`, where the paper is `in-progress` until the human read-through of
+the statement surface is done; Theorem 15's deferral is the final scope by ruling and the
+fresh-context audits are closed (root `CLAUDE.md`, *Consumer readiness is part of paper
+completion*).
 
 The paper is the specification:
 `SafeParetoImprovements/notes/oesterheld-conitzer-2022-spi.pdf` is the authors' copy of the
