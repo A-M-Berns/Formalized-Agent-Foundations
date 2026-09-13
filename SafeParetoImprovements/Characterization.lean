@@ -39,11 +39,14 @@ stated on the support.
 ## What `condExp` is, and what it is in the in-tree models
 
 `Representatives.condExp` is a genuine Bochner integral against the conditional measure.
-In every *book* model of this development it nevertheless collapses to a point evaluation:
-a `Book` page is chosen per isomorphism class of the reduced game, so the token play is a
-function of `Π(Γ)` and the fiber `{Π(Γ) = a}` carries a single token payoff.  That is a
-property of the book construction, not of the definition — `condExp` averaging strictly
-between the values it integrates is witnessed by the hand-built family
+In the *book* models of this development it nevertheless collapses to a point evaluation
+whenever the token game is isomorphic to the reduced base game (Lemma 13's case): a `Book`
+page is chosen per isomorphism class, so the token play is then a function of `Π(Γ)` and
+the fiber `{Π(Γ) = a}` carries a single token payoff (a token game in another class, such
+as `Examples.conflictThreeToken`, is played from its own page, which need not be
+determined by `Π(Γ)`'s).  That is a property of the book construction, not of the
+definition — `condExp` averaging strictly between the values it integrates is witnessed by
+the hand-built family
 `Examples.mixPlay` / `Examples.mixToken` of `Examples/CharacterizationWitnesses.lean`,
 whose play reads the *size* of the game it is handed, so the token play is not a function
 of `Π(Γ)` and the conditional expectation `(½, ½)` is a value the integrand never takes
@@ -80,25 +83,19 @@ lemma fiber_disjoint (Γ : Game N 𝒜) {a b : ∀ i, 𝒜 i} (hab : a ≠ b) :
   intro ω ha hb
   exact hab (ha.symm.trans hb)
 
-/-- The conditional measure on a fiber is finite: total mass `1` on a supported fiber and
-`0` off the support. -/
-instance isFiniteMeasure_cond_fiber (Γ : Game N 𝒜) (a : ∀ i, 𝒜 i) :
-    IsFiniteMeasure (R.μ[|R.fiber Γ a]) := by
-  refine ⟨?_⟩
-  rw [cond_apply (R.measurableSet_fiber' Γ a), Set.inter_univ]
-  by_cases h : R.μ (R.fiber Γ a) = 0
-  · simp [h]
-  · rw [ENNReal.inv_mul_cancel h (measure_ne_top _ _)]
-    exact ENNReal.one_lt_top
+-- The conditional measure on a fiber is finite (total mass `1` on a supported fiber, `0`
+-- off the support): Mathlib's `IsZeroOrProbabilityMeasure (μ[|s])` instance already gives
+-- `IsFiniteMeasure`, so no local instance is declared (R5-F13).
 
 lemma condExp_isProbabilityMeasure (Γ : Game N 𝒜) {a : ∀ i, 𝒜 i} (ha : a ∈ R.support Γ) :
     IsProbabilityMeasure (R.μ[|R.fiber Γ a]) :=
   cond_isProbabilityMeasure ha
 
-/-- On the fiber, the conditional measure sees `Π(Γ) = a` almost everywhere. -/
+/-- On the fiber, the conditional measure sees `Π(Γ) = a` almost everywhere: Mathlib's
+`ProbabilityTheory.ae_cond_mem`, since membership in the fiber is `R.play Γ ω = a` (R5-F14). -/
 lemma ae_play_eq_cond (Γ : Game N 𝒜) (a : ∀ i, 𝒜 i) :
     ∀ᵐ ω ∂(R.μ[|R.fiber Γ a]), R.play Γ ω = a :=
-  Measure.ae_smul_measure (ae_restrict_mem (R.measurableSet_fiber' Γ a)) _
+  ae_cond_mem (R.measurableSet_fiber' Γ a)
 
 /-- Almost-everywhere statements for `R.μ` hold almost everywhere for the conditional
 measures. -/
@@ -130,10 +127,11 @@ noncomputable def tokenValue [DecidableEq N] (Γ : Game N 𝒜) (T : TokenGame �
 /-- The **conditional expectation** `E[g | Π(Γ) = a]`, as the integral against the
 conditional measure on the fiber.  Meaningful on the support of `Π(Γ)` (erratum D7).
 
-This is a genuine average, but it collapses to a point evaluation in every *book* model of
-this development: a `Book` page is chosen per isomorphism class of the reduced game, so the
-token play is a function of `Π(Γ)` and the fiber `{Π(Γ) = a}` carries a single token payoff
-(`condExp_comp_play` is then all one ever needs).  That is a property of the book
+This is a genuine average, but in the *book* models of this development it collapses to a
+point evaluation whenever the token game is isomorphic to the reduced base game: a `Book`
+page is chosen per isomorphism class, so the token play is then a function of `Π(Γ)` and
+the fiber `{Π(Γ) = a}` carries a single token payoff (`condExp_comp_play` is then all one
+ever needs).  That is a property of the book
 construction, not of this definition: `Examples.condExp_genuine_average` exhibits a play
 family for which `E[uᵉ(Π(Aˢ,uˢ)) | Π(Γ) = a] = (½, ½)` while the integrand takes only the
 values `(0,0)` and `(1,1)` (R5-F11). -/

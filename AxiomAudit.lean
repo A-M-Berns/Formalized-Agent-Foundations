@@ -3873,6 +3873,10 @@ blocks, a stale entry, a malformed line, a non-empty block once the paper is
   -- feasible set and its convex-hull description, token games with Definition 6, room and
   -- the token copy with its natural isomorphism, Lemma 11 as the LP characterization.
   SafeParetoImprovements.Game.Correlated SafeParetoImprovements.Game.Correlated.payoff
+  SafeParetoImprovements.Game.Correlated.toStdSimplex SafeParetoImprovements.Game.Correlated.ofStdSimplex
+  SafeParetoImprovements.Game.Correlated.ofStdSimplex_toStdSimplex
+  SafeParetoImprovements.Game.Correlated.toStdSimplex_ofStdSimplex
+  SafeParetoImprovements.Game.Correlated.toStdSimplex_injective
   SafeParetoImprovements.Game.feasible SafeParetoImprovements.Game.u_mem_feasible
   SafeParetoImprovements.Game.convex_feasible SafeParetoImprovements.Game.feasible_eq_convexHull
   SafeParetoImprovements.Game.lpObjective SafeParetoImprovements.Game.paretoOptimalIn_feasible_iff
@@ -3910,7 +3914,6 @@ blocks, a stale entry, a malformed line, a non-empty block once the paper is
   -- errata D6/D7): conditional expectation on the play's fibers, Lemma 13, Corollary 14
   -- (formula, convexity, compactness, polytope clause) and the polytope substrate.
   SafeParetoImprovements.Representatives.condExp SafeParetoImprovements.Representatives.tokenValue
-  SafeParetoImprovements.Representatives.isFiniteMeasure_cond_fiber
   SafeParetoImprovements.Representatives.condExp_comp_play
   SafeParetoImprovements.Representatives.integral_eq_sum_condExp
   SafeParetoImprovements.Representatives.condExp_mem_feasible
@@ -3980,7 +3983,9 @@ blocks, a stale entry, a malformed line, a non-empty block once the paper is
   -- reassignments; and the hand-built play family (it reads the SIZE of the game it is
   -- handed, so the token play is not a function of `Π(Γ)`) for which `condExp` is a strict
   -- average `(½, ½)` of values the integrand never takes -- the disclosure that every BOOK
-  -- model of this development collapses `condExp` to a point evaluation.
+  -- model of this development collapses `condExp` to a point evaluation whenever the token
+  -- game is isomorphic to the reduced base game (R5-F16: not for token games in another
+  -- isomorphism class, which are played from their own page).
   SafeParetoImprovements.Examples.conflict_exists_reassignment
   SafeParetoImprovements.Examples.conflict_achievable_eq_improvementSum
   SafeParetoImprovements.Examples.conflict_isPolytope_achievable

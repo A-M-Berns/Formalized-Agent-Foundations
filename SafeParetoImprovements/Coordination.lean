@@ -126,6 +126,52 @@ lemma Correlated.mix_payoff (p q : Γ.Correlated) {θ : ℝ} (h0 : 0 ≤ θ) (h1
   unfold Correlated.payoff Correlated.mix
   simp only [Finset.smul_sum, smul_smul, ← Finset.sum_add_distrib, add_smul]
 
+/-! #### Interoperability with Mathlib's standard simplex
+
+A correlated strategy is a point of `stdSimplex ℝ A` on the outcomes `A = Γ.profilesFinset`
+(R5-F15): `Correlated.toStdSimplex` restricts the weights to the outcomes, `Correlated.ofStdSimplex`
+zero-extends a simplex point to the universe, and the two are inverse (`ofStdSimplex_toStdSimplex`,
+`toStdSimplex_ofStdSimplex`), so Mathlib's simplex API (`convex_stdSimplex`, `isCompact_stdSimplex`,
+…) is available for `Correlated` without a second representation. -/
+
+/-- The weights of a correlated strategy on the outcomes, as a point of the standard simplex. -/
+def Correlated.toStdSimplex (p : Γ.Correlated) : stdSimplex ℝ Γ.profilesFinset :=
+  ⟨fun a => p.weight a.1, fun a => p.nonneg a.1, by
+    rw [← p.sum_eq_one, ← Finset.sum_coe_sort Γ.profilesFinset]⟩
+
+/-- A point of the standard simplex on the outcomes, zero-extended to the universe. -/
+noncomputable def Correlated.ofStdSimplex [DecidableEq (∀ i, 𝒜 i)]
+    (f : stdSimplex ℝ Γ.profilesFinset) : Γ.Correlated where
+  weight a := if h : a ∈ Γ.profilesFinset then f.1 ⟨a, h⟩ else 0
+  nonneg a := by
+    split_ifs
+    · exact f.2.1 _
+    · exact le_rfl
+  support a ha := dif_neg fun h => ha (Γ.mem_profilesFinset.1 h)
+  sum_eq_one := by
+    rw [← f.2.2, ← Finset.sum_coe_sort Γ.profilesFinset]
+    exact Finset.sum_congr rfl fun a _ => dif_pos a.2
+
+lemma Correlated.ofStdSimplex_toStdSimplex [DecidableEq (∀ i, 𝒜 i)] (p : Γ.Correlated) :
+    Correlated.ofStdSimplex p.toStdSimplex = p := by
+  obtain ⟨w, hn, hs, h1⟩ := p
+  simp only [Correlated.ofStdSimplex, Correlated.toStdSimplex, Correlated.mk.injEq]
+  funext a
+  split_ifs with h
+  · rfl
+  · exact (hs a fun ha => h (Γ.mem_profilesFinset.2 ha)).symm
+
+lemma Correlated.toStdSimplex_ofStdSimplex [DecidableEq (∀ i, 𝒜 i)]
+    (f : stdSimplex ℝ Γ.profilesFinset) : (Correlated.ofStdSimplex f).toStdSimplex = f := by
+  apply Subtype.ext
+  funext a
+  exact dif_pos a.2
+
+lemma Correlated.toStdSimplex_injective : Function.Injective (Correlated.toStdSimplex (Γ := Γ)) := by
+  classical
+  intro p q h
+  rw [← Correlated.ofStdSimplex_toStdSimplex p, ← Correlated.ofStdSimplex_toStdSimplex q, h]
+
 variable (Γ)
 
 lemma convex_feasible : Convex ℝ Γ.feasible := by
