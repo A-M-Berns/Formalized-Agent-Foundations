@@ -216,25 +216,30 @@ lemma le_condExp_of_isSPI (Γ : Game N 𝒜) {a : ∀ i, 𝒜 i} (ha : a ∈ R.s
   filter_upwards [R.ae_play_eq_cond Γ a, R.ae_cond_of_ae Γ a hT] with ω hωa hωT
   rw [← hωa]; exact hωT
 
-/-- **Lemma 13** (RULINGS 10, 11; errata D6, D7): under Assumptions 1 and 2, with room for
-tokens, every perfect-coordination SPI `Γ′` on `Γ` can be replaced by a token copy of the
-reduced game — a `TokenGame.reassign`, whose `uᵉ` is defined along the isomorphism
-Assumption 2 supplies — that is again a perfect-coordination SPI, has the same conditional
+/-- **Lemma 13** (RULINGS 10, 11; errata D6, D7, D19): under Assumptions 1 and 2, with room
+for tokens, every perfect-coordination SPI `Γ′` on `Γ` can be replaced by a token copy of
+`Γ` itself — the paper's `(Â, û)`, every original action and payoff on fresh tokens, a
+`TokenGame.reassign` whose `uᵉ` is defined along the isomorphism Assumption 2 supplies
+between the reductions — that is again a perfect-coordination SPI, has the same conditional
 expected payoff on every outcome in the support of `Π(Γ)`, and hence the same expected
 payoff.  Off the support the paper's conditional expectations are undefined (D7), and the
-reassignment there is `u` itself.
+reassignment there is `u` itself; the paper's display writes `u` for `uᵉ` on token outcomes
+(D19).
 
-The copy is exposed as a `Game.ExactCopy` — an isomorphism with scale `1` and shift `0`,
-i.e. the paper's `û(â) = u(a)` — and not merely as `Game.Isomorphic`: the witness the proof
-builds is the token relabeling `Game.tokenCopy` along `Game.tokenIso` (R5-F01/F07).  What
-is *not* exposed is which relabeling: the token map is chosen from the room hypothesis, and
-`uᵉ` is defined along whichever isomorphism Assumption 2 supplies (D6, RULING 10).
+The copy is exposed as a `Game.ExactCopy` of `Γ` — an isomorphism with scale `1` and shift
+`0`, i.e. the paper's `û(â) = u(a)` — and not merely as `Game.Isomorphic`: the witness the
+proof builds is the token relabeling `Game.tokenCopy` along `Game.tokenIso` (R5-F01/F07).
+What is *not* exposed is which relabeling: the token map is chosen from the room
+hypothesis, and `uᵉ` is defined along whichever isomorphism Assumption 2 supplies (D6,
+RULING 10).  Assumption 1 is what lets the copy be played through its reduction
+(RULING 11); an earlier version copied `reduce Γ` instead of `Γ`, which the paper does not
+do (R7-F02).
 
 Paper node: `Lemma 13` -/
 theorem exists_reassignment_condExp_eq (Γ : Game N 𝒜)
     (hA1 : R.toPlay.SatisfiesA1 R.certainty) (hA2 : R.toPlay.SatisfiesA2 R.certainty)
-    (h : Γ.reduce.HasRoomOutside Γ.S) {T' : TokenGame Γ} (hT' : T'.IsSPI R.toPlay R.certainty) :
-    ∃ T : TokenGame Γ, Γ.reduce.ExactCopy T.game ∧ T.IsSPI R.toPlay R.certainty ∧
+    (h : Γ.HasRoom) {T' : TokenGame Γ} (hT' : T'.IsSPI R.toPlay R.certainty) :
+    ∃ T : TokenGame Γ, Γ.ExactCopy T.game ∧ T.IsSPI R.toPlay R.certainty ∧
       (∀ a ∈ R.support Γ, R.condExp Γ a (fun ω => T.ue (R.play T.game ω)) =
         R.condExp Γ a (fun ω => T'.ue (R.play T'.game ω))) ∧
       R.tokenValue Γ T = R.tokenValue Γ T' := by
@@ -321,7 +326,7 @@ expectations; "⊇" is the reassignment of each outcome to its chosen improvemen
 Paper node: `Corollary 14` -/
 theorem achievable_eq_improvementSum (Γ : Game N 𝒜)
     (hA1 : R.toPlay.SatisfiesA1 R.certainty) (hA2 : R.toPlay.SatisfiesA2 R.certainty)
-    (h : Γ.reduce.HasRoomOutside Γ.S) : R.achievable Γ = R.improvementSum Γ := by
+    (h : Γ.HasRoom) : R.achievable Γ = R.improvementSum Γ := by
   classical
   ext y
   constructor
@@ -379,7 +384,7 @@ theorem achievable_eq_improvementSum (Γ : Game N 𝒜)
 Paper node: `Corollary 14` -/
 theorem convex_achievable (Γ : Game N 𝒜)
     (hA1 : R.toPlay.SatisfiesA1 R.certainty) (hA2 : R.toPlay.SatisfiesA2 R.certainty)
-    (h : Γ.reduce.HasRoomOutside Γ.S) : Convex ℝ (R.achievable Γ) := by
+    (h : Γ.HasRoom) : Convex ℝ (R.achievable Γ) := by
   rw [R.achievable_eq_improvementSum Γ hA1 hA2 h]
   unfold improvementSum
   refine Finset.sum_induction _ (fun s => Convex ℝ s) (fun s t hs ht => hs.add ht) ?_
@@ -389,7 +394,7 @@ theorem convex_achievable (Γ : Game N 𝒜)
 /-- The safely achievable set is compact. -/
 lemma isCompact_achievable (Γ : Game N 𝒜)
     (hA1 : R.toPlay.SatisfiesA1 R.certainty) (hA2 : R.toPlay.SatisfiesA2 R.certainty)
-    (h : Γ.reduce.HasRoomOutside Γ.S) : IsCompact (R.achievable Γ) := by
+    (h : Γ.HasRoom) : IsCompact (R.achievable Γ) := by
   rw [R.achievable_eq_improvementSum Γ hA1 hA2 h]
   unfold improvementSum
   refine Finset.sum_induction _ (fun s => IsCompact s) (fun s t hs ht => hs.add ht) ?_
@@ -416,7 +421,7 @@ Each summand `{y ∈ C(Γ) | y ≥ u(a)}` is a polytope cut by an orthant
 Paper node: `Corollary 14` -/
 theorem isPolytope_achievable (Γ : Game N 𝒜)
     (hA1 : R.toPlay.SatisfiesA1 R.certainty) (hA2 : R.toPlay.SatisfiesA2 R.certainty)
-    (h : Γ.reduce.HasRoomOutside Γ.S) : IsPolytope (R.achievable Γ) := by
+    (h : Γ.HasRoom) : IsPolytope (R.achievable Γ) := by
   rw [R.achievable_eq_improvementSum Γ hA1 hA2 h]
   exact IsPolytope.finsetSum _ fun a _ => (Γ.isPolytope_improvementSet a).smul _
 

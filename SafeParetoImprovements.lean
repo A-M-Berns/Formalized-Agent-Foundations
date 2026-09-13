@@ -7,10 +7,11 @@ Systems 36 (2022), doi 10.1007/s10458-022-09574-6 (short version AAMAS 2021).
 
 This module is the *aggregator*: it re-exports every file of the formalization and carries
 the `dd:` glossary, but it is not a curated boundary and says nothing about what is
-supported.  The formalization is at milestone M0 and registered `in-progress` in
-`scripts/papers.py`; there is no `SafeParetoImprovements/API.lean` consumer entrypoint
-yet, and the completed-status flip is gated on one (root `CLAUDE.md`, *Consumer readiness
-is part of paper completion*).
+supported.  The supported consumer entrypoint is `SafeParetoImprovements/API.lean`
+(client tests in `APITests/SafeParetoImprovements.lean`), registered in
+`scripts/papers.py`, where the paper is `in-progress` until Theorem 15's deferral is
+ruled to be the final scope, the human read-through is done and the final fresh-context
+audit is closed (root `CLAUDE.md`, *Consumer readiness is part of paper completion*).
 
 The paper is the specification:
 `SafeParetoImprovements/notes/oesterheld-conitzer-2022-spi.pdf` is the authors' copy of the
@@ -194,7 +195,7 @@ ruled on but not yet carried by any declaration.
 | `SafeParetoImprovements/Coordination.lean` | §5.1: `C(Γ)` (`Game.feasible`, `dd:feasible`), perfect-coordination token games (`TokenGame`), **Definition 6** (`TokenGame.IsSPI`, `IsStrictSPI`), room and the token copy (`Game.HasRoomOutside`, `Game.HasRoom`, `Game.hasRoomOutside_of_infinite`, `Game.tokenCopy`, `Game.tokenIso`, `dd:room`), **Lemma 11** (`Game.paretoOptimalIn_feasible_iff`, LP characterization) |
 | `SafeParetoImprovements/PerfectCoordination.lean` | §5.2: **Definition 7** (`Play.StrictPerfectCoordinationSPIDecision`, RULINGS 7/10), the reassignment construction (`TokenGame.reassign`, `Play.exists_tokenGame_ue_eq`: `uᵉ` along the isomorphism Assumption 2 supplies), **Proposition 12** as Algorithm 1's correctness iff (`Representatives.strictPerfectCoordinationSPIDecision_iff`, RULING 11, `dd:complexity`) |
 | `SafeParetoImprovements/Polytope.lean` | Mathlib-shaped substrate: polytopes as convex hulls of finite sets, closure under scaling and Minkowski sums, and the half-space / orthant section theorems (`IsPolytope.inter_halfspace`, `inter_Ici`) that Corollary 14's polytope clause needs and Mathlib lacks |
-| `SafeParetoImprovements/Characterization.lean` | §5.3: conditional expectation on the play's fibers (`Representatives.condExp`, law of total expectation), **Lemma 13** (`Representatives.exists_reassignment_condExp_eq`), **Corollary 14** as the weighted Minkowski-sum formula (`achievable_eq_improvementSum`), convexity, compactness and the polytope clause (`isPolytope_achievable`, RULING 12) |
+| `SafeParetoImprovements/Characterization.lean` | §5.3: conditional expectation on the play's fibers (`Representatives.condExp`, law of total expectation), **Lemma 13** (`Representatives.exists_reassignment_condExp_eq`: an exact token copy of `Γ` itself), **Corollary 14** as the weighted Minkowski-sum formula (`achievable_eq_improvementSum`), convexity, compactness and the polytope clause (`isPolytope_achievable`, RULING 12) |
 | `SafeParetoImprovements/Examples/DecisionWitnesses.lean` | Definition 7 two-sided through Proposition 12: the conflict game is a "yes" instance, Table 7 a "no" instance |
 | `SafeParetoImprovements/Complexity.lean` | §4.6, Appendix D.2: certificates (`Game.Certificate`) and their checks, the elimination-chain transfer and dominated-set lemmas, **Propositions 23 and 25** as certificate iffs (`spiDecision_iff_certificate` and variants), **Propositions 24 and 26 / Proposition 10** as the search bound (`card_certificate_le`, `spiDecision_search`); the identity certificate as erratum D17 |
 | `SafeParetoImprovements/Hardness.lean` | Appendix D.3: graphs and **Definition 8**, Tables 9–10 (`tableU₁`, `tableU₂`, `hardnessGame`; erratum D18), the full reduction of `Γᶜ` (`reduce_hardnessGame`), **Lemma 28** in four forms (`subgraphIsoProblem_iff_spiDecision`, …), **Theorem 9**'s carrier (`theorem9`) |

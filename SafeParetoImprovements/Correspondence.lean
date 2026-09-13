@@ -144,7 +144,7 @@ theorem Corresponds.ne_of_at_eq_empty {Γ Γ' : Game N 𝒜} {Φ : SetRel (∀ i
 
 /-- Lemma 2.7, **elimination in the target**: if `Γ ∼_Φ Γ'` and `Φ⁻¹(a') = ∅`, then
 `Π(Γ') ≠ a'` with certainty.  (The printed proof cites "reflexivity (Lemma 2.1)" where it
-uses symmetry, Lemma 2.2 — erratum D4.)
+uses symmetry, Lemma 2.2 — erratum D4(a).)
 
 Paper node: `Lemma 2` -/
 theorem Corresponds.ne_of_inv_at_eq_empty {Γ Γ' : Game N 𝒜}
@@ -162,7 +162,7 @@ outcome `a` of `Γ` and every `aˢ ∈ Φ(a)`.  The paper's typing `Φ : A ⊸ A
 requirement on the supplied `Φ`, not merely a restriction of the payoff obligation, and
 is carried by the field `typed`: `Φ` relates only outcomes of `Γ` to outcomes of `Γs`.
 (The printed definition writes `Γ ∼_Φ Γ'` for `Γ ∼_Φ Γˢ` and types `Φ` with an ordinary
-arrow — erratum D2.)
+arrow — erratum D2(a).)
 
 `typed` is the *last* field so that the other two keep their order and meaning; an
 anonymous constructor must supply all three.

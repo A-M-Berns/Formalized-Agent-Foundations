@@ -93,7 +93,10 @@ relations obtained by quantifying the correspondence away are in `Ordering.lean`
 
 `Play.SatisfiesA1 X L` and `SatisfiesA2` are Assumptions 1–2.  Their joint satisfiability
 is a theorem: any **book** `Book N 𝒜 Ω` (a page per isomorphism class of reduced games,
-`dd:book`) yields `Book.toPlay` with `Book.satisfiesA1`/`satisfiesA2`;
+`dd:book`) yields `Book.toPlay` with `Book.satisfiesA1`/`satisfiesA2`, and the book's play
+is a function of the paper's game (`Play.RespectsEqOn`, `Book.toPlay_respectsEqOn`: it is
+routed through the canonical presentation `Game.canon`, which zeroes payoffs off the
+profiles and is shared by `EqOn`-equal games);
 `Book.const`, `Book.prescribed`, `Book.prescribedRandom`, `Book.varying` are the ready-made
 books, `Book.toRepresentatives` lifts a measurable book to `Representatives`, and
 `exists_representatives_satisfiesA1_satisfiesA2` is the existence statement.
@@ -103,7 +106,10 @@ full reduction `Game.reduce` with `reduce_reduced`, `reduce_of_reduced`, `elimSt
 `reduce_eq_of_reduced_of_elimStar`, path independence `reduced_unique` (Lemma 19 is
 `isStrictlyDominated_erase`), and the bulk tools `Game.elimStar_of_dominated` (eliminate a
 whole dominated set) and `Game.ElimStar.transfer` (replay a chain after cutting one player's
-actions).  Reducedness transports along isomorphisms: `Game.Reduced.of_iso`.
+actions).  Reduction respects the paper's equality of games (`Game.EqOn.reduce_eqOn`,
+`EqOn.reduce_eq_withPayoffs`) and transports along isomorphisms
+(`Game.Reduced.of_iso`; `GameIso.imageGame`, `GameIso.reduce_eq_imageGame`,
+`GameIso.restrictReduce`: `reduce Γ' = Φ(reduce Γ)`).
 
 Definition 5's derivation system: `Game.Step`, `Game.Deriv Γ₀ Γ Γ' Φ` (Assumption 1
 forward and backward, Assumption 2), `Game.ParetoImprovingFor`, the decision problems
@@ -122,9 +128,8 @@ the checks `ParetoImproving`, `StrictlyParetoImproving`, `Nontrivial`, `Affine i
 **certificate characterizations** `Game.spiDecision_iff_certificate`,
 `strictSPIDecision_iff_certificate`, `unilateralSPIDecision_iff_certificate`,
 `strictUnilateralSPIDecision_iff_certificate` (Propositions 23, 25) with the search bounds
-`Game.card_certificate_le` (`≤ m ^ l`), `card_unilateralCertificate_le`
-(`≤ n · m ^ l`), `card_unilateralCertificate_le'` (`≤ m ^ (l+1)`) — Propositions 24, 26,
-Proposition 10.  `Certificate.reducesToImage_of_dominated` is the practical way to
+`Game.card_certificate_le` (`≤ m ^ l`) and `card_unilateralCertificate_le'` (the pairs
+(player, certificate) are also `≤ m ^ l`) — Propositions 24, 26, Proposition 10.  `Certificate.reducesToImage_of_dominated` is the practical way to
 discharge check 3.
 
 **Hardness** (Appendix D.3, namespace `Hardness`): `Graph n`, `SubgraphIso`,
@@ -164,10 +169,11 @@ The concrete instruction language is `Prog Γ₀` (`play`, `delegate`, `ifAllSam
 `Game.tokenCopy`/`tokenIso`, and the reassignment `TokenGame.reassign`.  **Definition 7** is
 `Play.StrictPerfectCoordinationSPIDecision` and **Proposition 12**
 `Representatives.strictPerfectCoordinationSPIDecision_iff` (Algorithm 1's correctness,
-under Assumptions 1–2 and room).  Conditional expectation on the play's fibers is
+under Assumptions 1–2 and room `Game.HasRoom`).  Conditional expectation on the play's fibers is
 `Representatives.condExp` (a Bochner integral against `ProbabilityTheory.cond`;
 `integral_eq_sum_condExp` is the law of total expectation), **Lemma 13** is
-`Representatives.exists_reassignment_condExp_eq`, the safely achievable payoffs are
+`Representatives.exists_reassignment_condExp_eq` (the replacement is an exact token copy of
+`Γ` itself, `TokenGame.reassign`), the safely achievable payoffs are
 `Representatives.achievable` with **Corollary 14** `achievable_eq_improvementSum`,
 `convex_achievable`, `isCompact_achievable`, `isPolytope_achievable`, and the polytope
 substrate (`IsPolytope`, `IsPolytope.inter_halfspace`, `inter_Ici`) is `Polytope.lean`.

@@ -209,12 +209,15 @@ lemma isCompact_feasible (Γ : Game N 𝒜) : IsCompact Γ.feasible := by
 noncomputable def lpObjective (y : N → ℝ) (p : Γ.Correlated) : ℝ :=
   ∑ i, (p.payoff i - y i)
 
-/-- **Lemma 11**, mathematical content: `y` is Pareto-optimal in `C(Γ)` iff the paper's
-linear program — maximise `∑ᵢ (uᵢ(p) − yᵢ)` over correlated strategies `p` with
-`u(p) ≥ y` — has optimum `0`, i.e. every feasible `p` has objective `0`.  The paper states
-it for an arbitrary payoff vector `y ∈ ℝⁿ` (extraction l. 1360–1362), and so does this: no
-membership hypothesis is needed or imposed.  Above `C(Γ)` both sides are vacuously true and
-below it both are false.  The clause "it can be decided by linear programming and thus in
+/-- **Lemma 11**, mathematical content: `y` is Pareto-optimal in `C(Γ)` iff every
+correlated strategy `p` that is feasible for the paper's linear program — maximise
+`∑ᵢ (uᵢ(p) − yᵢ)` subject to `u(p) ≥ y` — has objective `0`.  That is the paper's "the
+program has optimum `0`" wherever the program is feasible; when it is infeasible (`y` above
+`C(Γ)`) the program has no optimum at all, both sides here hold vacuously, and
+`ParetoOptimalIn` is true, which is the reading the paper's use of the lemma needs
+(R7-F03).  The paper states it for an arbitrary payoff vector `y ∈ ℝⁿ` (extraction
+l. 1360–1362), and so does this: no membership hypothesis is needed or imposed.  Below
+`C(Γ)` both sides are false.  The clause "it can be decided by linear programming and thus in
 polynomial time" is not rendered (`dd:complexity`, RULING 6).
 
 Paper node: `Lemma 11` -/

@@ -3705,27 +3705,25 @@ the checker asserts the extraction yields exactly the paper's 37 parseable nodes
 (`Theorem 17`, a cited external result whose header the extraction tears in two, is
 deliberately outside the set).
 
-Status: **milestone M0**, registered `in-progress`.  The §3–§4.4 spine is stated and
-proved at the certainty-filter level (`dd:certainty`): Definitions 1–4, Lemma 2 (all seven
-items), **Theorem 3**, Assumptions 1–2 as predicates, Lemma 4 in both forms, Lemma 19
-(the local form of path independence, Appendix D.1), and the four §4.5 worked
-examples, Propositions 5–8.  There is **no `sorry` anywhere in
-`SafeParetoImprovements/`**, so the `SPI-PENDING` block below is empty and the whole
-annotated surface is in the `#assert_axioms_clean` block.  The probability-one realization
-(`Representatives.lean`), the canonical reduction (`Reduction.lean`) and the book
-representatives proving Assumptions 1 and 2 jointly satisfiable (`Book.lean`, `dd:book`)
-carry no `Paper node:` line — they are substrate and non-vacuity witnesses, not numbered
-nodes.  The book layer and the individual witnesses *are* nevertheless inventoried below,
-because a vacuous "under Assumptions 1 and 2" node is exactly what they exist to rule out
-and an axiom leak in them would be an axiom leak in the claim; what is not inventoried is
-the general substrate of `Representatives.lean` and `Reduction.lean`.  When the consumer
-API lands, the un-annotated conveniences belong in the *Consumer API conveniences* section
-below.  See `SafeParetoImprovements/README.md`.
+Status: **every in-scope node except Theorem 15 carried**, registered `in-progress`.  The
+§3–§4 spine (Definitions 1–5, Lemma 2, **Theorem 3**, Assumptions 1–2, Lemma 4, Lemmas 19,
+21, 22, Propositions 5–8), Appendix A (**Theorem 1**, Proposition 18), §5 except Theorem 15
+(Definitions 6–7, Lemma 11, Propositions 12 and 16, Lemma 13, Corollary 14), and the
+complexity nodes as qualified nodes (Theorem 9, Proposition 10, Propositions 23–26,
+Definition 8, Lemma 28) are stated and proved at the certainty-filter level
+(`dd:certainty`).  There is **no `sorry` anywhere in `SafeParetoImprovements/`**, so the
+`SPI-PENDING` block below is empty and the whole annotated surface is in the
+`#assert_axioms_clean` block.  Substrate without a `Paper node:` line (the probability-one
+realization, the canonical reduction, the book representatives proving Assumptions 1 and 2
+jointly satisfiable, `dd:book`) is inventoried where it is a non-vacuity witness or a
+consumer-facing tool, and the tranche-F files are inventoried in full; the inclusion rule
+for older supporting lemmas is editorial.  The consumer API `SafeParetoImprovements/API.lean`
+and its client tests `APITests/SafeParetoImprovements.lean` are in place and registered.
+See `SafeParetoImprovements/README.md`.
 
-This is **not** the paper being `completed` in `scripts/papers.py`: that status
-additionally requires a curated `SafeParetoImprovements/API.lean` boundary, client tests
-in `APITests/`, a human read-through and a final fresh-context audit, none of which has
-happened.
+This is **not** yet the paper being `completed` in `scripts/papers.py`: that status waits on
+the ruling that Theorem 15's deferral is the final scope, on the human read-through, and
+on closing the final fresh-context audit (round 7 of the harness).
 
 **Why there are two blocks.**  Same contract as Condensation's (see the preamble of the
 CONDENSATION-INVENTORY block above for the full rationale): an endpoint whose *statement*
@@ -4223,6 +4221,50 @@ blocks, a stale entry, a malformed line, a non-empty block once the paper is
   SafeParetoImprovements.Examples.scaledGame.cert_affine_scale_eq_two
   SafeParetoImprovements.Examples.scaledGame.cert_reducesToImage
   SafeParetoImprovements.Examples.scaledGame.strictUnilateralSPIDecision
+  SafeParetoImprovements.Examples.SAct
+  -- §4.2's relations `R` and `⪰` (SafeParetoImprovements/Ordering.lean): the prose carriers
+  -- of the paragraph after Lemma 2, on the axiom gate since the final audit (R7-F34).
+  SafeParetoImprovements.Game.IsSingleValuedBijection SafeParetoImprovements.Play.BijEquiv
+  SafeParetoImprovements.Play.bijEquiv_refl SafeParetoImprovements.Play.BijEquiv.symm
+  SafeParetoImprovements.Play.BijEquiv.trans SafeParetoImprovements.Play.bijEquiv_equivalence
+  SafeParetoImprovements.Play.Improves SafeParetoImprovements.Play.improves_refl
+  SafeParetoImprovements.Play.Improves.trans SafeParetoImprovements.Play.improves_preorder
+  SafeParetoImprovements.Play.improves_self_iff_isSPI SafeParetoImprovements.Play.isSPI_of_paretoDominant
+  -- Final audit (round 7).  (a) The play family as a function of the paper's game
+  -- (R7-F01): `Play.RespectsEqOn`, the canonical presentation `Game.canon`, reduction
+  -- across `EqOn`, and the book's play routed through the canonical presentation so that the
+  -- existence witnesses of `dd:book` are paper plays.  (b) Reduction transports along
+  -- isomorphisms (`GameIso.imageGame`, `reduce_eq_imageGame`), which lets Lemma 13 copy the
+  -- whole game as the paper does (R7-F02).  (c) Derivations are single-valued and typed
+  -- (R7-F05), and the strict printed problem is not constant-true (R7-F35).  (d) The
+  -- unilateral search bound is `m ^ l` itself (R7-F04).
+  SafeParetoImprovements.Play.RespectsEqOn
+  SafeParetoImprovements.Game.withPayoffs SafeParetoImprovements.Game.withPayoffs_S
+  SafeParetoImprovements.Game.withPayoffs_u SafeParetoImprovements.Game.EqOn.withPayoffs_eqOn
+  SafeParetoImprovements.Game.withPayoffs_erase SafeParetoImprovements.Game.EqOn.elimStar_withPayoffs
+  SafeParetoImprovements.Game.EqOn.reduce_eq_withPayoffs SafeParetoImprovements.Game.EqOn.reduce_S
+  SafeParetoImprovements.Game.EqOn.reduce_eqOn
+  SafeParetoImprovements.Game.canon SafeParetoImprovements.Game.canon_S
+  SafeParetoImprovements.Game.canon_profiles SafeParetoImprovements.Game.canon_u_of_mem
+  SafeParetoImprovements.Game.canon_eqOn SafeParetoImprovements.Game.EqOn.canon_eq
+  SafeParetoImprovements.GameIso.ofCanon SafeParetoImprovements.GameIso.ofCanon_map
+  SafeParetoImprovements.GameIso.cast SafeParetoImprovements.GameIso.cast_map
+  SafeParetoImprovements.GameIso.cast_scale SafeParetoImprovements.GameIso.cast_shift
+  SafeParetoImprovements.Game.cls_canon SafeParetoImprovements.Game.EqOn.cls_eq
+  SafeParetoImprovements.Book.playReduced_eqOn SafeParetoImprovements.Book.toPlay_respectsEqOn
+  SafeParetoImprovements.GameIso.imageGame SafeParetoImprovements.GameIso.imageGame_S
+  SafeParetoImprovements.GameIso.imageGame_u SafeParetoImprovements.GameIso.imageGame_isSubsetGameOf
+  SafeParetoImprovements.GameIso.imageGame_self SafeParetoImprovements.GameIso.restrict
+  SafeParetoImprovements.GameIso.restrict_scale SafeParetoImprovements.GameIso.restrict_shift
+  SafeParetoImprovements.GameIso.restrict_map SafeParetoImprovements.GameIso.restrict_toFun
+  SafeParetoImprovements.GameIso.strictlyDominates_imageGame SafeParetoImprovements.GameIso.imageGame_erase
+  SafeParetoImprovements.GameIso.elim_imageGame SafeParetoImprovements.GameIso.elimStar_imageGame
+  SafeParetoImprovements.GameIso.reduce_eq_imageGame SafeParetoImprovements.GameIso.restrictReduce
+  SafeParetoImprovements.GameIso.restrictReduce_map SafeParetoImprovements.GameIso.restrictReduce_scale
+  SafeParetoImprovements.GameIso.restrictReduce_shift
+  SafeParetoImprovements.Game.Deriv.mem_right_of_rel SafeParetoImprovements.Game.Deriv.eq_of_rel
+  SafeParetoImprovements.Game.not_strictSPIDecisionPrinted_of_card_le_one
+  SafeParetoImprovements.Game.card_mul_prod_le_pow
 -- SPI-INVENTORY-END
 
 /-! Tier-2 freezes for Safe Pareto Improvements (R1-F10, R1-F25, R1-F33).  The mechanical

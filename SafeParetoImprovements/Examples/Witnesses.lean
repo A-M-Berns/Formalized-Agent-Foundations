@@ -68,7 +68,7 @@ Assumption 1, and the witness would say nothing about the proposition's hypothes
 lemma prisonersDilemma_isStrictSPI_witnessed :
     ∃ X : Play Two PDUniverse Unit, X.SatisfiesA1 ⊤ ∧ X.SatisfiesA2 ⊤ ∧
       X.IsStrictSPI ⊤ prisonersDilemma prisonersDilemmaCooperate := by
-  obtain ⟨X, hX⟩ := exists_play_satisfiesA1_satisfiesA2 (N := Two) (𝒜 := PDUniverse) Unit
+  obtain ⟨X, -, hX⟩ := exists_play_satisfiesA1_satisfiesA2 (N := Two) (𝒜 := PDUniverse) Unit
   exact ⟨X, (hX ⊤).1, (hX ⊤).2, prisonersDilemma_isStrictSPI X ⊤ (hX ⊤).1 _ fun _ => rfl⟩
 
 /-- **The weak clause of Proposition 6 is not vacuous** (with its assumption clauses,
@@ -76,21 +76,21 @@ R2-F11). -/
 lemma demandGame_isSPI_witnessed :
     ∃ X : Play Two DUniverse Unit, X.SatisfiesA1 ⊤ ∧ X.SatisfiesA2 ⊤ ∧
       X.IsSPI ⊤ demandGame demandSPI := by
-  obtain ⟨X, hX⟩ := exists_play_satisfiesA1_satisfiesA2 (N := Two) (𝒜 := DUniverse) Unit
+  obtain ⟨X, -, hX⟩ := exists_play_satisfiesA1_satisfiesA2 (N := Two) (𝒜 := DUniverse) Unit
   exact ⟨X, (hX ⊤).1, (hX ⊤).2, demandGame_isSPI X ⊤ (hX ⊤).1 (hX ⊤).2⟩
 
 /-- **Proposition 7 is not vacuous** (with its assumption clauses, R2-F11). -/
 lemma temptation_isStrictSPI_witnessed :
     ∃ X : Play Two TemptUniverse Unit, X.SatisfiesA1 ⊤ ∧ X.SatisfiesA2 ⊤ ∧
       X.IsStrictSPI ⊤ temptation temptationCommit := by
-  obtain ⟨X, hX⟩ := exists_play_satisfiesA1_satisfiesA2 (N := Two) (𝒜 := TemptUniverse) Unit
+  obtain ⟨X, -, hX⟩ := exists_play_satisfiesA1_satisfiesA2 (N := Two) (𝒜 := TemptUniverse) Unit
   exact ⟨X, (hX ⊤).1, (hX ⊤).2, temptation_isStrictSPI X ⊤ (hX ⊤).1⟩
 
 /-- **Proposition 8 is not vacuous** (with its assumption clauses, R2-F11). -/
 lemma complicatedTemptation_isUnilateralSPI_witnessed :
     ∃ X : Play Two CTUniverse Unit, X.SatisfiesA1 ⊤ ∧ X.SatisfiesA2 ⊤ ∧
       X.IsUnilateralSPI ⊤ complicatedTemptation complicatedTemptationSPI := by
-  obtain ⟨X, hX⟩ := exists_play_satisfiesA1_satisfiesA2 (N := Two) (𝒜 := CTUniverse) Unit
+  obtain ⟨X, -, hX⟩ := exists_play_satisfiesA1_satisfiesA2 (N := Two) (𝒜 := CTUniverse) Unit
   exact ⟨X, (hX ⊤).1, (hX ⊤).2,
     complicatedTemptation_isUnilateralSPI X ⊤ (hX ⊤).1 (hX ⊤).2⟩
 
@@ -190,7 +190,7 @@ Complicated Temptation Game with Table 5, whose reduced action sets differ for p
 (`{F1, F2}` against `{C1, C2}`) and whose subset game is unilateral (Proposition 8). -/
 lemma complicatedTemptation_unilateralSPIDecision :
     complicatedTemptation.UnilateralSPIDecision := by
-  obtain ⟨X, hX⟩ := exists_play_satisfiesA1_satisfiesA2 (N := Two) (𝒜 := CTUniverse) Unit
+  obtain ⟨X, -, hX⟩ := exists_play_satisfiesA1_satisfiesA2 (N := Two) (𝒜 := CTUniverse) Unit
   refine ⟨complicatedTemptationSPI, complicatedTemptationSPI.isSubsetGameOf, ?_, ?_,
     (complicatedTemptation_isUnilateralSPI X ⊤ (hX ⊤).1 (hX ⊤).2).1⟩
   · rw [complicatedTemptation.reduce_eq, complicatedTemptationSPI.reduce_eq]
@@ -219,7 +219,7 @@ lemma demandGame_isStrictSPI_of_deriv_witnessed :
         (∀ a ∈ demandGame.reduce.profiles,
           ∃ᶠ ω in (⊤ : Filter (∀ i, DUniverse i)), X.play demandGame ω = a) ∧
         X.IsStrictSPI ⊤ demandGame demandSPI := by
-  obtain ⟨X, hA1, hA2, hhits⟩ :=
+  obtain ⟨X, -, hA1, hA2, hhits⟩ :=
     exists_play_satisfiesA1_satisfiesA2_hits (N := Two) (𝒜 := DUniverse)
   have hPI : Game.ParetoImprovingFor demandGame (Game.Deriv.normalRel demandReduceIso) := by
     rintro x y hxy

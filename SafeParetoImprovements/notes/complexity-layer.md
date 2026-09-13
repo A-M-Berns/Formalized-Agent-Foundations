@@ -18,7 +18,7 @@ no declaration cites it, and no axiom stands in for it.
 | Prop 23 | the guess-injections algorithm "runs in NP time and returns True iff there is a (strict) SPI" | `SPIDecision Γ ↔ ∃ c : Certificate Γ, c.ParetoImproving ∧ c.Nontrivial`, and the strict variant | "NP time" |
 | Prop 25 | the unilateral algorithm (three checks) "… iff there is a (strict) unilateral SPI" | `UnilateralSPIDecision Γ ↔ ∃ i c, c.ParetoImproving ∧ c.Nontrivial ∧ c.Affine i ∧ c.ReducesToImage i`, and the strict variant | "NP time" |
 | Prop 24 / Prop 10 | omnilateral problem solvable in `O(m^l)` | `Fintype.card (Certificate Γ) ≤ m ^ l` with `m = Σᵢ|Aᵢ|`, `l = Σᵢ|Aʳᵉᵈᵢ|`; the decision is a search over that finite type | "solved in `O(m^l)`" |
-| Prop 26 / Prop 10 | unilateral problem in `O(m^l)` | `Fintype.card (N × Certificate Γ) ≤ n · m ^ l ≤ m ^ (l+1)` | same |
+| Prop 26 / Prop 10 | unilateral problem in `O(m^l)` | `Fintype.card (N × Certificate Γ) ≤ m ^ l` | same |
 | Def 8 | subgraph isomorphism problem | `Graph.SubgraphIso a â φ`, `Graph.SubgraphIsoProblem a â` | — |
 | Lemma 27 | subgraph isomorphism is NP-complete | cited, not carried | all of it |
 | Lemma 28 | linear-time reduction, so the four SPI problems are NP-hard | `SubgraphIsoProblem a â ↔ (hardnessGame a â ε).SPIDecision`, and the same for the strict, unilateral and strict-unilateral problems; the instance size of the constructed game | "linear time", "NP-hard" (needs Lemma 27) |
@@ -91,12 +91,14 @@ far; `Game.StrictUnilateralSPIDecision` is added to `Derivation.lean` with a
 `Fintype.card (Γ.Certificate) = ∏ᵢ mᵢ.descFactorial lᵢ ≤ ∏ᵢ mᵢ ^ lᵢ ≤ m ^ l`.  The
 paper's `O(m^l)` is this cardinality together with "each certificate is checked in
 polynomial time", which is the clause not rendered.  The unilateral search space is
-`N × Certificate Γ`, of cardinality `≤ n · m ^ l ≤ m ^ (l+1)` (`card_le_size`: every player
-has an action).  The factor `n` is real and is not absorbed: the appendix's algorithm is
-"given an `n`-player game and a player `i`" (per player, `m^l`), whereas Definition 5's
-unilateral problem quantifies over the player, so deciding it searches every `i`
-(R6-F11/F17).  Proposition 10 is the main-text restatement of Propositions 24 and 26 and
-shares their declarations.
+`N × Certificate Γ`, and it too has cardinality `≤ m ^ l` (`card_unilateralCertificate_le'`,
+final audit R7-F04): the factor `n` from the choice of player — real, since the appendix's
+algorithm is "given an `n`-player game and a player `i`" while Definition 5's unilateral
+problem quantifies over the player — is absorbed by the certificate count, because
+`n · ∏ᵢ mᵢ ≤ mⁿ` (sum `∏ mᵢ = mⱼ ∏_{i≠j} mᵢ ≤ mⱼ mⁿ⁻¹` over `j`) and `lᵢ ≥ 1` peels one
+`mᵢ` off each `mᵢ^{lᵢ}`.  So the paper's `O(m^l)` is right as printed for the unilateral
+problem too; an intermediate version of this note claimed otherwise.  Proposition 10 is
+the main-text restatement of Propositions 24 and 26 and shares their declarations.
 
 ## 4. Hardness (D.3): graphs, Table 9, Table 10, Lemma 28
 
@@ -126,9 +128,9 @@ fails; the unilateral half of Lemma 28's first claim is then false for the formu
 game.  The carrier follows the **table** (`0`), under which every step of the printed
 proof checks.  Recorded as erratum D18.  The other entries agree.
 
-*`ε`.*  The paper fixes `ε < 1/2n` for `Γ` and builds `Γ̂` "analogously".  The carrier
-takes `ε` as a parameter with `0 < ε`, `ε * (2 * n) < 1` and `ε * (2 * n̂) < 1`, and each
-is used: the `n̂`-side bound makes `(2n̂+1, 2n̂+1)` the only outcome of `Γ̂` worth `6` to
+*`ε`.*  The paper fixes `ε < 1/2n` for `Γ` and builds `Γ̂` "analogously"; it never states
+`0 < ε`, which the construction needs (erratum D21).  The carrier takes `ε` as a parameter
+with `0 < ε`, `ε * (2 * n) < 1` and `ε * (2 * n̂) < 1`, and each is used: the `n̂`-side bound makes `(2n̂+1, 2n̂+1)` the only outcome of `Γ̂` worth `6` to
 player 1 (`5 + (n̂+i)ε < 6`); the `n`-side bound gives `4 + (n+i)ε ≤ 5 + (n̂+φ i)ε` in the
 Pareto-improvement check and, with `n ≥ 1`, `ε < 1`; positivity makes the corner rows beat
 the table's `0`s.  The "WLOG `n, n̂ ≥ 2`" is weakened to `1 ≤ n`: the two opponent moves

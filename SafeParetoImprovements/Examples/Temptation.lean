@@ -18,7 +18,7 @@ in `Γs` player 2's `C` is strictly dominated by `F`, so `(R, F)` is played, and
 `u(R, F) = (4, 4) > (1, 2) = u(T, C)`.
 
 The printed proof eliminates "Player 1's `R₁`" and "Player 2's `R`"; the actions are `R`
-and `F` (erratum D4).
+and `F`, and its final clause excludes `(R, F)` where it must exclude `(T, C)` (erratum D4(c)).
 -/
 
 namespace SafeParetoImprovements

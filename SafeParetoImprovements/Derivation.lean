@@ -69,19 +69,6 @@ universe u v w
 
 variable {N : Type u} {𝒜 : N → Type v}
 
-namespace GameIso
-
-variable {G₁ G₂ H₁ H₂ : Game N 𝒜}
-
-/-- Transport an isomorphism along equalities of its endpoints. -/
-def cast (e : G₁ = G₂) (e' : H₁ = H₂) (φ : GameIso G₁ H₁) : GameIso G₂ H₂ := e ▸ e' ▸ φ
-
-@[simp] lemma cast_map (e : G₁ = G₂) (e' : H₁ = H₂) (φ : GameIso G₁ H₁) :
-    (φ.cast e e').map = φ.map := by
-  subst e; subst e'; rfl
-
-end GameIso
-
 section derivation
 
 variable [DecidableEq N] [∀ i, DecidableEq (𝒜 i)]
@@ -163,6 +150,49 @@ lemma isSubsetGameOf_left (d : Deriv Γ₀ Γ Γ' Φ) : Γ.IsSubsetGameOf Γ₀ 
   cases d with
   | refl hsub => exact hsub
   | step s _ => exact s.isSubsetGameOf_left
+
+/-- The composite of a derivation lands in the outcomes of its endpoint. -/
+lemma mem_right_of_rel (d : Deriv Γ₀ Γ Γ' Φ) {a b : ∀ i, 𝒜 i} (h : a ~[Φ] b) : b ∈ Γ'.profiles := by
+  induction d generalizing a b with
+  | refl _ =>
+    rw [Game.mem_partialId] at h
+    obtain ⟨ha, rfl⟩ := h
+    exact ha
+  | step _ _ ih =>
+    rw [SetRel.mem_comp] at h
+    obtain ⟨c, -, hc⟩ := h
+    exact ih hc
+
+/-- **Derivations are single-valued** (R7-F05): every move of Definition 5 is a partial
+identity, the inverse of one, or the graph of a bijection, so a composite relates an
+outcome to at most one outcome.  Hence the containment `a ~[Φ] ψ.map a` of Lemma 21's last
+conjunct is in fact an equality of images on the outcomes of `reduce Γ`. -/
+lemma eq_of_rel (d : Deriv Γ₀ Γ Γ' Φ) {a b b' : ∀ i, 𝒜 i} (h : a ~[Φ] b) (h' : a ~[Φ] b') :
+    b = b' := by
+  induction d generalizing a b b' with
+  | refl _ =>
+    rw [Game.mem_partialId] at h h'
+    obtain ⟨-, rfl⟩ := h
+    obtain ⟨-, rfl⟩ := h'
+    rfl
+  | step s _ ih =>
+    rw [SetRel.mem_comp] at h h'
+    obtain ⟨c, hc, hcb⟩ := h
+    obtain ⟨c', hc', hcb'⟩ := h'
+    have hcc : c = c' := by
+      cases s with
+      | elim _ _ =>
+        rw [Game.mem_elimRel] at hc hc'
+        rw [hc.2.2, hc'.2.2]
+      | unelim _ _ =>
+        rw [SetRel.mem_inv, Game.mem_elimRel] at hc hc'
+        rw [hc.2.2] at hc'
+        exact hc'.2.2
+      | iso _ _ _ _ φ =>
+        rw [GameIso.mem_rel] at hc hc'
+        rw [hc.2, hc'.2]
+    subst hcc
+    exact ih hcb hcb'
 
 lemma isSubsetGameOf_right (d : Deriv Γ₀ Γ Γ' Φ) : Γ'.IsSubsetGameOf Γ₀ := by
   induction d with
@@ -374,11 +404,11 @@ identity of the three phases, and the resulting derivation.
 
 Two qualifications, both recorded in the module docstring.  The printed length bound
 `m ≤ k` is **not** rendered, and is false as printed (erratum D14).  And the last
-conjunct is one-directional: on each outcome `a` of `reduce Γ` the *original* composite
-`Φ` relates `a` to the normal form's image `ψ.map a` — the normal form is contained in
-`Φ` there — not that the two relate `a` to exactly the same outcomes, and nothing is
-claimed off `reduce Γ`, where the original composite may relate outcomes that the
-reduction kills.
+conjunct is stated as a containment: on each outcome `a` of `reduce Γ` the *original*
+composite `Φ` relates `a` to the normal form's image `ψ.map a`.  Since every derivation
+is single-valued (`Deriv.eq_of_rel`), this is in fact the only outcome `Φ` relates `a` to,
+so on `reduce Γ` the two composites agree; nothing is claimed off `reduce Γ`, where the
+original composite may relate outcomes that the reduction kills (R7-F05).
 
 Paper node: `Lemma 21` -/
 theorem exists_normalForm (d : Deriv Γ₀ Γ Γ' Φ) :
@@ -497,7 +527,8 @@ intended clause is about.
 
 The predicates below render the printed clause verbatim, and
 `spiDecisionPrinted_of_nonempty` / `unilateralSPIDecisionPrinted_of_reduced` are the
-erratum's witnesses.  `SPIDecision`, `StrictSPIDecision` and `UnilateralSPIDecision`
+erratum's witnesses, and `not_strictSPIDecisionPrinted_of_card_le_one` is the carrier of
+the claim that the strict printed variant is *not* constant-true.  `SPIDecision`, `StrictSPIDecision` and `UnilateralSPIDecision`
 further below are the repaired predicates that the rest of the development uses. -/
 
 /-- **The SPI decision problem, exactly as printed** (Definition 5): does `Γ` have a
@@ -750,6 +781,22 @@ lemma exists_strictParetoImproving_deriv_iff (Γ₀ Γs : Game N 𝒜) (hsub : �
       rwa [Game.reduce_u] at this
     · obtain ⟨-, rfl⟩ := (Deriv.mem_normalRel ψ a b).1 hb
       exact hi
+
+/-- **The strict printed variant is not constant-true** (in contrast to `SPIDecisionPrinted`
+and `UnilateralSPIDecisionPrinted`, erratum D13): a game in which every player has one
+action is a "no" instance, because every derivation from it lands on its single outcome
+(`Deriv.mem_right_of_rel`), where nobody can gain (R7-F35). -/
+lemma not_strictSPIDecisionPrinted_of_card_le_one {Γ : Game N 𝒜} (h : ∀ i, (Γ.S i).card ≤ 1) :
+    ¬ Γ.StrictSPIDecisionPrinted := by
+  rintro ⟨Γs, hsub, -, Φ, d, -, i, a, ha, hlt⟩
+  obtain ⟨b, hb⟩ : ∃ b, a ~[Φ] b := by
+    obtain ⟨ψ, hψ⟩ := d.exists_iso
+    exact ⟨_, hψ a ha⟩
+  have hbΓ : b ∈ Γ.profiles := hsub.profiles_subset (d.mem_right_of_rel hb)
+  have haΓ : a ∈ Γ.profiles := Γ.reduce_isSubsetGameOf.profiles_subset ha
+  have hab : a = b := funext fun j => Finset.card_le_one.1 (h j) _ (haΓ j) _ (hbΓ j)
+  subst hab
+  exact lt_irrefl _ (hlt a hb)
 
 /-- A game in which every player has at most one action is a **"no" instance** of the
 repaired SPI decision problem: every subset game has the same (single) action sets, so no

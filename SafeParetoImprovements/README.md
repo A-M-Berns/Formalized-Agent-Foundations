@@ -60,7 +60,7 @@ proved — there is no `sorry` in `SafeParetoImprovements/`:
 | Definition 5, the fourth problem (strict unilateral) | `Game.StrictUnilateralSPIDecision` | `Derivation.lean` |
 | **Proposition 23** (the omnilateral algorithm is correct: certificate iffs for the plain and strict problems; "NP time" not rendered, `dd:complexity`; non-triviality check restored, erratum D17) | `Game.spiDecision_iff_certificate`, `Game.strictSPIDecision_iff_certificate` | `Complexity.lean` |
 | **Proposition 25** (the unilateral algorithm is correct: certificate iffs with the three checks; the printed "WLOG same action sets for player `i`" discharged by `ElimStar.transfer`) | `Game.unilateralSPIDecision_iff_certificate`, `Game.strictUnilateralSPIDecision_iff_certificate` | `Complexity.lean` |
-| **Propositions 24, 26** and **Proposition 10** (the search bound `card ≤ m ^ l`, resp. `n · m ^ l`; "solved in `O(m^l)`" not rendered) | `Game.card_certificate_le`, `Game.spiDecision_search`, `Game.unilateralSPIDecision_search` | `Complexity.lean` |
+| **Propositions 24, 26** and **Proposition 10** (the search bound `card ≤ m ^ l`, for the unilateral pairs (player, certificate) as well; "solved in `O(m^l)`" not rendered) | `Game.spiDecision_search`, `Game.unilateralSPIDecision_search` (bounds `Game.card_certificate_le`, `card_unilateralCertificate_le'`) | `Complexity.lean` |
 | **Definition 8** (subgraph isomorphism problem) | `Hardness.SubgraphIsoProblem` | `Hardness.lean` |
 | **Lemma 28** (subgraph isomorphism reduces to each of the four SPI problems on the two-player game of Table 10, as an iff; "linear time" and "NP-hard" not rendered; Table 9 followed over the printed formula, erratum D18) | `Hardness.subgraphIsoProblem_iff_spiDecision` and the strict / unilateral / strict-unilateral variants | `Hardness.lean` |
 | **Theorem 9** (membership for the four problems together with the reduction, over two-player games; "NP-complete" not rendered) | `Hardness.theorem9` | `Hardness.lean` |
@@ -69,7 +69,7 @@ proved — there is no `sorry` in `SafeParetoImprovements/`:
 | Definition 6 witnesses (strict and equality-only perfect-coordination SPIs with `uᵉ` defined along the book's isomorphism) | `Examples.conflictStrictToken_isStrictSPI`, `conflictPlainToken_isSPI` | `Examples/TokenWitnesses.lean` |
 | **Definition 7** (strict perfect-coordination SPI decision problem; "strict" read in, RULING 7; per play family, RULING 10) | `Play.StrictPerfectCoordinationSPIDecision` | `PerfectCoordination.lean` |
 | **Proposition 12** (Algorithm 1's correctness as an iff, under Assumptions 1–2 and room; the polynomial-time clause not rendered) | `Representatives.strictPerfectCoordinationSPIDecision_iff` | `PerfectCoordination.lean` |
-| **Lemma 13** (every perfect-coordination SPI is replaced by an isomorphic copy of the reduced game with `uᵉ` along Assumption 2's isomorphism, same conditional expectations on the support; errata D6, D7) | `Representatives.exists_reassignment_condExp_eq` | `Characterization.lean` |
+| **Lemma 13** (every perfect-coordination SPI is replaced by an exact token copy of `Γ` with `uᵉ` along Assumption 2's isomorphism between the reductions, same conditional expectations on the support; errata D6, D7, D19) | `Representatives.exists_reassignment_condExp_eq` | `Characterization.lean` |
 | **Corollary 14** (the safely achievable expected payoffs: the weighted Minkowski-sum formula, convex, compact, and a polytope) | `Representatives.achievable_eq_improvementSum`, `convex_achievable`, `isPolytope_achievable` | `Characterization.lean` |
 | **Proposition 16** (Table 7 over `CAct ⊕ ℕ`, `dd:room`: a Pareto improvement no perfect-coordination SPI achieves; also in label-free form `chicken_no_feasible_dominating_of_mean_cc`; `Π` existential, see `chicken_spi_for_other_representatives`) | `Examples.chicken_no_perfectCoordinationSPI` | `Examples/Chicken.lean` |
 | **Theorem 1** (every SPI is played in a program equilibrium of the program game with delegation instructions, given the threat-point guarantee) | `Prog.exists_programEquilibrium_plays` | `Instruction.lean` |
@@ -244,8 +244,9 @@ sentence.
 
 The erratum file is [`notes/paper-errata.md`](notes/paper-errata.md): twelve source defects
 D1–D12 found on the first reading, several confirmed or corrected by the codex review
-(`notes/codex-review-2026-09-04.md`), and six more (D13–D18) found while formalizing.  In
-brief:
+(`notes/codex-review-2026-09-04.md`), six more (D13–D18) found while formalizing, and six
+(D19–D24) found by the final fresh-context audit, which also rediscovered fourteen of the
+earlier ones blind.  In brief:
 
 * **D1** Definition 1's strictness clause compares `uᵢ(Π(Γˢ))` with itself; read
   `uᵢ(Π(Γˢ)) > uᵢ(Π(Γ))`.
@@ -287,13 +288,25 @@ brief:
 * **D17** The algorithms of Appendix D.2 perform no non-triviality check, so the identity
   injections make them return *True* on every game; the carriers add the check
   (`Certificate.Nontrivial`), and `Certificate.refl` records the defect.
-* **D18** Table 9 and the printed payoff formulas disagree at eight corner entries (`0`
-  vs. `ε`), and the disagreement decides whether the unilateral half of Lemma 28's first
-  claim holds; the carriers follow the table (RULING 15).
+* **D18** Table 9 and the printed payoff formulas disagree on the corner blocks (`0`
+  vs. `ε`, `8n` cells), and the disagreement decides whether the unilateral half of Lemma
+  28's first claim holds; the carriers follow the table (RULING 15).
+* **D19** Lemma 13's display and Corollary 14's set-builder write `u` on token outcomes
+  where `uᵉ` is meant (the same slip as D16); the carriers use `uᵉ`.
+* **D20** Lemma 20's cancellation alternative names `Γ̂` for `Γ̃`; no carrier is affected.
+* **D21** The hardness construction never states `0 < ε`, which it needs; the carriers
+  assume it.
+* **D22** The prose claim that pure strict elimination removes exactly the
+  non-rationalizable strategies in two-player games is false (it needs mixed dominance).
+* **D23** §2 never states that action sets are finite, which Lemma 4's proof and every
+  payoff matrix need; `Game` has `Finset` action sets.
+* **D24** Lemma 28's second-claim proof mis-states which outcomes pay `≥ 6` outside `Γ̂`
+  and carries several index slips; the Lean route does not follow it.
 
 The `Level` column of `notes/paper-errata.md` is authoritative.  Statement-level and
 carried as **disclosures** at the Lean statements: **D1, D2, D5, D8, D10, D12, D13** (the
 list `KNOWLEDGE.md` keeps), together with **D15** at Algorithm 2, **D17** at the
-certificate checks and **D18** at Table 9.  Also statement-level but either printing typos
+certificate checks, **D18** at Table 9, **D21** at Lemma 28's hypotheses and **D23** at
+`Game`.  Also statement-level but either printing typos
 or clauses simply not rendered: D7 (rendered on `supp Π(Γ)`), D9, D11 (Proposition 23),
 D14 (the `m ≤ k` bound).  D3, D4, D6 and D16 are proof- or notation-level only.

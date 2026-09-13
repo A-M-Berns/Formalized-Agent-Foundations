@@ -192,17 +192,22 @@ lemma conflictTokenCopy_cls : conflictTokenCopy.cls = conflictGame.cls :=
   (Game.cls_eq_of_isomorphic ⟨conflictHatIso⟩).symm
 
 /-- The isomorphism the **book** actually uses between the base game and its token copy —
-the composite of the two chosen translations.  `uᵉ` is defined along this (erratum D6). -/
+the composite of the two chosen translations (of the canonical presentations, which is
+what the book consults so that its play is a function of the paper's game).  `uᵉ` is
+defined along this (erratum D6). -/
 noncomputable def conflictBookIso : GameIso conflictGame conflictTokenCopy :=
-  (conflictGame.chosenIso conflictGame.cls rfl).trans
-    (conflictTokenCopy.chosenIso conflictGame.cls conflictTokenCopy_cls).symm
+  GameIso.ofCanon ((conflictGame.canon.chosenIso conflictGame.cls conflictGame.cls_canon).trans
+    (conflictTokenCopy.canon.chosenIso conflictGame.cls
+      (conflictTokenCopy.cls_canon.trans conflictTokenCopy_cls)).symm)
 
 lemma conflictBook_page (ω : Bool) :
     conflictBook.page conflictGame.cls ω =
-      (conflictGame.chosenIso conflictGame.cls rfl).map (conflictPages ω) := by
+      (conflictGame.canon.chosenIso conflictGame.cls conflictGame.cls_canon).map
+        (conflictPages ω) := by
   show (open Classical in
     if h : conflictGame.cls = conflictGame.cls then
-      (conflictGame.chosenIso conflictGame.cls h).map (conflictPages ω)
+      (conflictGame.canon.chosenIso conflictGame.cls (conflictGame.cls_canon.trans h)).map
+        (conflictPages ω)
     else (conflictGame.cls.rep.profiles_nonempty).choose) = _
   rw [dif_pos rfl]
 

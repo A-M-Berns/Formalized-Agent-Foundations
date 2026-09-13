@@ -28,7 +28,9 @@ The inclusion `⊆` is the content.  Given `x = ∑ λᵥ v` in the half-space, 
 `λ_w λᵥ (sᵥ + d_w) / S` on `c(w, v)`, the combination is convex and equals `x`.
 
 Nothing here is specific to games; it is Mathlib-shaped material kept in this
-formalization's directory because the repository has no shared extension library.
+formalization's directory because the repository has no shared convex-geometry library and
+this paper is its only consumer; it is the first candidate for a shared library the moment
+a second consumer appears (final audit, R7-F33).
 -/
 
 open Finset Set

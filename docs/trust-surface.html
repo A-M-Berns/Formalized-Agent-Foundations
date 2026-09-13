@@ -10007,8 +10007,7 @@ O(ml ).</pre>
         c.ParetoImproving ∧ c.Nontrivial ∧ c.Affine i ∧ c.ReducesToImage i) ∧
       (Γ.StrictUnilateralSPIDecision ↔ ∃ (i : N) (c : Γ.Certificate),
         c.StrictlyParetoImproving ∧ c.Nontrivial ∧ c.Affine i ∧ c.ReducesToImage i) ∧
-      Fintype.card (N × Γ.Certificate) ≤ Fintype.card N * Γ.size ^ Γ.reduce.size ∧
-      Fintype.card (N × Γ.Certificate) ≤ Γ.size ^ (Γ.reduce.size + 1)</pre></div>
+      Fintype.card (N × Γ.Certificate) ≤ Γ.size ^ Γ.reduce.size</pre></div>
     </section>
   </div>
 </article>
@@ -10100,7 +10099,7 @@ coordination SPI.</pre>
       <div class="pane-tag">Lean · statement only (proof body is kernel-checked)</div>
       <div class="ep-slide"><div class="ep-head"><code class="ep-name">SafeParetoImprovements.Representatives.strictPerfectCoordinationSPIDecision_iff</code><span class="staged proved">axiom-clean</span><span class="ep-file">SafeParetoImprovements/PerfectCoordination.lean</span></div><pre class="sig">theorem strictPerfectCoordinationSPIDecision_iff (Γ : Game N 𝒜)
     (hA1 : R.toPlay.SatisfiesA1 R.certainty) (hA2 : R.toPlay.SatisfiesA2 R.certainty)
-    (h : Γ.reduce.HasRoomOutside Γ.S) :
+    (h : Γ.HasRoom) :
     R.toPlay.StrictPerfectCoordinationSPIDecision R.certainty Γ ↔
       ∃ a ∈ R.support Γ, ¬ Game.ParetoOptimalIn (Γ.u a) Γ.feasible</pre></div>
     </section>
@@ -10141,8 +10140,8 @@ for all a ∈ A and consequently E [u(Π(Γs ))] = E [u(Π(Γ′ ))].</pre>
       <div class="pane-tag">Lean · statement only (proof body is kernel-checked)</div>
       <div class="ep-slide"><div class="ep-head"><code class="ep-name">SafeParetoImprovements.Representatives.exists_reassignment_condExp_eq</code><span class="staged proved">axiom-clean</span><span class="ep-file">SafeParetoImprovements/Characterization.lean</span></div><pre class="sig">theorem exists_reassignment_condExp_eq (Γ : Game N 𝒜)
     (hA1 : R.toPlay.SatisfiesA1 R.certainty) (hA2 : R.toPlay.SatisfiesA2 R.certainty)
-    (h : Γ.reduce.HasRoomOutside Γ.S) {T&#x27; : TokenGame Γ} (hT&#x27; : T&#x27;.IsSPI R.toPlay R.certainty) :
-    ∃ T : TokenGame Γ, Γ.reduce.ExactCopy T.game ∧ T.IsSPI R.toPlay R.certainty ∧
+    (h : Γ.HasRoom) {T&#x27; : TokenGame Γ} (hT&#x27; : T&#x27;.IsSPI R.toPlay R.certainty) :
+    ∃ T : TokenGame Γ, Γ.ExactCopy T.game ∧ T.IsSPI R.toPlay R.certainty ∧
       (∀ a ∈ R.support Γ, R.condExp Γ a (fun ω =&gt; T.ue (R.play T.game ω)) =
         R.condExp Γ a (fun ω =&gt; T&#x27;.ue (R.play T&#x27;.game ω))) ∧
       R.tokenValue Γ T = R.tokenValue Γ T&#x27;</pre></div>
@@ -10171,11 +10170,11 @@ is a convex polygon.</pre>
       <div class="pane-tag">Lean · statement only (proof body is kernel-checked)</div>
       <div class="ep-nav"><button class="ep-prev" aria-label="previous endpoint">&#8249;</button><span class="ep-count" data-total="3">1 / 3</span><button class="ep-next" aria-label="next endpoint">&#8250;</button><span class="ep-nav-hint">inventory endpoints for this node</span></div><div class="ep-slide"><div class="ep-head"><code class="ep-name">SafeParetoImprovements.Representatives.achievable_eq_improvementSum</code><span class="staged proved">axiom-clean</span><span class="ep-file">SafeParetoImprovements/Characterization.lean</span></div><pre class="sig">theorem achievable_eq_improvementSum (Γ : Game N 𝒜)
     (hA1 : R.toPlay.SatisfiesA1 R.certainty) (hA2 : R.toPlay.SatisfiesA2 R.certainty)
-    (h : Γ.reduce.HasRoomOutside Γ.S) : R.achievable Γ = R.improvementSum Γ</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">SafeParetoImprovements.Representatives.convex_achievable</code><span class="staged proved">axiom-clean</span><span class="ep-file">SafeParetoImprovements/Characterization.lean</span></div><pre class="sig">theorem convex_achievable (Γ : Game N 𝒜)
+    (h : Γ.HasRoom) : R.achievable Γ = R.improvementSum Γ</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">SafeParetoImprovements.Representatives.convex_achievable</code><span class="staged proved">axiom-clean</span><span class="ep-file">SafeParetoImprovements/Characterization.lean</span></div><pre class="sig">theorem convex_achievable (Γ : Game N 𝒜)
     (hA1 : R.toPlay.SatisfiesA1 R.certainty) (hA2 : R.toPlay.SatisfiesA2 R.certainty)
-    (h : Γ.reduce.HasRoomOutside Γ.S) : Convex ℝ (R.achievable Γ)</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">SafeParetoImprovements.Representatives.isPolytope_achievable</code><span class="staged proved">axiom-clean</span><span class="ep-file">SafeParetoImprovements/Characterization.lean</span></div><pre class="sig">theorem isPolytope_achievable (Γ : Game N 𝒜)
+    (h : Γ.HasRoom) : Convex ℝ (R.achievable Γ)</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">SafeParetoImprovements.Representatives.isPolytope_achievable</code><span class="staged proved">axiom-clean</span><span class="ep-file">SafeParetoImprovements/Characterization.lean</span></div><pre class="sig">theorem isPolytope_achievable (Γ : Game N 𝒜)
     (hA1 : R.toPlay.SatisfiesA1 R.certainty) (hA2 : R.toPlay.SatisfiesA2 R.certainty)
-    (h : Γ.reduce.HasRoomOutside Γ.S) : IsPolytope (R.achievable Γ)</pre></div>
+    (h : Γ.HasRoom) : IsPolytope (R.achievable Γ)</pre></div>
     </section>
   </div>
 </article>
@@ -10430,8 +10429,7 @@ time and returns True if and only if there is a (strict) unilateral SPI.</pre>
         c.ParetoImproving ∧ c.Nontrivial ∧ c.Affine i ∧ c.ReducesToImage i) ∧
       (Γ.StrictUnilateralSPIDecision ↔ ∃ (i : N) (c : Γ.Certificate),
         c.StrictlyParetoImproving ∧ c.Nontrivial ∧ c.Affine i ∧ c.ReducesToImage i) ∧
-      Fintype.card (N × Γ.Certificate) ≤ Fintype.card N * Γ.size ^ Γ.reduce.size ∧
-      Fintype.card (N × Γ.Certificate) ≤ Γ.size ^ (Γ.reduce.size + 1)</pre></div>
+      Fintype.card (N × Γ.Certificate) ≤ Γ.size ^ Γ.reduce.size</pre></div>
     </section>
   </div>
 </article>
@@ -10542,4 +10540,4 @@ Pareto improvement problem for two players. As a consequence, the (strict)
 
 <!-- trust-surface-papers: logical-induction=66 cartesian-frames=60 modal-agents=12 finite-factored-sets=88 factored-space-models=50 condensation=39 safe-pareto-improvements=34 -->
 
-<!-- trust-surface-sources: dc8b59b7d793753aac2b9bf650912824df66209e8a7f6b9c2f8d49a59a449dba -->
+<!-- trust-surface-sources: b2c87ce347fd66b392f882d113b3dc7e2467ca1b3b8768cab18223db6623b45c -->

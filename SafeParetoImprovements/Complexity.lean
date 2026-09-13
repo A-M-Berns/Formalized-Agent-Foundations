@@ -55,15 +55,6 @@ namespace Game
 
 section transfer
 
-/-- The game with the action sets of `Γ₁` and the payoffs of `Γ'`. -/
-def withPayoffs (Γ₁ Γ' : Game N 𝒜) : Game N 𝒜 where
-  S := Γ₁.S
-  nonempty := Γ₁.nonempty
-  u := Γ'.u
-
-@[simp] lemma withPayoffs_S (Γ₁ Γ' : Game N 𝒜) : (Γ₁.withPayoffs Γ').S = Γ₁.S := rfl
-@[simp] lemma withPayoffs_u (Γ₁ Γ' : Game N 𝒜) : (Γ₁.withPayoffs Γ').u = Γ'.u := rfl
-
 variable [DecidableEq N] [∀ i, DecidableEq (𝒜 i)]
 
 /-- **Transfer of an elimination chain.**  Let `Γ →* Γ₁` by iterated elimination, and let
@@ -747,21 +738,72 @@ lemma card_le_size (Γ : Game N 𝒜) : Fintype.card N ≤ Γ.size := by
   rw [Game.size, ← Finset.card_univ, Finset.card_eq_sum_ones]
   exact Finset.sum_le_sum fun i _ => Finset.one_le_card.2 (Γ.nonempty i)
 
-/-- The unilateral search space has at most `m ^ (l + 1)` elements, since `n ≤ m`. -/
+omit [∀ i, DecidableEq (𝒜 i)] in
+/-- `n · ∏ᵢ mᵢ ≤ (Σᵢ mᵢ)ⁿ`: each product is `mⱼ` times a product of `n − 1` factors `≤ m`,
+and summing over `j` gives `m · mⁿ⁻¹`. -/
+lemma card_mul_prod_le_pow (f : N → ℕ) :
+    Fintype.card N * ∏ i, f i ≤ (∑ i, f i) ^ Fintype.card N := by
+  rcases Nat.eq_zero_or_pos (Fintype.card N) with h0 | hpos
+  · simp [h0]
+  have hle : ∀ j, f j ≤ ∑ i, f i := fun j =>
+    Finset.single_le_sum (f := f) (fun _ _ => Nat.zero_le _) (Finset.mem_univ j)
+  have hprod : ∀ j : N, ∏ i, f i ≤ f j * (∑ i, f i) ^ (Fintype.card N - 1) := by
+    intro j
+    rw [← Finset.prod_erase_mul _ _ (Finset.mem_univ j), mul_comm]
+    refine Nat.mul_le_mul_left _ ?_
+    calc ∏ i ∈ Finset.univ.erase j, f i ≤ (∑ i, f i) ^ (Finset.univ.erase j).card :=
+          Finset.prod_le_pow_card _ _ _ fun i _ => hle i
+      _ = (∑ i, f i) ^ (Fintype.card N - 1) := by
+          rw [Finset.card_erase_of_mem (Finset.mem_univ j), Finset.card_univ]
+  calc Fintype.card N * ∏ i, f i = ∑ _j : N, ∏ i, f i := by
+        rw [Finset.sum_const, Finset.card_univ, smul_eq_mul]
+    _ ≤ ∑ j, f j * (∑ i, f i) ^ (Fintype.card N - 1) := Finset.sum_le_sum fun j _ => hprod j
+    _ = (∑ i, f i) ^ Fintype.card N := by
+        rw [← Finset.sum_mul, ← pow_succ', Nat.sub_add_cancel hpos]
+
+/-- **The unilateral search space is bounded by `m ^ l` itself**, with no factor `n`
+(R7-F04): `n · ∏ᵢ mᵢ^{lᵢ} ≤ n · (∏ᵢ mᵢ) · m^{l−n} ≤ mⁿ · m^{l−n}`, using `lᵢ ≥ 1` (every
+reduced action set is nonempty) and `card_mul_prod_le_pow`. -/
 lemma card_unilateralCertificate_le' (Γ : Game N 𝒜) :
-    Fintype.card (N × Γ.Certificate) ≤ Γ.size ^ (Γ.reduce.size + 1) := by
-  rw [pow_succ, mul_comm]
-  exact Γ.card_unilateralCertificate_le.trans (Nat.mul_le_mul_right _ Γ.card_le_size)
+    Fintype.card (N × Γ.Certificate) ≤ Γ.size ^ Γ.reduce.size := by
+  set m := Γ.size with hm
+  set l : N → ℕ := fun i => (Γ.reduce.S i).card with hl
+  have hl1 : ∀ i, 1 ≤ l i := fun i => Finset.one_le_card.2 (Γ.reduce.nonempty i)
+  have hmi : ∀ i, (Γ.S i).card ≤ m := fun i =>
+    Finset.single_le_sum (f := fun j => (Γ.S j).card) (fun _ _ => Nat.zero_le _) (Finset.mem_univ i)
+  -- the certificate count, player by player
+  have hcert : Fintype.card Γ.Certificate ≤ ∏ i, (Γ.S i).card ^ l i := by
+    rw [Fintype.card_pi]
+    refine Finset.prod_le_prod' fun i _ => ?_
+    rw [Fintype.card_embedding_eq, Fintype.card_coe, Fintype.card_coe]
+    exact Nat.descFactorial_le_pow _ _
+  -- peel one factor `mᵢ` off each `mᵢ^{lᵢ}`
+  have hpeel : ∏ i, (Γ.S i).card ^ l i ≤ m ^ (∑ i, (l i - 1)) * ∏ i, (Γ.S i).card := by
+    rw [← Finset.prod_pow_eq_pow_sum, ← Finset.prod_mul_distrib]
+    refine Finset.prod_le_prod' fun i _ => ?_
+    calc (Γ.S i).card ^ l i = (Γ.S i).card ^ (l i - 1) * (Γ.S i).card := by
+          rw [← pow_succ, Nat.sub_add_cancel (hl1 i)]
+      _ ≤ m ^ (l i - 1) * (Γ.S i).card :=
+          Nat.mul_le_mul_right _ (Nat.pow_le_pow_left (hmi i) _)
+  have hsum : ∑ i, (l i - 1) + Fintype.card N = Γ.reduce.size := by
+    rw [Game.size, ← Finset.card_univ, Finset.card_eq_sum_ones, ← Finset.sum_add_distrib]
+    exact Finset.sum_congr rfl fun i _ => Nat.sub_add_cancel (hl1 i)
+  calc Fintype.card (N × Γ.Certificate) = Fintype.card N * Fintype.card Γ.Certificate :=
+        Fintype.card_prod _ _
+    _ ≤ Fintype.card N * (m ^ (∑ i, (l i - 1)) * ∏ i, (Γ.S i).card) :=
+        Nat.mul_le_mul_left _ (hcert.trans hpeel)
+    _ = m ^ (∑ i, (l i - 1)) * (Fintype.card N * ∏ i, (Γ.S i).card) := by ring
+    _ ≤ m ^ (∑ i, (l i - 1)) * m ^ Fintype.card N :=
+        Nat.mul_le_mul_left _ (card_mul_prod_le_pow fun i => (Γ.S i).card)
+    _ = m ^ Γ.reduce.size := by rw [← pow_add, hsum]
 
 /-- **Proposition 26** (and **Proposition 10**, unilateral case): the (strict) unilateral SPI
 decision problem is decided by searching the pairs (player, certificate), of which there
-are at most `n · m ^ l ≤ m ^ (l+1)`, for one passing the checks of Proposition 25.
-Qualified node (`dd:complexity`) exactly as `spiDecision_search`; the polynomial cost of the
-three checks (check 3 is a full reduction) is the clause not rendered.  The factor `n`
-(bounded by `m`, `card_le_size`) is real: the appendix's algorithm (D.2.2, l. 2426) is
-"given an `n`-player game `Γ` and a player `i`", while Definition 5's unilateral problem
-quantifies over the player, so deciding the latter searches every `i` and the printed
-`O(m^l)` is `O(m^l)` per player (R6-F11).
+are at most `m ^ l` — the paper's `O(m^l)` on the nose, with the factor `n` from the choice
+of player absorbed by the certificate count (`card_unilateralCertificate_le'`, R7-F04) —
+for one passing the checks of Proposition 25.  Qualified node (`dd:complexity`) exactly
+as `spiDecision_search`; the polynomial cost of the three checks (check 3 is a full
+reduction) is the clause not rendered.
 
 Paper node: `Proposition 26`, `Proposition 10` -/
 theorem unilateralSPIDecision_search (Γ : Game N 𝒜) :
@@ -769,10 +811,9 @@ theorem unilateralSPIDecision_search (Γ : Game N 𝒜) :
         c.ParetoImproving ∧ c.Nontrivial ∧ c.Affine i ∧ c.ReducesToImage i) ∧
       (Γ.StrictUnilateralSPIDecision ↔ ∃ (i : N) (c : Γ.Certificate),
         c.StrictlyParetoImproving ∧ c.Nontrivial ∧ c.Affine i ∧ c.ReducesToImage i) ∧
-      Fintype.card (N × Γ.Certificate) ≤ Fintype.card N * Γ.size ^ Γ.reduce.size ∧
-      Fintype.card (N × Γ.Certificate) ≤ Γ.size ^ (Γ.reduce.size + 1) :=
+      Fintype.card (N × Γ.Certificate) ≤ Γ.size ^ Γ.reduce.size :=
   ⟨Γ.unilateralSPIDecision_iff_certificate, Γ.strictUnilateralSPIDecision_iff_certificate,
-    Γ.card_unilateralCertificate_le, Γ.card_unilateralCertificate_le'⟩
+    Γ.card_unilateralCertificate_le'⟩
 
 end Game
 

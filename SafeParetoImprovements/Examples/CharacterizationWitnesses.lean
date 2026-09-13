@@ -12,10 +12,10 @@ conditional expectation is a genuine average rather than a point evaluation.
 * **Lemma 13 and Corollary 14 apply** to the conflict game of `TokenWitnesses.lean` with
   the fair-coin book representatives (`conflict_exists_reassignment`,
   `conflict_achievable_eq_improvementSum`, `conflict_isPolytope_achievable`), and to a
-  perfect-coordination SPI that is emphatically *not* already a copy of the reduced game:
+  perfect-coordination SPI that is emphatically *not* already a copy of the game:
   `conflictThreeToken` has three actions per player where the base game has two, so it is
   not even isomorphic to the reduction (`conflictThreeToken_not_isomorphic`), and Lemma 13
-  turns it into one that is an exact copy with the same expected payoff
+  turns it into one that is an exact copy of `conflictGame` with the same expected payoff
   (`conflict_lemma13_at_three`).
 * **`achievable` has at least two points** (`conflict_achievable_not_singleton`): the
   strict token game is worth `(1, 1)` and the plain one `(½, ½)`.  The latter value is not
@@ -41,9 +41,9 @@ open Filter Set MeasureTheory ProbabilityTheory Two
 
 /-- **Lemma 13's hypotheses are inhabited**: on the conflict game with the fair-coin book
 representatives, the strict perfect-coordination SPI `conflictStrictToken` is replaced by an
-exact copy of the reduced game with the same conditional and unconditional expectations. -/
+exact copy of the game with the same conditional and unconditional expectations. -/
 lemma conflict_exists_reassignment :
-    ∃ T : TokenGame conflictGame, conflictGame.reduce.ExactCopy T.game ∧
+    ∃ T : TokenGame conflictGame, conflictGame.ExactCopy T.game ∧
       T.IsSPI conflictRepresentatives.toPlay conflictRepresentatives.certainty ∧
       (∀ a ∈ conflictRepresentatives.support conflictGame,
         conflictRepresentatives.condExp conflictGame a
@@ -200,9 +200,10 @@ lemma conflictThreeToken_not_isomorphic :
   exact absurd this (by norm_num)
 
 /-- **Lemma 13 does real work**: applied to `conflictThreeToken`, which is *not* a copy of
-the reduced game, it returns one that is an exact copy and has the same expected payoff. -/
+the game (nor of its reduction), it returns one that is an exact copy of `conflictGame` and
+has the same expected payoff. -/
 lemma conflict_lemma13_at_three :
-    ∃ T : TokenGame conflictGame, conflictGame.reduce.ExactCopy T.game ∧
+    ∃ T : TokenGame conflictGame, conflictGame.ExactCopy T.game ∧
       T.IsSPI conflictRepresentatives.toPlay conflictRepresentatives.certainty ∧
       conflictRepresentatives.tokenValue conflictGame T =
         conflictRepresentatives.tokenValue conflictGame conflictThreeToken := by

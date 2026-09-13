@@ -101,6 +101,13 @@ noncomputable def Game.chosenIso (Γ : Game N 𝒜) (q : IsoClass N 𝒜) (h : �
     GameIso Γ q.rep :=
   Classical.choice (h ▸ Γ.isomorphic_rep)
 
+/-- The canonical presentation is in the game's class. -/
+lemma Game.cls_canon (Γ : Game N 𝒜) : Γ.canon.cls = Γ.cls :=
+  Game.cls_eq_of_isomorphic ⟨GameIso.ofEqOn Γ.canon_eqOn.symm⟩
+
+lemma Game.EqOn.cls_eq {Γ Γ' : Game N 𝒜} (h : Γ.EqOn Γ') : Γ.cls = Γ'.cls :=
+  Game.cls_eq_of_isomorphic ⟨GameIso.ofEqOn h⟩
+
 end classes
 
 /-! ### The book and its play -/
@@ -120,19 +127,32 @@ namespace Book
 variable {Ω : Type w} (B : Book N 𝒜 Ω)
 
 /-- How the book representatives play a game `G` *that is already fully reduced*: read
-the page of its class and translate back through the chosen isomorphism. -/
+the page of its class and translate back through the isomorphism chosen for `G`'s
+**canonical presentation** `G.canon` — so that the play depends only on the paper's game,
+not on payoffs off the profiles (`playReduced_eqOn`, R7-F01). -/
 noncomputable def playReduced (G : Game N 𝒜) (ω : Ω) : ∀ i, 𝒜 i :=
-  (G.chosenIso G.cls rfl).symm.map (B.page G.cls ω)
+  (G.canon.chosenIso G.cls G.cls_canon).symm.map (B.page G.cls ω)
 
 omit [Fintype N] [DecidableEq N] [∀ i, DecidableEq (𝒜 i)] in
 lemma playReduced_mem (G : Game N 𝒜) (ω : Ω) : B.playReduced G ω ∈ G.profiles :=
-  (G.chosenIso G.cls rfl).symm.map_mem (B.page_mem _ ω)
+  (G.canon.chosenIso G.cls G.cls_canon).symm.map_mem (B.page_mem _ ω)
 
 omit [Fintype N] [DecidableEq N] [∀ i, DecidableEq (𝒜 i)] in
 /-- Reading the page through *any* presentation of the class gives the same play. -/
 lemma chosenIso_symm_map_page (G : Game N 𝒜) (q : IsoClass N 𝒜) (h : G.cls = q) (ω : Ω) :
-    (G.chosenIso q h).symm.map (B.page q ω) = B.playReduced G ω := by
+    (G.canon.chosenIso q (G.cls_canon.trans h)).symm.map (B.page q ω) = B.playReduced G ω := by
   subst h; rfl
+
+omit [Fintype N] [DecidableEq N] [∀ i, DecidableEq (𝒜 i)] in
+/-- `EqOn`-equal games are played identically: their canonical presentations and classes
+coincide, so the chosen isomorphism and the page do. -/
+lemma playReduced_eqOn {G G' : Game N 𝒜} (h : G.EqOn G') : B.playReduced G = B.playReduced G' := by
+  funext ω
+  have key : ∀ (C C' : Game N 𝒜) (q q' : IsoClass N 𝒜) (p : C.cls = q) (p' : C'.cls = q'),
+      C = C' → q = q' → (C.chosenIso q p).symm.map (B.page q ω) =
+        (C'.chosenIso q' p').symm.map (B.page q' ω) := by
+    rintro C C' q q' p p' rfl rfl; rfl
+  exact key _ _ _ _ _ _ h.canon_eq h.cls_eq
 
 /-- The book representatives as a play family: fully reduce, then play as the book
 says. -/
@@ -142,6 +162,12 @@ noncomputable def toPlay : Play N 𝒜 Ω where
 
 @[simp] lemma toPlay_play (Γ : Game N 𝒜) (ω : Ω) :
     B.toPlay.play Γ ω = B.playReduced Γ.reduce ω := rfl
+
+/-- **The book representatives are a function of the paper's game** (`Play.RespectsEqOn`):
+the reduction respects `EqOn` (`Game.EqOn.reduce_eqOn`) and so does the page lookup. -/
+lemma toPlay_respectsEqOn : B.toPlay.RespectsEqOn := fun _ _ h => by
+  funext ω
+  rw [toPlay_play, toPlay_play, B.playReduced_eqOn h.reduce_eqOn]
 
 /-- **The book representatives satisfy Assumption 1**, at every sample point and hence
 for every certainty filter. -/
@@ -166,13 +192,13 @@ the composite of their translations is the witnessing isomorphism. -/
 lemma satisfiesA2 (L : Filter Ω) : B.toPlay.SatisfiesA2 L := by
   intro Γ Γ' hΓ hΓ' hiso
   have hq : Γ'.cls = Γ.cls := (Game.cls_eq_of_isomorphic hiso).symm
-  -- translations onto the common representative
-  let φ : GameIso Γ Γ.cls.rep := Γ.chosenIso Γ.cls rfl
-  let φ' : GameIso Γ' Γ.cls.rep := Γ'.chosenIso Γ.cls hq
-  refine ⟨φ.trans φ'.symm, Eventually.of_forall fun ω => ?_⟩
+  -- translations of the canonical presentations onto the common representative
+  let φ : GameIso Γ.canon Γ.cls.rep := Γ.canon.chosenIso Γ.cls Γ.cls_canon
+  let φ' : GameIso Γ'.canon Γ.cls.rep := Γ'.canon.chosenIso Γ.cls (Γ'.cls_canon.trans hq)
+  refine ⟨GameIso.ofCanon (φ.trans φ'.symm), Eventually.of_forall fun ω => ?_⟩
   refine ⟨B.toPlay.mem Γ ω, ?_⟩
   simp only [toPlay_play, Game.reduce_of_reduced hΓ, Game.reduce_of_reduced hΓ',
-    GameIso.trans_map]
+    GameIso.ofCanon_map, GameIso.trans_map]
   rw [← B.chosenIso_symm_map_page Γ' Γ.cls hq ω]
   show φ'.symm.map (B.page Γ.cls ω) = φ'.symm.map (φ.map (φ.symm.map (B.page Γ.cls ω)))
   rw [φ.map_symm_map (B.page_mem _ ω)]
@@ -191,11 +217,12 @@ of Theorem 1 needs (R3-F11). -/
 noncomputable def prescribedRandom (T : Game N 𝒜) {a : Ω → ∀ i, 𝒜 i}
     (ha : ∀ ω, a ω ∈ T.profiles) : Book N 𝒜 Ω where
   page q ω := open Classical in
-    if h : T.cls = q then (T.chosenIso q h).map (a ω) else (q.rep.profiles_nonempty).choose
+    if h : T.cls = q then (T.canon.chosenIso q (T.cls_canon.trans h)).map (a ω)
+    else (q.rep.profiles_nonempty).choose
   page_mem q ω := by
     classical
     by_cases h : T.cls = q
-    · rw [dif_pos h]; exact (T.chosenIso q h).map_mem (ha ω)
+    · rw [dif_pos h]; exact (T.canon.chosenIso q (T.cls_canon.trans h)).map_mem (ha ω)
     · rw [dif_neg h]; exact (q.rep.profiles_nonempty).choose_spec
 
 /-- The prescribed book plays `a ω` in every game whose full reduction is `T`. -/
@@ -243,9 +270,9 @@ noncomputable def varying : Book N 𝒜 (∀ i, 𝒜 i) where
 sample point: the sample point is the outcome's image in the class representative. -/
 lemma varying_play_eq (Γ : Game N 𝒜) {a : ∀ i, 𝒜 i} (ha : a ∈ Γ.reduce.profiles) :
     (varying (N := N) (𝒜 := 𝒜)).toPlay.play Γ
-      ((Γ.reduce.chosenIso Γ.reduce.cls rfl).map a) = a := by
+      ((Γ.reduce.canon.chosenIso Γ.reduce.cls Γ.reduce.cls_canon).map a) = a := by
   classical
-  set φ := Γ.reduce.chosenIso Γ.reduce.cls rfl with hφ
+  set φ := Γ.reduce.canon.chosenIso Γ.reduce.cls Γ.reduce.cls_canon with hφ
   have hmem : φ.map a ∈ (Γ.reduce.cls).rep.profiles := φ.map_mem ha
   rw [toPlay_play, playReduced]
   show φ.symm.map (varying.page Γ.reduce.cls (φ.map a)) = a
@@ -265,14 +292,15 @@ lemma measurableSet_fiber (hB : ∀ q a, MeasurableSet {ω | B.page q ω = a})
     (Γ : Game N 𝒜) (a : ∀ i, 𝒜 i) : MeasurableSet {ω | B.toPlay.play Γ ω = a} := by
   by_cases ha : a ∈ Γ.reduce.profiles
   · have : {ω | B.toPlay.play Γ ω = a} =
-        {ω | B.page Γ.reduce.cls ω = (Γ.reduce.chosenIso Γ.reduce.cls rfl).map a} := by
+        {ω | B.page Γ.reduce.cls ω =
+          (Γ.reduce.canon.chosenIso Γ.reduce.cls Γ.reduce.cls_canon).map a} := by
       ext ω
       simp only [Set.mem_setOf_eq, toPlay_play, playReduced]
       constructor
       · rintro rfl
         rw [GameIso.map_symm_map _ (B.page_mem _ ω)]
       · intro h
-        rw [h, GameIso.symm_map_map _ ha]
+        rw [h]; exact GameIso.symm_map_map _ ha
     rw [this]; exact hB _ _
   · have : {ω | B.toPlay.play Γ ω = a} = ∅ := by
       ext ω
@@ -299,8 +327,9 @@ end Book
 universe and any sample space there is a play family satisfying both, for every
 certainty filter.  The witness is the deterministic book. -/
 lemma exists_play_satisfiesA1_satisfiesA2 (Ω : Type w) :
-    ∃ X : Play N 𝒜 Ω, ∀ L : Filter Ω, X.SatisfiesA1 L ∧ X.SatisfiesA2 L :=
-  ⟨(Book.const Ω).toPlay, fun L => ⟨(Book.const Ω).satisfiesA1 L, (Book.const Ω).satisfiesA2 L⟩⟩
+    ∃ X : Play N 𝒜 Ω, X.RespectsEqOn ∧ ∀ L : Filter Ω, X.SatisfiesA1 L ∧ X.SatisfiesA2 L :=
+  ⟨(Book.const Ω).toPlay, (Book.const Ω).toPlay_respectsEqOn,
+    fun L => ⟨(Book.const Ω).satisfiesA1 L, (Book.const Ω).satisfiesA2 L⟩⟩
 
 /-- **The side condition of `Play.isStrictSPI_of_deriv` is satisfiable together with
 Assumptions 1 and 2, for every game at once**: over the sample space of profiles there is a
@@ -310,11 +339,11 @@ positive probability.  Without this the strict soundness result could be vacuous
 one-point sample space no play family reaches two distinct reduced outcomes.  The witness
 is `Book.varying`. -/
 lemma exists_play_satisfiesA1_satisfiesA2_hits :
-    ∃ X : Play N 𝒜 (∀ i, 𝒜 i), X.SatisfiesA1 ⊤ ∧ X.SatisfiesA2 ⊤ ∧
+    ∃ X : Play N 𝒜 (∀ i, 𝒜 i), X.RespectsEqOn ∧ X.SatisfiesA1 ⊤ ∧ X.SatisfiesA2 ⊤ ∧
       ∀ Γ : Game N 𝒜, ∀ a ∈ Γ.reduce.profiles, ∃ᶠ ω in (⊤ : Filter (∀ i, 𝒜 i)),
         X.play Γ ω = a :=
-  ⟨Book.varying.toPlay, Book.varying.satisfiesA1 ⊤, Book.varying.satisfiesA2 ⊤,
-    fun Γ _ ha => frequently_top.2 ⟨_, Book.varying_play_eq Γ ha⟩⟩
+  ⟨Book.varying.toPlay, Book.varying.toPlay_respectsEqOn, Book.varying.satisfiesA1 ⊤,
+    Book.varying.satisfiesA2 ⊤, fun Γ _ ha => frequently_top.2 ⟨_, Book.varying_play_eq Γ ha⟩⟩
 
 /-- **Assumptions 1 and 2 are jointly satisfiable by *representatives*** — a probability
 space with measurable outcome fibers, which is what §3 models the representatives as — and
@@ -324,15 +353,16 @@ assumptions hold at every sample point and so at the model's own certainty filte
 
 **Disclosure.**  The sample space here is `Unit`, which carries the discrete σ-algebra, so
 the `measurableSet_fiber` field is satisfied by `trivial` and is content-free at this
-witness.  The same is true of any book on a discrete `Ω` — including the finite profile
-space `∀ i, 𝒜 i` used by `Book.varying`.  `measurableSet_fiber` is exercised
+witness.  The same is true of any book on a discrete `Ω` — including the profile space
+`∀ i, 𝒜 i` used by `Book.varying`, which is infinite over the `X ⊕ ℕ` universes of §5 but
+is given the discrete σ-algebra wherever it is used (R7-F06).  `measurableSet_fiber` is exercised
 non-trivially only over a non-discrete sample space, of which this development supplies no
 instance. -/
 lemma exists_representatives_satisfiesA1_satisfiesA2 :
-    ∃ R : Representatives.{u, v, 0} N 𝒜,
+    ∃ R : Representatives.{u, v, 0} N 𝒜, R.toPlay.RespectsEqOn ∧
       R.toPlay.SatisfiesA1 R.certainty ∧ R.toPlay.SatisfiesA2 R.certainty :=
   ⟨(Book.const Unit).toRepresentatives (μ := MeasureTheory.Measure.dirac ())
-      (fun _ _ => trivial),
+      (fun _ _ => trivial), (Book.const Unit).toPlay_respectsEqOn,
     (Book.const Unit).satisfiesA1 _, (Book.const Unit).satisfiesA2 _⟩
 
 end SafeParetoImprovements

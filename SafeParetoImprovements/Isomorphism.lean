@@ -1,4 +1,5 @@
 import SafeParetoImprovements.Correspondence
+import SafeParetoImprovements.Reduction
 import Mathlib.Data.Finset.Max
 import Mathlib.Tactic.FieldSimp
 import Mathlib.Tactic.Linarith
@@ -298,7 +299,7 @@ variable [Fintype N]
 
 /-- **Lemma 4**: if `Φ` and `Ψ` are isomorphisms between `Γ` and `Γ'` and `Φ` is
 Pareto-improving, so is `Ψ`.  (The lemma needs `Γ'` to be a subset game of `Γ` for
-"Pareto-improving" to be defined; the printed statement omits this — erratum D2.)
+"Pareto-improving" to be defined; the printed statement omits this — erratum D2(b).)
 
 Paper node: `Lemma 4` -/
 theorem paretoImproving_of_paretoImproving (φ ψ : GameIso Γ Γ') (hφ : φ.ParetoImproving) :
@@ -384,5 +385,219 @@ lemma Reduced.of_iso (φ : GameIso Γ Γ') (h : Γ.Reduced) : Γ'.Reduced := by
   nlinarith
 
 end Game
+
+/-! ### Isomorphisms and the canonical presentation -/
+
+namespace GameIso
+
+variable {Γ Γ' : Game N 𝒜}
+
+/-- An isomorphism between canonical presentations is one between the games: same maps,
+same constants, since the canonical presentation agrees with the game on its profiles. -/
+def ofCanon (ψ : GameIso Γ.canon Γ'.canon) : GameIso Γ Γ' where
+  toFun := ψ.toFun
+  bijOn := ψ.bijOn
+  scale := ψ.scale
+  scale_pos := ψ.scale_pos
+  shift := ψ.shift
+  affine a ha i := by
+    have h := ψ.affine a ha i
+    rw [Γ.canon_u_of_mem ha, show (fun j => ψ.toFun j (a j)) = ψ.map a from rfl,
+      Γ'.canon_u_of_mem (ψ.map_mem ha)] at h
+    exact h
+
+@[simp] lemma ofCanon_map (ψ : GameIso Γ.canon Γ'.canon) (a : ∀ i, 𝒜 i) :
+    (ofCanon ψ).map a = ψ.map a := rfl
+
+end GameIso
+
+/-! ### Reduction transports along an isomorphism
+
+An isomorphism `Φ : Γ → Γ'` carries every subset game `G` of `Γ` obtained by elimination
+to the subset game `Φ(G)` of `Γ'` (`GameIso.imageGame`), restricts to an isomorphism
+`G ≅ Φ(G)` with the same constants (`GameIso.restrict`), and commutes with iterated
+elimination: `reduce Γ' = Φ(reduce Γ)` (`GameIso.reduce_eq_imageGame`).  This is what lets
+a token copy of a *whole* game be reduced through the copy (Lemma 13's `(Â, û)` is a copy
+of `Γ`, not of `reduce Γ`; R7-F02). -/
+
+namespace GameIso
+
+section cast
+
+variable {G₁ G₂ H₁ H₂ : Game N 𝒜}
+
+/-- Transport an isomorphism along equalities of its endpoints. -/
+def cast (e : G₁ = G₂) (e' : H₁ = H₂) (φ : GameIso G₁ H₁) : GameIso G₂ H₂ := e ▸ e' ▸ φ
+
+@[simp] lemma cast_map (e : G₁ = G₂) (e' : H₁ = H₂) (φ : GameIso G₁ H₁) :
+    (φ.cast e e').map = φ.map := by
+  subst e; subst e'; rfl
+
+@[simp] lemma cast_scale (e : G₁ = G₂) (e' : H₁ = H₂) (φ : GameIso G₁ H₁) :
+    (φ.cast e e').scale = φ.scale := by
+  subst e; subst e'; rfl
+
+@[simp] lemma cast_shift (e : G₁ = G₂) (e' : H₁ = H₂) (φ : GameIso G₁ H₁) :
+    (φ.cast e e').shift = φ.shift := by
+  subst e; subst e'; rfl
+
+end cast
+
+variable [DecidableEq N] [∀ i, DecidableEq (𝒜 i)] {Γ Γ' : Game N 𝒜} (φ : GameIso Γ Γ')
+
+/-- The image `Φ(G)` of a subset game `G` of `Γ`: the actions `Φᵢ(Gᵢ)`, with `Γ'`'s payoffs. -/
+def imageGame (G : Game N 𝒜) : Game N 𝒜 where
+  S i := (G.S i).image (φ.toFun i)
+  nonempty i := (G.nonempty i).image _
+  u := Γ'.u
+
+omit [DecidableEq N] in
+@[simp] lemma imageGame_S (G : Game N 𝒜) (i : N) : (φ.imageGame G).S i = (G.S i).image (φ.toFun i) :=
+  rfl
+
+omit [DecidableEq N] in
+@[simp] lemma imageGame_u (G : Game N 𝒜) : (φ.imageGame G).u = Γ'.u := rfl
+
+omit [DecidableEq N] in
+lemma imageGame_isSubsetGameOf {G : Game N 𝒜} (hG : G.IsSubsetGameOf Γ) :
+    (φ.imageGame G).IsSubsetGameOf Γ' := by
+  intro i x hx
+  obtain ⟨a, ha, rfl⟩ := Finset.mem_image.1 hx
+  exact (φ.bijOn i).mapsTo (hG i ha)
+
+omit [DecidableEq N] in
+lemma imageGame_self : φ.imageGame Γ = Γ' := by
+  refine Game.ext' (funext fun i => ?_) rfl
+  apply Finset.coe_injective
+  rw [imageGame_S, Finset.coe_image]
+  exact (φ.bijOn i).image_eq
+
+/-- `Φ` restricted to a subset game `G` of `Γ` carrying `Γ`'s payoffs: an isomorphism
+`G ≅ Φ(G)` with the same scales and shifts. -/
+def restrict (G : Game N 𝒜) (hG : G.IsSubsetGameOf Γ) (hu : G.u = Γ.u) :
+    GameIso G (φ.imageGame G) where
+  toFun := φ.toFun
+  bijOn i := by
+    refine ⟨fun a ha => Finset.mem_coe.2 (Finset.mem_image_of_mem _ ha),
+      (φ.bijOn i).injOn.mono (hG i), fun b hb => ?_⟩
+    obtain ⟨a, ha, rfl⟩ := Finset.mem_image.1 (Finset.mem_coe.1 hb)
+    exact ⟨a, ha, rfl⟩
+  scale := φ.scale
+  scale_pos := φ.scale_pos
+  shift := φ.shift
+  affine a ha i := by
+    rw [hu, imageGame_u]
+    exact φ.affine a (hG.profiles_subset ha) i
+
+omit [DecidableEq N] in
+@[simp] lemma restrict_scale (G : Game N 𝒜) (hG : G.IsSubsetGameOf Γ) (hu : G.u = Γ.u) :
+    (φ.restrict G hG hu).scale = φ.scale := rfl
+
+omit [DecidableEq N] in
+@[simp] lemma restrict_shift (G : Game N 𝒜) (hG : G.IsSubsetGameOf Γ) (hu : G.u = Γ.u) :
+    (φ.restrict G hG hu).shift = φ.shift := rfl
+
+omit [DecidableEq N] in
+@[simp] lemma restrict_map (G : Game N 𝒜) (hG : G.IsSubsetGameOf Γ) (hu : G.u = Γ.u)
+    (a : ∀ i, 𝒜 i) : (φ.restrict G hG hu).map a = φ.map a := rfl
+
+omit [DecidableEq N] in
+@[simp] lemma restrict_toFun (G : Game N 𝒜) (hG : G.IsSubsetGameOf Γ) (hu : G.u = Γ.u) :
+    (φ.restrict G hG hu).toFun = φ.toFun := rfl
+
+/-- Strict dominance transports forward along `Φ` on a subset game. -/
+lemma strictlyDominates_imageGame {G : Game N 𝒜} (hG : G.IsSubsetGameOf Γ) (hu : G.u = Γ.u)
+    {i : N} {a a' : 𝒜 i} (hd : G.StrictlyDominates i a a') :
+    (φ.imageGame G).StrictlyDominates i (φ.toFun i a) (φ.toFun i a') := by
+  set ψ := φ.restrict G hG hu with hψ
+  rw [Game.strictlyDominates_iff] at hd ⊢
+  obtain ⟨ha, ha', hlt⟩ := hd
+  refine ⟨Finset.mem_image_of_mem _ ha, Finset.mem_image_of_mem _ ha', fun b hb => ?_⟩
+  obtain ⟨c, hc, rfl⟩ : ∃ c ∈ G.profiles, ψ.map c = b := by
+    refine ⟨ψ.symm.map b, ψ.symm.map_mem hb, ψ.map_symm_map hb⟩
+  have key : ∀ x ∈ G.S i, (φ.imageGame G).u (Function.update (ψ.map c) i (φ.toFun i x)) i =
+      (G.u (Function.update c i x) i - ψ.shift i) / ψ.scale i := by
+    intro x hx
+    have hmem : Function.update c i x ∈ G.profiles := by
+      intro j
+      rcases eq_or_ne j i with rfl | hj
+      · simpa using hx
+      · rw [Function.update_of_ne hj]; exact hc j
+    have hmap : (fun j => ψ.toFun j (Function.update c i x j)) =
+        Function.update (ψ.map c) i (φ.toFun i x) := by
+      funext j
+      rcases eq_or_ne j i with rfl | hj
+      · simp [hψ, restrict_toFun]
+      · simp [GameIso.map, hψ, restrict_toFun, Function.update_of_ne hj]
+    have h := ψ.affine _ hmem i
+    rw [hmap] at h
+    have hs := ψ.scale_pos i
+    rw [h]
+    field_simp
+    ring
+  rw [key a ha, key a' ha']
+  have hs := ψ.scale_pos i
+  exact div_lt_div_of_pos_right (by linarith [hlt c hc]) hs
+
+lemma imageGame_erase {G : Game N 𝒜} (hG : G.IsSubsetGameOf Γ) {i : N} {a : 𝒜 i}
+    (ha : a ∈ G.S i) (h : ((G.S i).erase a).Nonempty)
+    (h' : (((φ.imageGame G).S i).erase (φ.toFun i a)).Nonempty) :
+    φ.imageGame (G.erase i a h) = (φ.imageGame G).erase i (φ.toFun i a) h' := by
+  refine Game.ext' (funext fun j => ?_) rfl
+  by_cases hj : j = i
+  · subst hj
+    rw [imageGame_S, Game.erase_S_self, Game.erase_S_self, imageGame_S]
+    ext x
+    simp only [Finset.mem_image, Finset.mem_erase]
+    constructor
+    · rintro ⟨y, ⟨hya, hy⟩, rfl⟩
+      exact ⟨fun hxy => hya ((φ.bijOn j).injOn (hG j hy) (hG j ha) hxy), y, hy, rfl⟩
+    · rintro ⟨hne, y, hy, rfl⟩
+      exact ⟨y, ⟨fun hya => hne (by rw [hya]), hy⟩, rfl⟩
+  · rw [imageGame_S, Game.erase_S_of_ne _ _ _ _ hj, Game.erase_S_of_ne _ _ _ _ hj, imageGame_S]
+
+/-- A single elimination transports along `Φ`. -/
+lemma elim_imageGame {G G₂ : Game N 𝒜} (hG : G.IsSubsetGameOf Γ) (hu : G.u = Γ.u)
+    (h : G.Elim G₂) : (φ.imageGame G).Elim (φ.imageGame G₂) := by
+  obtain ⟨i, a, hd, rfl⟩ := h
+  obtain ⟨b, hb⟩ := hd
+  have hd' : (φ.imageGame G).IsStrictlyDominated i (φ.toFun i a) :=
+    ⟨φ.toFun i b, φ.strictlyDominates_imageGame hG hu hb⟩
+  refine ⟨i, φ.toFun i a, hd', ?_⟩
+  have hmem : a ∈ G.S i := Game.IsStrictlyDominated.mem (Γ := G) ⟨b, hb⟩
+  exact φ.imageGame_erase hG hmem _ hd'.erase_nonempty
+
+/-- Iterated elimination transports along `Φ`. -/
+lemma elimStar_imageGame {G : Game N 𝒜} (h : Γ.ElimStar G) : Γ'.ElimStar (φ.imageGame G) := by
+  have key : (φ.imageGame Γ).ElimStar (φ.imageGame G) := by
+    induction h with
+    | refl => exact Relation.ReflTransGen.refl
+    | tail hchain hstep ih =>
+      exact ih.tail (φ.elim_imageGame (Game.ElimStar.isSubsetGameOf hchain)
+        (Game.ElimStar.u_eq hchain) hstep)
+  have transport : ∀ H : Game N 𝒜, H = Γ' → H.ElimStar (φ.imageGame G) →
+      Γ'.ElimStar (φ.imageGame G) := fun H hH hE => hH ▸ hE
+  exact transport _ φ.imageGame_self key
+
+/-- **Reduction commutes with isomorphism**: `reduce Γ' = Φ(reduce Γ)`. -/
+lemma reduce_eq_imageGame [Fintype N] : Γ'.reduce = φ.imageGame Γ.reduce :=
+  Game.reduce_eq_of_reduced_of_elimStar (φ.elimStar_imageGame Γ.elimStar_reduce)
+    (Game.Reduced.of_iso (φ.restrict Γ.reduce Γ.reduce_isSubsetGameOf Γ.reduce_u)
+      Γ.reduce_reduced)
+
+/-- `Φ` restricted to the reductions: `reduce Γ ≅ reduce Γ'`, with `Φ`'s constants. -/
+noncomputable def restrictReduce [Fintype N] : GameIso Γ.reduce Γ'.reduce :=
+  (φ.restrict Γ.reduce Γ.reduce_isSubsetGameOf Γ.reduce_u).cast rfl φ.reduce_eq_imageGame.symm
+
+@[simp] lemma restrictReduce_map [Fintype N] (a : ∀ i, 𝒜 i) : φ.restrictReduce.map a = φ.map a := by
+  rw [restrictReduce, GameIso.cast_map]; rfl
+
+@[simp] lemma restrictReduce_scale [Fintype N] : φ.restrictReduce.scale = φ.scale := by
+  rw [restrictReduce, GameIso.cast_scale]; rfl
+
+@[simp] lemma restrictReduce_shift [Fintype N] : φ.restrictReduce.shift = φ.shift := by
+  rw [restrictReduce, GameIso.cast_shift]; rfl
+
+end GameIso
 
 end SafeParetoImprovements

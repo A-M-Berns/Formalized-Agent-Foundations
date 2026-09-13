@@ -75,6 +75,15 @@ def IsStrictSPI (Γ Γs : Game N 𝒜) : Prop :=
 
 lemma IsStrictSPI.isSPI {Γ Γs : Game N 𝒜} (h : X.IsStrictSPI L Γ Γs) : X.IsSPI L Γ Γs := h.1
 
+/-- The play family is a function of the **paper's** game: `EqOn`-equal presentations
+(`dd:total-utility`) are played identically.  A `Play` is a function of the Lean
+presentation, which carries payoffs off the profiles that the paper's game does not; a
+play family satisfying this predicate factors through the paper's games, so existence
+statements witnessed by such a family are existence statements about the paper's `Π`
+(R7-F01).  Every universally quantified node is stronger over all of `Play`, so the
+predicate is not a hypothesis there. -/
+def RespectsEqOn : Prop := ∀ Γ Γ' : Game N 𝒜, Γ.EqOn Γ' → X.play Γ = X.play Γ'
+
 /-- Every game is an SPI on itself (the paper allows `y = y'`). -/
 lemma isSPI_self (Γ : Game N 𝒜) : X.IsSPI L Γ Γ :=
   ⟨Game.IsSubsetGameOf.refl Γ, Eventually.of_forall fun _ => le_rfl⟩

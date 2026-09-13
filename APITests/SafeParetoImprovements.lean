@@ -95,7 +95,7 @@ under probability one. -/
 example {Γ Γs : Game Two CUniv} {Φ : SetRel (∀ i, CUniv i) (∀ i, CUniv i)}
     (d : Game.Deriv Γ Γ Γs Φ) (hΦ : Game.ParetoImprovingFor Γ Φ) :
     ∃ R : Representatives.{0, 0, 0} Two CUniv, R.toPlay.IsSPI R.certainty Γ Γs := by
-  obtain ⟨R, hA1, hA2⟩ := exists_representatives_satisfiesA1_satisfiesA2 (N := Two) (𝒜 := CUniv)
+  obtain ⟨R, -, hA1, hA2⟩ := exists_representatives_satisfiesA1_satisfiesA2 (N := Two) (𝒜 := CUniv)
   exact ⟨R, Play.isSPI_of_deriv hA1 hA2 d hΦ⟩
 
 /-- A book's play family satisfies Assumption 1 for *every* certainty filter, so in particular

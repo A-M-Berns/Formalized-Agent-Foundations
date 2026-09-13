@@ -25,8 +25,8 @@ open Filter MeasureTheory Two
 
 /-! ### The conflict game: a "yes" instance -/
 
-lemma conflictGame_hasRoom : conflictGame.reduce.HasRoomOutside conflictGame.S :=
-  conflictGame.reduce.hasRoomOutside_of_infinite _
+lemma conflictGame_hasRoom : conflictGame.HasRoom :=
+  conflictGame.hasRoomOutside_of_infinite _
 
 /-- The conflict outcome is played with probability ½, hence supported. -/
 lemma conflict_mem_support :

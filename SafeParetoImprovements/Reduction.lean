@@ -330,6 +330,122 @@ lemma reduce_isSubsetGameOf [Fintype N] (Γ : Game N 𝒜) : Γ.reduce.IsSubsetG
 
 @[simp] lemma reduce_u [Fintype N] (Γ : Game N 𝒜) : Γ.reduce.u = Γ.u := (elimStar_reduce Γ).u_eq
 
+/-! ### Reduction respects the paper's equality of games
+
+`Game.EqOn` (`dd:total-utility`) is the paper's equality: same action sets, same payoffs on
+the profiles.  Strict dominance respects it (`strictlyDominates_of_eqOn`), hence so does
+every elimination step and the full reduction: `reduce Γ'` is `reduce Γ` with `Γ'`'s payoffs
+(`EqOn.reduce_eq_withPayoffs`), in particular `EqOn`-equal to it.  This is what lets a play
+family built from reductions be a function of the paper's game rather than of its
+presentation (`Play.RespectsEqOn`, R7-F01). -/
+
+omit [DecidableEq N] [∀ i, DecidableEq (𝒜 i)] in
+/-- The game with the action sets of `Γ₁` and the payoffs of `Γ'`. -/
+def withPayoffs (Γ₁ Γ' : Game N 𝒜) : Game N 𝒜 where
+  S := Γ₁.S
+  nonempty := Γ₁.nonempty
+  u := Γ'.u
+
+omit [DecidableEq N] [∀ i, DecidableEq (𝒜 i)] in
+@[simp] lemma withPayoffs_S (Γ₁ Γ' : Game N 𝒜) : (Γ₁.withPayoffs Γ').S = Γ₁.S := rfl
+omit [DecidableEq N] [∀ i, DecidableEq (𝒜 i)] in
+@[simp] lemma withPayoffs_u (Γ₁ Γ' : Game N 𝒜) : (Γ₁.withPayoffs Γ').u = Γ'.u := rfl
+
+section eqOn
+
+omit [DecidableEq N] [∀ i, DecidableEq (𝒜 i)] in
+/-- A subset game of `Γ` with `Γ`'s payoffs, given `Γ'`'s payoffs instead, is `EqOn`-equal
+to itself when `Γ.EqOn Γ'`. -/
+lemma EqOn.withPayoffs_eqOn {Γ Γ' G : Game N 𝒜} (h : Γ.EqOn Γ') (hG : G.IsSubsetGameOf Γ)
+    (hu : G.u = Γ.u) : (G.withPayoffs Γ').EqOn G :=
+  ⟨rfl, fun a ha i => by rw [withPayoffs_u, hu]; exact (h.2 a (hG.profiles_subset ha) i).symm⟩
+
+lemma withPayoffs_erase {Γ' G : Game N 𝒜} {i : N} {a : 𝒜 i} (h : ((G.S i).erase a).Nonempty)
+    (h' : (((G.withPayoffs Γ').S i).erase a).Nonempty) :
+    (G.erase i a h).withPayoffs Γ' = (G.withPayoffs Γ').erase i a h' :=
+  Game.ext' (funext fun j => by
+    by_cases hj : j = i
+    · subst hj; rw [withPayoffs_S, Game.erase_S_self, Game.erase_S_self, withPayoffs_S]
+    · rw [withPayoffs_S, Game.erase_S_of_ne _ _ _ _ hj, Game.erase_S_of_ne _ _ _ _ hj, withPayoffs_S])
+    rfl
+
+/-- Iterated elimination transports across `EqOn`. -/
+lemma EqOn.elimStar_withPayoffs {Γ Γ' G : Game N 𝒜} (h : Γ.EqOn Γ') (hE : Γ.ElimStar G) :
+    Γ'.ElimStar (G.withPayoffs Γ') := by
+  have key : (Γ.withPayoffs Γ').ElimStar (G.withPayoffs Γ') := by
+    induction hE with
+    | refl => exact Relation.ReflTransGen.refl
+    | tail hchain hstep ih =>
+      obtain ⟨i, a, hd, rfl⟩ := hstep
+      obtain ⟨b, hb⟩ := hd
+      have hb' := strictlyDominates_of_eqOn (h.withPayoffs_eqOn (ElimStar.isSubsetGameOf hchain)
+        (ElimStar.u_eq hchain)).symm hb
+      have hd' : (_ : Game N 𝒜).IsStrictlyDominated i a := ⟨b, hb'⟩
+      exact ih.tail ⟨i, a, hd', withPayoffs_erase _ hd'.erase_nonempty⟩
+  have hself : Γ.withPayoffs Γ' = Γ' := Game.ext' h.1 rfl
+  have transport : ∀ H : Game N 𝒜, H = Γ' → H.ElimStar (G.withPayoffs Γ') →
+      Γ'.ElimStar (G.withPayoffs Γ') := fun H hH hE => hH ▸ hE
+  exact transport _ hself key
+
+/-- **The full reduction respects the paper's equality of games**: `reduce Γ'` is
+`reduce Γ` with `Γ'`'s payoffs. -/
+lemma EqOn.reduce_eq_withPayoffs [Fintype N] {Γ Γ' : Game N 𝒜} (h : Γ.EqOn Γ') :
+    Γ'.reduce = Γ.reduce.withPayoffs Γ' :=
+  reduce_eq_of_reduced_of_elimStar (h.elimStar_withPayoffs Γ.elimStar_reduce)
+    ((h.withPayoffs_eqOn Γ.reduce_isSubsetGameOf Γ.reduce_u).reduced_iff.2 Γ.reduce_reduced)
+
+lemma EqOn.reduce_S [Fintype N] {Γ Γ' : Game N 𝒜} (h : Γ.EqOn Γ') : Γ'.reduce.S = Γ.reduce.S := by
+  rw [h.reduce_eq_withPayoffs, withPayoffs_S]
+
+lemma EqOn.reduce_eqOn [Fintype N] {Γ Γ' : Game N 𝒜} (h : Γ.EqOn Γ') : Γ.reduce.EqOn Γ'.reduce := by
+  rw [h.reduce_eq_withPayoffs]
+  exact (h.withPayoffs_eqOn Γ.reduce_isSubsetGameOf Γ.reduce_u).symm
+
+end eqOn
+
+/-! ### The canonical presentation of a game
+
+`Game.canon Γ` zeroes the payoffs outside the profiles: it is `EqOn`-equal to `Γ`, and two
+`EqOn`-equal games have the *same* canonical presentation (`EqOn.canon_eq`).  Anything
+chosen classically from `Γ.canon` is therefore a function of the paper's game. -/
+
+section canon
+
+open Classical in
+omit [DecidableEq N] [∀ i, DecidableEq (𝒜 i)] in
+/-- The canonical presentation: `Γ` with its payoffs zeroed outside the profiles. -/
+noncomputable def canon (Γ : Game N 𝒜) : Game N 𝒜 where
+  S := Γ.S
+  nonempty := Γ.nonempty
+  u a i := if a ∈ Γ.profiles then Γ.u a i else 0
+
+omit [DecidableEq N] [∀ i, DecidableEq (𝒜 i)] in
+@[simp] lemma canon_S (Γ : Game N 𝒜) : Γ.canon.S = Γ.S := rfl
+
+omit [DecidableEq N] [∀ i, DecidableEq (𝒜 i)] in
+lemma canon_profiles (Γ : Game N 𝒜) : Γ.canon.profiles = Γ.profiles := rfl
+
+omit [DecidableEq N] [∀ i, DecidableEq (𝒜 i)] in
+lemma canon_u_of_mem (Γ : Game N 𝒜) {a : ∀ i, 𝒜 i} (ha : a ∈ Γ.profiles) (i : N) :
+    Γ.canon.u a i = Γ.u a i := by
+  simp [canon, ha]
+
+omit [DecidableEq N] [∀ i, DecidableEq (𝒜 i)] in
+lemma canon_eqOn (Γ : Game N 𝒜) : Γ.EqOn Γ.canon :=
+  ⟨rfl, fun _ ha i => (Γ.canon_u_of_mem ha i).symm⟩
+
+omit [DecidableEq N] [∀ i, DecidableEq (𝒜 i)] in
+/-- `EqOn`-equal games have the same canonical presentation. -/
+lemma EqOn.canon_eq {Γ Γ' : Game N 𝒜} (h : Γ.EqOn Γ') : Γ.canon = Γ'.canon := by
+  refine Game.ext' h.1 (funext fun a => funext fun i => ?_)
+  simp only [canon]
+  have hprof : a ∈ Γ.profiles ↔ a ∈ Γ'.profiles := by simp [Game.profiles, h.1]
+  by_cases ha : a ∈ Γ.profiles
+  · rw [if_pos ha, if_pos (hprof.1 ha), h.2 a ha i]
+  · rw [if_neg ha, if_neg (fun h' => ha (hprof.2 h'))]
+
+end canon
+
 end reduce
 
 end Game

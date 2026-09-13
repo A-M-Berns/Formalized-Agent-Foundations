@@ -97,18 +97,28 @@ namespace TokenGame
 
 variable (Γ : Game N 𝒜)
 
-/-- **Reassignment**: a token copy of `reduce Γ`, played through the isomorphism `ψ` that
-Assumption 2 supplies, with `uᵉ := f ∘ ψ⁻¹` for a feasible-valued reassignment `f` of the
-reduced outcomes.  This is the `(Â, û, uᵉ)` of Lemma 13 with `uᵉ` defined along the
-supplied isomorphism (erratum D6, RULING 10). -/
-noncomputable def reassign (h : Γ.reduce.HasRoomOutside Γ.S)
-    (ψ : GameIso Γ.reduce (Γ.reduce.tokenCopy h))
+open Classical in
+/-- **Reassignment**: a token copy of `Γ` — the paper's `(Â, û)`, every original action and
+payoff relabelled onto fresh tokens — played, after its own reduction, through the
+isomorphism `ψ : reduce Γ ≅ reduce Â` that Assumption 2 supplies, with `uᵉ := f ∘ ψ⁻¹` on the
+reduced token outcomes for a feasible-valued reassignment `f` of the reduced outcomes of `Γ`
+(erratum D6, RULING 10).  On the token outcomes eliminated by reduction, which are never
+played under Assumption 1, `uᵉ` is the relabelled original payoff `û`. -/
+noncomputable def reassign (h : Γ.HasRoom)
+    (ψ : GameIso Γ.reduce (Γ.tokenCopy h).reduce)
     (f : (∀ i, 𝒜 i) → N → ℝ) (hf : ∀ a ∈ Γ.reduce.profiles, f a ∈ Γ.feasible) :
     TokenGame Γ where
-  game := Γ.reduce.tokenCopy h
-  fresh i := Γ.reduce.tokenCopy_fresh h i
-  ue b := f (ψ.symm.map b)
-  ue_mem _ hb := hf _ (ψ.symm.map_mem hb)
+  game := Γ.tokenCopy h
+  fresh i := Γ.tokenCopy_fresh h i
+  ue b := if b ∈ (Γ.tokenCopy h).reduce.profiles then f (ψ.symm.map b) else (Γ.tokenCopy h).u b
+  ue_mem b hb := by
+    split_ifs with hb'
+    · exact hf _ (ψ.symm.map_mem hb')
+    · refine Γ.u_mem_feasible fun j => ?_
+      obtain ⟨a, ha, hab⟩ := Finset.mem_image.1 (hb j)
+      show Γ.untoken h j (b j) ∈ Γ.S j
+      rw [← hab, Γ.untoken_tokenMap h j ha]
+      exact ha
 
 end TokenGame
 
@@ -118,24 +128,28 @@ variable {X : Play N 𝒜 Ω} {L : Filter Ω}
 
 /-- **Reassignment realises any feasible-valued function of the play**: under Assumptions
 1 and 2, with room, for every `f` sending reduced outcomes into `C(Γ)` there is a token
-game — an *exact* copy of `reduce Γ` in the sense of `Game.ExactCopy`, the paper's
-`û(â) = u(a)` — whose original-player payoff at the representatives' token play is `f` at
-the representatives' play of `Γ`, with certainty.  The token game is `TokenGame.reassign`
-along the isomorphism Assumption 2 supplies; the exact copy it delivers is
-`Game.tokenCopy` along `Game.tokenIso`, which is a token *relabeling* and so has scale `1`
-and shift `0` (R5-F01/F07). -/
+game — an *exact* copy of `Γ` in the sense of `Game.ExactCopy`, the paper's `û(â) = u(a)` —
+whose original-player payoff at the representatives' token play is `f` at the
+representatives' play of `Γ`, with certainty.  The token game is `TokenGame.reassign`: the
+copy `Game.tokenCopy` along `Game.tokenIso` (a relabelling, so scale `1` and shift `0`,
+R5-F01/F07); by Assumption 1 the representatives play the copy as they play its reduction,
+which is the relabelled `reduce Γ` (`GameIso.reduce_eq_imageGame`), and by Assumption 2 they
+play that isomorphically to `reduce Γ` along the isomorphism `uᵉ` is defined with. -/
 lemma exists_tokenGame_ue_eq (hA1 : X.SatisfiesA1 L) (hA2 : X.SatisfiesA2 L) (Γ : Game N 𝒜)
-    (h : Γ.reduce.HasRoomOutside Γ.S) (f : (∀ i, 𝒜 i) → N → ℝ)
+    (h : Γ.HasRoom) (f : (∀ i, 𝒜 i) → N → ℝ)
     (hf : ∀ a ∈ Γ.reduce.profiles, f a ∈ Γ.feasible) :
-    ∃ T : TokenGame Γ, Γ.reduce.ExactCopy T.game ∧
+    ∃ T : TokenGame Γ, Γ.ExactCopy T.game ∧
       ∀ᶠ ω in L, T.ue (X.play T.game ω) = f (X.play Γ ω) := by
-  obtain ⟨ψ, hψ⟩ := hA2 Γ.reduce (Γ.reduce.tokenCopy h) Γ.reduce_reduced
-    (Game.Reduced.of_iso (Γ.reduce.tokenIso h) Γ.reduce_reduced) ⟨Γ.reduce.tokenIso h⟩
-  refine ⟨TokenGame.reassign Γ h ψ f hf, Γ.reduce.exactCopy_tokenCopy h, ?_⟩
-  filter_upwards [hψ, hA1.play_reduce Γ] with ω hω hred
+  obtain ⟨ψ, hψ⟩ := hA2 Γ.reduce (Γ.tokenCopy h).reduce Γ.reduce_reduced
+    (Γ.tokenCopy h).reduce_reduced ⟨(Γ.tokenIso h).restrictReduce⟩
+  refine ⟨TokenGame.reassign Γ h ψ f hf, Γ.exactCopy_tokenCopy h, ?_⟩
+  filter_upwards [hψ, hA1.play_reduce Γ, hA1.play_reduce (Γ.tokenCopy h)] with ω hω hred hredC
   obtain ⟨hmem, hmap⟩ := (ψ.mem_rel _ _).1 hω
-  show f (ψ.symm.map (X.play (Γ.reduce.tokenCopy h) ω)) = f (X.play Γ ω)
-  rw [hmap, ψ.symm_map_map hmem, hred]
+  classical
+  show (if X.play (Γ.tokenCopy h) ω ∈ (Γ.tokenCopy h).reduce.profiles
+      then f (ψ.symm.map (X.play (Γ.tokenCopy h) ω)) else (Γ.tokenCopy h).u (X.play (Γ.tokenCopy h) ω)) =
+    f (X.play Γ ω)
+  rw [← hredC, hmap, if_pos (ψ.map_mem hmem), ψ.symm_map_map hmem, hred]
 
 end Play
 
@@ -190,7 +204,7 @@ a strict perfect-coordination SPI — the reassignment that replaces that outcom
 feasible vector Pareto-dominating it and keeps every other outcome. -/
 lemma exists_strictSPI_of_support_not_paretoOptimal (Γ : Game N 𝒜)
     (hA1 : R.toPlay.SatisfiesA1 R.certainty) (hA2 : R.toPlay.SatisfiesA2 R.certainty)
-    (h : Γ.reduce.HasRoomOutside Γ.S) {a₀ : ∀ i, 𝒜 i} (ha₀ : a₀ ∈ R.support Γ)
+    (h : Γ.HasRoom) {a₀ : ∀ i, 𝒜 i} (ha₀ : a₀ ∈ R.support Γ)
     (hopt : ¬ Game.ParetoOptimalIn (Γ.u a₀) Γ.feasible) :
     ∃ T : TokenGame Γ, T.IsStrictSPI R.toPlay R.certainty := by
   classical
@@ -230,7 +244,7 @@ needs neither assumption nor room (`exists_support_not_paretoOptimal_of_strictSP
 Paper node: `Proposition 12` -/
 theorem strictPerfectCoordinationSPIDecision_iff (Γ : Game N 𝒜)
     (hA1 : R.toPlay.SatisfiesA1 R.certainty) (hA2 : R.toPlay.SatisfiesA2 R.certainty)
-    (h : Γ.reduce.HasRoomOutside Γ.S) :
+    (h : Γ.HasRoom) :
     R.toPlay.StrictPerfectCoordinationSPIDecision R.certainty Γ ↔
       ∃ a ∈ R.support Γ, ¬ Game.ParetoOptimalIn (Γ.u a) Γ.feasible :=
   ⟨fun ⟨_, hT⟩ => R.exists_support_not_paretoOptimal_of_strictSPI Γ hT,

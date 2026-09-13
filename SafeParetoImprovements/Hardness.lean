@@ -11,16 +11,19 @@ isomorphism problem (Definition 8) to the two-player SPI decision problems: from
 into the game `Γᶜ` of Table 10, and Lemma 28 says that `G` embeds in `Ĝ` iff `Γᶜ` has a
 (strict) (unilateral) SPI.  That equivalence is what is rendered, four times over, as
 `subgraphIsoProblem_iff_spiDecision` and its strict, unilateral, and strict-unilateral
-variants; "in linear time with linear increase in problem instance size" and "NP-hard"
-(which needs Lemma 27, Cook's theorem for subgraph isomorphism, cited and not carried) are
-the clauses not rendered.
+variants; "in linear time" and "NP-hard" (which needs Lemma 27, Cook's theorem for subgraph
+isomorphism, cited and not carried) are the clauses not rendered, and "linear increase in
+problem instance size" is rendered only as the action count `size_hardnessGame`
+(`2(2n+2) + 2(2n̂+2)`, linear in the vertex counts), not as an encoding size — the paper
+fixes no encoding.
 
 Three modelling notes, all recorded in the design note.  The paper's `[2n+2]` is carried
 as `Fin n ⊕ Fin n ⊕ Bool` — the block `[n]`, the block `{n+1, …, 2n}` written `j ↦ n+j`,
 and the two corner actions `2n+1` (`false`) and `2n+2` (`true`) — so that the payoff
-formula is a case split.  The printed formula and Table 9 disagree at eight entries
-(player 1 in columns `2n+1, 2n+2` against rows `[2n]`, player 2 symmetrically: the formula
-says `ε`, the table `0`); the disagreement is material, because with `ε` no column of the
+formula is a case split.  The printed formula and Table 9 disagree on eight blocks of
+entries — `8n` cells: player 1 in the two columns `2n+1, 2n+2` against the `2n` rows
+`[2n]`, player 2 symmetrically — where the formula says `ε` and the table `0`; the
+disagreement is material, because with `ε` no column of the
 unilateral candidate is ever strictly dominated once the corner rows are present, and the
 carrier follows the **table**, under which the printed proof checks (erratum D18).  And
 the reduction's second half is organised around the product structure of an isomorphism
@@ -28,7 +31,10 @@ rather than the printed items (a)–(d): with non-triviality read as "the reduce
 sets move" (`dd:nontrivial`), the case in which `Ψ` keeps to the `Γ` block is dismissed
 outright, and the printed `ε`-ladder is not needed.
 
-The hypotheses on `ε` are the paper's `0 < ε < 1/(2n)` for `Γ` and `ε < 1/(2n̂)` for `Γ̂`;
+The hypotheses on `ε` are the paper's `ε < 1/(2n)` for `Γ` and `ε < 1/(2n̂)` for `Γ̂`,
+together with `0 < ε`, which the paper never states and the construction needs (with
+`ε = 0` the corner rows no longer strictly dominate anything against the table's `0`s;
+erratum D21);
 `n ≥ 1` replaces the printed "WLOG `n, n̂ ≥ 2`" and is assumed by all four forms of Lemma 28
 (the proof route needs `ε < 1`, which the `Γ`-side bound gives only when `n ≥ 1`).  It is
 mathematically necessary for the two strict forms: with `n = 0` the empty subgraph
@@ -149,8 +155,9 @@ def gammaBlock {n n' : ℕ} (a : Graph n) (a' : Graph n') (ε : ℝ) : Game Two 
 
 variable {n n' : ℕ} (a : Graph n) (a' : Graph n') (ε : ℝ)
 
-/-- The instance size of the constructed game: `2(2n+2) + 2(2n̂+2)` actions, linear in the
-sizes of the two graphs' vertex sets ("linear increase in problem instance size"). -/
+/-- The action count of the constructed game: `2(2n+2) + 2(2n̂+2)`, linear in the two
+graphs' vertex counts.  This is the only sense in which "linear increase in problem instance
+size" is rendered; the paper fixes no encoding of games or graphs. -/
 lemma size_hardnessGame : (hardnessGame a a' ε).size = 2 * (2 * n + 2) + 2 * (2 * n' + 2) := by
   have h2 : Fintype.card Two = 2 := rfl
   simp [Game.size, hardnessGame, Fintype.card_sum, Fintype.card_fin, Fintype.card_bool, h2]
@@ -749,9 +756,10 @@ unilateral SPI.  This is the strongest of the four forms — the appendix's firs
 produces a strict unilateral SPI from a subgraph isomorphism and its second extracts a
 subgraph isomorphism from any SPI at all — and the other three follow from it.  Qualified
 node (`dd:complexity`): "reducible in linear time" and "NP-hard" (which needs Lemma 27) are
-not rendered; the instance size is `size_hardnessGame`.  The hypotheses are the paper's
-`0 < ε < 1/(2n)`, `ε < 1/(2n̂)`, and `n ≥ 1` in place of its "WLOG `n, n̂ ≥ 2`" (necessary
-here: at `n = 0` the empty subgraph isomorphism exists and no strict SPI does).
+not rendered; the action count of the instance is `size_hardnessGame`.  The hypotheses are
+the paper's `ε < 1/(2n)` and `ε < 1/(2n̂)`, the unprinted but necessary `0 < ε` (erratum
+D21), and `n ≥ 1` in place of its "WLOG `n, n̂ ≥ 2`" (necessary here: at `n = 0` the empty
+subgraph isomorphism exists and no strict SPI does).
 
 Paper node: `Lemma 28`, `Theorem 9` -/
 theorem subgraphIsoProblem_iff_strictUnilateralSPIDecision :
