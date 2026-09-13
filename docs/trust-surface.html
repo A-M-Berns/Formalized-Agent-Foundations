@@ -232,7 +232,7 @@ code.fld { font-size: 10.5px; margin: 0 2px 2px 0; display: inline-block; }
 <div class="wrap">
 <nav class="rail" aria-label="node index">
   <div class="rail-title">Read-through</div>
-  <div class="rail-progress" id="progress">0 / 341 read</div>
+  <div class="rail-progress" id="progress">0 / 349 read</div>
   <a class="nav-paper" href="#paper-logical-induction">Logical Induction</a>
   <div class="nav-sec">The Logical Induction Criterion</div>
 <a class="nav-item" href="#def-lic" data-node="def-lic"><span class="dot exact"></span>def:lic</a>
@@ -653,6 +653,8 @@ code.fld { font-size: 10.5px; margin: 0 2px 2px 0; display: inline-block; }
 <a class="nav-item" href="#spi-proposition-8" data-node="spi-proposition-8"><span class="dot plain"></span>Proposition 8</a>
 <div class="nav-sec">§4.6 Computing safe Pareto improvements</div>
 <a class="nav-item" href="#spi-definition-5" data-node="spi-definition-5"><span class="dot plain"></span>Definition 5</a>
+<a class="nav-item" href="#spi-theorem-9" data-node="spi-theorem-9"><span class="dot plain"></span>Theorem 9</a>
+<a class="nav-item" href="#spi-proposition-10" data-node="spi-proposition-10"><span class="dot plain"></span>Proposition 10</a>
 <div class="nav-sec">§5.1 Setup</div>
 <a class="nav-item" href="#spi-definition-6" data-node="spi-definition-6"><span class="dot plain"></span>Definition 6</a>
 <div class="nav-sec">§5.2 Finding safe Pareto improvement under improved representative coordination</div>
@@ -669,6 +671,15 @@ code.fld { font-size: 10.5px; margin: 0 2px 2px 0; display: inline-block; }
 <a class="nav-item" href="#spi-lemma-19" data-node="spi-lemma-19"><span class="dot plain"></span>Lemma 19</a>
 <a class="nav-item" href="#spi-lemma-21" data-node="spi-lemma-21"><span class="dot plain"></span>Lemma 21</a>
 <a class="nav-item" href="#spi-lemma-22" data-node="spi-lemma-22"><span class="dot plain"></span>Lemma 22</a>
+<div class="nav-sec">Appendix D.2.1 The omnilateral SPI problem</div>
+<a class="nav-item" href="#spi-proposition-23" data-node="spi-proposition-23"><span class="dot plain"></span>Proposition 23</a>
+<a class="nav-item" href="#spi-proposition-24" data-node="spi-proposition-24"><span class="dot plain"></span>Proposition 24</a>
+<div class="nav-sec">Appendix D.2.2 The unilateral SPI problem</div>
+<a class="nav-item" href="#spi-proposition-25" data-node="spi-proposition-25"><span class="dot plain"></span>Proposition 25</a>
+<a class="nav-item" href="#spi-proposition-26" data-node="spi-proposition-26"><span class="dot plain"></span>Proposition 26</a>
+<div class="nav-sec">Appendix D.3 The SPI problems are NP-hard</div>
+<a class="nav-item" href="#spi-definition-8" data-node="spi-definition-8"><span class="dot plain"></span>Definition 8</a>
+<a class="nav-item" href="#spi-lemma-28" data-node="spi-lemma-28"><span class="dot plain"></span>Lemma 28</a>
 </nav>
 <main>
   <h1>Formalized Agent Foundations — the trust-surface read-through</h1>
@@ -704,7 +715,7 @@ code.fld { font-size: 10.5px; margin: 0 2px 2px 0; display: inline-block; }
     <div style="overflow-x:auto"><table class="index">
       <tr><td><strong>Paper</strong></td><td class="count"><strong>nodes</strong></td>
           <td><strong>library</strong></td><td><strong>editorial data on its cards</strong></td></tr>
-      <tr><td><a href="#paper-logical-induction">Logical Induction</a><div class="idx-cite">Garrabrant, Benson-Tilsen, Critch, Soares, Taylor (2016) · <a href="https://arxiv.org/abs/1609.03543">arXiv:1609.03543</a></div></td><td class="count">66</td><td><code>LogicalInduction/</code></td><td>a status badge per node (exact / strengthened / corrected / refuted / qualified) with a universal-vs-instantiated axis, a curated canonical endpoint set, a reading note and a "what to check" note — all from one machine-checked table</td></tr><tr><td><a href="#paper-cartesian-frames">Cartesian Frames</a><div class="idx-cite">Garrabrant, Herrmann, Lopez-Wild (2021) · <a href="https://arxiv.org/abs/2109.10996">arXiv:2109.10996</a></div></td><td class="count">60</td><td><code>CartesianFrames/</code></td><td>errata cross-references and the Claim 35 intentional-deviation ruling; <strong>no strength classification exists for this paper</strong></td></tr><tr><td><a href="#paper-modal-agents">Robust Cooperation in the Prisoner&#x27;s Dilemma: Program Equilibrium via Provability Logic</a><div class="idx-cite">Barász, Christiano, Fallenstein, Herreshoff, LaVictoire, Yudkowsky (2014) · <a href="https://arxiv.org/abs/1401.5577">arXiv:1401.5577</a></div></td><td class="count">12</td><td><code>ModalAgents/</code></td><td>scope notes and the deliberately-unannotated inventory endpoints; <strong>no strength classification exists for this paper</strong></td></tr><tr><td><a href="#paper-finite-factored-sets">Temporal Inference with Finite Factored Sets</a><div class="idx-cite">Garrabrant (2021) · <a href="https://arxiv.org/abs/2109.11513">arXiv:2109.11513</a></div></td><td class="count">88</td><td><code>FiniteFactoredSets/</code></td><td><strong>complete</strong> — §2–§7; 88 nodes carried by declarations and nine rendered by Mathlib vocabulary, 97 in scope. Conjecture 1 is stated as a <code>Prop</code> and deliberately not proved, and Example 3 is out of scope by ruling; <strong>no strength classification exists for this paper</strong></td></tr><tr><td><a href="#paper-factored-space-models">Factored space models: Towards causality between levels of abstraction</a><div class="idx-cite">Garrabrant, Mayer, Wache, Lang, Eisenstat, Dell (2024) · <a href="https://arxiv.org/abs/2412.02579">arXiv:2412.02579</a></div></td><td class="count">50</td><td><code>FactoredSpaces/</code></td><td><strong>in progress</strong> — the correspondence view of what is landed so far; <strong>no strength classification exists for this paper</strong></td></tr><tr><td><a href="#paper-condensation">Condensation: A Theory of Concepts</a><div class="idx-cite">Eisenstat (2025) · <a href="https://openreview.net/forum?id=HwKFJ3odui">OpenReview:HwKFJ3odui</a></div></td><td class="count">39</td><td><code>Condensation/</code></td><td><strong>in progress (milestone M2; read-through outstanding)</strong> — every in-scope node has a proved carrier, and each declaration is badged: 79 <em>axiom-clean</em>, 0 <em>staged</em> (statement final, proof still <code>sorry</code>). Nothing badged staged is claimed proved. The cards show the paper statement beside the Lean statement that carries it, so the section grows as the formalization lands; <strong>no strength classification exists for this paper</strong></td></tr><tr><td><a href="#paper-safe-pareto-improvements">Safe Pareto Improvements for Delegated Game Playing</a><div class="idx-cite">Oesterheld, Conitzer (2022) · <a href="https://doi.org/10.1007/s10458-022-09574-6">doi:10.1007/s10458-022-09574-6</a></div></td><td class="count">26</td><td><code>SafeParetoImprovements/</code></td><td><strong>in progress (milestone M0)</strong> — the §3–§4.5 spine at the certainty-filter level, each declaration badged: 47 <em>axiom-clean</em>, 0 <em>staged</em> (statement final, proof still <code>sorry</code>). The correspondence view of what has landed so far; <strong>no strength classification exists for this paper</strong></td></tr>
+      <tr><td><a href="#paper-logical-induction">Logical Induction</a><div class="idx-cite">Garrabrant, Benson-Tilsen, Critch, Soares, Taylor (2016) · <a href="https://arxiv.org/abs/1609.03543">arXiv:1609.03543</a></div></td><td class="count">66</td><td><code>LogicalInduction/</code></td><td>a status badge per node (exact / strengthened / corrected / refuted / qualified) with a universal-vs-instantiated axis, a curated canonical endpoint set, a reading note and a "what to check" note — all from one machine-checked table</td></tr><tr><td><a href="#paper-cartesian-frames">Cartesian Frames</a><div class="idx-cite">Garrabrant, Herrmann, Lopez-Wild (2021) · <a href="https://arxiv.org/abs/2109.10996">arXiv:2109.10996</a></div></td><td class="count">60</td><td><code>CartesianFrames/</code></td><td>errata cross-references and the Claim 35 intentional-deviation ruling; <strong>no strength classification exists for this paper</strong></td></tr><tr><td><a href="#paper-modal-agents">Robust Cooperation in the Prisoner&#x27;s Dilemma: Program Equilibrium via Provability Logic</a><div class="idx-cite">Barász, Christiano, Fallenstein, Herreshoff, LaVictoire, Yudkowsky (2014) · <a href="https://arxiv.org/abs/1401.5577">arXiv:1401.5577</a></div></td><td class="count">12</td><td><code>ModalAgents/</code></td><td>scope notes and the deliberately-unannotated inventory endpoints; <strong>no strength classification exists for this paper</strong></td></tr><tr><td><a href="#paper-finite-factored-sets">Temporal Inference with Finite Factored Sets</a><div class="idx-cite">Garrabrant (2021) · <a href="https://arxiv.org/abs/2109.11513">arXiv:2109.11513</a></div></td><td class="count">88</td><td><code>FiniteFactoredSets/</code></td><td><strong>complete</strong> — §2–§7; 88 nodes carried by declarations and nine rendered by Mathlib vocabulary, 97 in scope. Conjecture 1 is stated as a <code>Prop</code> and deliberately not proved, and Example 3 is out of scope by ruling; <strong>no strength classification exists for this paper</strong></td></tr><tr><td><a href="#paper-factored-space-models">Factored space models: Towards causality between levels of abstraction</a><div class="idx-cite">Garrabrant, Mayer, Wache, Lang, Eisenstat, Dell (2024) · <a href="https://arxiv.org/abs/2412.02579">arXiv:2412.02579</a></div></td><td class="count">50</td><td><code>FactoredSpaces/</code></td><td><strong>in progress</strong> — the correspondence view of what is landed so far; <strong>no strength classification exists for this paper</strong></td></tr><tr><td><a href="#paper-condensation">Condensation: A Theory of Concepts</a><div class="idx-cite">Eisenstat (2025) · <a href="https://openreview.net/forum?id=HwKFJ3odui">OpenReview:HwKFJ3odui</a></div></td><td class="count">39</td><td><code>Condensation/</code></td><td><strong>in progress (milestone M2; read-through outstanding)</strong> — every in-scope node has a proved carrier, and each declaration is badged: 79 <em>axiom-clean</em>, 0 <em>staged</em> (statement final, proof still <code>sorry</code>). Nothing badged staged is claimed proved. The cards show the paper statement beside the Lean statement that carries it, so the section grows as the formalization lands; <strong>no strength classification exists for this paper</strong></td></tr><tr><td><a href="#paper-safe-pareto-improvements">Safe Pareto Improvements for Delegated Game Playing</a><div class="idx-cite">Oesterheld, Conitzer (2022) · <a href="https://doi.org/10.1007/s10458-022-09574-6">doi:10.1007/s10458-022-09574-6</a></div></td><td class="count">34</td><td><code>SafeParetoImprovements/</code></td><td><strong>in progress (milestone M0)</strong> — the §3–§4.5 spine at the certainty-filter level, each declaration badged: 60 <em>axiom-clean</em>, 0 <em>staged</em> (statement final, proof still <code>sorry</code>). The correspondence view of what has landed so far; <strong>no strength classification exists for this paper</strong></td></tr>
     </table></div>
     <p><strong>Only Logical Induction has a strength classification and per-node reading
     notes.</strong> They are the product of a dedicated re-derivation pass and a
@@ -9454,7 +9465,7 @@ Corollary 5.10 gives us a simple characterization of the structure of the polar.
   <h2 class="paper-head">Safe Pareto Improvements for Delegated Game Playing</h2>
   <p class="paper-cite">Oesterheld, Conitzer (2022) ·
   <a href="https://doi.org/10.1007/s10458-022-09574-6">doi:10.1007/s10458-022-09574-6</a> ·
-  <code>SafeParetoImprovements/</code> · 26 nodes</p>
+  <code>SafeParetoImprovements/</code> · 34 nodes</p>
 
   <div class="method">
     <div class="no-tier"><b>This formalization is in progress, and no strength
@@ -9475,7 +9486,7 @@ Corollary 5.10 gives us a simple characterization of the structure of the polar.
     equality of games — that is <code>Game.EqOn</code> (<code>dd:total-utility</code>). The
     full glossary is in <code>SafeParetoImprovements.lean</code> and the trust surface in
     <code>SafeParetoImprovements/README.md</code>.
-    Numbered nodes with no Lean statement annotated to them: <code>Definition 8</code>, <code>Theorem 9</code>, <code>Proposition 10</code>, <code>Theorem 15</code>, <code>Lemma 20</code>, <code>Proposition 23</code>, <code>Proposition 24</code>, <code>Proposition 25</code>, <code>Proposition 26</code>, <code>Lemma 27</code>, <code>Lemma 28</code>.</div>
+    Numbered nodes with no Lean statement annotated to them: <code>Theorem 15</code>, <code>Lemma 20</code>, <code>Lemma 27</code>.</div>
 
     <h3>How nodes are cited</h3>
     <p>This paper numbers on <em>global</em> counters that never reset: Definitions on one
@@ -9501,7 +9512,7 @@ Corollary 5.10 gives us a simple characterization of the structure of the polar.
 
   <div class="method">
 <h3>Proved and staged endpoints</h3>
-<div class="legend"><span class="staged proved">axiom-clean</span><span class="count">47 — listed in <code>AxiomAudit.lean</code>’s <code>SPI-INVENTORY</code> block, so <code>#assert_axioms_clean</code> has checked that the proof depends on no <code>sorry</code> and no added axiom.</span></div>
+<div class="legend"><span class="staged proved">axiom-clean</span><span class="count">60 — listed in <code>AxiomAudit.lean</code>’s <code>SPI-INVENTORY</code> block, so <code>#assert_axioms_clean</code> has checked that the proof depends on no <code>sorry</code> and no added axiom.</span></div>
 <div class="legend"><span class="staged">staged &middot; sorry</span><span class="count">0 — the <em>statement</em> is final, the proof is not: staged in the <code>SPI-PENDING</code> block, which is pure comment and asserts nothing. Each card’s footer names what it waits on.</span></div>
 <p>Every declaration below carries one of these two badges, and each card’s header carries the node’s own verdict — <em>axiom-clean</em>, <em>partly staged</em> (some carrier of that node is proved and some is not), or <em>proof staged</em>. A staged endpoint is a claim about the statement only; nothing badged staged is claimed proved.</p>
 </div>
@@ -9888,7 +9899,7 @@ For the unilateral SPI decision problem, we further require:
     </section>
     <section class="lean-pane">
       <div class="pane-tag">Lean · statement only (proof body is kernel-checked)</div>
-      <div class="ep-nav"><button class="ep-prev" aria-label="previous endpoint">&#8249;</button><span class="ep-count" data-total="8">1 / 8</span><button class="ep-next" aria-label="next endpoint">&#8250;</button><span class="ep-nav-hint">inventory endpoints for this node</span></div><div class="ep-slide"><div class="ep-head"><code class="ep-name">SafeParetoImprovements.Game.Step</code><span class="staged proved">axiom-clean</span><span class="ep-file">SafeParetoImprovements/Derivation.lean</span></div><pre class="sig">inductive Step (Γ₀ : Game N 𝒜) : Game N 𝒜 → Game N 𝒜 → SetRel (∀ i, 𝒜 i) (∀ i, 𝒜 i) → Prop
+      <div class="ep-nav"><button class="ep-prev" aria-label="previous endpoint">&#8249;</button><span class="ep-count" data-total="9">1 / 9</span><button class="ep-next" aria-label="next endpoint">&#8250;</button><span class="ep-nav-hint">inventory endpoints for this node</span></div><div class="ep-slide"><div class="ep-head"><code class="ep-name">SafeParetoImprovements.Game.Step</code><span class="staged proved">axiom-clean</span><span class="ep-file">SafeParetoImprovements/Derivation.lean</span></div><pre class="sig">inductive Step (Γ₀ : Game N 𝒜) : Game N 𝒜 → Game N 𝒜 → SetRel (∀ i, 𝒜 i) (∀ i, 𝒜 i) → Prop
   | elim {Γ : Game N 𝒜} {i : N} {ã : 𝒜 i} (hsub : Γ.IsSubsetGameOf Γ₀)
       (h : Γ.IsStrictlyDominated i ã) :
       Step Γ₀ Γ (Γ.erase i ã h.erase_nonempty) (Γ.elimRel i ã)
@@ -9922,7 +9933,80 @@ namespace Step
 
 variable {Γ₀ Γ Γ&#x27; : Game N 𝒜} {Φ : SetRel (∀ i, 𝒜 i) (∀ i, 𝒜 i)}
 
-lemma isSubsetGameOf_left (s : Step Γ₀ Γ Γ&#x27; Φ) : Γ.IsSubsetGameOf Γ₀</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">SafeParetoImprovements.Game.SPIDecisionPrinted</code><span class="staged proved">axiom-clean</span><span class="ep-file">SafeParetoImprovements/Derivation.lean</span></div><pre class="sig">def SPIDecisionPrinted (Γ : Game N 𝒜) : Prop</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">SafeParetoImprovements.Game.StrictSPIDecisionPrinted</code><span class="staged proved">axiom-clean</span><span class="ep-file">SafeParetoImprovements/Derivation.lean</span></div><pre class="sig">def StrictSPIDecisionPrinted (Γ : Game N 𝒜) : Prop</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">SafeParetoImprovements.Game.UnilateralSPIDecisionPrinted</code><span class="staged proved">axiom-clean</span><span class="ep-file">SafeParetoImprovements/Derivation.lean</span></div><pre class="sig">def UnilateralSPIDecisionPrinted (Γ : Game N 𝒜) : Prop</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">SafeParetoImprovements.Game.SPIDecision</code><span class="staged proved">axiom-clean</span><span class="ep-file">SafeParetoImprovements/Derivation.lean</span></div><pre class="sig">def SPIDecision (Γ : Game N 𝒜) : Prop</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">SafeParetoImprovements.Game.StrictSPIDecision</code><span class="staged proved">axiom-clean</span><span class="ep-file">SafeParetoImprovements/Derivation.lean</span></div><pre class="sig">def StrictSPIDecision (Γ : Game N 𝒜) : Prop</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">SafeParetoImprovements.Game.UnilateralSPIDecision</code><span class="staged proved">axiom-clean</span><span class="ep-file">SafeParetoImprovements/Derivation.lean</span></div><pre class="sig">def UnilateralSPIDecision (Γ : Game N 𝒜) : Prop</pre></div>
+lemma isSubsetGameOf_left (s : Step Γ₀ Γ Γ&#x27; Φ) : Γ.IsSubsetGameOf Γ₀</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">SafeParetoImprovements.Game.SPIDecisionPrinted</code><span class="staged proved">axiom-clean</span><span class="ep-file">SafeParetoImprovements/Derivation.lean</span></div><pre class="sig">def SPIDecisionPrinted (Γ : Game N 𝒜) : Prop</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">SafeParetoImprovements.Game.StrictSPIDecisionPrinted</code><span class="staged proved">axiom-clean</span><span class="ep-file">SafeParetoImprovements/Derivation.lean</span></div><pre class="sig">def StrictSPIDecisionPrinted (Γ : Game N 𝒜) : Prop</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">SafeParetoImprovements.Game.UnilateralSPIDecisionPrinted</code><span class="staged proved">axiom-clean</span><span class="ep-file">SafeParetoImprovements/Derivation.lean</span></div><pre class="sig">def UnilateralSPIDecisionPrinted (Γ : Game N 𝒜) : Prop</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">SafeParetoImprovements.Game.SPIDecision</code><span class="staged proved">axiom-clean</span><span class="ep-file">SafeParetoImprovements/Derivation.lean</span></div><pre class="sig">def SPIDecision (Γ : Game N 𝒜) : Prop</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">SafeParetoImprovements.Game.StrictSPIDecision</code><span class="staged proved">axiom-clean</span><span class="ep-file">SafeParetoImprovements/Derivation.lean</span></div><pre class="sig">def StrictSPIDecision (Γ : Game N 𝒜) : Prop</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">SafeParetoImprovements.Game.UnilateralSPIDecision</code><span class="staged proved">axiom-clean</span><span class="ep-file">SafeParetoImprovements/Derivation.lean</span></div><pre class="sig">def UnilateralSPIDecision (Γ : Game N 𝒜) : Prop</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">SafeParetoImprovements.Game.StrictUnilateralSPIDecision</code><span class="staged proved">axiom-clean</span><span class="ep-file">SafeParetoImprovements/Derivation.lean</span></div><pre class="sig">def StrictUnilateralSPIDecision (Γ : Game N 𝒜) : Prop</pre></div>
+    </section>
+  </div>
+</article>
+
+<article class="node" id="spi-theorem-9">
+  <header class="node-head">
+    <label class="check"><input type="checkbox" data-node="spi-theorem-9" aria-label="mark Theorem 9 read"></label>
+    <span class="node-label">Theorem 9</span>
+    <span class="node-title"></span>
+    <span class="kind">theorem</span><span class="staged proved">axiom-clean</span>
+  </header>
+  <div class="panes">
+    <section class="paper-pane">
+      <div class="pane-tag">Paper · doi:10.1007/s10458-022-09574-6</div>
+      <pre class="extract">The (strict) (unilateral) SPI decision problem is NP-complete,
+even for 2-player games.</pre>
+    </section>
+    <section class="lean-pane">
+      <div class="pane-tag">Lean · statement only (proof body is kernel-checked)</div>
+      <div class="ep-nav"><button class="ep-prev" aria-label="previous endpoint">&#8249;</button><span class="ep-count" data-total="9">1 / 9</span><button class="ep-next" aria-label="next endpoint">&#8250;</button><span class="ep-nav-hint">inventory endpoints for this node</span></div><div class="ep-slide"><div class="ep-head"><code class="ep-name">SafeParetoImprovements.Game.spiDecision_iff_certificate</code><span class="staged proved">axiom-clean</span><span class="ep-file">SafeParetoImprovements/Complexity.lean</span></div><pre class="sig">theorem spiDecision_iff_certificate (Γ : Game N 𝒜) :
+    Γ.SPIDecision ↔ ∃ c : Γ.Certificate, c.ParetoImproving ∧ c.Nontrivial</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">SafeParetoImprovements.Game.strictSPIDecision_iff_certificate</code><span class="staged proved">axiom-clean</span><span class="ep-file">SafeParetoImprovements/Complexity.lean</span></div><pre class="sig">theorem strictSPIDecision_iff_certificate (Γ : Game N 𝒜) :
+    Γ.StrictSPIDecision ↔ ∃ c : Γ.Certificate, c.StrictlyParetoImproving ∧ c.Nontrivial</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">SafeParetoImprovements.Game.unilateralSPIDecision_iff_certificate</code><span class="staged proved">axiom-clean</span><span class="ep-file">SafeParetoImprovements/Complexity.lean</span></div><pre class="sig">theorem unilateralSPIDecision_iff_certificate (Γ : Game N 𝒜) :
+    Γ.UnilateralSPIDecision ↔ ∃ (i : N) (c : Γ.Certificate),
+      c.ParetoImproving ∧ c.Nontrivial ∧ c.Affine i ∧ c.ReducesToImage i</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">SafeParetoImprovements.Game.strictUnilateralSPIDecision_iff_certificate</code><span class="staged proved">axiom-clean</span><span class="ep-file">SafeParetoImprovements/Complexity.lean</span></div><pre class="sig">theorem strictUnilateralSPIDecision_iff_certificate (Γ : Game N 𝒜) :
+    Γ.StrictUnilateralSPIDecision ↔ ∃ (i : N) (c : Γ.Certificate),
+      c.StrictlyParetoImproving ∧ c.Nontrivial ∧ c.Affine i ∧ c.ReducesToImage i</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">SafeParetoImprovements.Hardness.subgraphIsoProblem_iff_strictUnilateralSPIDecision</code><span class="staged proved">axiom-clean</span><span class="ep-file">SafeParetoImprovements/Hardness.lean</span></div><pre class="sig">theorem subgraphIsoProblem_iff_strictUnilateralSPIDecision :
+    SubgraphIsoProblem a a&#x27; ↔ (hardnessGame a a&#x27; ε).StrictUnilateralSPIDecision</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">SafeParetoImprovements.Hardness.subgraphIsoProblem_iff_spiDecision</code><span class="staged proved">axiom-clean</span><span class="ep-file">SafeParetoImprovements/Hardness.lean</span></div><pre class="sig">theorem subgraphIsoProblem_iff_spiDecision :
+    SubgraphIsoProblem a a&#x27; ↔ (hardnessGame a a&#x27; ε).SPIDecision</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">SafeParetoImprovements.Hardness.subgraphIsoProblem_iff_strictSPIDecision</code><span class="staged proved">axiom-clean</span><span class="ep-file">SafeParetoImprovements/Hardness.lean</span></div><pre class="sig">theorem subgraphIsoProblem_iff_strictSPIDecision :
+    SubgraphIsoProblem a a&#x27; ↔ (hardnessGame a a&#x27; ε).StrictSPIDecision</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">SafeParetoImprovements.Hardness.subgraphIsoProblem_iff_unilateralSPIDecision</code><span class="staged proved">axiom-clean</span><span class="ep-file">SafeParetoImprovements/Hardness.lean</span></div><pre class="sig">theorem subgraphIsoProblem_iff_unilateralSPIDecision :
+    SubgraphIsoProblem a a&#x27; ↔ (hardnessGame a a&#x27; ε).UnilateralSPIDecision</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">SafeParetoImprovements.Hardness.theorem9</code><span class="staged proved">axiom-clean</span><span class="ep-file">SafeParetoImprovements/Hardness.lean</span></div><pre class="sig">theorem theorem9 :
+    (∀ (𝒜 : Two → Type v) [∀ i, DecidableEq (𝒜 i)] (Γ : Game Two 𝒜),
+      (Γ.SPIDecision ↔ ∃ c : Γ.Certificate, c.ParetoImproving ∧ c.Nontrivial) ∧
+      (Γ.StrictSPIDecision ↔ ∃ c : Γ.Certificate, c.StrictlyParetoImproving ∧ c.Nontrivial) ∧
+      (Γ.UnilateralSPIDecision ↔ ∃ (i : Two) (c : Γ.Certificate),
+        c.ParetoImproving ∧ c.Nontrivial ∧ c.Affine i ∧ c.ReducesToImage i) ∧
+      (Γ.StrictUnilateralSPIDecision ↔ ∃ (i : Two) (c : Γ.Certificate),
+        c.StrictlyParetoImproving ∧ c.Nontrivial ∧ c.Affine i ∧ c.ReducesToImage i)) ∧
+    ∀ {n n&#x27; : ℕ} (a : Graph n) (a&#x27; : Graph n&#x27;) (ε : ℝ), 1 ≤ n → 0 &lt; ε → ε * (2 * n) &lt; 1 →
+      ε * (2 * n&#x27;) &lt; 1 →
+      (SubgraphIsoProblem a a&#x27; ↔ (hardnessGame a a&#x27; ε).SPIDecision) ∧
+      (SubgraphIsoProblem a a&#x27; ↔ (hardnessGame a a&#x27; ε).StrictSPIDecision) ∧
+      (SubgraphIsoProblem a a&#x27; ↔ (hardnessGame a a&#x27; ε).UnilateralSPIDecision) ∧
+      (SubgraphIsoProblem a a&#x27; ↔ (hardnessGame a a&#x27; ε).StrictUnilateralSPIDecision)</pre></div>
+    </section>
+  </div>
+</article>
+
+<article class="node" id="spi-proposition-10">
+  <header class="node-head">
+    <label class="check"><input type="checkbox" data-node="spi-proposition-10" aria-label="mark Proposition 10 read"></label>
+    <span class="node-label">Proposition 10</span>
+    <span class="node-title"></span>
+    <span class="kind">proposition</span><span class="staged proved">axiom-clean</span>
+  </header>
+  <div class="panes">
+    <section class="paper-pane">
+      <div class="pane-tag">Paper · doi:10.1007/s10458-022-09574-6</div>
+      <pre class="extract">For games Γ with |A1 | + ... + |An | = m that can be reduced
+(via iterative application of Assumption 1) to a game Γ′ with |A′1 | + ... +
+|A′n | = l, the (strict) (unilateral) SPI decision problem can be solved in
+O(ml ).</pre>
+    </section>
+    <section class="lean-pane">
+      <div class="pane-tag">Lean · statement only (proof body is kernel-checked)</div>
+      <div class="ep-nav"><button class="ep-prev" aria-label="previous endpoint">&#8249;</button><span class="ep-count" data-total="2">1 / 2</span><button class="ep-next" aria-label="next endpoint">&#8250;</button><span class="ep-nav-hint">inventory endpoints for this node</span></div><div class="ep-slide"><div class="ep-head"><code class="ep-name">SafeParetoImprovements.Game.spiDecision_search</code><span class="staged proved">axiom-clean</span><span class="ep-file">SafeParetoImprovements/Complexity.lean</span></div><pre class="sig">theorem spiDecision_search (Γ : Game N 𝒜) :
+    (Γ.SPIDecision ↔ ∃ c : Γ.Certificate, c.ParetoImproving ∧ c.Nontrivial) ∧
+      (Γ.StrictSPIDecision ↔ ∃ c : Γ.Certificate, c.StrictlyParetoImproving ∧ c.Nontrivial) ∧
+      Fintype.card Γ.Certificate ≤ Γ.size ^ Γ.reduce.size</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">SafeParetoImprovements.Game.unilateralSPIDecision_search</code><span class="staged proved">axiom-clean</span><span class="ep-file">SafeParetoImprovements/Complexity.lean</span></div><pre class="sig">theorem unilateralSPIDecision_search (Γ : Game N 𝒜) :
+    (Γ.UnilateralSPIDecision ↔ ∃ (i : N) (c : Γ.Certificate),
+        c.ParetoImproving ∧ c.Nontrivial ∧ c.Affine i ∧ c.ReducesToImage i) ∧
+      (Γ.StrictUnilateralSPIDecision ↔ ∃ (i : N) (c : Γ.Certificate),
+        c.StrictlyParetoImproving ∧ c.Nontrivial ∧ c.Affine i ∧ c.ReducesToImage i) ∧
+      Fintype.card (N × Γ.Certificate) ≤ Fintype.card N * Γ.size ^ Γ.reduce.size</pre></div>
     </section>
   </div>
 </article>
@@ -10249,6 +10333,153 @@ symmetry), and Γ′m ∼Ξ Γ′m+1 by application of Assumption 2 such that
     </section>
   </div>
 </article>
+<h2 class="sec" id="sec-spi-Appendix-D-2-1-The-omnilateral-SPI-problem">Appendix D.2.1 The omnilateral SPI problem</h2>
+
+<article class="node" id="spi-proposition-23">
+  <header class="node-head">
+    <label class="check"><input type="checkbox" data-node="spi-proposition-23" aria-label="mark Proposition 23 read"></label>
+    <span class="node-label">Proposition 23</span>
+    <span class="node-title"></span>
+    <span class="kind">proposition</span><span class="staged proved">axiom-clean</span>
+  </header>
+  <div class="panes">
+    <section class="paper-pane">
+      <div class="pane-tag">Paper · doi:10.1007/s10458-022-09574-6</div>
+      <pre class="extract">The above algorithm runs in non-deterministic polynomial
+time and returns True if and only if there is a (strict) unilateral SPI.</pre>
+    </section>
+    <section class="lean-pane">
+      <div class="pane-tag">Lean · statement only (proof body is kernel-checked)</div>
+      <div class="ep-nav"><button class="ep-prev" aria-label="previous endpoint">&#8249;</button><span class="ep-count" data-total="2">1 / 2</span><button class="ep-next" aria-label="next endpoint">&#8250;</button><span class="ep-nav-hint">inventory endpoints for this node</span></div><div class="ep-slide"><div class="ep-head"><code class="ep-name">SafeParetoImprovements.Game.spiDecision_iff_certificate</code><span class="staged proved">axiom-clean</span><span class="ep-file">SafeParetoImprovements/Complexity.lean</span></div><pre class="sig">theorem spiDecision_iff_certificate (Γ : Game N 𝒜) :
+    Γ.SPIDecision ↔ ∃ c : Γ.Certificate, c.ParetoImproving ∧ c.Nontrivial</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">SafeParetoImprovements.Game.strictSPIDecision_iff_certificate</code><span class="staged proved">axiom-clean</span><span class="ep-file">SafeParetoImprovements/Complexity.lean</span></div><pre class="sig">theorem strictSPIDecision_iff_certificate (Γ : Game N 𝒜) :
+    Γ.StrictSPIDecision ↔ ∃ c : Γ.Certificate, c.StrictlyParetoImproving ∧ c.Nontrivial</pre></div>
+    </section>
+  </div>
+</article>
+
+<article class="node" id="spi-proposition-24">
+  <header class="node-head">
+    <label class="check"><input type="checkbox" data-node="spi-proposition-24" aria-label="mark Proposition 24 read"></label>
+    <span class="node-label">Proposition 24</span>
+    <span class="node-title"></span>
+    <span class="kind">proposition</span><span class="staged proved">axiom-clean</span>
+  </header>
+  <div class="panes">
+    <section class="paper-pane">
+      <div class="pane-tag">Paper · doi:10.1007/s10458-022-09574-6</div>
+      <pre class="extract">For games Γ with |A1 | + ... + |An | = m that can be reduced
+(via iterative application of Assumption 1) to a game Γ′ with |A′1 | + ... +
+|A′n | = l, the (strict) omnilateral SPI decision problem can be solved in
+O(ml ).</pre>
+    </section>
+    <section class="lean-pane">
+      <div class="pane-tag">Lean · statement only (proof body is kernel-checked)</div>
+      <div class="ep-slide"><div class="ep-head"><code class="ep-name">SafeParetoImprovements.Game.spiDecision_search</code><span class="staged proved">axiom-clean</span><span class="ep-file">SafeParetoImprovements/Complexity.lean</span></div><pre class="sig">theorem spiDecision_search (Γ : Game N 𝒜) :
+    (Γ.SPIDecision ↔ ∃ c : Γ.Certificate, c.ParetoImproving ∧ c.Nontrivial) ∧
+      (Γ.StrictSPIDecision ↔ ∃ c : Γ.Certificate, c.StrictlyParetoImproving ∧ c.Nontrivial) ∧
+      Fintype.card Γ.Certificate ≤ Γ.size ^ Γ.reduce.size</pre></div>
+    </section>
+  </div>
+</article>
+<h2 class="sec" id="sec-spi-Appendix-D-2-2-The-unilateral-SPI-problem">Appendix D.2.2 The unilateral SPI problem</h2>
+
+<article class="node" id="spi-proposition-25">
+  <header class="node-head">
+    <label class="check"><input type="checkbox" data-node="spi-proposition-25" aria-label="mark Proposition 25 read"></label>
+    <span class="node-label">Proposition 25</span>
+    <span class="node-title"></span>
+    <span class="kind">proposition</span><span class="staged proved">axiom-clean</span>
+  </header>
+  <div class="panes">
+    <section class="paper-pane">
+      <div class="pane-tag">Paper · doi:10.1007/s10458-022-09574-6</div>
+      <pre class="extract">The above algorithm runs in non-deterministic polynomial
+time and returns True if and only if there is a (strict) unilateral SPI.</pre>
+    </section>
+    <section class="lean-pane">
+      <div class="pane-tag">Lean · statement only (proof body is kernel-checked)</div>
+      <div class="ep-nav"><button class="ep-prev" aria-label="previous endpoint">&#8249;</button><span class="ep-count" data-total="2">1 / 2</span><button class="ep-next" aria-label="next endpoint">&#8250;</button><span class="ep-nav-hint">inventory endpoints for this node</span></div><div class="ep-slide"><div class="ep-head"><code class="ep-name">SafeParetoImprovements.Game.unilateralSPIDecision_iff_certificate</code><span class="staged proved">axiom-clean</span><span class="ep-file">SafeParetoImprovements/Complexity.lean</span></div><pre class="sig">theorem unilateralSPIDecision_iff_certificate (Γ : Game N 𝒜) :
+    Γ.UnilateralSPIDecision ↔ ∃ (i : N) (c : Γ.Certificate),
+      c.ParetoImproving ∧ c.Nontrivial ∧ c.Affine i ∧ c.ReducesToImage i</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">SafeParetoImprovements.Game.strictUnilateralSPIDecision_iff_certificate</code><span class="staged proved">axiom-clean</span><span class="ep-file">SafeParetoImprovements/Complexity.lean</span></div><pre class="sig">theorem strictUnilateralSPIDecision_iff_certificate (Γ : Game N 𝒜) :
+    Γ.StrictUnilateralSPIDecision ↔ ∃ (i : N) (c : Γ.Certificate),
+      c.StrictlyParetoImproving ∧ c.Nontrivial ∧ c.Affine i ∧ c.ReducesToImage i</pre></div>
+    </section>
+  </div>
+</article>
+
+<article class="node" id="spi-proposition-26">
+  <header class="node-head">
+    <label class="check"><input type="checkbox" data-node="spi-proposition-26" aria-label="mark Proposition 26 read"></label>
+    <span class="node-label">Proposition 26</span>
+    <span class="node-title"></span>
+    <span class="kind">proposition</span><span class="staged proved">axiom-clean</span>
+  </header>
+  <div class="panes">
+    <section class="paper-pane">
+      <div class="pane-tag">Paper · doi:10.1007/s10458-022-09574-6</div>
+      <pre class="extract">For games Γ with |A1 | + ... + |An | = m that can be reduced
+(via iterative application of Assumption 1) to a game Γ′ with |A′1 | + ... +
+|A′n | = l, the (strict) unilateral SPI decision problem can be solved in O(ml ).</pre>
+    </section>
+    <section class="lean-pane">
+      <div class="pane-tag">Lean · statement only (proof body is kernel-checked)</div>
+      <div class="ep-slide"><div class="ep-head"><code class="ep-name">SafeParetoImprovements.Game.unilateralSPIDecision_search</code><span class="staged proved">axiom-clean</span><span class="ep-file">SafeParetoImprovements/Complexity.lean</span></div><pre class="sig">theorem unilateralSPIDecision_search (Γ : Game N 𝒜) :
+    (Γ.UnilateralSPIDecision ↔ ∃ (i : N) (c : Γ.Certificate),
+        c.ParetoImproving ∧ c.Nontrivial ∧ c.Affine i ∧ c.ReducesToImage i) ∧
+      (Γ.StrictUnilateralSPIDecision ↔ ∃ (i : N) (c : Γ.Certificate),
+        c.StrictlyParetoImproving ∧ c.Nontrivial ∧ c.Affine i ∧ c.ReducesToImage i) ∧
+      Fintype.card (N × Γ.Certificate) ≤ Fintype.card N * Γ.size ^ Γ.reduce.size</pre></div>
+    </section>
+  </div>
+</article>
+<h2 class="sec" id="sec-spi-Appendix-D-3-The-SPI-problems-are-NP-hard">Appendix D.3 The SPI problems are NP-hard</h2>
+
+<article class="node" id="spi-definition-8">
+  <header class="node-head">
+    <label class="check"><input type="checkbox" data-node="spi-definition-8" aria-label="mark Definition 8 read"></label>
+    <span class="node-label">Definition 8</span>
+    <span class="node-title"></span>
+    <span class="kind">definition</span><span class="staged proved">axiom-clean</span>
+  </header>
+  <div class="panes">
+    <section class="paper-pane">
+      <div class="pane-tag">Paper · doi:10.1007/s10458-022-09574-6</div>
+      <pre class="extract">Given two graphs G, G′ , the subgraph isomorphism prob-
+lem consists in deciding whether there is a subgraph isomorphism ϕ between
+G, G′ .</pre>
+    </section>
+    <section class="lean-pane">
+      <div class="pane-tag">Lean · statement only (proof body is kernel-checked)</div>
+      <div class="ep-slide"><div class="ep-head"><code class="ep-name">SafeParetoImprovements.Hardness.SubgraphIsoProblem</code><span class="staged proved">axiom-clean</span><span class="ep-file">SafeParetoImprovements/Hardness.lean</span></div><pre class="sig">def SubgraphIsoProblem {n n&#x27; : ℕ} (a : Graph n) (a&#x27; : Graph n&#x27;) : Prop</pre></div>
+    </section>
+  </div>
+</article>
+
+<article class="node" id="spi-lemma-28">
+  <header class="node-head">
+    <label class="check"><input type="checkbox" data-node="spi-lemma-28" aria-label="mark Lemma 28 read"></label>
+    <span class="node-label">Lemma 28</span>
+    <span class="node-title"></span>
+    <span class="kind">lemma</span><span class="staged proved">axiom-clean</span>
+  </header>
+  <div class="panes">
+    <section class="paper-pane">
+      <div class="pane-tag">Paper · doi:10.1007/s10458-022-09574-6</div>
+      <pre class="extract">The subgraph isomorphism problem is reducible in linear time
+with linear increase in problem instance size to the (strict) (unilateral) safe
+Pareto improvement problem for two players. As a consequence, the (strict)
+(unilateral) safe Pareto improvement problem is NP-hard.</pre>
+    </section>
+    <section class="lean-pane">
+      <div class="pane-tag">Lean · statement only (proof body is kernel-checked)</div>
+      <div class="ep-nav"><button class="ep-prev" aria-label="previous endpoint">&#8249;</button><span class="ep-count" data-total="4">1 / 4</span><button class="ep-next" aria-label="next endpoint">&#8250;</button><span class="ep-nav-hint">inventory endpoints for this node</span></div><div class="ep-slide"><div class="ep-head"><code class="ep-name">SafeParetoImprovements.Hardness.subgraphIsoProblem_iff_strictUnilateralSPIDecision</code><span class="staged proved">axiom-clean</span><span class="ep-file">SafeParetoImprovements/Hardness.lean</span></div><pre class="sig">theorem subgraphIsoProblem_iff_strictUnilateralSPIDecision :
+    SubgraphIsoProblem a a&#x27; ↔ (hardnessGame a a&#x27; ε).StrictUnilateralSPIDecision</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">SafeParetoImprovements.Hardness.subgraphIsoProblem_iff_spiDecision</code><span class="staged proved">axiom-clean</span><span class="ep-file">SafeParetoImprovements/Hardness.lean</span></div><pre class="sig">theorem subgraphIsoProblem_iff_spiDecision :
+    SubgraphIsoProblem a a&#x27; ↔ (hardnessGame a a&#x27; ε).SPIDecision</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">SafeParetoImprovements.Hardness.subgraphIsoProblem_iff_strictSPIDecision</code><span class="staged proved">axiom-clean</span><span class="ep-file">SafeParetoImprovements/Hardness.lean</span></div><pre class="sig">theorem subgraphIsoProblem_iff_strictSPIDecision :
+    SubgraphIsoProblem a a&#x27; ↔ (hardnessGame a a&#x27; ε).StrictSPIDecision</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">SafeParetoImprovements.Hardness.subgraphIsoProblem_iff_unilateralSPIDecision</code><span class="staged proved">axiom-clean</span><span class="ep-file">SafeParetoImprovements/Hardness.lean</span></div><pre class="sig">theorem subgraphIsoProblem_iff_unilateralSPIDecision :
+    SubgraphIsoProblem a a&#x27; ↔ (hardnessGame a a&#x27; ε).UnilateralSPIDecision</pre></div>
+    </section>
+  </div>
+</article>
   </section>
 </main>
 </div>
@@ -10306,6 +10537,6 @@ symmetry), and Γ′m ∼Ξ Γ′m+1 by application of Assumption 2 such that
 })();
 </script>
 
-<!-- trust-surface-papers: logical-induction=66 cartesian-frames=60 modal-agents=12 finite-factored-sets=88 factored-space-models=50 condensation=39 safe-pareto-improvements=26 -->
+<!-- trust-surface-papers: logical-induction=66 cartesian-frames=60 modal-agents=12 finite-factored-sets=88 factored-space-models=50 condensation=39 safe-pareto-improvements=34 -->
 
-<!-- trust-surface-sources: 574227410f5bab149a7b7a314c91bc57c5d9e5724261dc7d8b24f53164975748 -->
+<!-- trust-surface-sources: dd40f6304d8cabdb7ecad14eb5f2c9338ce42f6bb364876707ebf3ba65415297 -->

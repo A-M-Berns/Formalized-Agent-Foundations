@@ -152,16 +152,22 @@ ruled on but not yet carried by any declaration.
   argument permits, an impossibility is additionally stated label-free, so that it does not
   depend on how rich the universe is
   (`Examples.chicken_no_feasible_dominating_of_mean_cc`).
-* `dd:complexity` — *planned* for Theorem 9 / Proposition 10; *realized* for **Lemma 11**
-  (`Coordination.lean`: the LP characterization is the node's content, the "by linear
-  programming, in polynomial time" clause is disclosed as not rendered) and for
-  **Proposition 12** (`PerfectCoordination.lean`: Algorithm 1's correctness as an iff is
-  the node's content, the "can be decided in polynomial time" clause is disclosed as not
-  rendered).  Theorem 9, Proposition 10, Lemma 11 and Proposition 12 are
-  carried as **qualified** nodes: the paper-node label sits on the mathematical content
-  (certificate characterizations, Lemma 28's reduction as an iff, the LP characterization,
-  Algorithm 1's correctness) and the docstring says which complexity-class or runtime
-  clause of the printed statement is not rendered and why (RULING 6, tranche F deferred).
+* `dd:complexity` — the complexity nodes are carried as **qualified** nodes (RULING 6):
+  the paper-node label sits on the mathematical content and the docstring says which
+  complexity-class or runtime clause of the printed statement is not rendered and why.
+  Realized for **Lemma 11** (`Coordination.lean`: the LP characterization; "by linear
+  programming, in polynomial time" not rendered), **Proposition 12**
+  (`PerfectCoordination.lean`: Algorithm 1's correctness as an iff; "in polynomial time"
+  not rendered), **Propositions 23–26 and Proposition 10** (`Complexity.lean`: each of the
+  four SPI decision problems is equivalent to the existence of a certificate — per-player
+  injections `Aʳᵉᵈᵢ ↪ Aᵢ` passing the appendix's checks — and the certificates number at
+  most `m ^ l`; "non-deterministic polynomial time" and "solved in `O(m^l)`" not rendered),
+  **Definition 8 and Lemma 28** (`Hardness.lean`: subgraph isomorphism reduces to each of
+  the four problems on the two-player games of Tables 9–10, as an iff; "linear time" and
+  "NP-hard" not rendered), and **Theorem 9** (`Hardness.theorem9`: membership and
+  reduction conjoined over two-player games; "NP-complete" not rendered).  Lemma 27
+  (Cook's theorem for subgraph isomorphism) is cited and not carried, exactly as Theorem
+  17 is not.  The design note is `notes/complexity-layer.md`.
 
 ## Files
 
@@ -190,6 +196,9 @@ ruled on but not yet carried by any declaration.
 | `SafeParetoImprovements/Polytope.lean` | Mathlib-shaped substrate: polytopes as convex hulls of finite sets, closure under scaling and Minkowski sums, and the half-space / orthant section theorems (`IsPolytope.inter_halfspace`, `inter_Ici`) that Corollary 14's polytope clause needs and Mathlib lacks |
 | `SafeParetoImprovements/Characterization.lean` | §5.3: conditional expectation on the play's fibers (`Representatives.condExp`, law of total expectation), **Lemma 13** (`Representatives.exists_reassignment_condExp_eq`), **Corollary 14** as the weighted Minkowski-sum formula (`achievable_eq_improvementSum`), convexity, compactness and the polytope clause (`isPolytope_achievable`, RULING 12) |
 | `SafeParetoImprovements/Examples/DecisionWitnesses.lean` | Definition 7 two-sided through Proposition 12: the conflict game is a "yes" instance, Table 7 a "no" instance |
+| `SafeParetoImprovements/Complexity.lean` | §4.6, Appendix D.2: certificates (`Game.Certificate`) and their checks, the elimination-chain transfer and dominated-set lemmas, **Propositions 23 and 25** as certificate iffs (`spiDecision_iff_certificate` and variants), **Propositions 24 and 26 / Proposition 10** as the search bound (`card_certificate_le`, `spiDecision_search`); the identity certificate as erratum D17 |
+| `SafeParetoImprovements/Hardness.lean` | Appendix D.3: graphs and **Definition 8**, Tables 9–10 (`tableU₁`, `tableU₂`, `hardnessGame`; erratum D18), the full reduction of `Γᶜ` (`reduce_hardnessGame`), **Lemma 28** in four forms (`subgraphIsoProblem_iff_spiDecision`, …), **Theorem 9**'s carrier (`theorem9`) |
+| `SafeParetoImprovements/Examples/ComplexityWitnesses.lean` | non-vacuity for the complexity nodes: the Demand Game's certificate, the one-action game's identity certificate, a unilateral certificate for the Complicated Temptation Game, the count `144 ≤ 4096`, and Lemma 28 carried to a "yes" and a "no" instance on two-vertex graphs |
 | `SafeParetoImprovements/Examples/CharacterizationWitnesses.lean` | non-vacuity for §5.3: Lemma 13 and Corollary 14 applied on the conflict game (including to a three-action perfect-coordination SPI that is *not* isomorphic to the reduction), `achievable` shown not a singleton and wider than the constant reassignments, and the hand-built play family for which `Representatives.condExp` is a strict average rather than a point evaluation (R5-F11) |
 | `SafeParetoImprovements/Examples/Coin.lean` | the fair coin on `Bool`, shared by the examples that need a genuinely random `Π` |
 | `SafeParetoImprovements/Examples/Chicken.lean` | Table 7 over `CAct ⊕ ℕ` (`dd:room`) and **Proposition 16** (`Examples.chicken_no_perfectCoordinationSPI`): a Pareto improvement that no perfect-coordination SPI achieves in expectation, with its label-free kernel (`chicken_no_feasible_dominating_of_mean_cc`), the token games of every size that make the class non-empty, and the `Π`-dependence disclosure |
@@ -225,3 +234,6 @@ import SafeParetoImprovements.Polytope
 import SafeParetoImprovements.Characterization
 import SafeParetoImprovements.Examples.TokenWitnesses
 import SafeParetoImprovements.Examples.CharacterizationWitnesses
+import SafeParetoImprovements.Complexity
+import SafeParetoImprovements.Hardness
+import SafeParetoImprovements.Examples.ComplexityWitnesses

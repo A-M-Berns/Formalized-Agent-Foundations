@@ -57,6 +57,13 @@ proved — there is no `sorry` in `SafeParetoImprovements/`:
 | Lemma 21 (normal form of derivations: eliminations, one isomorphism, reverse eliminations; the printed length bound is not rendered, erratum D14) | `Game.Deriv.exists_normalForm` | `Derivation.lean` |
 | Lemma 22 (symmetry-free Pareto-improving chain to the reduction of the SPI candidate) | `Game.exists_paretoImproving_normalForm` | `Derivation.lean` |
 | **Proposition 18** (Algorithm 2 is a program equilibrium executing `Π(Γˢ)`; the deviator's payoff is *at most* the threat point, erratum D8; Algorithm 2's punishment index repaired, erratum D15) | `Prog.algorithm2_isProgramEquilibrium` | `Instruction.lean` |
+| Definition 5, the fourth problem (strict unilateral) | `Game.StrictUnilateralSPIDecision` | `Derivation.lean` |
+| **Proposition 23** (the omnilateral algorithm is correct: certificate iffs for the plain and strict problems; "NP time" not rendered, `dd:complexity`; non-triviality check restored, erratum D17) | `Game.spiDecision_iff_certificate`, `Game.strictSPIDecision_iff_certificate` | `Complexity.lean` |
+| **Proposition 25** (the unilateral algorithm is correct: certificate iffs with the three checks; the printed "WLOG same action sets for player `i`" discharged by `ElimStar.transfer`) | `Game.unilateralSPIDecision_iff_certificate`, `Game.strictUnilateralSPIDecision_iff_certificate` | `Complexity.lean` |
+| **Propositions 24, 26** and **Proposition 10** (the search bound `card ≤ m ^ l`, resp. `n · m ^ l`; "solved in `O(m^l)`" not rendered) | `Game.card_certificate_le`, `Game.spiDecision_search`, `Game.unilateralSPIDecision_search` | `Complexity.lean` |
+| **Definition 8** (subgraph isomorphism problem) | `Hardness.SubgraphIsoProblem` | `Hardness.lean` |
+| **Lemma 28** (subgraph isomorphism reduces to each of the four SPI problems on the two-player game of Table 10, as an iff; "linear time" and "NP-hard" not rendered; Table 9 followed over the printed formula, erratum D18) | `Hardness.subgraphIsoProblem_iff_spiDecision` and the strict / unilateral / strict-unilateral variants | `Hardness.lean` |
+| **Theorem 9** (membership for the four problems together with the reduction, over two-player games; "NP-complete" not rendered) | `Hardness.theorem9` | `Hardness.lean` |
 | **Definition 6** (perfect-coordination SPI, strict variant) | `TokenGame.IsSPI`, `TokenGame.IsStrictSPI` | `Coordination.lean` |
 | Lemma 11 (Pareto-optimality in `C(Γ)` as a linear program; the polynomial-time clause not rendered, `dd:complexity`) | `Game.paretoOptimalIn_feasible_iff` | `Coordination.lean` |
 | Definition 6 witnesses (strict and equality-only perfect-coordination SPIs with `uᵉ` defined along the book's isomorphism) | `Examples.conflictStrictToken_isStrictSPI`, `conflictPlainToken_isSPI` | `Examples/TokenWitnesses.lean` |
@@ -108,9 +115,22 @@ makes participation independence and foreknowledge independence stateable (RULIN
 two-sided witnesses (including that Algorithm 2 is *not* participation independent in the
 Demand Game), and no theorem about either.
 
-**Not yet formalized:** Theorem 9, Proposition 10 and the rest of the Appendix D chain
-(Propositions 23–26, Definition 8, Lemma 28 — Lemma 20's content is `Game.elim_diamond`);
-of §5, only Theorem 15 (deferred, RULING 8).  Theorem 17 and Lemma 27 are cited external results and are not
+**The complexity nodes** (§4.6, Appendix D.2–D.3; tranche F, design note
+`notes/complexity-layer.md`) are carried as *qualified* nodes under RULING 6.
+`Complexity.lean` renders Propositions 23 and 25 as certificate characterizations — each
+of the four (strict) (unilateral) SPI decision problems holds iff some tuple of injections
+`Aʳᵉᵈᵢ ↪ Aᵢ` passes the appendix's checks, with the non-triviality check the printed
+algorithms omit restored (erratum D17) — and Propositions 24 and 26 / Proposition 10 as the
+bound `card ≤ m ^ l` on the certificate type.  `Hardness.lean` renders Definition 8 and
+Lemma 28: subgraph isomorphism reduces to each of the four problems on the two-player games
+of Tables 9–10, as an iff, following Table 9 where it disagrees with the printed formula
+(erratum D18, RULING 15).  `Hardness.theorem9` conjoins membership and reduction over
+two-player games; "NP-complete", "non-deterministic polynomial time", "`O(m^l)`" and
+"linear time" are the clauses disclosed as not rendered.  Lemma 27 (Cook) is cited and not
+carried (RULING 14), exactly as Theorem 17 is not.
+
+**Not yet formalized:** of §5, only Theorem 15 (deferred, RULING 8); Lemma 20's content
+is `Game.elim_diamond`.  Theorem 17 and Lemma 27 are cited external results and are not
 carried.
 
 **Consumer readiness.**  There is no `SafeParetoImprovements/API.lean` and no
@@ -134,12 +154,12 @@ appendix-only nodes in scope exactly insofar as Theorem 9 is.  Condensed from
 | 4.2–4.3 | Definition 3, Lemma 2, Definition 4, **Theorem 3** | **in, landed** |
 | 4.4 | Assumptions 1–2, Lemma 4, consistency of A1 + A2 (unnumbered) | **in, landed** (`dd:book` for the consistency) |
 | 4.5 | Propositions 5–8 (examples) | **in, landed**; concrete games double as witnesses |
-| 4.6 | Definition 5, Theorem 9, Proposition 10 | Definition 5 **landed** as a derivation system with soundness (`Play.isSPI_of_deriv`); Theorem 9 / Proposition 10 complexity clauses **qualified** (RULING 6) |
+| 4.6 | Definition 5, Theorem 9, Proposition 10 | Definition 5 **landed** as a derivation system with soundness (`Play.isSPI_of_deriv`); Theorem 9 / Proposition 10 **landed** as qualified nodes (RULING 6): `Complexity.lean`, `Hardness.lean`, `Examples/ComplexityWitnesses.lean` |
 | 5 | Definitions 6–7, Lemma 11, Proposition 12, Lemma 13, Corollary 14, Theorem 15, Proposition 16 | **all landed except Theorem 15** (deferred, RULING 8): `Coordination.lean`, `PerfectCoordination.lean`, `Characterization.lean`, `Polytope.lean`, `Examples/{Chicken,TokenWitnesses,DecisionWitnesses}.lean`; Lemma 11 / Proposition 12 complexity clauses qualified; `dd:feasible`, `dd:room`, RULINGS 10–13b |
 | 6 | no nodes | prose only |
 | App. A | Proposition 18; Theorem 17 (Tennenholtz 2004) | Proposition 18 **landed** (`Prog.algorithm2_isProgramEquilibrium`); Theorem 17 cited external, **not** re-proved |
 | App. B | no nodes (Sen / Raub discussion) | out |
-| App. D | Lemmas 19–22, Propositions 23–26, Definition 8, Lemma 27 (Cook 1971, cited), Lemma 28 | in with Theorem 9; Lemmas 19, 21, 22 landed (Lemma 20 is absorbed by the confluence proof in `Reduction.lean`); Lemma 27 cited external |
+| App. D | Lemmas 19–22, Propositions 23–26, Definition 8, Lemma 27 (Cook 1971, cited), Lemma 28 | **all landed** except Lemma 27 (cited external, RULING 14) — Lemmas 19, 21, 22 in `Reduction.lean` / `Derivation.lean` (Lemma 20 is absorbed by the confluence proof), Propositions 23–26 in `Complexity.lean`, Definition 8 and Lemma 28 in `Hardness.lean` |
 
 Open rulings (`notes/scoping.md` §8): scope confirmation (0); Definition 7's missing
 "strict" (7); Theorem 15's projections onto `C(Γ)` rather than the strong frontier (8);
@@ -202,8 +222,10 @@ Full rationale in `notes/scoping.md` §3, rulings in §8, one-line glossary in
   scaling; both readings are forced by later use (erratum D5).
 * **`dd:book`** — joint satisfiability of Assumptions 1 and 2 is a theorem (N±), with the
   page distribution parametric (RULING 5).
-* **`dd:derivation`**, **`dd:program-game`**, **`dd:complexity`** — ruled (§8) but not yet
-  realized; see the glossary in `SafeParetoImprovements.lean`.
+* **`dd:derivation`**, **`dd:program-game`**, **`dd:complexity`** — see the glossary in
+  `SafeParetoImprovements.lean`; `dd:complexity` is now realized for every complexity node
+  (Lemma 11, Proposition 12, Propositions 23–26, Proposition 10, Lemma 28, Theorem 9), each
+  a qualified node whose docstring names the clause not rendered.
 
 Payoffs are in `ℝ`; players are finite; action sets are finite and nonempty.  The §2
 vocabulary comes from EconCSLib (pinned in `lakefile.lean`, RULING 1) through the bridge
@@ -214,7 +236,7 @@ sentence.
 
 The erratum file is [`notes/paper-errata.md`](notes/paper-errata.md): twelve source defects
 D1–D12 found on the first reading, several confirmed or corrected by the codex review
-(`notes/codex-review-2026-09-04.md`), and four more (D13–D16) found while formalizing.  In
+(`notes/codex-review-2026-09-04.md`), and six more (D13–D18) found while formalizing.  In
 brief:
 
 * **D1** Definition 1's strictness clause compares `uᵢ(Π(Γˢ))` with itself; read
@@ -254,10 +276,16 @@ brief:
 * **D16** Proposition 16's proof sketch writes `u(Π(Γˢ))` where Definition 6 requires
   `uᵉ(Π(Aˢ, uˢ))`; `u` is not defined on token outcomes.  Notation only — the carrier
   states the expectation with `uᵉ`.
+* **D17** The algorithms of Appendix D.2 perform no non-triviality check, so the identity
+  injections make them return *True* on every game; the carriers add the check
+  (`Certificate.Nontrivial`), and `Certificate.refl` records the defect.
+* **D18** Table 9 and the printed payoff formulas disagree at eight corner entries (`0`
+  vs. `ε`), and the disagreement decides whether the unilateral half of Lemma 28's first
+  claim holds; the carriers follow the table (RULING 15).
 
 The `Level` column of `notes/paper-errata.md` is authoritative.  Statement-level and
 carried as **disclosures** at the Lean statements: **D1, D2, D5, D8, D10, D12, D13** (the
-list `KNOWLEDGE.md` keeps), together with **D15** at Algorithm 2.  Also statement-level but
-either printing typos or clauses simply not rendered: D7 (rendered on `supp Π(Γ)`), D9,
-D11 (Proposition 23), D14 (the `m ≤ k` bound).  D3, D4, D6 and D16 are proof- or
-notation-level only.
+list `KNOWLEDGE.md` keeps), together with **D15** at Algorithm 2, **D17** at the
+certificate checks and **D18** at Table 9.  Also statement-level but either printing typos
+or clauses simply not rendered: D7 (rendered on `supp Π(Γ)`), D9, D11 (Proposition 23),
+D14 (the `m ≤ k` bound).  D3, D4, D6 and D16 are proof- or notation-level only.

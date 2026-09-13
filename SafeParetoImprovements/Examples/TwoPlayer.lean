@@ -76,6 +76,24 @@ lemma strictlyDominates_two_iff (Γ : Game Two 𝒜) (x x' : 𝒜 .two) :
     simpa using this
   · simpa using h (b .one) (hb .one)
 
+/-- An action of player one that is a (weak) best response to some action of player two is
+not strictly dominated. -/
+lemma not_isStrictlyDominated_one_of_bestResponse (Γ : Game Two 𝒜) {a : 𝒜 .one} {x : 𝒜 .two}
+    (hx : x ∈ Γ.S .two) (h : ∀ a' ∈ Γ.S .one, Γ.u (pair a' x) .one ≤ Γ.u (pair a x) .one) :
+    ¬ Γ.IsStrictlyDominated .one a := by
+  rintro ⟨a', ha'⟩
+  rw [strictlyDominates_one_iff] at ha'
+  exact absurd (h a' ha'.1) (not_le.2 (ha'.2.2 x hx))
+
+/-- An action of player two that is a (weak) best response to some action of player one is
+not strictly dominated. -/
+lemma not_isStrictlyDominated_two_of_bestResponse (Γ : Game Two 𝒜) {x : 𝒜 .two} {a : 𝒜 .one}
+    (ha : a ∈ Γ.S .one) (h : ∀ x' ∈ Γ.S .two, Γ.u (pair a x') .two ≤ Γ.u (pair a x) .two) :
+    ¬ Γ.IsStrictlyDominated .two x := by
+  rintro ⟨x', hx'⟩
+  rw [strictlyDominates_two_iff] at hx'
+  exact absurd (h x' hx'.1) (not_le.2 (hx'.2.2 a ha))
+
 /-- A two-player game is reduced iff no action of either player is strictly dominated. -/
 lemma reduced_iff (Γ : Game Two 𝒜) :
     Γ.Reduced ↔ (∀ a : 𝒜 .one, ¬ Γ.IsStrictlyDominated .one a) ∧

@@ -694,6 +694,63 @@ def UnilateralSPIDecision (Γ : Game N 𝒜) : Prop :=
   ∃ Γs : Game N 𝒜, Γs.IsSubsetGameOf Γ ∧ Γs.reduce.S ≠ Γ.reduce.S ∧
     (∃ Φ, Deriv Γ Γ Γs Φ ∧ ParetoImprovingFor Γ Φ) ∧ Γ.Unilateral Γs
 
+/-- **The strict unilateral SPI decision problem** (Definition 5, items 4 and 5 together;
+non-triviality repaired per erratum D13): the strict problem's witness clause and the
+unilateral problem's subset-game clause at once.  It is the fourth of the "(strict)
+(unilateral)" problems Theorem 9 and Lemma 28 range over; Appendix D's hardness
+construction produces exactly this kind of SPI.
+
+Paper node: `Definition 5` -/
+def StrictUnilateralSPIDecision (Γ : Game N 𝒜) : Prop :=
+  ∃ Γs : Game N 𝒜, Γs.IsSubsetGameOf Γ ∧ Γs.reduce.S ≠ Γ.reduce.S ∧
+    (∃ Φ, Deriv Γ Γ Γs Φ ∧ ParetoImprovingFor Γ Φ ∧
+      ∃ i, ∃ a ∈ Γ.reduce.profiles, ∀ b, a ~[Φ] b → Γ.u a i < Γ.u b i) ∧ Γ.Unilateral Γs
+
+lemma StrictUnilateralSPIDecision.strict {Γ : Game N 𝒜} (h : Γ.StrictUnilateralSPIDecision) :
+    Γ.StrictSPIDecision := by
+  obtain ⟨Γs, hsub, hne, h, -⟩ := h
+  exact ⟨Γs, hsub, hne, h⟩
+
+lemma StrictUnilateralSPIDecision.unilateral {Γ : Game N 𝒜}
+    (h : Γ.StrictUnilateralSPIDecision) : Γ.UnilateralSPIDecision := by
+  obtain ⟨Γs, hsub, hne, ⟨Φ, d, hΦ, -⟩, hu⟩ := h
+  exact ⟨Γs, hsub, hne, ⟨Φ, d, hΦ⟩, hu⟩
+
+lemma StrictSPIDecision.spi {Γ : Game N 𝒜} (h : Γ.StrictSPIDecision) : Γ.SPIDecision := by
+  obtain ⟨Γs, hsub, hne, Φ, d, hΦ, -⟩ := h
+  exact ⟨Γs, hsub, hne, Φ, d, hΦ⟩
+
+lemma UnilateralSPIDecision.spi {Γ : Game N 𝒜} (h : Γ.UnilateralSPIDecision) : Γ.SPIDecision := by
+  obtain ⟨Γs, hsub, hne, h, -⟩ := h
+  exact ⟨Γs, hsub, hne, h⟩
+
+/-- The strict counterpart of `exists_paretoImproving_deriv_iff`: a derivation from `Γ₀` to
+its subset game `Γs` that is Pareto-improving and strict at some surviving outcome exists
+iff some isomorphism `reduce Γ₀ ≅ reduce Γs` is strictly Pareto-improving.  This is the
+certificate that the strict problems of Theorem 9 guess. -/
+lemma exists_strictParetoImproving_deriv_iff (Γ₀ Γs : Game N 𝒜) (hsub : Γs.IsSubsetGameOf Γ₀) :
+    (∃ Φ, Deriv Γ₀ Γ₀ Γs Φ ∧ ParetoImprovingFor Γ₀ Φ ∧
+        ∃ i, ∃ a ∈ Γ₀.reduce.profiles, ∀ b, a ~[Φ] b → Γ₀.u a i < Γ₀.u b i) ↔
+      ∃ ψ : GameIso Γ₀.reduce Γs.reduce, ψ.StrictlyParetoImproving := by
+  constructor
+  · rintro ⟨Φ, d, hΦ, i, a, ha, hlt⟩
+    obtain ⟨ψ, hψ⟩ := d.exists_iso
+    refine ⟨ψ, fun b hb => ?_, a, ha, ?_⟩
+    · rw [Game.reduce_u]
+      exact hΦ b _ (hψ b hb)
+    · rw [Game.reduce_u]
+      exact Pi.lt_def.2 ⟨hΦ a _ (hψ a ha), i, hlt _ (hψ a ha)⟩
+  · rintro ⟨ψ, hψ, a, ha, hlt⟩
+    rw [Game.reduce_u] at hlt
+    obtain ⟨-, i, hi⟩ := Pi.lt_def.1 hlt
+    refine ⟨_, Deriv.normal (Game.IsSubsetGameOf.refl Γ₀) hsub ψ, fun b c hbc => ?_, i, a, ha,
+      fun b hb => ?_⟩
+    · obtain ⟨hb, rfl⟩ := (Deriv.mem_normalRel ψ b c).1 hbc
+      have := hψ b hb
+      rwa [Game.reduce_u] at this
+    · obtain ⟨-, rfl⟩ := (Deriv.mem_normalRel ψ a b).1 hb
+      exact hi
+
 /-- A game in which every player has at most one action is a **"no" instance** of the
 repaired SPI decision problem: every subset game has the same (single) action sets, so no
 subset game can pass the repaired non-triviality clause.  The matching "yes" instance is

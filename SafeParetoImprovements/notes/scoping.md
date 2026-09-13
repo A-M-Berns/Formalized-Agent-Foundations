@@ -656,6 +656,17 @@ C and E and the split "Theorem 17" header must be deduplicated by the parser).
      **and the polytope clause is to be attempted** (finitely many vertices), not
      qualified away.
 
+- RULING 14 (2026-09-12, proposed in `complexity-layer.md` §6 and proceeded under):
+  Lemma 27 (Cook's theorem for subgraph isomorphism) is cited and not carried — no
+  declaration, no axiom (a named axiom would fail the axiom audit and certify nothing).
+  Theorem 9's carrier is the conjunction of membership (Propositions 23/25) and the
+  reduction (Lemma 28) over two-player games; RULING 6's qualified status stands for all
+  complexity nodes, now realized.
+- RULING 15 (2026-09-12, proposed in `complexity-layer.md` §6 and proceeded under): the
+  hardness games follow Table 9 where it disagrees with the printed payoff formula
+  (erratum D18), because that is the reading under which the paper's own proof is correct,
+  and the formula's reading falsifies the unilateral clause of Lemma 28.
+
 ## 9. Codex review, 2026-09-04
 
 Full findings in `codex-review-2026-09-04.md` (prompt alongside). Disposition:
