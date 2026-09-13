@@ -198,6 +198,7 @@ ruled on but not yet carried by any declaration.
 | `SafeParetoImprovements/Examples/DecisionWitnesses.lean` | Definition 7 two-sided through Proposition 12: the conflict game is a "yes" instance, Table 7 a "no" instance |
 | `SafeParetoImprovements/Complexity.lean` | §4.6, Appendix D.2: certificates (`Game.Certificate`) and their checks, the elimination-chain transfer and dominated-set lemmas, **Propositions 23 and 25** as certificate iffs (`spiDecision_iff_certificate` and variants), **Propositions 24 and 26 / Proposition 10** as the search bound (`card_certificate_le`, `spiDecision_search`); the identity certificate as erratum D17 |
 | `SafeParetoImprovements/Hardness.lean` | Appendix D.3: graphs and **Definition 8**, Tables 9–10 (`tableU₁`, `tableU₂`, `hardnessGame`; erratum D18), the full reduction of `Γᶜ` (`reduce_hardnessGame`), **Lemma 28** in four forms (`subgraphIsoProblem_iff_spiDecision`, …), **Theorem 9**'s carrier (`theorem9`) |
+| `SafeParetoImprovements/API.lean` | the supported consumer import: every library module (no examples) with a documented map from the paper's vocabulary to the Lean names; exercised by `APITests/SafeParetoImprovements.lean` |
 | `SafeParetoImprovements/Examples/ComplexityWitnesses.lean` | non-vacuity for the complexity nodes: the Demand Game's certificate (passing Proposition 23's checks, failing check 2), the one-action game's identity certificate, a unilateral certificate for the Complicated Temptation Game, the four-action `scaledGame` whose check 2 forces `λ = 2`, the count `144 ≤ 4096`, and Lemma 28 carried to a "yes" (one edge into the two-cycle) and a "no" (the two-cycle into one edge) instance |
 | `SafeParetoImprovements/Examples/CharacterizationWitnesses.lean` | non-vacuity for §5.3: Lemma 13 and Corollary 14 applied on the conflict game (including to a three-action perfect-coordination SPI that is *not* isomorphic to the reduction), `achievable` shown not a singleton and wider than the constant reassignments, and the hand-built play family for which `Representatives.condExp` is a strict average rather than a point evaluation (R5-F11) |
 | `SafeParetoImprovements/Examples/Coin.lean` | the fair coin on `Bool`, shared by the examples that need a genuinely random `Π` |
@@ -237,3 +238,4 @@ import SafeParetoImprovements.Examples.CharacterizationWitnesses
 import SafeParetoImprovements.Complexity
 import SafeParetoImprovements.Hardness
 import SafeParetoImprovements.Examples.ComplexityWitnesses
+import SafeParetoImprovements.API

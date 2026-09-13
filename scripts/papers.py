@@ -205,12 +205,14 @@ PAPERS = {
         "doi": "10.1007/s10458-022-09574-6",
         "url": "https://doi.org/10.1007/s10458-022-09574-6",
         "library": "SafeParetoImprovements",
-        # Milestone M0: Definitions 1–5, Lemma 2, Theorem 3, Lemma 4, Assumptions 1–2,
-        # the joint-satisfiability theorem for the assumptions, Lemma 19 with path
-        # independence, Lemmas 21–22 (derivation system), and Propositions 5–8, at the
-        # certainty-filter level with the probability-one realization in
-        # `Representatives.lean`.  No consumer API yet.  See `SafeParetoImprovements/README.md`.
+        # Every in-scope node except Theorem 15 (deferred by ruling, erratum D12) is
+        # carried; the complexity nodes are qualified (RULING 6).  The consumer API and
+        # its client tests are in place (filled in early, as the wiring check permits);
+        # `completed` waits on the Theorem 15 ruling, the human read-through and the
+        # fresh-context audit.  See `SafeParetoImprovements/README.md`.
         "status": "in-progress",
+        "api": "SafeParetoImprovements/API.lean",
+        "api_test": "APITests/SafeParetoImprovements.lean",
         "source": "SafeParetoImprovements/notes/oesterheld-conitzer-2022-spi.txt",
         "pdf": "SafeParetoImprovements/notes/oesterheld-conitzer-2022-spi.pdf",
         # Definitions and Assumptions each count globally on their own; Theorem, Lemma,

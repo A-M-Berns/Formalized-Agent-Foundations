@@ -4,6 +4,7 @@ import APITests.CartesianFrames
 import APITests.FiniteFactoredSets
 import APITests.Condensation
 import APITests.FactoredSpaces
+import APITests.SafeParetoImprovements
 import APITests.ShannonInformation
 import APITests.ShannonInformationFiniteEntropy
 import APITests.ShannonInformationChainRule

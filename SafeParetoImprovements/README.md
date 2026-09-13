@@ -37,9 +37,9 @@ The paper's spine is:
   (Proposition 16).
 * §6 — the SPI selection problem, prose only.
 
-## Status: milestone M0
+## Status: every in-scope node except Theorem 15
 
-**What is formalized so far**, all at the certainty-filter level (`dd:certainty`) and all
+**What is formalized**, all at the certainty-filter level (`dd:certainty`) and all
 proved — there is no `sorry` in `SafeParetoImprovements/`:
 
 | paper node | carrier(s) | file |
@@ -133,10 +133,18 @@ carried (RULING 14), exactly as Theorem 17 is not.
 is `Game.elim_diamond`.  Theorem 17 and Lemma 27 are cited external results and are not
 carried.
 
-**Consumer readiness.**  There is no `SafeParetoImprovements/API.lean` and no
-`APITests/SafeParetoImprovements.lean` yet; both are mandatory before the registry status
-can become `completed` (root `CLAUDE.md`, *Consumer readiness is part of paper
-completion*), as are a human read-through and a fresh-context audit.
+**Consumer readiness.**  The supported downstream import is
+`SafeParetoImprovements/API.lean` (a documented map from the paper's vocabulary to the
+supported Lean names; the example files are deliberately not part of it), exercised by the
+client-style tests `APITests/SafeParetoImprovements.lean`, which build their own games and
+compose endpoints (a reduced game on a whole universe has no SPI; Theorem 3 on a client
+play family; soundness turning a derivation into an SPI under probability one; a subgraph
+isomorphism between client graphs carried through Lemma 28 and soundness to an actual
+strict unilateral SPI; feasible-set convexity and Pareto optimality; threat-point bounds).
+Both are registered in `scripts/papers.py`.  The registry status stays `in-progress` until
+Theorem 15's deferral is ruled to be the final scope, the human read-through and the
+fresh-context audit are done (root `CLAUDE.md`, *Consumer readiness is part of paper
+completion*).
 
 ## Scope
 
