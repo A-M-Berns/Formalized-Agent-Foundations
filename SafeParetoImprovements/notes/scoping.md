@@ -666,6 +666,17 @@ C and E and the split "Theorem 17" header must be deduplicated by the parser).
   hardness games follow Table 9 where it disagrees with the printed payoff formula
   (erratum D18), because that is the reading under which the paper's own proof is correct,
   and the formula's reading falsifies the unilateral clause of Lemma 28.
+- RULING 16 (2026-09-13, Anson): Theorem 15 **stays deferred as the final scope** of this
+  formalization.  Grounds re-stated on that date: the substrate its proof consumes now
+  exists (Lemma 13, Corollary 14 with the Minkowski formula, `Two`, the feasible polytope),
+  but erratum D12 leaves the statement unsettled, Appendix E is a sketch that sets aside
+  the degenerate segment cases and whose Case A step "all outcomes lie below the line `L1`"
+  is not a general fact (the feasible set `conv{(0,0),(2,0),(1,1),(2,1)}` with the support
+  at the first three points satisfies Case A's premise and has the outcome `(1,1)` above
+  `L1`), and Case A's conclusion is phrased "an SPI under improved coordination", a phrase
+  used nowhere else.  A future attempt would read the projections as `πᵢ(x, C(Γ))`, state
+  the conclusion as membership in `Representatives.achievable`, and reprove from the
+  Minkowski formula.  The node is not load-bearing for the research layer.
 
 ## 9. Codex review, 2026-09-04
 

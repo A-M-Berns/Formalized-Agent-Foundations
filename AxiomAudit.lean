@@ -3789,7 +3789,7 @@ blocks, a stale entry, a malformed line, a non-empty block once the paper is
   SafeParetoImprovements.Examples.temptation_isStrictSPI
   SafeParetoImprovements.Examples.temptation_isUnilateralSPI
   SafeParetoImprovements.Examples.complicatedTemptation_isUnilateralSPI
-  -- Non-vacuity witnesses (R1-F14, R1-F15, R1-F32).  These are not paper nodes: they are
+  -- Non-vacuity witnesses.  These are not paper nodes: they are
   -- the inhabitants that make the propositions' hypotheses -- and the `Representatives`
   -- structure -- demonstrably satisfiable, so they are axiom-checked alongside the claims
   -- they support (SafeParetoImprovements/Book.lean, Examples/Witnesses.lean).
@@ -3803,7 +3803,7 @@ blocks, a stale entry, a malformed line, a non-empty block once the paper is
   SafeParetoImprovements.Examples.temptation_isStrictSPI_witnessed
   SafeParetoImprovements.Examples.complicatedTemptation_isUnilateralSPI_witnessed
   SafeParetoImprovements.Examples.unitRepresentatives
-  -- The "yes" instances of the repaired Definition 5 predicates (R2-F05): without these
+  -- The "yes" instances of the repaired Definition 5 predicates: without these
   -- the repaired non-triviality clause could be uniformly false, and the payoff-shift
   -- witnesses of erratum D13 do not serve it (they leave `reduce.S` unchanged).  With
   -- `not_spiDecision_of_card_le_one` they bracket the repaired predicates on both sides.
@@ -3813,31 +3813,31 @@ blocks, a stale entry, a malformed line, a non-empty block once the paper is
   SafeParetoImprovements.Examples.demandGame_strictSPIDecision
   SafeParetoImprovements.Examples.complicatedTemptation_unilateralSPIDecision
   -- The page-varying book and the witness that `Play.isStrictSPI_of_deriv`'s side
-  -- condition is satisfiable jointly with Assumptions 1 and 2 (R2-F18): on a one-point
+  -- condition is satisfiable jointly with Assumptions 1 and 2: on a one-point
   -- sample space no play family reaches two distinct reduced outcomes, so the
   -- deterministic book cannot discharge it.
   SafeParetoImprovements.Book.varying SafeParetoImprovements.Book.varying_play_eq
   SafeParetoImprovements.exists_play_satisfiesA1_satisfiesA2_hits
   SafeParetoImprovements.Examples.demandGame_isStrictSPI_of_deriv_witnessed
-  -- The `EqOn`-invariance fact that answers R1-F01: under Assumption 2 no play family can
+  -- The `EqOn`-invariance fact: under Assumption 2 no play family can
   -- make one presentation of a game a strict SPI on another *`EqOn`-equal, and reduced*,
   -- presentation (Assumption 2 quantifies over games without strictly dominated actions,
-  -- so it says nothing about a non-reduced `EqOn`-equal pair -- R2-F02/F09; the underlying
+  -- so it says nothing about a non-reduced `EqOn`-equal pair -- the underlying
   -- `GameIso.payoff_eq_of_eqOn` is unconditional).  (SafeParetoImprovements/
   -- Assumptions.lean, Isomorphism.lean).
   SafeParetoImprovements.GameIso.ofEqOn SafeParetoImprovements.GameIso.payoff_eq_of_eqOn
   SafeParetoImprovements.Play.SatisfiesA2.not_isStrictSPI_of_eqOn
   -- The joint-satisfiability theorem for Assumptions 1 and 2 (§4.4.3, `dd:book`) and the
-  -- book it is built from (R1-F09, R1-F30): the declaration that keeps every
+  -- book it is built from: the declaration that keeps every
   -- "under Assumptions 1 and 2" node from being vacuous.
   SafeParetoImprovements.Book.toPlay SafeParetoImprovements.Book.const
   SafeParetoImprovements.Book.satisfiesA1 SafeParetoImprovements.Book.satisfiesA2
   SafeParetoImprovements.exists_play_satisfiesA1_satisfiesA2
-  -- The `ω`-dependent prescribed book (R3-F11): `Book.prescribed` is its constant case,
+  -- The `ω`-dependent prescribed book: `Book.prescribed` is its constant case,
   -- and it is what makes a *random* `Π` available to the Theorem 1 witness.
   SafeParetoImprovements.Book.prescribedRandom SafeParetoImprovements.Book.prescribedRandom_play
-  -- Soundness of Definition 5's derivations for the three SPI notions (`dd:derivation`,
-  -- R1-F24, R1-F26), and the erratum-D13 witnesses: the printed decision predicates are
+  -- Soundness of Definition 5's derivations for the three SPI notions (`dd:derivation`),
+  -- and the erratum-D13 witnesses: the printed decision predicates are
   -- constant-true, the repaired one has a "no" instance (SafeParetoImprovements/Derivation.lean).
   SafeParetoImprovements.Play.isSPI_of_deriv SafeParetoImprovements.Play.isUnilateralSPI_of_deriv
   SafeParetoImprovements.Play.isStrictSPI_of_deriv
@@ -3880,7 +3880,7 @@ blocks, a stale entry, a malformed line, a non-empty block once the paper is
   SafeParetoImprovements.Game.lpObjective SafeParetoImprovements.Game.paretoOptimalIn_feasible_iff
   SafeParetoImprovements.TokenGame SafeParetoImprovements.TokenGame.IsSPI
   SafeParetoImprovements.TokenGame.IsStrictSPI
-  -- Room is parameterized by the set to AVOID (R4-F01): `HasRoom` is the `B := Γ.S` case,
+  -- Room is parameterized by the set to AVOID: `HasRoom` is the `B := Γ.S` case,
   -- and it is `HasRoomOutside` that §5 needs, since every construction tokenizes
   -- `Γ.reduce` but must be fresh for `Γ`.  `hasRoomOutside_of_infinite` is the uniform
   -- source of room the §5 example universes `X ⊕ ℕ` discharge it by.
@@ -3930,7 +3930,7 @@ blocks, a stale entry, a malformed line, a non-empty block once the paper is
   -- Proposition 16 with the paper's own witness (SafeParetoImprovements/Examples/Chicken.lean):
   -- Table 7 over `CAct ⊕ ℕ` (`dd:room`, RULING 13 -- over the bare `CAct` the game uses its
   -- whole universe and `TokenGame chicken` is EMPTY, so the impossibility clause was
-  -- vacuous: round-4 blocker R4-F01), its reduction, the fair-coin representatives, the two
+  -- vacuous), its reduction, the fair-coin representatives, the two
   -- supporting half-planes, and the label-free kernel the impossibility actually runs on.
   SafeParetoImprovements.Examples.coin SafeParetoImprovements.Examples.integral_coin
   SafeParetoImprovements.Examples.ae_coin_iff
@@ -3942,7 +3942,7 @@ blocks, a stale entry, a malformed line, a non-empty block once the paper is
   SafeParetoImprovements.Examples.chickenRepresentatives_integral
   SafeParetoImprovements.Examples.chicken_no_feasible_dominating_of_mean_cc
   SafeParetoImprovements.Examples.chicken_no_perfectCoordinationSPI
-  -- Non-vacuity and contrast for Proposition 16's quantifier (R4-F01, R4-F05): token games
+  -- Non-vacuity and contrast for Proposition 16's quantifier: token games
   -- for `chicken` exist at every finite size, Definition 6 fails of one of them, and the
   -- existential over `Π` is essential -- other Assumption-1/2 representatives over the SAME
   -- game DO admit a perfect-coordination SPI with expectation `u(c, c) = (3, 3)`.
@@ -3954,8 +3954,8 @@ blocks, a stale entry, a malformed line, a non-empty block once the paper is
   SafeParetoImprovements.Examples.chickenRepresentativesBB
   SafeParetoImprovements.Examples.chickenRepresentativesBB_play
   SafeParetoImprovements.Examples.chicken_spi_for_other_representatives
-  -- The positive side of Definition 6 (SafeParetoImprovements/Examples/TokenWitnesses.lean,
-  -- R4-F05): a reduced `2 × 2` game over `Bool ⊕ ℕ` with an explicit fresh token copy, a
+  -- The positive side of Definition 6 (SafeParetoImprovements/Examples/TokenWitnesses.lean):
+  -- a reduced `2 × 2` game over `Bool ⊕ ℕ` with an explicit fresh token copy, a
   -- perfect-coordination SPI with equality at every sample point (hence not strict), and a
   -- STRICT one built by the paper's Demand-Game recipe, with `uᵉ` defined along the
   -- isomorphism the book supplies (erratum D6, RULING 10) and shown non-constant.
@@ -3975,14 +3975,14 @@ blocks, a stale entry, a malformed line, a non-empty block once the paper is
   SafeParetoImprovements.Examples.conflictStrictToken_isStrictSPI
   SafeParetoImprovements.Examples.conflictStrictToken_ue_ne
   -- Non-vacuity for §5.3 (SafeParetoImprovements/Examples/CharacterizationWitnesses.lean,
-  -- R5-F10/F11/F12): Lemma 13 and Corollary 14 applied on the conflict game, including to a
+  --): Lemma 13 and Corollary 14 applied on the conflict game, including to a
   -- three-action perfect-coordination SPI that is NOT isomorphic to the reduction;
   -- `achievable` shown to hold at least two points and to be wider than the constant
   -- reassignments; and the hand-built play family (it reads the SIZE of the game it is
   -- handed, so the token play is not a function of `Π(Γ)`) for which `condExp` is a strict
   -- average `(½, ½)` of values the integrand never takes -- the disclosure that every BOOK
   -- model of this development collapses `condExp` to a point evaluation whenever the token
-  -- game is isomorphic to the reduced base game (R5-F16: not for token games in another
+  -- game is isomorphic to the reduced base game (not for token games in another
   -- isomorphism class, which are played from their own page).
   SafeParetoImprovements.Examples.conflict_exists_reassignment
   SafeParetoImprovements.Examples.conflict_achievable_eq_improvementSum
@@ -4061,15 +4061,15 @@ blocks, a stale entry, a malformed line, a non-empty block once the paper is
   -- Non-vacuity for the program-game layer (SafeParetoImprovements/Examples/
   -- ProgramGameWitnesses.lean): Theorem 1's hypotheses jointly satisfied twice over --
   -- deterministically in the Prisoner's Dilemma and with a genuinely random `Π` in the
-  -- Demand Game (R3-F11) -- the threat-point hypothesis shown to have content by a book
+  -- Demand Game -- the threat-point hypothesis shown to have content by a book
   -- that violates it, and the independence predicates two-sided, with Algorithm 2's
   -- failure of participation independence as an instance rather than a hypothesis
-  -- (R3-F12).
+  --.
   SafeParetoImprovements.Examples.pdRepresentatives
   SafeParetoImprovements.Examples.pdRepresentatives_play
   SafeParetoImprovements.Examples.pdRepresentatives_threatPoint_le
   SafeParetoImprovements.Examples.prisonersDilemma_algorithm2_isProgramEquilibrium
-  SafeParetoImprovements.Examples.coin SafeParetoImprovements.Examples.demandPages
+  SafeParetoImprovements.Examples.demandPages
   SafeParetoImprovements.Examples.demandRandomBook
   SafeParetoImprovements.Examples.demandRandomRepresentatives
   SafeParetoImprovements.Examples.demandRandom_play
@@ -4187,7 +4187,7 @@ blocks, a stale entry, a malformed line, a non-empty block once the paper is
   -- `dd:complexity`): the elimination-chain transfer and dominated-set elimination lemmas,
   -- certificates and their checks, the identity certificate (erratum D17), Propositions 23
   -- and 25 as certificate iffs, Propositions 24 and 26 / Proposition 10 as the search bound.
-  SafeParetoImprovements.Game.withPayoffs SafeParetoImprovements.Game.ElimStar.transfer
+  SafeParetoImprovements.Game.ElimStar.transfer
   SafeParetoImprovements.Game.elimStar_of_dominated
   SafeParetoImprovements.Game.Certificate SafeParetoImprovements.Game.Certificate.toFun
   SafeParetoImprovements.Game.Certificate.toFun_of_mem SafeParetoImprovements.Game.Certificate.toFun_mem
@@ -4242,8 +4242,7 @@ blocks, a stale entry, a malformed line, a non-empty block once the paper is
   SafeParetoImprovements.Game.strictUnilateralSPIDecision_iff_certificate
   SafeParetoImprovements.Game.card_unilateralCertificate_le
   SafeParetoImprovements.Game.unilateralSPIDecision_search
-  -- supporting lemmas of Complexity.lean (every public declaration is inventoried, R6-F14)
-  SafeParetoImprovements.Game.withPayoffs_S SafeParetoImprovements.Game.withPayoffs_u
+  -- supporting lemmas of Complexity.lean (every public declaration is inventoried)
   SafeParetoImprovements.Game.Certificate.game_S SafeParetoImprovements.Game.Certificate.game_u
   SafeParetoImprovements.Game.Certificate.imageGame_S
   SafeParetoImprovements.Game.Certificate.imageGame_u SafeParetoImprovements.Game.card_le_size
@@ -4271,7 +4270,7 @@ blocks, a stale entry, a malformed line, a non-empty block once the paper is
   SafeParetoImprovements.Hardness.subgraphIsoProblem_iff_unilateralSPIDecision
   SafeParetoImprovements.Hardness.theorem9
   -- supporting lemmas of Hardness.lean (payoff bounds, block membership, the certificate
-  -- evaluation helpers and the extraction helpers of Lemma 28's second claim; R6-F14)
+  -- evaluation helpers and the extraction helpers of Lemma 28's second claim;)
   SafeParetoImprovements.Hardness.TableAct.c₁ SafeParetoImprovements.Hardness.TableAct.c₂
   SafeParetoImprovements.Hardness.hardnessGame_S SafeParetoImprovements.Hardness.hardnessGame_u
   SafeParetoImprovements.Hardness.gammaBlock_S SafeParetoImprovements.Hardness.gammaBlock_u
@@ -4319,9 +4318,9 @@ blocks, a stale entry, a malformed line, a non-empty block once the paper is
   SafeParetoImprovements.Examples.size_hardGame
   SafeParetoImprovements.Examples.hardYes_strictUnilateralSPIDecision
   SafeParetoImprovements.Examples.hardNo_not_spiDecision
-  -- round-6 witnesses: the non-degenerate graph pair (one edge into the two-cycle, R6-F07),
-  -- check 2 rejecting the Demand Game certificate (R6-F08), and the four-action game whose
-  -- certificate passes Proposition 25's checks with the affine scale forced to 2 (R6-F09).
+  -- round-6 witnesses: the non-degenerate graph pair (one edge into the two-cycle),
+  -- check 2 rejecting the Demand Game certificate, and the four-action game whose
+  -- certificate passes Proposition 25's checks with the affine scale forced to 2.
   SafeParetoImprovements.Examples.oneEdge SafeParetoImprovements.Examples.twoCycle
   SafeParetoImprovements.Examples.subgraphIso_oneEdge_twoCycle
   SafeParetoImprovements.Examples.not_subgraphIso_twoCycle_oneEdge
@@ -4349,7 +4348,7 @@ blocks, a stale entry, a malformed line, a non-empty block once the paper is
   SafeParetoImprovements.Examples.scaledGame.strictUnilateralSPIDecision
   SafeParetoImprovements.Examples.SAct
   -- §4.2's relations `R` and `⪰` (SafeParetoImprovements/Ordering.lean): the prose carriers
-  -- of the paragraph after Lemma 2, on the axiom gate since the final audit (R7-F34).
+  -- of the paragraph after Lemma 2, on the axiom gate since the final audit.
   SafeParetoImprovements.Game.IsSingleValuedBijection SafeParetoImprovements.Play.BijEquiv
   SafeParetoImprovements.Play.bijEquiv_refl SafeParetoImprovements.Play.BijEquiv.symm
   SafeParetoImprovements.Play.BijEquiv.trans SafeParetoImprovements.Play.bijEquiv_equivalence
@@ -4357,13 +4356,13 @@ blocks, a stale entry, a malformed line, a non-empty block once the paper is
   SafeParetoImprovements.Play.Improves.trans SafeParetoImprovements.Play.improves_preorder
   SafeParetoImprovements.Play.improves_self_iff_isSPI SafeParetoImprovements.Play.isSPI_of_paretoDominant
   -- Final audit (round 7).  (a) The play family as a function of the paper's game
-  -- (R7-F01): `Play.RespectsEqOn`, the canonical presentation `Game.canon`, reduction
+  --: `Play.RespectsEqOn`, the canonical presentation `Game.canon`, reduction
   -- across `EqOn`, and the book's play routed through the canonical presentation so that the
   -- existence witnesses of `dd:book` are paper plays.  (b) Reduction transports along
   -- isomorphisms (`GameIso.imageGame`, `reduce_eq_imageGame`), which lets Lemma 13 copy the
-  -- whole game as the paper does (R7-F02).  (c) Derivations are single-valued and typed
-  -- (R7-F05), and the strict printed problem is not constant-true (R7-F35).  (d) The
-  -- unilateral search bound is `m ^ l` itself (R7-F04).
+  -- whole game as the paper does.  (c) Derivations are single-valued and typed
+  --, and the strict printed problem is not constant-true.  (d) The
+  -- unilateral search bound is `m ^ l` itself.
   SafeParetoImprovements.Play.RespectsEqOn
   SafeParetoImprovements.Game.withPayoffs SafeParetoImprovements.Game.withPayoffs_S
   SafeParetoImprovements.Game.withPayoffs_u SafeParetoImprovements.Game.EqOn.withPayoffs_eqOn
@@ -4393,14 +4392,14 @@ blocks, a stale entry, a malformed line, a non-empty block once the paper is
   SafeParetoImprovements.Game.card_mul_prod_le_pow
 -- SPI-INVENTORY-END
 
-/-! Tier-2 freezes for Safe Pareto Improvements (R1-F10, R1-F25, R1-F33).  The mechanical
+/-! Tier-2 freezes for Safe Pareto Improvements.  The mechanical
 Tier-2 set computed by `SurfaceProbe.lean`'s `#surface_types` over the SPI-INVENTORY is
 `Game`, `GameIso`, `Play`, `Play.ParetoImprovingCorrespondence`; `Representatives` and
 `Book` are frozen too because the realization and witness endpoints above consume them.
 Each field is a premise of the paper nodes: `Game.nonempty` is the standing nonemptiness
 of action sets, `Play.mem` is "`Π(Γ) ∈ A`" (the whole of Lemma 2.5 and both directions of
 Theorem 3 run on it), `GameIso.bijOn`/`scale_pos` are the two `dd:iso` repairs (erratum D5),
-`ParetoImprovingCorrespondence.typed` is Definition 4's `Φ : A ⊸ Aˢ` (R1-F05), and
+`ParetoImprovingCorrespondence.typed` is Definition 4's `Φ : A ⊸ Aˢ`, and
 `Book.page_mem` is what makes the book's play a legal outcome; `ProgramGame.exec` is the
 execution kernel (`dd:exec-kernel`) whose product structure Proposition 18 rests on,
 `DefaultInstr.plays_default` ties the non-participation baseline to `Π(Γ₀)`, and

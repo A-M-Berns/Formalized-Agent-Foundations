@@ -149,7 +149,7 @@ def derive_nodes():
             "The committed extraction has drifted from the paper this checker was "
             "written against: re-extract with `pdftotext -layout`, or — if the paper "
             "itself changed — update EXPECTED_BY_KIND and SECTION_OF here and the scope "
-            "table in SafeParetoImprovements/README.md together."
+            "node table in SafeParetoImprovements/README.md together."
         )
     unplaced = sorted(nodes - set(SECTION_OF), key=paper_nodes.printed_global_node_sort_key)
     if unplaced:

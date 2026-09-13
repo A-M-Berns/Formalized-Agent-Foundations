@@ -205,11 +205,11 @@ PAPERS = {
         "doi": "10.1007/s10458-022-09574-6",
         "url": "https://doi.org/10.1007/s10458-022-09574-6",
         "library": "SafeParetoImprovements",
-        # Every in-scope node except Theorem 15 (deferred by ruling, erratum D12) is
-        # carried; the complexity nodes are qualified (RULING 6).  The consumer API and
-        # its client tests are in place (filled in early, as the wiring check permits);
-        # `completed` waits on the Theorem 15 ruling, the human read-through and the
-        # fresh-context audit.  See `SafeParetoImprovements/README.md`.
+        # Every in-scope node except Theorem 15 is carried; Theorem 15's deferral is the
+        # final scope by ruling (RULING 16, erratum D12), and the complexity nodes are
+        # qualified (RULING 6).  The consumer API and its client tests are in place, and
+        # the fresh-context audits are done; `completed` waits only on the human
+        # read-through.  See `SafeParetoImprovements/README.md`.
         "status": "in-progress",
         "api": "SafeParetoImprovements/API.lean",
         "api_test": "APITests/SafeParetoImprovements.lean",
