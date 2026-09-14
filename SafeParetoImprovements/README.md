@@ -36,34 +36,51 @@ with certainty, `u` the original payoff.
 
 ## What is formalized
 
-| paper node | Lean | file |
+| file | paper nodes | Lean |
 |---|---|---|
-| Definitions 1–2 | `Play.IsSPI`, `IsStrictSPI`, `Game.Unilateral`, `Play.IsUnilateralSPI` | `Play.lean` |
-| Definition 3, Lemma 2 (1–7), Definition 4 | `Play.Corresponds`, `corresponds_id`, `.inv`, `.trans`, `.mono_rel`, `corresponds_allRel`, `.ne_of_at_eq_empty`, `.ne_of_inv_at_eq_empty`, `Play.ParetoImprovingCorrespondence` | `Correspondence.lean` |
-| **Theorem 3** | `Play.isSPI_iff_exists_paretoImprovingCorrespondence` | `Correspondence.lean` |
-| Assumptions 1–2 | `Play.SatisfiesA1`, `Play.SatisfiesA2` | `Assumptions.lean` |
-| Lemma 4 (weak, strict) | `GameIso.paretoImproving_of_paretoImproving`, `…strictlyParetoImproving…` | `Isomorphism.lean` |
-| Lemmas 19–20 | `Game.isStrictlyDominated_erase`, `Game.elim_diamond` | `Reduction.lean` |
-| Definition 5 (four problems) | `Game.Step`, `Game.Deriv`; `Game.SPIDecision`, `StrictSPIDecision`, `UnilateralSPIDecision`, `StrictUnilateralSPIDecision`; printed forms `…Printed` | `Derivation.lean` |
-| Lemmas 21–22 | `Game.Deriv.exists_normalForm`, `Game.exists_paretoImproving_normalForm` | `Derivation.lean` |
-| Propositions 5–8 | `Examples.prisonersDilemma_isStrictSPI`, `demandGame_isSPI`/`_isStrictSPI`, `temptation_isStrictSPI`, `complicatedTemptation_isUnilateralSPI` | `Examples/` |
-| **Theorem 1**, **Proposition 18** | `Prog.exists_programEquilibrium_plays`, `Prog.algorithm2_isProgramEquilibrium` | `Instruction.lean` |
-| **Definition 6**, Lemma 11 | `TokenGame.IsSPI`, `IsStrictSPI`, `Game.paretoOptimalIn_feasible_iff` | `Coordination.lean` |
-| **Definition 7**, **Proposition 12** | `Play.StrictPerfectCoordinationSPIDecision`, `Representatives.strictPerfectCoordinationSPIDecision_iff` | `PerfectCoordination.lean` |
-| **Lemma 13**, **Corollary 14** | `Representatives.exists_reassignment_condExp_eq`, `achievable_eq_improvementSum`, `convex_achievable`, `isCompact_achievable`, `isPolytope_achievable` | `Characterization.lean` |
-| **Proposition 16** | `Examples.chicken_no_perfectCoordinationSPI` | `Examples/Chicken.lean` |
-| **Propositions 23–26**, **Proposition 10** | `Game.spiDecision_iff_certificate` (+ strict, unilateral, strict unilateral), `Game.spiDecision_search`, `unilateralSPIDecision_search` | `Complexity.lean` |
-| **Definition 8**, **Lemma 28**, **Theorem 9** | `Hardness.SubgraphIsoProblem`, `Hardness.subgraphIsoProblem_iff_spiDecision` (+ three variants), `Hardness.theorem9` | `Hardness.lean` |
+| `Play.lean` | Definitions 1–2 | `Play.IsSPI`, `IsStrictSPI`, `Game.Unilateral`, `Play.IsUnilateralSPI` |
+| `Correspondence.lean` | Definition 3, Lemma 2 (1–7), Definition 4, **Theorem 3** | `Play.Corresponds`, `corresponds_id`, `.inv`, `.trans`, `.mono_rel`, `corresponds_allRel`, `.ne_of_at_eq_empty`, `.ne_of_inv_at_eq_empty`, `Play.ParetoImprovingCorrespondence`, `Play.isSPI_iff_exists_paretoImprovingCorrespondence` |
+| `Assumptions.lean` | Assumptions 1–2 | `Play.SatisfiesA1`, `Play.SatisfiesA2` |
+| `Isomorphism.lean` | Lemma 4 (weak, strict) | `GameIso.paretoImproving_of_paretoImproving`, `…strictlyParetoImproving…` |
+| `Reduction.lean` | Lemmas 19–20 | `Game.isStrictlyDominated_erase`, `Game.elim_diamond` |
+| `Derivation.lean` | Definition 5 (four problems), Lemmas 21–22 | `Game.Step`, `Game.Deriv`; `Game.SPIDecision`, `StrictSPIDecision`, `UnilateralSPIDecision`, `StrictUnilateralSPIDecision`, printed forms `…Printed`; `Game.Deriv.exists_normalForm`, `Game.exists_paretoImproving_normalForm` |
+| `Examples/PrisonersDilemma.lean` | Proposition 5 | `Examples.prisonersDilemma_isStrictSPI` |
+| `Examples/DemandGame.lean` | Proposition 6 | `Examples.demandGame_isSPI`, `demandGame_isStrictSPI` |
+| `Examples/Temptation.lean` | Proposition 7 | `Examples.temptation_isStrictSPI` |
+| `Examples/ComplicatedTemptation.lean` | Proposition 8 | `Examples.complicatedTemptation_isUnilateralSPI` |
+| `Instruction.lean` | **Theorem 1**, **Proposition 18** | `Prog.exists_programEquilibrium_plays`, `Prog.algorithm2_isProgramEquilibrium` |
+| `Coordination.lean` | **Definition 6**, Lemma 11 | `TokenGame.IsSPI`, `IsStrictSPI`, `Game.paretoOptimalIn_feasible_iff` |
+| `PerfectCoordination.lean` | **Definition 7**, **Proposition 12** | `Play.StrictPerfectCoordinationSPIDecision`, `Representatives.strictPerfectCoordinationSPIDecision_iff` |
+| `Characterization.lean` | **Lemma 13**, **Corollary 14** | `Representatives.exists_reassignment_condExp_eq`, `achievable_eq_improvementSum`, `convex_achievable`, `isCompact_achievable`, `isPolytope_achievable` |
+| `Examples/Chicken.lean` | **Proposition 16** | `Examples.chicken_no_perfectCoordinationSPI` |
+| `Complexity.lean` | **Propositions 23–26**, **Proposition 10** | `Game.spiDecision_iff_certificate` (+ strict, unilateral, strict unilateral), `Game.spiDecision_search`, `unilateralSPIDecision_search` |
+| `Hardness.lean` | **Definition 8**, **Lemma 28**, **Theorem 9** | `Hardness.SubgraphIsoProblem`, `Hardness.subgraphIsoProblem_iff_spiDecision` (+ three variants), `Hardness.theorem9` |
+| `Game.lean` | §2 (unnumbered) | games over a fixed universe, `Game.EqOn`, subset games, strict dominance, the EconCSLib bridge `Game.toStrategic` |
+| `Ordering.lean` | §4.2 (unnumbered) | the relations `R` and `⪰`, the correspondence quantified away |
+| `Representatives.lean` | §3 (unnumbered) | `Representatives`, the probability-one realization `isSPI_iff`, `isStrictSPI_iff`, `corresponds_iff`, `support` |
+| `Book.lean` | §4.4.3 (unnumbered) | the book representatives satisfying Assumptions 1–2: `Book`, `Book.const`, `prescribed`, `prescribedRandom`, `varying`, `exists_representatives_satisfiesA1_satisfiesA2` |
+| `TwoPlayer.lean` | — | the player type `Two` and the table-checking lemmas Theorem 9 and the examples use |
+| `ProgramGame.lean` | Appendix A (unnumbered) | mixed strategies, `Game.threatPoint`, `Game.minimax`, the interface `ProgramGame`, `IsProgramEquilibrium`, Proposition 18 over the interface (`isProgramEquilibrium_of_algorithm2`), `Game.bestReply` |
+| `Polytope.lean` | — | polytopes as convex hulls of finite sets and their half-space sections (`IsPolytope.inter_halfspace`, `inter_Ici`), which Corollary 14 needs and Mathlib lacks |
+| `Independence.lean` | beyond the paper | `ProgramGame.DefaultInstr`, `ParticipationIndependent`, `Policy`, `ForeknowledgeIndependent`; `Prog.fallback`, `fallback_isProgramEquilibrium` |
+| `FullStrategy.lean` | beyond the paper | `IsSPITransformation`, `FullStrategy`, `ChoiceModel`, `DemandPreserving`, `ParticipationIndependent`, `ForeknowledgeIndependent`, `participationIndependent_of_simultaneous` |
+| `API.lean` | — | the consumer import, mapping the paper's vocabulary to the supported names |
+| `Examples/Witnesses.lean` | — | play families at which Propositions 5–8 and the Definition 5 yes-instances have all hypotheses discharged; `unitRepresentatives` |
+| `Examples/Coin.lean` | — | the fair coin on `Bool`, for the examples that need a random `Π` |
+| `Examples/ProgramGameWitnesses.lean` | — | Theorem 1's hypotheses discharged deterministically (Prisoner's Dilemma) and randomly (Demand Game); the PI/FI predicates two-sided; Algorithm 2 not participation independent in the Demand Game |
+| `Examples/IndependenceExamples.lean` | — | the fallback profile as a participation-independent program equilibrium in the Prisoner's Dilemma and the Demand Game |
+| `Examples/Renegotiation.lean` | — | DiGiovanni's Appendix B.4 renegotiation example, with the "PI but not FI" agent at both levels |
+| `Examples/TokenWitnesses.lean` | — | strict and equality-only perfect-coordination SPIs on a `2 × 2` game with a fresh token copy |
+| `Examples/DecisionWitnesses.lean` | — | Definition 7 two-sided through Proposition 12: a yes-instance and a no-instance |
+| `Examples/CharacterizationWitnesses.lean` | — | Lemma 13 and Corollary 14 applied with all hypotheses discharged; `condExp` a genuine average on a hand-built play family |
+| `Examples/ComplexityWitnesses.lean` | — | certificates that pass and fail, the count `144 ≤ 4096`, and Lemma 28 carried to a yes- and a no-instance |
 
-Every carrier's docstring ends with a `Paper node:` line naming the printed node, checked
-both ways by `scripts/check-safe-pareto-improvements-nodes.py`, and states in one or two
-sentences what differs from the print.
-
-Beside the nodes: the probabilistic model `Representatives` with the realization of "with
-certainty" at probability one; the canonical full reduction `Game.reduce`; the *book*
-representatives of §4.4.3, proving Assumptions 1 and 2 jointly satisfiable; and non-vacuity
-witnesses for every paper-facing statement (`Examples/`), each reaching the conclusion with
-all hypotheses discharged.
+Every node carrier's docstring ends with a `Paper node:` line naming the printed node,
+checked both ways by `scripts/check-safe-pareto-improvements-nodes.py`, and states in one
+or two sentences what differs from the print.  The files after `Hardness.lean` carry no
+node: they are the paper's unnumbered vocabulary, the infrastructure the nodes rest on,
+the layer beyond the paper, and the non-vacuity witnesses, each of which reaches a
+paper-facing conclusion with all hypotheses discharged.
 
 ## What is not claimed
 
