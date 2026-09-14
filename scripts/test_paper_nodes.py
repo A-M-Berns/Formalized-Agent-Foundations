@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Regression tests for `scripts/paper_nodes.py`'s two audit-block readers.
+"""Regression tests for `scripts/paper_nodes.py`'s two audit-block readers and its
+`printed-global` extraction parser.
 
 Run either way, from the repo root:
 
@@ -269,7 +270,8 @@ class RepositoryBlocksTest(unittest.TestCase):
 
     AUDIT = REPO / "AxiomAudit.lean"
     INVENTORY_BLOCKS = ("MA-INVENTORY", "CF-INVENTORY", "FFS-INVENTORY",
-                        "CONDENSATION-INVENTORY")
+                        "CONDENSATION-INVENTORY", "SPI-INVENTORY")
+    PENDING_BLOCKS = ("CONDENSATION-PENDING", "SPI-PENDING")
 
     def test_every_inventory_block_is_uncontaminated(self):
         for block in self.INVENTORY_BLOCKS:
@@ -279,12 +281,69 @@ class RepositoryBlocksTest(unittest.TestCase):
                 self.assertEqual(parsed.problems, [])
                 self.assertTrue(parsed.names)
 
-    def test_the_condensation_pending_block_parses_clean(self):
-        parsed = paper_nodes.read_pending(self.AUDIT, "CONDENSATION-PENDING")
-        if parsed is None:
-            self.skipTest("no CONDENSATION-PENDING block in this checkout")
-        self.assertEqual(parsed.problems, [])
-        self.assertFalse(set(parsed.entries) & set(parsed.consumers))
+    def test_every_pending_block_parses_clean(self):
+        for block in self.PENDING_BLOCKS:
+            with self.subTest(block=block):
+                parsed = paper_nodes.read_pending(self.AUDIT, block)
+                if parsed is None:
+                    self.skipTest(f"no {block} block in this checkout")
+                self.assertEqual(parsed.problems, [])
+                self.assertFalse(set(parsed.entries) & set(parsed.consumers))
+
+
+class PrintedGlobalSchemeTest(unittest.TestCase):
+    """The `printed-global` extraction parser against the committed SPI extraction.
+
+    The per-kind counts here duplicate the checker's drift guard on purpose: the checker
+    proves the extraction is what the paper is, this proves the *parser* still reads it
+    the same way after an edit to `paper_nodes.py`.
+    """
+
+    SOURCE = REPO / "SafeParetoImprovements/notes/oesterheld-conitzer-2022-spi.txt"
+
+    def setUp(self):
+        if not self.SOURCE.exists():
+            self.skipTest("no SPI extraction in this checkout")
+        self.text = self.SOURCE.read_text(encoding="utf-8")
+
+    def test_node_set_and_kinds(self):
+        nodes = paper_nodes.printed_global_nodes(self.text)
+        self.assertEqual(len(nodes), 37)
+        kinds = {}
+        for node in nodes:
+            kinds[node.split()[0]] = kinds.get(node.split()[0], 0) + 1
+        self.assertEqual(kinds, {"Definition": 8, "Assumption": 2, "Theorem": 4,
+                                 "Lemma": 10, "Proposition": 12, "Corollary": 1})
+        # Headers glued to a page break, an Example-headed proposition, and the torn
+        # Theorem 17 are the cases the parser is specifically written around.
+        self.assertIn("Theorem 1", nodes)
+        self.assertIn("Corollary 14", nodes)
+        self.assertIn("Proposition 5", nodes)
+        self.assertNotIn("Theorem 17", nodes)
+
+    def test_first_occurrence_wins_and_floats_are_dropped(self):
+        decls = paper_nodes.printed_global_declarations(self.text)
+        # Lemma 4 is restated in Appendix C; the main-text statement is the one kept.
+        self.assertLess(decls["Lemma 4"].position, self.text.find("Proof of Lemma 4"))
+        # Proposition 16 is interrupted by two figure pages and a table.
+        body = decls["Proposition 16"].body
+        self.assertNotIn("Figure", body)
+        self.assertNotIn("Table 7", body)
+        self.assertTrue(body.rstrip().endswith("= ui (a)."))
+        self.assertEqual(decls["Lemma 19"].title,
+                         "path independence of iterated strict dominance")
+
+    def test_item_references_are_not_nodes(self):
+        found = paper_nodes.PRINTED_GLOBAL_NODE_ID.findall("Paper node: `Lemma 2.2`")
+        self.assertEqual(found, [])
+        found = paper_nodes.PRINTED_GLOBAL_NODE_ID.findall("Paper node: `Lemma 2`, `Theorem 3`")
+        self.assertEqual(found, [("Lemma", "2"), ("Theorem", "3")])
+
+    def test_sections_skip_algorithm_boxes(self):
+        titles = [title for _, title in paper_nodes.printed_global_sections(self.text)]
+        self.assertIn("§3.1 Unilateral safe Pareto Improvements", titles)
+        self.assertIn("Appendix D.2.1 The omnilateral SPI problem", titles)
+        self.assertFalse(any("Return True" in t or "minimax" in t for t in titles))
 
 
 if __name__ == "__main__":

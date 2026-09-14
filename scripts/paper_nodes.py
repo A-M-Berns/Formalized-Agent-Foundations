@@ -1295,6 +1295,232 @@ def printed_extraction_declarations(text):
     return out
 
 
+# --- printed-global read off a text extraction (Safe Pareto Improvements) ------------
+#
+# Oesterheld & Conitzer, *Safe Pareto Improvements for Delegated Game Playing* (JAAMAS
+# 2022), has no arXiv record and no TeX in hand either, so — as for Condensation — the
+# committed source is a `pdftotext -layout` extraction of the PDF and the printed numbers
+# are read off its header lines.  What differs is the *counter discipline*, which is a
+# fact about the paper: Definitions carry their own global counter (`Definition 1` …
+# `Definition 8`), Assumptions their own (`Assumption 1`, `Assumption 2`), and Theorem,
+# Lemma, Proposition and Corollary **share one global counter** that never resets
+# (`Theorem 1`, `Lemma 2`, `Theorem 3`, `Lemma 4`, `Proposition 5`, … `Lemma 28`).  Node
+# ids are therefore `<Kind> <n>` with a bare integer, and the kind is part of the key:
+# `Lemma 2` and `Definition 2` are different nodes.
+#
+# Examples are set as propositions, headed `Proposition (Example) 5.`; the parenthetical
+# is a presentation choice, not a kind, and the node id is `Proposition 5`.  A titled
+# header carries its title in parentheses after the number — `Lemma 19 (path independence
+# of iterated strict dominance).`, `Lemma 27 ([12, Theorem 2]).` — and the trailing period
+# after the number (or after the title) is what separates a header from a cross-reference
+# ("Theorem 15, Case B." and "Assumption 1 to hold, …" open lines without it).
+#
+# Two things about this particular extraction that the parser must know:
+#
+# * **Page breaks are glued to content.**  The extractor emits the form feed `\x0c` as the
+#   first character of the next page's first line, not on a line of its own, and four
+#   headers (Theorem 1, Theorem 3, Corollary 14, Lemma 22) sit exactly there.  So the
+#   header pattern admits a leading `\x0c`, and a body line carrying one is content, not
+#   furniture — it is stripped, never skipped.  The only furniture is the centred page
+#   number on the line before it (there is no running head).  A continuation is *not*
+#   re-indented after a page break in this layout, so — unlike the Condensation parser —
+#   a paragraph indent right after a page break is believed.
+# * **There are no ligature slots.**  This extraction resolves `fi`/`ff`/`fl` to letters
+#   (the Condensation extraction does not), so the header pattern spells `Definition`
+#   plainly and `resolve_extraction_glyphs` is a no-op on it.  It is still applied, so the
+#   same glyph table governs both extraction-backed papers.
+#
+# **A node id is the *first* header carrying it.**  Lemma 4 is printed twice — in §4.4.2
+# and restated at the head of Appendix C — and one mid-paragraph cross-reference happens
+# to be header-shaped: "Assumption 1 (with or without Lemma 2.2). That is, …" inside the
+# proof of Lemma 21.  Both name a node already declared earlier in the paper, and both are
+# absorbed by keeping the first occurrence, which is the main-text statement in each
+# case.  The checker's expected-count guard is what makes this safe: a re-extraction that
+# manufactured a *new* id this way would change the count and fail.
+#
+# **Theorem 17 (Tennenholtz 2004) is not in the node set**, and that is expected.  Its
+# header is torn in two by a display-size delimiter — the extraction reads `Theorem` on
+# one line and `(︁ n 17 (Tennenholtz 2004 [55]). Let Γ = …` on the next — and it is a
+# cited external result the formalization does not carry (Proposition 18 is proved
+# directly).  Citing `Theorem 17` from Lean is therefore an INVALID NODE, which is the
+# right answer until someone decides to carry it; at that point this parser, not the
+# annotation, is what changes.
+#
+# The same `split("\n")` warning as above applies in principle; this extraction has no
+# `\x1c`–`\x1e` slots, but `extraction_lines` is used regardless so that it never
+# silently starts to matter.
+
+PRINTED_GLOBAL_KINDS = ("Definition", "Assumption", "Theorem", "Lemma", "Proposition",
+                        "Corollary")
+PRINTED_GLOBAL_HEADER = re.compile(
+    r"^\x0c?[ \t]*(" + "|".join(PRINTED_GLOBAL_KINDS) + r")"
+    r"((?:[ \t]*\(Example\))?)[ \t]+([0-9]+)((?:[ \t]*\([^)]*\))?)\.")
+# A bare integer, and *not* the first half of a dotted item reference: the paper cites
+# the items of Lemma 2 as `Lemma 2.2`, `Lemma 2.5`, and an annotation must name the node
+# (`Lemma 2`), so `Lemma 2.2` parses to nothing rather than silently to `Lemma 2`.
+PRINTED_GLOBAL_NODE_ID = re.compile(
+    r"(" + "|".join(PRINTED_GLOBAL_KINDS) + r")\s+([0-9]+)(?!\.?[0-9])")
+# Sectioning: numbered sections and subsections sit at the left margin (`1    Introduction`,
+# `3.1    Unilateral safe Pareto Improvements`, `4.4.1    Elimination`), appendices are
+# lettered (`A     Proof of Theorem 1 – …`, `D.2.1    The omnilateral SPI problem`), and
+# Appendix D's block is set two columns in.  A title may wrap onto a following line,
+# which the extractor indents well past the heading's own margin.
+# The gap between number and title is three to five columns; the numbered lines of the
+# paper's two algorithm boxes (` 3        Return True;`) are set with a wider one, which
+# is what keeps them out of the section index.
+PRINTED_GLOBAL_SECTION = re.compile(
+    r"^\x0c?([ \t]{0,2})([0-9]+(?:\.[0-9]+)*|[A-Z](?:\.[0-9]+)*)[ \t]{2,6}([A-Z][^\n]*?)[ \t]*$")
+PRINTED_GLOBAL_UNNUMBERED_HEADING = re.compile(
+    r"^\x0c?[ \t]*(Acknowledgments|References)[ \t]*$")
+# A fresh prose paragraph is indented three to six columns; display equations sit far to
+# the right, and the continuation lines of a statement in Appendix D's two-column-indented
+# block sit at two.  Enumerated items (`1.`, `(4.)`, `•`) are continuations of the
+# statement that introduces them, as in Definition 5.
+PRINTED_GLOBAL_PARAGRAPH = re.compile(r"^[ \t]{3,6}\S")
+PRINTED_GLOBAL_ITEM = re.compile(
+    r"^[ \t]{0,8}(?:\((?:[A-Za-z]{0,2}[0-9]+\.?|[ivxIVX]+)\)|[0-9]+\.[ \t]|[•–-][ \t])")
+PRINTED_GLOBAL_PROOF = re.compile(r"^\x0c?[ \t]*Proof\.")
+# Floats are set at the top of a page and end with their caption paragraph.  One statement
+# (Proposition 16) is interrupted by two figure pages and a table before it resumes; when
+# a statement crosses onto a page whose top carries a caption, the page is dropped through
+# the end of its *last* caption paragraph, and the statement resumes after it.
+PRINTED_GLOBAL_CAPTION = re.compile(r"^\x0c?[ \t]*(?:Figure|Table)[ \t]+[0-9]+:")
+PRINTED_GLOBAL_BIBLIOGRAPHY = re.compile(r"^[ \t]*\[[0-9]+\][ \t]")
+PRINTED_GLOBAL_MAX_LINES = 60
+
+
+def printed_global_node_sort_key(node_id):
+    """Sort by number within the shared counter, then by kind, so `Lemma 2` precedes
+    `Theorem 3` and `Definition 2` precedes `Definition 10`."""
+    kind, _, number = node_id.partition(" ")
+    # Definitions and Assumptions have their own counters; keep each kind's run together
+    # and the shared-counter results in printed order.
+    family = {"Definition": 0, "Assumption": 1}.get(kind, 2)
+    return (family, int(number or 0), kind)
+
+
+def printed_global_sections(text):
+    """`(offset, title)` for each numbered section, subsection and appendix, in order."""
+    lines = extraction_lines(text)
+    out = []
+    offset = 0
+    offsets = []
+    for line in lines:
+        offsets.append(offset)
+        offset += len(line) + 1
+    for idx, line in enumerate(lines):
+        m = PRINTED_GLOBAL_SECTION.match(line)
+        if m:
+            indent = len(m.group(1))
+            number, title = m.group(2), m.group(3).strip()
+            # A wrapped title: the next line is indented well past the heading's margin
+            # and is not itself a heading, a node header or a proof.
+            if idx + 1 < len(lines):
+                nxt = lines[idx + 1]
+                if (nxt.startswith(" " * (indent + 4)) and nxt.strip()
+                        and not PRINTED_GLOBAL_SECTION.match(nxt)
+                        and not PRINTED_GLOBAL_HEADER.match(nxt)
+                        and not PRINTED_GLOBAL_PROOF.match(nxt)):
+                    tail = nxt.strip()
+                    title = (title[:-1] + tail) if title.endswith("-") else title + " " + tail
+            label = ("Appendix %s" % number) if number[0].isalpha() else ("§%s" % number)
+            out.append((offsets[idx], "%s %s" % (label, title)))
+            continue
+        m = PRINTED_GLOBAL_UNNUMBERED_HEADING.match(line)
+        if m:
+            out.append((offsets[idx], m.group(1)))
+    return out
+
+
+def _printed_global_float_end(lines, page_start):
+    """If the page beginning at `page_start` carries floats, the index of the last line of
+    its last caption paragraph; otherwise `None`.
+
+    Every float in this extraction is set at the top of its page, with nothing but figure
+    content and table rows before its caption (a figure's axis label can land at the left
+    margin, so column position is not a usable test for prose).  A caption paragraph runs
+    to the next blank line — `Table 7:`'s wraps onto a second line.
+    """
+    page_end = page_start + 1
+    while page_end < len(lines) and not lines[page_end].startswith("\x0c"):
+        page_end += 1
+    last_caption_end = None
+    k = page_start
+    while k < page_end:
+        if PRINTED_GLOBAL_CAPTION.match(lines[k]):
+            while k + 1 < page_end and lines[k + 1].strip():
+                k += 1
+            last_caption_end = k
+        k += 1
+    return last_caption_end
+
+
+def printed_global_nodes(text):
+    """The paper's printed node ids, read off the extraction's header lines."""
+    return {node.id for node in printed_global_declarations(text).values()}
+
+
+def printed_global_declarations(text):
+    """Every numbered node with its printed statement, read off the extraction.
+
+    First occurrence wins (see the block comment above); the statement runs to the next
+    header, the proof, a sectioning line, the bibliography, or a fresh prose paragraph —
+    believed only where the statement so far has ended a sentence, since `-layout` also
+    indents a sentence resumed after an inline display.
+    """
+    lines = extraction_lines(text)
+    offsets, running = [], 0
+    for line in lines:
+        offsets.append(running)
+        running += len(line) + 1
+
+    furniture = _extraction_furniture(text)
+    starts = [(idx, m) for idx, m in
+              ((idx, PRINTED_GLOBAL_HEADER.match(line)) for idx, line in enumerate(lines))
+              if m and not furniture(lines[idx].lstrip("\x0c"))]
+
+    out = {}
+    for idx, m in starts:
+        kind = m.group(1)
+        number = m.group(3)
+        node_id = "%s %s" % (kind, number)
+        if node_id in out:
+            continue
+        title = (m.group(4) or "").strip().strip("()").strip()
+        body = [lines[idx][m.end():].strip()]
+        j = idx
+        while j + 1 < len(lines):
+            j += 1
+            if lines[j].startswith("\x0c"):
+                skip_to = _printed_global_float_end(lines, j)
+                if skip_to is not None:
+                    j = skip_to
+                    continue
+            following = lines[j].lstrip("\x0c")
+            if furniture(following):
+                continue
+            if (PRINTED_GLOBAL_HEADER.match(following)
+                    or PRINTED_GLOBAL_PROOF.match(following)
+                    or PRINTED_GLOBAL_SECTION.match(following)
+                    or PRINTED_GLOBAL_UNNUMBERED_HEADING.match(following)
+                    or PRINTED_GLOBAL_BIBLIOGRAPHY.match(following)
+                    or len(body) >= PRINTED_GLOBAL_MAX_LINES):
+                break
+            ended = next((chunk.rstrip() for chunk in reversed(body) if chunk.strip()), "")
+            if (PRINTED_GLOBAL_PARAGRAPH.match(following)
+                    and not PRINTED_GLOBAL_ITEM.match(following)
+                    and ended.rstrip("”’\"')").endswith((".", "!", "?", ":"))):
+                break
+            body.append(following)
+        # Runs of blank lines are page-layout residue (the space a page break or a dropped
+        # float leaves behind), not the paper's statement; one blank line is kept.
+        statement = re.sub(r"\n[ \t]*\n(?:[ \t]*\n)+", "\n\n", "\n".join(body))
+        out[node_id] = Node(node_id, kind, number, resolve_extraction_glyphs(title),
+                            resolve_extraction_glyphs(statement.strip("\n").rstrip()),
+                            offsets[idx])
+    return out
+
+
 SCHEMES = {
     "latex-label": {
         "node_id_re": LATEX_LABEL_NODE_ID,
@@ -1327,12 +1553,21 @@ SCHEMES = {
 # what the committed source physically is.  The two are independent, and the parser is
 # chosen by the pair: `printed-counter` over TeX emulates the counter, `printed-counter`
 # over a text extraction reads the printed numbers off the page.  Registry entries
-# without a `source_format` are TeX, which is the case for every paper but Condensation.
+# without a `source_format` are TeX, which is the case for every paper but the two
+# extraction-backed ones, Condensation and Safe Pareto Improvements.
 EXTRACTION_SCHEMES = {
     "printed-counter": {
         "node_id_re": PRINTED_EXTRACTION_NODE_ID,
         "source_nodes": printed_extraction_nodes,
         "declarations": printed_extraction_declarations,
+    },
+    # Global counters read off header lines (Safe Pareto Improvements): Definition and
+    # Assumption each on their own counter, Theorem/Lemma/Proposition/Corollary sharing
+    # one.  No TeX form of this scheme exists, so it has no `SCHEMES` twin.
+    "printed-global": {
+        "node_id_re": PRINTED_GLOBAL_NODE_ID,
+        "source_nodes": printed_global_nodes,
+        "declarations": printed_global_declarations,
     },
 }
 

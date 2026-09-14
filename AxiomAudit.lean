@@ -125,6 +125,7 @@ import CartesianFrames.Categorical
 import FiniteFactoredSets
 import Condensation
 import FactoredSpaces
+import SafeParetoImprovements
 
 open Lean Elab Command in
 /-- Fail elaboration unless every named declaration exists and depends on no axioms
@@ -4236,6 +4237,912 @@ open FactoredSpaces in
   verts chain head last nodup
 #assert_fields Digraph.Walk
   verts chain head last
+
+/-! ## Safe Pareto Improvements (Oesterheld & Conitzer 2022) — endpoint inventory
+
+Nodes are cited by printed kind and global number (`Paper node: \`Theorem 3\``) read off
+the committed text extraction
+`SafeParetoImprovements/notes/oesterheld-conitzer-2022-spi.txt`;
+`scripts/check-safe-pareto-improvements-nodes.py` enforces validity, anchoring, and that
+every annotated declaration appears in one of the two blocks below.  The paper numbers
+on global counters that never reset — Definitions on one, Assumptions on another,
+Theorem/Lemma/Proposition/Corollary sharing a third — so the kind is part of the key, and
+the checker asserts the extraction yields exactly the paper's 37 parseable nodes
+(`Theorem 17`, a cited external result whose header the extraction tears in two, is
+deliberately outside the set).
+
+Status: **every in-scope node except Theorem 15 carried**, registered `in-progress`.  The
+§3–§4 spine (Definitions 1–5, Lemma 2, **Theorem 3**, Assumptions 1–2, Lemma 4, Lemmas 19,
+21, 22, Propositions 5–8), Appendix A (**Theorem 1**, Proposition 18), §5 except Theorem 15
+(Definitions 6–7, Lemma 11, Propositions 12 and 16, Lemma 13, Corollary 14), and the
+complexity nodes as qualified nodes (Theorem 9, Proposition 10, Propositions 23–26,
+Definition 8, Lemma 28) are stated and proved at the certainty-filter level
+(`dd:certainty`).  There is **no `sorry` anywhere in `SafeParetoImprovements/`**, so the
+`SPI-PENDING` block below is empty and the whole annotated surface is in the
+`#assert_axioms_clean` block.  Substrate without a `Paper node:` line (the probability-one
+realization, the canonical reduction, the book representatives proving Assumptions 1 and 2
+jointly satisfiable, `dd:book`) is inventoried where it is a non-vacuity witness or a
+consumer-facing tool, and the tranche-F files are inventoried in full; the inclusion rule
+for older supporting lemmas is editorial.  The consumer API `SafeParetoImprovements/API.lean`
+and its client tests `APITests/SafeParetoImprovements.lean` are in place and registered.
+See `SafeParetoImprovements/README.md`.
+
+This is **not** yet the paper being `completed` in `scripts/papers.py`: that status waits on
+the ruling that Theorem 15's deferral is the final scope, on the human read-through, and
+on closing the final fresh-context audit (round 7 of the harness).
+
+**Why there are two blocks.**  Same contract as Condensation's (see the preamble of the
+CONDENSATION-INVENTORY block above for the full rationale): an endpoint whose *statement*
+is final and carries a `Paper node:` line but whose proof is still `sorry` cannot be listed
+in `#assert_axioms_clean` — that command exists to catch exactly a `sorryAx` dependency —
+and dropping the annotation would be a lie about the statement's provenance.  So the
+`SPI-INVENTORY` block below is the ordinary axiom gate, and the `SPI-PENDING` block that
+follows it is **pure Lean comment** naming, one per line with a reason, every annotated
+endpoint that is not yet axiom-clean, with a `-- SECTION: consumers (un-annotated)` half
+for declarations that depend on a `sorry` without being endpoints.
+`scripts/check-safe-pareto-improvements-nodes.py` accepts an annotated declaration listed
+in *either* block and fences the staging with the same four hard failures (a name in both
+blocks, a stale entry, a malformed line, a non-empty block once the paper is
+`completed`).  **Moving a name from the pending block to the inventory block is what
+"proved this endpoint" means**; the two edits belong in the same commit as the proof. -/
+
+-- SPI-INVENTORY-BEGIN
+#assert_axioms_clean
+  -- §3: Definitions 1–2 (SafeParetoImprovements/Play.lean), at the certainty-filter level.
+  SafeParetoImprovements.Play.IsSPI SafeParetoImprovements.Play.IsStrictSPI
+  SafeParetoImprovements.Game.Unilateral SafeParetoImprovements.Play.IsUnilateralSPI
+  -- §4.2–§4.3: Definition 3, Lemma 2 items 1–7, Definition 4, Theorem 3
+  -- (SafeParetoImprovements/Correspondence.lean).
+  SafeParetoImprovements.Play.Corresponds
+  SafeParetoImprovements.Play.corresponds_id SafeParetoImprovements.Play.Corresponds.inv
+  SafeParetoImprovements.Play.Corresponds.trans
+  SafeParetoImprovements.Play.Corresponds.mono_rel
+  SafeParetoImprovements.Play.corresponds_allRel
+  SafeParetoImprovements.Play.Corresponds.ne_of_at_eq_empty
+  SafeParetoImprovements.Play.Corresponds.ne_of_inv_at_eq_empty
+  SafeParetoImprovements.Play.ParetoImprovingCorrespondence
+  SafeParetoImprovements.Play.isSPI_iff_exists_paretoImprovingCorrespondence
+  -- §4.4: Assumptions 1–2 as predicates (SafeParetoImprovements/Assumptions.lean).
+  SafeParetoImprovements.Play.SatisfiesA1 SafeParetoImprovements.Play.SatisfiesA2
+  -- §4.4.2 / Appendix C: Lemma 4, weak and strict forms (SafeParetoImprovements/Isomorphism.lean).
+  SafeParetoImprovements.GameIso.paretoImproving_of_paretoImproving
+  SafeParetoImprovements.GameIso.strictlyParetoImproving_of_strictlyParetoImproving
+  -- Appendix D.1: Lemma 19 and Lemma 20 (SafeParetoImprovements/Reduction.lean); the
+  -- diamond property in the printed shape (erratum D20's correction) and in the shape the
+  -- Church-Rosser argument consumes.
+  SafeParetoImprovements.Game.isStrictlyDominated_erase
+  SafeParetoImprovements.Game.elim_diamond SafeParetoImprovements.Game.elim_diamond_reflGen
+  -- Every remaining public declaration of the library, named so that the gate's coverage
+  -- is literal rather than transitive: the §2 vocabulary (profiles, `EqOn`, subset games,
+  -- dominance, `Reduced`), the reduction machinery, the realization iffs and support of
+  -- `Representatives`, the isomorphism transport lemmas, the correlated-strategy and
+  -- token helpers, the polytope substrate, and the two-player table lemmas.
+  SafeParetoImprovements.Game.elimRel
+  SafeParetoImprovements.Play.SatisfiesA1.ne_of_isStrictlyDominated
+  SafeParetoImprovements.Play.SatisfiesA1.play_erase
+  SafeParetoImprovements.Play.exists_paretoImproving_corresponds_of_assumption2
+  SafeParetoImprovements.Play.paretoImprovingCorrespondence_of_iso
+  SafeParetoImprovements.Game.Isomorphic.refl SafeParetoImprovements.Game.Isomorphic.trans
+  SafeParetoImprovements.Game.Isomorphic.symm SafeParetoImprovements.isoSetoid
+  SafeParetoImprovements.IsoClass SafeParetoImprovements.Game.cls
+  SafeParetoImprovements.Game.cls_eq_of_isomorphic SafeParetoImprovements.IsoClass.rep
+  SafeParetoImprovements.Game.isomorphic_rep SafeParetoImprovements.Game.chosenIso
+  SafeParetoImprovements.Book.playReduced SafeParetoImprovements.Book.playReduced_mem
+  SafeParetoImprovements.Book.chosenIso_symm_map_page
+  SafeParetoImprovements.Book.measurableSet_fiber SafeParetoImprovements.Book.toRepresentatives
+  SafeParetoImprovements.Representatives.fiber
+  SafeParetoImprovements.Representatives.measurableSet_fiber'
+  SafeParetoImprovements.Representatives.mem_support_iff
+  SafeParetoImprovements.Representatives.measureReal_fiber_eq_zero_of_not_mem_support
+  SafeParetoImprovements.Representatives.fiber_disjoint
+  SafeParetoImprovements.Representatives.condExp_isProbabilityMeasure
+  SafeParetoImprovements.Representatives.ae_play_eq_cond
+  SafeParetoImprovements.Representatives.ae_cond_of_ae
+  SafeParetoImprovements.Representatives.measurable_comp_play_pi
+  SafeParetoImprovements.Representatives.integrable_comp_play_pi
+  SafeParetoImprovements.Representatives.condExp_mono
+  SafeParetoImprovements.Representatives.integral_comp_play_eq_sum
+  SafeParetoImprovements.Representatives.sum_measureReal_fiber
+  SafeParetoImprovements.Game.u_mem_improvementSet
+  SafeParetoImprovements.Game.convex_improvementSet
+  SafeParetoImprovements.Game.isCompact_improvementSet
+  SafeParetoImprovements.Representatives.achievable_subset_feasible
+  SafeParetoImprovements.Game.Correlated.pure
+  SafeParetoImprovements.Game.Correlated.pure_payoff SafeParetoImprovements.Game.Correlated.mix
+  SafeParetoImprovements.Game.Correlated.mix_payoff SafeParetoImprovements.Game.hasRoom_iff
+  SafeParetoImprovements.Game.tokenMap SafeParetoImprovements.Game.tokenMap_injOn
+  SafeParetoImprovements.Game.tokenMap_not_mem SafeParetoImprovements.Game.untoken
+  SafeParetoImprovements.Game.untoken_tokenMap SafeParetoImprovements.Game.allRel
+  SafeParetoImprovements.Game.partialId SafeParetoImprovements.Play.Corresponds.mono_rel'
+  SafeParetoImprovements.Game.Step.isSubsetGameOf_left
+  SafeParetoImprovements.Game.Step.isSubsetGameOf_right
+  SafeParetoImprovements.Game.Step.mem_of_rel
+  SafeParetoImprovements.Game.Deriv.isSubsetGameOf_left
+  SafeParetoImprovements.Game.Deriv.isSubsetGameOf_right
+  SafeParetoImprovements.Game.Deriv.mem_of_rel SafeParetoImprovements.Game.Deriv.comp_partialId
+  SafeParetoImprovements.Game.Deriv.partialId_comp SafeParetoImprovements.Game.Deriv.trans
+  SafeParetoImprovements.Game.Step.comp_partialId SafeParetoImprovements.Game.Deriv.single
+  SafeParetoImprovements.Game.Deriv.partialId_comp_elimRel
+  SafeParetoImprovements.Game.Deriv.elimRel_inv_comp_partialId
+  SafeParetoImprovements.Game.Deriv.ofElimStar SafeParetoImprovements.Game.Deriv.ofElimStar_rev
+  SafeParetoImprovements.Game.Deriv.exists_iso SafeParetoImprovements.Game.Deriv.normalRel
+  SafeParetoImprovements.Game.Deriv.partialId_comp_rel_comp_partialId
+  SafeParetoImprovements.Game.Deriv.normal SafeParetoImprovements.Game.ParetoImprovingFor
+  SafeParetoImprovements.Game.exists_paretoImproving_deriv_iff
+  SafeParetoImprovements.Game.shiftReduce SafeParetoImprovements.Game.shiftReduce_reduced
+  SafeParetoImprovements.Game.shiftReduceIso SafeParetoImprovements.Game.bumpPayoff
+  SafeParetoImprovements.Game.bumpPayoff_reduced SafeParetoImprovements.Game.bumpPayoffIso
+  SafeParetoImprovements.Play.SatisfiesA1.play_elimStar
+  SafeParetoImprovements.Play.SatisfiesA1.play_reduce
+  SafeParetoImprovements.Game.profiles SafeParetoImprovements.Game.profilesFinset
+  SafeParetoImprovements.Game.profiles_nonempty SafeParetoImprovements.Game.payoff
+  SafeParetoImprovements.Game.EqOn.refl SafeParetoImprovements.Game.EqOn.symm
+  SafeParetoImprovements.Game.EqOn.trans SafeParetoImprovements.Game.IsSubsetGameOf
+  SafeParetoImprovements.Game.IsSubsetGameOf.refl
+  SafeParetoImprovements.Game.IsSubsetGameOf.trans
+  SafeParetoImprovements.Game.IsSubsetGameOf.profiles_subset
+  SafeParetoImprovements.Game.restrict SafeParetoImprovements.Game.restrict_isSubsetGameOf
+  SafeParetoImprovements.Game.erase SafeParetoImprovements.Game.erase_isSubsetGameOf
+  SafeParetoImprovements.Game.ParetoOptimalIn SafeParetoImprovements.Game.toStrategic
+  SafeParetoImprovements.Game.ofStrategicProfile
+  SafeParetoImprovements.Game.ofStrategicProfile_mem
+  SafeParetoImprovements.Game.toStrategicProfile
+  SafeParetoImprovements.Game.ofStrategicProfile_deviate
+  SafeParetoImprovements.Game.StrictlyDominates
+  SafeParetoImprovements.Game.strictlyDominates_iff
+  SafeParetoImprovements.Game.IsStrictlyDominated
+  SafeParetoImprovements.Game.IsStrictlyDominated.mem
+  SafeParetoImprovements.Game.IsStrictlyDominated.erase_nonempty
+  SafeParetoImprovements.Game.strictlyDominates_of_eqOn
+  SafeParetoImprovements.Game.EqOn.reduced_iff SafeParetoImprovements.Prog.execAt_play
+  SafeParetoImprovements.Prog.execAt_delegate
+  SafeParetoImprovements.Prog.execAt_ifAllSame_of_all
+  SafeParetoImprovements.Prog.execAt_ifAllSame_of_ne
+  SafeParetoImprovements.Prog.measurableSet_coord_fiber
+  SafeParetoImprovements.Prog.measurable_execAt SafeParetoImprovements.Game.nonempty_universe
+  SafeParetoImprovements.Game.Isomorphic SafeParetoImprovements.GameIso.map
+  SafeParetoImprovements.GameIso.map_mem SafeParetoImprovements.GameIso.affine'
+  SafeParetoImprovements.GameIso.map_injOn SafeParetoImprovements.GameIso.map_surjOn
+  SafeParetoImprovements.GameIso.map_bijOn SafeParetoImprovements.GameIso.rel
+  SafeParetoImprovements.GameIso.refl SafeParetoImprovements.GameIso.trans
+  SafeParetoImprovements.GameIso.symm SafeParetoImprovements.GameIso.symm_map_map
+  SafeParetoImprovements.GameIso.map_symm_map SafeParetoImprovements.GameIso.toFun_symm_toFun
+  SafeParetoImprovements.GameIso.symm_toFun_mem
+  SafeParetoImprovements.GameIso.payoff_eq_of_self
+  SafeParetoImprovements.GameIso.ParetoImproving
+  SafeParetoImprovements.GameIso.StrictlyParetoImproving
+  SafeParetoImprovements.Play.IsStrictSPI.isSPI SafeParetoImprovements.Play.isSPI_self
+  SafeParetoImprovements.IsPolytope.of_finite SafeParetoImprovements.IsPolytope.singleton
+  SafeParetoImprovements.IsPolytope.zero SafeParetoImprovements.IsPolytope.smul
+  SafeParetoImprovements.IsPolytope.add SafeParetoImprovements.IsPolytope.convex
+  SafeParetoImprovements.crossing SafeParetoImprovements.crossing_mem_segment
+  SafeParetoImprovements.apply_crossing SafeParetoImprovements.Game.Mixed
+  SafeParetoImprovements.Game.pureMixed SafeParetoImprovements.Game.pureMixed_val
+  SafeParetoImprovements.Game.expected SafeParetoImprovements.Game.expected_eq
+  SafeParetoImprovements.Game.expected_pure SafeParetoImprovements.Game.abs_expected_le
+  SafeParetoImprovements.Game.continuous_expected SafeParetoImprovements.Game.bestValue
+  SafeParetoImprovements.Game.continuous_bestValue
+  SafeParetoImprovements.Game.expected_le_bestValue
+  SafeParetoImprovements.Game.exists_isMinOn_bestValue
+  SafeParetoImprovements.Game.isMinOn_minimax SafeParetoImprovements.Game.sum_prod_mixed
+  SafeParetoImprovements.Game.expected_update_pure_le
+  SafeParetoImprovements.ProgramGame.measurable_expected_exec
+  SafeParetoImprovements.ProgramGame.integrable_expected_exec
+  SafeParetoImprovements.ProgramGame.Plays.exec_eq SafeParetoImprovements.Game.ext'
+  SafeParetoImprovements.Game.strictlyDominates_of_subset
+  SafeParetoImprovements.Game.StrictlyDominates.trans
+  SafeParetoImprovements.Game.StrictlyDominates.ne SafeParetoImprovements.Game.erase_S_apply
+  SafeParetoImprovements.Game.erase_S_of_ne SafeParetoImprovements.Game.Elim
+  SafeParetoImprovements.Game.Elim.isSubsetGameOf SafeParetoImprovements.Game.Elim.u_eq
+  SafeParetoImprovements.Game.ElimStar.isSubsetGameOf SafeParetoImprovements.Game.ElimStar.u_eq
+  SafeParetoImprovements.Game.erase_erase_comm SafeParetoImprovements.Game.Reduced.not_elim
+  SafeParetoImprovements.Game.Reduced.eq_of_elimStar SafeParetoImprovements.Game.reduced_unique
+  SafeParetoImprovements.Game.size SafeParetoImprovements.Game.size_erase_lt
+  SafeParetoImprovements.Game.pickDominated SafeParetoImprovements.Game.eraseStep
+  SafeParetoImprovements.Game.elim_eraseStep SafeParetoImprovements.Game.size_eraseStep_lt
+  SafeParetoImprovements.Game.reduce SafeParetoImprovements.Game.reduce_of_reduced
+  SafeParetoImprovements.Game.reduce_of_not_reduced SafeParetoImprovements.Game.elimStar_reduce
+  SafeParetoImprovements.Game.reduce_reduced
+  SafeParetoImprovements.Game.reduce_eq_of_reduced_of_elimStar
+  SafeParetoImprovements.Game.reduce_erase SafeParetoImprovements.Game.reduce_isSubsetGameOf
+  SafeParetoImprovements.Representatives.play SafeParetoImprovements.Representatives.certainty
+  SafeParetoImprovements.Representatives.eventually_certainty_iff
+  SafeParetoImprovements.Representatives.frequently_certainty_iff
+  SafeParetoImprovements.Representatives.isSPI_iff
+  SafeParetoImprovements.Representatives.isSPI_iff_of_subset
+  SafeParetoImprovements.Representatives.isStrictSPI_iff
+  SafeParetoImprovements.Representatives.corresponds_iff
+  SafeParetoImprovements.Representatives.support
+  SafeParetoImprovements.Representatives.support_subset_profiles
+  SafeParetoImprovements.Two.pair SafeParetoImprovements.Two.eq_pair
+  SafeParetoImprovements.Two.mem_profiles_iff SafeParetoImprovements.Two.pair_mem_profiles_iff
+  SafeParetoImprovements.Two.strictlyDominates_one_iff
+  SafeParetoImprovements.Two.strictlyDominates_two_iff
+  SafeParetoImprovements.Two.not_isStrictlyDominated_one_of_bestResponse
+  SafeParetoImprovements.Two.not_isStrictlyDominated_two_of_bestResponse
+  SafeParetoImprovements.Two.reduced_iff
+  -- §4.6 / Appendix D.1: Definition 5 as a derivation system (moves, chains, the three
+  -- decision predicates as printed and with the non-triviality clause repaired per
+  -- erratum D13), Lemma 21 (normal form) and Lemma 22 (symmetry-free chain)
+  -- (SafeParetoImprovements/Derivation.lean).
+  SafeParetoImprovements.Game.Step SafeParetoImprovements.Game.Deriv
+  SafeParetoImprovements.Game.Deriv.exists_normalForm
+  SafeParetoImprovements.Game.exists_paretoImproving_normalForm
+  SafeParetoImprovements.Game.SPIDecisionPrinted
+  SafeParetoImprovements.Game.StrictSPIDecisionPrinted
+  SafeParetoImprovements.Game.UnilateralSPIDecisionPrinted
+  SafeParetoImprovements.Game.SPIDecision SafeParetoImprovements.Game.StrictSPIDecision
+  SafeParetoImprovements.Game.UnilateralSPIDecision
+  SafeParetoImprovements.Game.StrictUnilateralSPIDecision
+  SafeParetoImprovements.Game.StrictUnilateralSPIDecision.strict
+  SafeParetoImprovements.Game.StrictUnilateralSPIDecision.unilateral
+  SafeParetoImprovements.Game.StrictSPIDecision.spi SafeParetoImprovements.Game.UnilateralSPIDecision.spi
+  SafeParetoImprovements.Game.exists_strictParetoImproving_deriv_iff
+  -- §4.5: the four worked examples, Propositions 5, 6 (both clauses), 7 and 8
+  -- (SafeParetoImprovements/Examples/PrisonersDilemma.lean, DemandGame.lean,
+  -- Temptation.lean, ComplicatedTemptation.lean).
+  SafeParetoImprovements.Examples.prisonersDilemma_isStrictSPI
+  SafeParetoImprovements.Examples.demandGame_isSPI
+  SafeParetoImprovements.Examples.demandGame_isStrictSPI
+  SafeParetoImprovements.Examples.temptation_isStrictSPI
+  SafeParetoImprovements.Examples.temptation_isUnilateralSPI
+  SafeParetoImprovements.Examples.complicatedTemptation_isUnilateralSPI
+  -- Non-vacuity witnesses.  These are not paper nodes: they are
+  -- the inhabitants that make the propositions' hypotheses -- and the `Representatives`
+  -- structure -- demonstrably satisfiable, so they are axiom-checked alongside the claims
+  -- they support (SafeParetoImprovements/Book.lean, Examples/Witnesses.lean).
+  SafeParetoImprovements.exists_representatives_satisfiesA1_satisfiesA2
+  SafeParetoImprovements.Book.prescribed SafeParetoImprovements.Book.prescribed_play
+  SafeParetoImprovements.Examples.demandGame.reduce_eq
+  SafeParetoImprovements.Examples.prisonersDilemma_isStrictSPI_witnessed
+  SafeParetoImprovements.Examples.demandGame_isSPI_witnessed
+  SafeParetoImprovements.Examples.demandGame_strictSPI_hypotheses_satisfiable
+  SafeParetoImprovements.Examples.demandGame_isStrictSPI_witnessed
+  SafeParetoImprovements.Examples.temptation_isStrictSPI_witnessed
+  SafeParetoImprovements.Examples.complicatedTemptation_isUnilateralSPI_witnessed
+  SafeParetoImprovements.Examples.unitRepresentatives
+  -- The "yes" instances of the repaired Definition 5 predicates: without these
+  -- the repaired non-triviality clause could be uniformly false, and the payoff-shift
+  -- witnesses of erratum D13 do not serve it (they leave `reduce.S` unchanged).  With
+  -- `not_spiDecision_of_card_le_one` they bracket the repaired predicates on both sides.
+  SafeParetoImprovements.Examples.complicatedTemptation.reduce_eq
+  SafeParetoImprovements.Examples.complicatedTemptationSPI.reduce_eq
+  SafeParetoImprovements.Examples.demandGame_spiDecision
+  SafeParetoImprovements.Examples.demandGame_strictSPIDecision
+  SafeParetoImprovements.Examples.complicatedTemptation_unilateralSPIDecision
+  -- The page-varying book and the witness that `Play.isStrictSPI_of_deriv`'s side
+  -- condition is satisfiable jointly with Assumptions 1 and 2: on a one-point
+  -- sample space no play family reaches two distinct reduced outcomes, so the
+  -- deterministic book cannot discharge it.
+  SafeParetoImprovements.Book.varying SafeParetoImprovements.Book.varying_play_eq
+  SafeParetoImprovements.exists_play_satisfiesA1_satisfiesA2_hits
+  SafeParetoImprovements.Examples.demandGame_isStrictSPI_of_deriv_witnessed
+  -- The `EqOn`-invariance fact: under Assumption 2 no play family can
+  -- make one presentation of a game a strict SPI on another *`EqOn`-equal, and reduced*,
+  -- presentation (Assumption 2 quantifies over games without strictly dominated actions,
+  -- so it says nothing about a non-reduced `EqOn`-equal pair -- the underlying
+  -- `GameIso.payoff_eq_of_eqOn` is unconditional).  (SafeParetoImprovements/
+  -- Assumptions.lean, Isomorphism.lean).
+  SafeParetoImprovements.GameIso.ofEqOn SafeParetoImprovements.GameIso.payoff_eq_of_eqOn
+  SafeParetoImprovements.Play.SatisfiesA2.not_isStrictSPI_of_eqOn
+  -- The joint-satisfiability theorem for Assumptions 1 and 2 (§4.4.3, `dd:book`) and the
+  -- book it is built from: the declaration that keeps every
+  -- "under Assumptions 1 and 2" node from being vacuous.
+  SafeParetoImprovements.Book.toPlay SafeParetoImprovements.Book.const
+  SafeParetoImprovements.Book.satisfiesA1 SafeParetoImprovements.Book.satisfiesA2
+  SafeParetoImprovements.exists_play_satisfiesA1_satisfiesA2
+  -- The `ω`-dependent prescribed book: `Book.prescribed` is its constant case,
+  -- and it is what makes a *random* `Π` available to the Theorem 1 witness.
+  SafeParetoImprovements.Book.prescribedRandom SafeParetoImprovements.Book.prescribedRandom_play
+  -- Soundness of Definition 5's derivations for the three SPI notions (`dd:derivation`),
+  -- and the erratum-D13 witnesses: the printed decision predicates are
+  -- constant-true, the repaired one has a "no" instance (SafeParetoImprovements/Derivation.lean).
+  SafeParetoImprovements.Play.isSPI_of_deriv SafeParetoImprovements.Play.isUnilateralSPI_of_deriv
+  SafeParetoImprovements.Play.isStrictSPI_of_deriv
+  SafeParetoImprovements.Game.spiDecisionPrinted_of_nonempty
+  SafeParetoImprovements.Game.unilateralSPIDecisionPrinted_of_reduced
+  SafeParetoImprovements.Game.not_spiDecision_of_card_le_one
+  -- Appendix A (SafeParetoImprovements/ProgramGame.lean, Instruction.lean,
+  -- `dd:program-game`, `dd:exec-kernel`, `dd:code-eq`): threat points and the minimax
+  -- profile, the program-game interface with program equilibrium as EconCSLib Nash,
+  -- Proposition 18 over the interface, the instruction language with its realization,
+  -- Algorithm 2, and the two paper nodes.
+  SafeParetoImprovements.Game.threatPoint SafeParetoImprovements.Game.minimax
+  SafeParetoImprovements.Game.bestValue_minimax SafeParetoImprovements.Game.threatPoint_le_bestValue
+  SafeParetoImprovements.Game.expected_minimax_le_threatPoint
+  SafeParetoImprovements.Game.threatPoint_le_of_bestResponse
+  SafeParetoImprovements.Game.le_expected_update_pure
+  SafeParetoImprovements.Game.le_threatPoint_of_guarantee
+  SafeParetoImprovements.Representatives.measurable_comp_play
+  SafeParetoImprovements.Representatives.integrable_comp_play
+  SafeParetoImprovements.ProgramGame SafeParetoImprovements.ProgramGame.payoff
+  SafeParetoImprovements.ProgramGame.toStrategic SafeParetoImprovements.ProgramGame.IsProgramEquilibrium
+  SafeParetoImprovements.ProgramGame.isProgramEquilibrium_iff SafeParetoImprovements.ProgramGame.Plays
+  SafeParetoImprovements.ProgramGame.payoff_of_plays
+  SafeParetoImprovements.ProgramGame.isProgramEquilibrium_of_algorithm2
+  SafeParetoImprovements.Prog SafeParetoImprovements.Prog.execAt SafeParetoImprovements.Prog.programGame
+  SafeParetoImprovements.Prog.algorithm2 SafeParetoImprovements.Prog.plays_algorithm2
+  SafeParetoImprovements.Prog.exec_update_algorithm2
+  SafeParetoImprovements.Prog.algorithm2_isProgramEquilibrium
+  SafeParetoImprovements.Prog.exists_programEquilibrium_plays
+  -- §5.1 (SafeParetoImprovements/Coordination.lean, `dd:feasible`, `dd:room`): the
+  -- feasible set and its convex-hull description, token games with Definition 6, room and
+  -- the token copy with its natural isomorphism, Lemma 11 as the LP characterization.
+  SafeParetoImprovements.Game.Correlated SafeParetoImprovements.Game.Correlated.payoff
+  SafeParetoImprovements.Game.Correlated.toStdSimplex SafeParetoImprovements.Game.Correlated.ofStdSimplex
+  SafeParetoImprovements.Game.Correlated.ofStdSimplex_toStdSimplex
+  SafeParetoImprovements.Game.Correlated.toStdSimplex_ofStdSimplex
+  SafeParetoImprovements.Game.Correlated.toStdSimplex_injective
+  SafeParetoImprovements.Game.feasible SafeParetoImprovements.Game.u_mem_feasible
+  SafeParetoImprovements.Game.convex_feasible SafeParetoImprovements.Game.feasible_eq_convexHull
+  SafeParetoImprovements.Game.lpObjective SafeParetoImprovements.Game.paretoOptimalIn_feasible_iff
+  SafeParetoImprovements.TokenGame SafeParetoImprovements.TokenGame.IsSPI
+  SafeParetoImprovements.TokenGame.IsStrictSPI
+  -- Room is parameterized by the set to AVOID: `HasRoom` is the `B := Γ.S` case,
+  -- and it is `HasRoomOutside` that §5 needs, since every construction tokenizes
+  -- `Γ.reduce` but must be fresh for `Γ`.  `hasRoomOutside_of_infinite` is the uniform
+  -- source of room the §5 example universes `X ⊕ ℕ` discharge it by.
+  SafeParetoImprovements.Game.HasRoomOutside SafeParetoImprovements.Game.HasRoom
+  SafeParetoImprovements.Game.hasRoomOutside_of_infinite
+  SafeParetoImprovements.Game.tokenCopy
+  SafeParetoImprovements.Game.tokenCopy_fresh SafeParetoImprovements.Game.tokenIso
+  SafeParetoImprovements.Game.tokenCopy_u_map
+  -- Reducedness transports along an isomorphism (SafeParetoImprovements/Isomorphism.lean):
+  -- load-bearing for every "the representatives play the token copy" argument, since
+  -- `Book.playReduced` reduces first.
+  SafeParetoImprovements.Game.Reduced.of_iso
+  -- §5.2 (SafeParetoImprovements/PerfectCoordination.lean, RULINGS 7/10/11): Definition 7,
+  -- the reassignment construction along Assumption 2's isomorphism, Proposition 12 in both
+  -- directions and as the paper's iff; two-sided witnesses (Examples/DecisionWitnesses.lean).
+  SafeParetoImprovements.Play.StrictPerfectCoordinationSPIDecision
+  SafeParetoImprovements.Game.ExactCopy SafeParetoImprovements.Game.ExactCopy.isomorphic
+  SafeParetoImprovements.Game.ExactCopy.u_map SafeParetoImprovements.Game.exactCopy_tokenCopy
+  SafeParetoImprovements.TokenGame.reassign SafeParetoImprovements.Play.exists_tokenGame_ue_eq
+  SafeParetoImprovements.Representatives.exists_mem_support_of_frequently
+  SafeParetoImprovements.Representatives.exists_support_not_paretoOptimal_of_strictSPI
+  SafeParetoImprovements.Representatives.exists_strictSPI_of_support_not_paretoOptimal
+  SafeParetoImprovements.Representatives.strictPerfectCoordinationSPIDecision_iff
+  SafeParetoImprovements.Examples.coin_ne_zero_iff
+  SafeParetoImprovements.Examples.conflictGame_strictPerfectCoordinationSPIDecision
+  SafeParetoImprovements.Examples.chicken_support_paretoOptimal
+  SafeParetoImprovements.Examples.chicken_not_strictPerfectCoordinationSPIDecision
+  -- §5.3 (SafeParetoImprovements/Characterization.lean, Polytope.lean; RULINGS 10/11/12,
+  -- errata D6/D7): conditional expectation on the play's fibers, Lemma 13, Corollary 14
+  -- (formula, convexity, compactness, polytope clause) and the polytope substrate.
+  SafeParetoImprovements.Representatives.condExp SafeParetoImprovements.Representatives.tokenValue
+  SafeParetoImprovements.Representatives.condExp_comp_play
+  SafeParetoImprovements.Representatives.integral_eq_sum_condExp
+  SafeParetoImprovements.Representatives.condExp_mem_feasible
+  SafeParetoImprovements.Representatives.le_condExp_of_isSPI
+  SafeParetoImprovements.Representatives.exists_reassignment_condExp_eq
+  SafeParetoImprovements.Representatives.achievable SafeParetoImprovements.Game.improvementSet
+  SafeParetoImprovements.Representatives.improvementSum
+  SafeParetoImprovements.Representatives.achievable_eq_improvementSum
+  SafeParetoImprovements.Representatives.convex_achievable
+  SafeParetoImprovements.Representatives.isCompact_achievable
+  SafeParetoImprovements.Representatives.isPolytope_achievable
+  SafeParetoImprovements.Game.isClosed_feasible SafeParetoImprovements.Game.isCompact_feasible
+  SafeParetoImprovements.Game.isPolytope_feasible SafeParetoImprovements.Game.isPolytope_improvementSet
+  SafeParetoImprovements.IsPolytope SafeParetoImprovements.IsPolytope.inter_halfspace
+  SafeParetoImprovements.IsPolytope.inter_Ici SafeParetoImprovements.IsPolytope.finsetSum
+  -- Proposition 16 with the paper's own witness (SafeParetoImprovements/Examples/Chicken.lean):
+  -- Table 7 over `CAct ⊕ ℕ` (`dd:room`, RULING 13 -- over the bare `CAct` the game uses its
+  -- whole universe and `TokenGame chicken` is EMPTY, so the impossibility clause was
+  -- vacuous), its reduction, the fair-coin representatives, the two
+  -- supporting half-planes, and the label-free kernel the impossibility actually runs on.
+  SafeParetoImprovements.Examples.coin SafeParetoImprovements.Examples.integral_coin
+  SafeParetoImprovements.Examples.ae_coin_iff
+  SafeParetoImprovements.Examples.chicken SafeParetoImprovements.Examples.chicken.reduce_eq
+  SafeParetoImprovements.Examples.chicken.hasRoom
+  SafeParetoImprovements.Examples.chicken.feasible_le₁ SafeParetoImprovements.Examples.chicken.feasible_le₂
+  SafeParetoImprovements.Examples.chickenRepresentatives
+  SafeParetoImprovements.Examples.chickenRepresentatives_play
+  SafeParetoImprovements.Examples.chickenRepresentatives_integral
+  SafeParetoImprovements.Examples.chicken_no_feasible_dominating_of_mean_cc
+  SafeParetoImprovements.Examples.chicken_no_perfectCoordinationSPI
+  -- Non-vacuity and contrast for Proposition 16's quantifier: token games
+  -- for `chicken` exist at every finite size, Definition 6 fails of one of them, and the
+  -- existential over `Π` is essential -- other Assumption-1/2 representatives over the SAME
+  -- game DO admit a perfect-coordination SPI with expectation `u(c, c) = (3, 3)`.
+  SafeParetoImprovements.Examples.chickenToken33
+  SafeParetoImprovements.Examples.nonempty_tokenGame_chicken
+  SafeParetoImprovements.Examples.chickenTokenOfSize
+  SafeParetoImprovements.Examples.chickenTokenOfSize_card
+  SafeParetoImprovements.Examples.chickenToken33_not_isSPI
+  SafeParetoImprovements.Examples.chickenRepresentativesBB
+  SafeParetoImprovements.Examples.chickenRepresentativesBB_play
+  SafeParetoImprovements.Examples.chicken_spi_for_other_representatives
+  -- The positive side of Definition 6 (SafeParetoImprovements/Examples/TokenWitnesses.lean):
+  -- a reduced `2 × 2` game over `Bool ⊕ ℕ` with an explicit fresh token copy, a
+  -- perfect-coordination SPI with equality at every sample point (hence not strict), and a
+  -- STRICT one built by the paper's Demand-Game recipe, with `uᵉ` defined along the
+  -- isomorphism the book supplies (erratum D6, RULING 10) and shown non-constant.
+  SafeParetoImprovements.Examples.conflictGame
+  SafeParetoImprovements.Examples.conflictTokenCopy
+  SafeParetoImprovements.Examples.conflictTokenCopy_reduced
+  SafeParetoImprovements.Examples.conflictTokenCopy_fresh
+  SafeParetoImprovements.Examples.conflictRepresentatives
+  SafeParetoImprovements.Examples.conflictBookIso
+  SafeParetoImprovements.Examples.conflictRepresentatives_play
+  SafeParetoImprovements.Examples.conflictRepresentatives_play_hat
+  SafeParetoImprovements.Examples.conflictPlainToken
+  SafeParetoImprovements.Examples.conflictPlainToken_isSPI
+  SafeParetoImprovements.Examples.conflictPlainToken_not_isStrictSPI
+  SafeParetoImprovements.Examples.conflictStrictToken
+  SafeParetoImprovements.Examples.conflictStrictToken_isSPI
+  SafeParetoImprovements.Examples.conflictStrictToken_isStrictSPI
+  SafeParetoImprovements.Examples.conflictStrictToken_ue_ne
+  -- Non-vacuity for §5.3 (SafeParetoImprovements/Examples/CharacterizationWitnesses.lean,
+  --): Lemma 13 and Corollary 14 applied on the conflict game, including to a
+  -- three-action perfect-coordination SPI that is NOT isomorphic to the reduction;
+  -- `achievable` shown to hold at least two points and to be wider than the constant
+  -- reassignments; and the hand-built play family (it reads the SIZE of the game it is
+  -- handed, so the token play is not a function of `Π(Γ)`) for which `condExp` is a strict
+  -- average `(½, ½)` of values the integrand never takes -- the disclosure that every BOOK
+  -- model of this development collapses `condExp` to a point evaluation whenever the token
+  -- game is isomorphic to the reduced base game (not for token games in another
+  -- isomorphism class, which are played from their own page).
+  SafeParetoImprovements.Examples.conflict_exists_reassignment
+  SafeParetoImprovements.Examples.conflict_achievable_eq_improvementSum
+  SafeParetoImprovements.Examples.conflict_isPolytope_achievable
+  SafeParetoImprovements.Examples.conflict_tokenValue
+  SafeParetoImprovements.Examples.conflict_tokenValue_strict
+  SafeParetoImprovements.Examples.conflict_tokenValue_plain_eq
+  SafeParetoImprovements.Examples.conflict_tokenValue_plain
+  SafeParetoImprovements.Examples.conflict_achievable_not_singleton
+  SafeParetoImprovements.Examples.conflict_plain_not_constant_ue
+  SafeParetoImprovements.Examples.conflictThree
+  SafeParetoImprovements.Examples.conflictThree_fresh
+  SafeParetoImprovements.Examples.conflictThreeToken
+  SafeParetoImprovements.Examples.conflictThreeToken_isSPI
+  SafeParetoImprovements.Examples.conflictThreeToken_not_isomorphic
+  SafeParetoImprovements.Examples.conflict_lemma13_at_three
+  SafeParetoImprovements.Examples.mixBase SafeParetoImprovements.Examples.mixTok
+  SafeParetoImprovements.Examples.mixPlay SafeParetoImprovements.Examples.mixRepresentatives
+  SafeParetoImprovements.Examples.mixRepresentatives_play_base
+  SafeParetoImprovements.Examples.mixRepresentatives_play_tok_true
+  SafeParetoImprovements.Examples.mixRepresentatives_play_tok_false
+  SafeParetoImprovements.Examples.mixBase_mem
+  SafeParetoImprovements.Examples.mixToken
+  SafeParetoImprovements.Examples.mixToken_ue_true SafeParetoImprovements.Examples.mixToken_ue_false
+  SafeParetoImprovements.Examples.mixToken_isSPI
+  SafeParetoImprovements.Examples.mixRepresentatives_fiber_base
+  SafeParetoImprovements.Examples.mixBase_mem_support
+  SafeParetoImprovements.Examples.condExp_genuine_average
+  SafeParetoImprovements.Examples.condExp_ne_values
+  -- Beyond the paper (SafeParetoImprovements/Independence.lean, RULING 9,
+  -- `dd:default-instr`): default instructions, participation independence, the
+  -- information stage and foreknowledge independence, and their `Prog` witnesses.
+  SafeParetoImprovements.ProgramGame.DefaultInstr
+  SafeParetoImprovements.ProgramGame.ParticipationIndependent
+  SafeParetoImprovements.ProgramGame.Policy SafeParetoImprovements.ProgramGame.ForeknowledgeIndependent
+  SafeParetoImprovements.ProgramGame.foreknowledgeIndependent_of_const
+  SafeParetoImprovements.Prog.default SafeParetoImprovements.Prog.defaultInstr SafeParetoImprovements.Prog.fallback
+  SafeParetoImprovements.Prog.plays_default
+  SafeParetoImprovements.Prog.participationIndependent_of_punish_default
+  SafeParetoImprovements.Prog.participationIndependent_fallback
+  SafeParetoImprovements.Prog.not_participationIndependent_of_punish_play
+  SafeParetoImprovements.Prog.not_participationIndependent_algorithm2
+  SafeParetoImprovements.Prog.not_foreknowledgeIndependent_of_switch
+  -- The fallback profile as a participation-independent implementation: best replies to a
+  -- pure profile, the fall-back equilibrium criterion over the interface, and its `Prog`
+  -- instance; participation independence yields foreknowledge independence for the
+  -- fall-back policy.
+  SafeParetoImprovements.Game.bestReply SafeParetoImprovements.Game.u_update_le_bestReply
+  SafeParetoImprovements.Game.bestReply_le SafeParetoImprovements.Game.expected_le_bestReply
+  SafeParetoImprovements.ProgramGame.isProgramEquilibrium_of_fallback
+  SafeParetoImprovements.Prog.plays_fallback SafeParetoImprovements.Prog.exec_update_fallback
+  SafeParetoImprovements.Prog.participationIndependent_fallback_all
+  SafeParetoImprovements.Prog.fallback_isProgramEquilibrium
+  SafeParetoImprovements.Prog.exec_update_default SafeParetoImprovements.Prog.exec_default
+  SafeParetoImprovements.Prog.foreknowledgeIndependent_of_participationIndependent
+  SafeParetoImprovements.Two.other SafeParetoImprovements.Two.other_one
+  SafeParetoImprovements.Two.other_two SafeParetoImprovements.Two.other_ne
+  SafeParetoImprovements.Two.eq_other_of_ne
+  -- The same notions at the level of program choice, after DiGiovanni (2026, Appendix
+  -- B.1-B.2; SafeParetoImprovements/FullStrategy.lean): SPI transformations, full
+  -- strategies, choice models, demand preservation, participation and foreknowledge
+  -- independence, the simultaneous-commitment reduction and the demand-mismatch
+  -- refutation.
+  SafeParetoImprovements.IsSPITransformation SafeParetoImprovements.FullStrategy
+  SafeParetoImprovements.ChoiceModel SafeParetoImprovements.ChoiceModel.Simultaneous
+  SafeParetoImprovements.others
+  SafeParetoImprovements.FullStrategy.used SafeParetoImprovements.FullStrategy.IsSPI
+  SafeParetoImprovements.FullStrategy.counterfactualP
+  SafeParetoImprovements.FullStrategy.counterfactualF SafeParetoImprovements.FullStrategy.Consistent
+  SafeParetoImprovements.FullStrategy.ChosenGivenUse
+  SafeParetoImprovements.FullStrategy.Consistent.chosenGivenUse
+  SafeParetoImprovements.FullStrategy.DemandPreserving
+  SafeParetoImprovements.FullStrategy.ParticipationIndependent
+  SafeParetoImprovements.FullStrategy.ForeknowledgeIndependent
+  SafeParetoImprovements.FullStrategy.participationIndependent_of_simultaneous
+  SafeParetoImprovements.FullStrategy.not_foreknowledgeIndependent_of_demand_ne
+  SafeParetoImprovements.FullStrategy.ForeknowledgeIndependent.demand_counterfactualF
+  -- Non-vacuity for the program-game layer (SafeParetoImprovements/Examples/
+  -- ProgramGameWitnesses.lean): Theorem 1's hypotheses jointly satisfied twice over --
+  -- deterministically in the Prisoner's Dilemma and with a genuinely random `Π` in the
+  -- Demand Game -- the threat-point hypothesis shown to have content by a book
+  -- that violates it, and the independence predicates two-sided, with Algorithm 2's
+  -- failure of participation independence as an instance rather than a hypothesis
+  --.
+  SafeParetoImprovements.Examples.pdRepresentatives
+  SafeParetoImprovements.Examples.pdRepresentatives_play
+  SafeParetoImprovements.Examples.pdRepresentatives_threatPoint_le
+  SafeParetoImprovements.Examples.prisonersDilemma_algorithm2_isProgramEquilibrium
+  SafeParetoImprovements.Examples.demandPages
+  SafeParetoImprovements.Examples.demandRandomBook
+  SafeParetoImprovements.Examples.demandRandomRepresentatives
+  SafeParetoImprovements.Examples.demandRandom_play
+  SafeParetoImprovements.Examples.demandRandom_play_ne
+  SafeParetoImprovements.Examples.demandRandom_threatPoint_le
+  SafeParetoImprovements.Examples.demandRandom_algorithm2_isProgramEquilibrium
+  SafeParetoImprovements.Examples.demandGame_threatPoint_one_nonneg
+  SafeParetoImprovements.Examples.demandRepresentatives
+  SafeParetoImprovements.Examples.demandRepresentatives_play
+  SafeParetoImprovements.Examples.demandBook_not_threatPoint_le
+  SafeParetoImprovements.Examples.demandGame_threatPoint_two_le
+  SafeParetoImprovements.Examples.demandGame_minimax_two_one_ne_RM
+  SafeParetoImprovements.Examples.demandGame_algorithm2_not_participationIndependent
+  SafeParetoImprovements.Examples.not_participationIndependent_pd
+  SafeParetoImprovements.Examples.participationIndependent_pd
+  SafeParetoImprovements.Examples.pdSwitchPolicy
+  SafeParetoImprovements.Examples.not_foreknowledgeIndependent_pd
+  SafeParetoImprovements.Examples.pdFallbackPolicy
+  SafeParetoImprovements.Examples.foreknowledgeIndependent_pd
+  -- The fallback profile on the paper's own examples (SafeParetoImprovements/Examples/
+  -- IndependenceExamples.lean): a participation-independent program equilibrium executing
+  -- the SPI in the Prisoner's Dilemma and in the Demand Game at the conflict outcome,
+  -- where Proposition 18's threat-point hypothesis fails; the fall-back policies'
+  -- foreknowledge independence; the random-coin case where the criterion is silent.
+  SafeParetoImprovements.Examples.pdFallback SafeParetoImprovements.Examples.pdFallback_plays
+  SafeParetoImprovements.Examples.pdFallback_participationIndependent
+  SafeParetoImprovements.Examples.pdRepresentatives_play_cooperate
+  SafeParetoImprovements.Examples.pd_bestReply_defect_le
+  SafeParetoImprovements.Examples.pd_fallback_isProgramEquilibrium
+  SafeParetoImprovements.Examples.pd_fallback_spi_participationIndependent_equilibrium
+  SafeParetoImprovements.Examples.pd_fallbackPolicy_foreknowledgeIndependent
+  SafeParetoImprovements.Examples.demandFallback SafeParetoImprovements.Examples.demandFallback_plays
+  SafeParetoImprovements.Examples.demandFallback_participationIndependent
+  SafeParetoImprovements.Examples.demand_bestReply_conflict_le
+  SafeParetoImprovements.Examples.demandSPI_u_nonneg
+  SafeParetoImprovements.Examples.demand_fallback_isProgramEquilibrium
+  SafeParetoImprovements.Examples.demand_fallback_where_algorithm2_is_uncertified
+  SafeParetoImprovements.Examples.demandFallbackPolicy
+  SafeParetoImprovements.Examples.demandFallbackPolicy_foreknowledgeIndependent
+  SafeParetoImprovements.Examples.demandRandom_bestReply_integral
+  -- DiGiovanni's Appendix B.4 renegotiation example (SafeParetoImprovements/Examples/
+  -- Renegotiation.lean): the negotiation game, the pseudocode as an execution model over
+  -- the `ProgramGame` interface, demand preservation at both levels, the 50%/80%/doomsday
+  -- numbers, `rn` as a B.1 SPI, participation independence at both levels, the fall-back
+  -- policy's foreknowledge independence, and the "PI but not FI" agent at both levels.
+  SafeParetoImprovements.Examples.Renegotiation.Share
+  SafeParetoImprovements.Examples.Renegotiation.Share.toReal
+  SafeParetoImprovements.Examples.Renegotiation.Share.compatible
+  SafeParetoImprovements.Examples.Renegotiation.Share.compatible_iff
+  SafeParetoImprovements.Examples.Renegotiation.Device
+  SafeParetoImprovements.Examples.Renegotiation.Outcome
+  SafeParetoImprovements.Examples.Renegotiation.outcome
+  SafeParetoImprovements.Examples.Renegotiation.negotiation_reduced
+  SafeParetoImprovements.Examples.Renegotiation.Logic
+  SafeParetoImprovements.Examples.Renegotiation.takeoverLogic
+  SafeParetoImprovements.Examples.Renegotiation.concedeLogic
+  SafeParetoImprovements.Examples.Renegotiation.Outcome.myDemand
+  SafeParetoImprovements.Examples.Renegotiation.outcome_myDemand
+  SafeParetoImprovements.Examples.Renegotiation.Logic.DemandPreserving
+  SafeParetoImprovements.Examples.Renegotiation.takeoverLogic_demandPreserving
+  SafeParetoImprovements.Examples.Renegotiation.run_rn_mismatch
+  SafeParetoImprovements.Examples.Renegotiation.run_rn_concede_fst_ne
+  SafeParetoImprovements.Examples.Renegotiation.rnStrategy_basePreserving
+  SafeParetoImprovements.Examples.Renegotiation.programPayoff_fair_hawk_lt
+  SafeParetoImprovements.Examples.Renegotiation.rnStrategy_participationIndependent_both
+  SafeParetoImprovements.Examples.Renegotiation.Outcome.payoff
+  SafeParetoImprovements.Examples.Renegotiation.negotiation
+  SafeParetoImprovements.Examples.Renegotiation.fair SafeParetoImprovements.Examples.Renegotiation.hawk
+  SafeParetoImprovements.Examples.Renegotiation.outcome_fair_hawk
+  SafeParetoImprovements.Examples.Renegotiation.RnProg
+  SafeParetoImprovements.Examples.Renegotiation.RnProg.baseOf
+  SafeParetoImprovements.Examples.Renegotiation.RnProg.isRn
+  SafeParetoImprovements.Examples.Renegotiation.RnProg.demand
+  SafeParetoImprovements.Examples.Renegotiation.run
+  SafeParetoImprovements.Examples.Renegotiation.run_rn_fst
+  SafeParetoImprovements.Examples.Renegotiation.run_base
+  SafeParetoImprovements.Examples.Renegotiation.run_rn_base
+  SafeParetoImprovements.Examples.Renegotiation.run_rn_fair_hawk
+  SafeParetoImprovements.Examples.Renegotiation.run_rn_hawk_fair
+  SafeParetoImprovements.Examples.Renegotiation.outcome_rn_fair_hawk
+  SafeParetoImprovements.Examples.Renegotiation.realized
+  SafeParetoImprovements.Examples.Renegotiation.programPayoff
+  SafeParetoImprovements.Examples.Renegotiation.rnTransform
+  SafeParetoImprovements.Examples.Renegotiation.rnStrategy
+  SafeParetoImprovements.Examples.Renegotiation.demands
+  SafeParetoImprovements.Examples.Renegotiation.rnStrategy_demandPreserving
+  SafeParetoImprovements.Examples.Renegotiation.baseProfiles
+  SafeParetoImprovements.Examples.Renegotiation.realized_of_base
+  SafeParetoImprovements.Examples.Renegotiation.rn_isSPITransformation
+  SafeParetoImprovements.Examples.Renegotiation.rnRepresentatives
+  SafeParetoImprovements.Examples.Renegotiation.rnRepresentatives_play
+  SafeParetoImprovements.Examples.Renegotiation.rnProgramGame
+  SafeParetoImprovements.Examples.Renegotiation.rnProgramGame_exec
+  SafeParetoImprovements.Examples.Renegotiation.rnDefault
+  SafeParetoImprovements.Examples.Renegotiation.realized_update_rn
+  SafeParetoImprovements.Examples.Renegotiation.rn_participationIndependent
+  SafeParetoImprovements.Examples.Renegotiation.rnStrategy_participationIndependent
+  SafeParetoImprovements.Examples.Renegotiation.fairHawkRn
+  SafeParetoImprovements.Examples.Renegotiation.fairHawk
+  SafeParetoImprovements.Examples.Renegotiation.fairHawkRn_participationIndependent
+  SafeParetoImprovements.Examples.Renegotiation.fairHawkRn_plays
+  SafeParetoImprovements.Examples.Renegotiation.rnFallbackPolicy
+  SafeParetoImprovements.Examples.Renegotiation.rnFallbackPolicy_foreknowledgeIndependent
+  SafeParetoImprovements.Examples.Renegotiation.sixtyFifty
+  SafeParetoImprovements.Examples.Renegotiation.sixtyFiftyStrategy
+  SafeParetoImprovements.Examples.Renegotiation.sixtyFifty_simultaneous
+  SafeParetoImprovements.Examples.Renegotiation.sixtyFifty_consistent
+  SafeParetoImprovements.Examples.Renegotiation.sixtyFifty_participationIndependent
+  SafeParetoImprovements.Examples.Renegotiation.sixtyFifty_counterfactualF
+  SafeParetoImprovements.Examples.Renegotiation.sixtyFifty_not_foreknowledgeIndependent
+  SafeParetoImprovements.Examples.Renegotiation.sixtyFiftyPolicy
+  SafeParetoImprovements.Examples.Renegotiation.rn_sixty_participationIndependent
+  SafeParetoImprovements.Examples.Renegotiation.sixtyFiftyPolicy_not_foreknowledgeIndependent
+  -- §4.6 and Appendix D.2 (SafeParetoImprovements/Complexity.lean, tranche F, RULING 6,
+  -- `dd:complexity`): the elimination-chain transfer and dominated-set elimination lemmas,
+  -- certificates and their checks, the identity certificate (erratum D17), Propositions 23
+  -- and 25 as certificate iffs, Propositions 24 and 26 / Proposition 10 as the search bound.
+  SafeParetoImprovements.Game.ElimStar.transfer
+  SafeParetoImprovements.Game.elimStar_of_dominated
+  SafeParetoImprovements.Game.Certificate SafeParetoImprovements.Game.Certificate.toFun
+  SafeParetoImprovements.Game.Certificate.toFun_of_mem SafeParetoImprovements.Game.Certificate.toFun_mem
+  SafeParetoImprovements.Game.Certificate.injOn SafeParetoImprovements.Game.Certificate.map
+  SafeParetoImprovements.Game.Certificate.image SafeParetoImprovements.Game.Certificate.image_subset
+  SafeParetoImprovements.Game.Certificate.image_nonempty SafeParetoImprovements.Game.Certificate.map_mem
+  SafeParetoImprovements.Game.Certificate.image_eq_map_S
+  SafeParetoImprovements.Game.Certificate.inv SafeParetoImprovements.Game.Certificate.inv_toFun
+  SafeParetoImprovements.Game.Certificate.inv_mem SafeParetoImprovements.Game.Certificate.toFun_inv
+  SafeParetoImprovements.Game.Certificate.invMap SafeParetoImprovements.Game.Certificate.invMap_map
+  SafeParetoImprovements.Game.Certificate.map_invMap
+  SafeParetoImprovements.Game.Certificate.game SafeParetoImprovements.Game.Certificate.game_isSubsetGameOf
+  SafeParetoImprovements.Game.Certificate.iso
+  SafeParetoImprovements.Game.Certificate.ParetoImproving
+  SafeParetoImprovements.Game.Certificate.StrictlyParetoImproving
+  SafeParetoImprovements.Game.Certificate.Nontrivial
+  SafeParetoImprovements.Game.Certificate.paretoImproving_iff
+  SafeParetoImprovements.Game.Certificate.strictlyParetoImproving_iff
+  SafeParetoImprovements.Game.Certificate.game_reduced SafeParetoImprovements.Game.Certificate.game_reduce
+  SafeParetoImprovements.Game.Certificate.exactCopy_game
+  SafeParetoImprovements.Game.Certificate.refl SafeParetoImprovements.Game.Certificate.refl_toFun
+  SafeParetoImprovements.Game.Certificate.refl_map SafeParetoImprovements.Game.Certificate.refl_image
+  SafeParetoImprovements.Game.Certificate.refl_paretoImproving
+  SafeParetoImprovements.Game.Certificate.not_refl_nontrivial
+  SafeParetoImprovements.Game.Certificate.ofIso SafeParetoImprovements.Game.Certificate.ofIso_toFun
+  SafeParetoImprovements.Game.Certificate.ofIso_map SafeParetoImprovements.Game.Certificate.ofIso_image
+  SafeParetoImprovements.Game.Certificate.ofIso_nontrivial
+  SafeParetoImprovements.Game.Certificate.isoReduce SafeParetoImprovements.Game.Certificate.isoReduce_map
+  SafeParetoImprovements.Game.Certificate.game_reduce_S_ne
+  SafeParetoImprovements.Game.Certificate.unilateralGame
+  SafeParetoImprovements.Game.Certificate.unilateralGame_S_self
+  SafeParetoImprovements.Game.Certificate.unilateralGame_S_of_ne
+  SafeParetoImprovements.Game.Certificate.unilateralGame_u_of_ne
+  SafeParetoImprovements.Game.Certificate.unilateralGame_u_self
+  SafeParetoImprovements.Game.Certificate.unilateralGame_isSubsetGameOf
+  SafeParetoImprovements.Game.Certificate.unilateral_unilateralGame
+  SafeParetoImprovements.Game.Certificate.Affine SafeParetoImprovements.Game.Certificate.ReducesToImage
+  SafeParetoImprovements.Game.Certificate.affineScale SafeParetoImprovements.Game.Certificate.affineShift
+  SafeParetoImprovements.Game.Certificate.affineScale_pos SafeParetoImprovements.Game.Certificate.affine_spec
+  SafeParetoImprovements.Game.Certificate.imageGame SafeParetoImprovements.Game.Certificate.imageIso
+  SafeParetoImprovements.Game.Certificate.imageGame_reduced
+  SafeParetoImprovements.Game.Certificate.reduce_unilateralGame_eq
+  SafeParetoImprovements.Game.Certificate.unilateralIso SafeParetoImprovements.Game.Certificate.unilateralIso_map
+  SafeParetoImprovements.Game.Certificate.reducesToImage_of_dominated
+  SafeParetoImprovements.Game.Certificate.unilateralGame_reduce_S_ne
+  SafeParetoImprovements.Game.Certificate.ofIso_affine
+  SafeParetoImprovements.Game.Certificate.ofIso_reducesToImage
+  SafeParetoImprovements.Game.spiDecision_iff_certificate
+  SafeParetoImprovements.Game.strictSPIDecision_iff_certificate
+  SafeParetoImprovements.Game.card_certificate_le SafeParetoImprovements.Game.spiDecision_search
+  SafeParetoImprovements.Game.unilateralSPIDecision_iff_certificate
+  SafeParetoImprovements.Game.strictUnilateralSPIDecision_iff_certificate
+  SafeParetoImprovements.Game.card_unilateralCertificate_le
+  SafeParetoImprovements.Game.unilateralSPIDecision_search
+  -- supporting lemmas of Complexity.lean (every public declaration is inventoried)
+  SafeParetoImprovements.Game.Certificate.game_S SafeParetoImprovements.Game.Certificate.game_u
+  SafeParetoImprovements.Game.Certificate.imageGame_S
+  SafeParetoImprovements.Game.Certificate.imageGame_u SafeParetoImprovements.Game.card_le_size
+  SafeParetoImprovements.Game.card_unilateralCertificate_le'
+  -- Appendix D.3 (SafeParetoImprovements/Hardness.lean): graphs and Definition 8, Tables 9
+  -- and 10 (following the table where it disagrees with the printed formula, erratum D18),
+  -- the full reduction of `Γᶜ`, Lemma 28 in its four forms, and Theorem 9's carrier.
+  SafeParetoImprovements.Hardness.Graph SafeParetoImprovements.Hardness.SubgraphIso
+  SafeParetoImprovements.Hardness.SubgraphIsoProblem
+  SafeParetoImprovements.Hardness.TableAct SafeParetoImprovements.Hardness.adj
+  SafeParetoImprovements.Hardness.tableU₁ SafeParetoImprovements.Hardness.tableU₂
+  SafeParetoImprovements.Hardness.HardAct SafeParetoImprovements.Hardness.HardUniverse
+  SafeParetoImprovements.Hardness.hardU SafeParetoImprovements.Hardness.hardnessGame
+  SafeParetoImprovements.Hardness.blockActions SafeParetoImprovements.Hardness.gammaBlock
+  SafeParetoImprovements.Hardness.size_hardnessGame
+  SafeParetoImprovements.Hardness.gammaBlock_reduced SafeParetoImprovements.Hardness.reduce_hardnessGame
+  SafeParetoImprovements.Hardness.psiT SafeParetoImprovements.Hardness.psi
+  SafeParetoImprovements.Hardness.tableU₂_psiT SafeParetoImprovements.Hardness.tableU₁_le_psiT
+  SafeParetoImprovements.Hardness.cert
+  SafeParetoImprovements.Hardness.strictUnilateralSPIDecision_of_subgraphIso
+  SafeParetoImprovements.Hardness.subgraphIsoProblem_of_spiDecision
+  SafeParetoImprovements.Hardness.subgraphIsoProblem_iff_strictUnilateralSPIDecision
+  SafeParetoImprovements.Hardness.subgraphIsoProblem_iff_spiDecision
+  SafeParetoImprovements.Hardness.subgraphIsoProblem_iff_strictSPIDecision
+  SafeParetoImprovements.Hardness.subgraphIsoProblem_iff_unilateralSPIDecision
+  SafeParetoImprovements.Hardness.theorem9
+  -- supporting lemmas of Hardness.lean (payoff bounds, block membership, the certificate
+  -- evaluation helpers and the extraction helpers of Lemma 28's second claim;)
+  SafeParetoImprovements.Hardness.TableAct.c₁ SafeParetoImprovements.Hardness.TableAct.c₂
+  SafeParetoImprovements.Hardness.hardnessGame_S SafeParetoImprovements.Hardness.hardnessGame_u
+  SafeParetoImprovements.Hardness.gammaBlock_S SafeParetoImprovements.Hardness.gammaBlock_u
+  SafeParetoImprovements.Hardness.mem_blockActions
+  SafeParetoImprovements.Hardness.inl_mem_blockActions
+  SafeParetoImprovements.Hardness.inr_not_mem_blockActions
+  SafeParetoImprovements.Hardness.block_mul_le SafeParetoImprovements.Hardness.succ_mul_le
+  SafeParetoImprovements.Hardness.block_mul_nonneg
+  SafeParetoImprovements.Hardness.succ_mul_nonneg SafeParetoImprovements.Hardness.adj_nonneg
+  SafeParetoImprovements.Hardness.adj_le_one SafeParetoImprovements.Hardness.neg_one_le_tableU₁
+  SafeParetoImprovements.Hardness.neg_one_le_tableU₂
+  SafeParetoImprovements.Hardness.tableU₁_le_six
+  SafeParetoImprovements.Hardness.neg_one_lt_tableU₂_c₁
+  SafeParetoImprovements.Hardness.psiT_inl SafeParetoImprovements.Hardness.psiT_inr_inl
+  SafeParetoImprovements.Hardness.psiT_inr_inr SafeParetoImprovements.Hardness.psiT_injective
+  SafeParetoImprovements.Hardness.psi_inl SafeParetoImprovements.Hardness.adj_le_adj
+  SafeParetoImprovements.Hardness.mem_reduce_S_iff
+  SafeParetoImprovements.Hardness.mem_reduce_profiles_iff
+  SafeParetoImprovements.Hardness.cert_toFun SafeParetoImprovements.Hardness.cert_map
+  SafeParetoImprovements.Hardness.mem_cert_image_iff
+  SafeParetoImprovements.Hardness.eq_c₁_of_six_le
+  SafeParetoImprovements.Hardness.eq_c₂_of_six_le
+  SafeParetoImprovements.Hardness.eq_inl_of_pos_row
+  SafeParetoImprovements.Hardness.eq_inl_of_pos_col
+  SafeParetoImprovements.Hardness.eq_of_one_lt_block
+  SafeParetoImprovements.Hardness.le_of_adj_le
+  -- Non-vacuity for the complexity nodes (SafeParetoImprovements/Examples/
+  -- ComplexityWitnesses.lean): the Demand Game's certificate passing the strict and
+  -- non-triviality checks, the one-action game whose only certificate is the identity
+  -- (accepted by the printed algorithm, rejected by the repaired one), a unilateral
+  -- certificate for the Complicated Temptation Game, the count `144 ≤ 4096`, and Lemma 28
+  -- carried to a "yes" and a "no" instance on concrete two-vertex graphs.
+  SafeParetoImprovements.Examples.demandCertificate
+  SafeParetoImprovements.Examples.demandCertificate_map_DM
+  SafeParetoImprovements.Examples.demandCertificate_check
+  SafeParetoImprovements.Examples.demandGame_strictSPIDecision_of_certificate
+  SafeParetoImprovements.Examples.oneAction SafeParetoImprovements.Examples.oneAction_certificate_eq_refl
+  SafeParetoImprovements.Examples.oneAction_not_certificate
+  SafeParetoImprovements.Examples.oneAction_paretoImproving_refl
+  SafeParetoImprovements.Examples.complicatedTemptation_unilateralCertificate
+  SafeParetoImprovements.Examples.card_demandCertificate SafeParetoImprovements.Examples.demandGame_size
+  SafeParetoImprovements.Examples.demandGame_reduce_size
+  SafeParetoImprovements.Examples.card_demandCertificate_le
+  SafeParetoImprovements.Examples.hardYes SafeParetoImprovements.Examples.hardNo
+  SafeParetoImprovements.Examples.size_hardGame
+  SafeParetoImprovements.Examples.hardYes_strictUnilateralSPIDecision
+  SafeParetoImprovements.Examples.hardNo_not_spiDecision
+  -- round-6 witnesses: the non-degenerate graph pair (one edge into the two-cycle),
+  -- check 2 rejecting the Demand Game certificate, and the four-action game whose
+  -- certificate passes Proposition 25's checks with the affine scale forced to 2.
+  SafeParetoImprovements.Examples.oneEdge SafeParetoImprovements.Examples.twoCycle
+  SafeParetoImprovements.Examples.subgraphIso_oneEdge_twoCycle
+  SafeParetoImprovements.Examples.not_subgraphIso_twoCycle_oneEdge
+  SafeParetoImprovements.Examples.demandCertificate_map
+  SafeParetoImprovements.Examples.demandCertificate_not_affine
+  SafeParetoImprovements.Examples.SUniverse SafeParetoImprovements.Examples.scaledU₁
+  SafeParetoImprovements.Examples.scaledU₂ SafeParetoImprovements.Examples.scaledGame
+  SafeParetoImprovements.Examples.scaledGame.u_pair
+  SafeParetoImprovements.Examples.scaledGame.block
+  SafeParetoImprovements.Examples.scaledGame.reducedGame
+  SafeParetoImprovements.Examples.scaledGame.reducedGame_reduced
+  SafeParetoImprovements.Examples.scaledGame.reduce_eq
+  SafeParetoImprovements.Examples.scaledGame.mem_reduce_S_iff
+  SafeParetoImprovements.Examples.scaledGame.shift
+  SafeParetoImprovements.Examples.scaledGame.cert
+  SafeParetoImprovements.Examples.scaledGame.cert_toFun
+  SafeParetoImprovements.Examples.scaledGame.cert_map
+  SafeParetoImprovements.Examples.scaledGame.mem_reduce_profiles_iff
+  SafeParetoImprovements.Examples.scaledGame.mem_cert_image_iff
+  SafeParetoImprovements.Examples.scaledGame.cert_paretoImproving
+  SafeParetoImprovements.Examples.scaledGame.cert_nontrivial
+  SafeParetoImprovements.Examples.scaledGame.cert_affine
+  SafeParetoImprovements.Examples.scaledGame.cert_affine_scale_eq_two
+  SafeParetoImprovements.Examples.scaledGame.cert_reducesToImage
+  SafeParetoImprovements.Examples.scaledGame.strictUnilateralSPIDecision
+  SafeParetoImprovements.Examples.SAct
+  -- §4.2's relations `R` and `⪰` (SafeParetoImprovements/Ordering.lean): the prose carriers
+  -- of the paragraph after Lemma 2, on the axiom gate since the final audit.
+  SafeParetoImprovements.Game.IsSingleValuedBijection SafeParetoImprovements.Play.BijEquiv
+  SafeParetoImprovements.Play.bijEquiv_refl SafeParetoImprovements.Play.BijEquiv.symm
+  SafeParetoImprovements.Play.BijEquiv.trans SafeParetoImprovements.Play.bijEquiv_equivalence
+  SafeParetoImprovements.Play.Improves SafeParetoImprovements.Play.improves_refl
+  SafeParetoImprovements.Play.Improves.trans SafeParetoImprovements.Play.improves_preorder
+  SafeParetoImprovements.Play.improves_self_iff_isSPI SafeParetoImprovements.Play.isSPI_of_paretoDominant
+  -- Final audit (round 7).  (a) The play family as a function of the paper's game
+  --: `Play.RespectsEqOn`, the canonical presentation `Game.canon`, reduction
+  -- across `EqOn`, and the book's play routed through the canonical presentation so that the
+  -- existence witnesses of `dd:book` are paper plays.  (b) Reduction transports along
+  -- isomorphisms (`GameIso.imageGame`, `reduce_eq_imageGame`), which lets Lemma 13 copy the
+  -- whole game as the paper does.  (c) Derivations are single-valued and typed
+  --, and the strict printed problem is not constant-true.  (d) The
+  -- unilateral search bound is `m ^ l` itself.
+  SafeParetoImprovements.Play.RespectsEqOn
+  SafeParetoImprovements.Game.withPayoffs SafeParetoImprovements.Game.withPayoffs_S
+  SafeParetoImprovements.Game.withPayoffs_u SafeParetoImprovements.Game.EqOn.withPayoffs_eqOn
+  SafeParetoImprovements.Game.withPayoffs_erase SafeParetoImprovements.Game.EqOn.elimStar_withPayoffs
+  SafeParetoImprovements.Game.EqOn.reduce_eq_withPayoffs SafeParetoImprovements.Game.EqOn.reduce_S
+  SafeParetoImprovements.Game.EqOn.reduce_eqOn
+  SafeParetoImprovements.Game.canon SafeParetoImprovements.Game.canon_S
+  SafeParetoImprovements.Game.canon_profiles SafeParetoImprovements.Game.canon_u_of_mem
+  SafeParetoImprovements.Game.canon_eqOn SafeParetoImprovements.Game.EqOn.canon_eq
+  SafeParetoImprovements.GameIso.ofCanon SafeParetoImprovements.GameIso.ofCanon_map
+  SafeParetoImprovements.GameIso.cast SafeParetoImprovements.GameIso.cast_map
+  SafeParetoImprovements.GameIso.cast_scale SafeParetoImprovements.GameIso.cast_shift
+  SafeParetoImprovements.Game.cls_canon SafeParetoImprovements.Game.EqOn.cls_eq
+  SafeParetoImprovements.Book.playReduced_eqOn SafeParetoImprovements.Book.toPlay_respectsEqOn
+  SafeParetoImprovements.GameIso.imageGame SafeParetoImprovements.GameIso.imageGame_S
+  SafeParetoImprovements.GameIso.imageGame_u SafeParetoImprovements.GameIso.imageGame_isSubsetGameOf
+  SafeParetoImprovements.GameIso.imageGame_self SafeParetoImprovements.GameIso.restrict
+  SafeParetoImprovements.GameIso.restrict_scale SafeParetoImprovements.GameIso.restrict_shift
+  SafeParetoImprovements.GameIso.restrict_map SafeParetoImprovements.GameIso.restrict_toFun
+  SafeParetoImprovements.GameIso.strictlyDominates_imageGame SafeParetoImprovements.GameIso.imageGame_erase
+  SafeParetoImprovements.GameIso.elim_imageGame SafeParetoImprovements.GameIso.elimStar_imageGame
+  SafeParetoImprovements.GameIso.reduce_eq_imageGame SafeParetoImprovements.GameIso.restrictReduce
+  SafeParetoImprovements.GameIso.restrictReduce_map SafeParetoImprovements.GameIso.restrictReduce_scale
+  SafeParetoImprovements.GameIso.restrictReduce_shift
+  SafeParetoImprovements.Game.Deriv.mem_right_of_rel SafeParetoImprovements.Game.Deriv.eq_of_rel
+  SafeParetoImprovements.Game.not_strictSPIDecisionPrinted_of_card_le_one
+  SafeParetoImprovements.Game.card_mul_prod_le_pow
+-- SPI-INVENTORY-END
+
+/-! Tier-2 freezes for Safe Pareto Improvements.  The mechanical
+Tier-2 set computed by `SurfaceProbe.lean`'s `#surface_types` over the SPI-INVENTORY is
+`Game`, `GameIso`, `Play`, `Play.ParetoImprovingCorrespondence`; `Representatives` and
+`Book` are frozen too because the realization and witness endpoints above consume them.
+Each field is a premise of the paper nodes: `Game.nonempty` is the standing nonemptiness
+of action sets, `Play.mem` is "`Π(Γ) ∈ A`" (the whole of Lemma 2.5 and both directions of
+Theorem 3 run on it), `GameIso.bijOn`/`scale_pos` are the two `dd:iso` repairs (erratum D5),
+`ParetoImprovingCorrespondence.typed` is Definition 4's `Φ : A ⊸ Aˢ`, and
+`Book.page_mem` is what makes the book's play a legal outcome; `ProgramGame.exec` is the
+execution kernel (`dd:exec-kernel`) whose product structure Proposition 18 rests on,
+`DefaultInstr.plays_default` ties the non-participation baseline to `Π(Γ₀)`, and
+`Policy`'s fields are the information stage. -/
+#assert_fields SafeParetoImprovements.Game
+  S nonempty u
+#assert_fields SafeParetoImprovements.Play
+  play mem
+#assert_fields SafeParetoImprovements.Representatives
+  Ω mΩ μ prob toPlay measurableSet_fiber
+#assert_fields SafeParetoImprovements.GameIso
+  toFun bijOn scale scale_pos shift affine
+#assert_fields SafeParetoImprovements.Play.ParetoImprovingCorrespondence
+  corresponds improving typed
+#assert_fields SafeParetoImprovements.Book
+  page page_mem
+#assert_fields SafeParetoImprovements.ProgramGame
+  Instr exec measurable_exec
+#assert_fields SafeParetoImprovements.ProgramGame.DefaultInstr
+  default plays_default
+#assert_fields SafeParetoImprovements.ProgramGame.Policy
+  Signal noInfo willNotParticipate policy
+#assert_fields SafeParetoImprovements.FullStrategy
+  transform progs
+#assert_fields SafeParetoImprovements.ChoiceModel
+  ofParticipation ofBelief
+#assert_fields SafeParetoImprovements.Game.Correlated
+  weight nonneg support sum_eq_one
+#assert_fields SafeParetoImprovements.TokenGame
+  game fresh ue ue_mem
+
+-- The staged half of the Safe Pareto Improvements annotated surface: endpoints whose
+-- *statements* are final and carry a `Paper node:` line, but which are not yet
+-- axiom-clean -- either their own proof is `sorry` or they consume one.  This block is
+-- pure comment; it compiles to nothing and asserts nothing.  See the preamble above for
+-- the four failure modes `scripts/check-safe-pareto-improvements-nodes.py` fences it
+-- with.  Both sections are empty at M0: there is no `sorry` in `SafeParetoImprovements/`.
+-- The `-- SECTION:` marker line stays so that an un-annotated consumer of a staged
+-- theorem has a place to be named.
+--
+-- SPI-PENDING-BEGIN
+-- SECTION: consumers (un-annotated)
+-- SPI-PENDING-END
 
 /-! ## Consumer API conveniences (not paper endpoint inventories)
 
