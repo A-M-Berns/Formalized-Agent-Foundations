@@ -107,6 +107,53 @@ jobs:
       - name: Check paper wiring
         run: python3 scripts/check_paper_wiring.py
 
+      # Blocking: every .lean under LogicalInduction/ is reachable from a lakefile root
+      # and imports nothing that does not exist. A module orphaned by a split, a deleted
+      # lane, or a stale roll-up import list is invisible to `lake build` — nothing
+      # compiles it, so nothing fails — which is exactly what this closes.
+      - name: Check LogicalInduction file closure
+        run: python3 scripts/check_li_file_closure.py
+
+      # Blocking: LogicalInduction/README.md's node-by-node table is generated from the
+      # paper source, the coverage ledger's endpoints table, and a scan for each carrier's
+      # module. Running the generator in check mode is what stops the README's headline
+      # correspondence drifting away from the inventory it is derived from.
+      - name: Check the LogicalInduction node table
+        run: python3 scripts/gen-li-node-table.py
+
+      # Blocking: APITests/LogicalInduction.lean's last section elaborates every canonical
+      # endpoint by name, so that a move or a rename fails the client test before it reaches
+      # a reader. That only works while the section names exactly what AxiomAudit.lean's
+      # LI-CANONICAL block publishes, and both lists were hand-maintained — one typo apart
+      # from a published endpoint nobody elaborates, which is what this closes. It also
+      # recomputes the two hypothesis tallies the prose states (which endpoints carry
+      # `[𝗜𝚺₁ ⪯ T]`, and how many lane modules import Construction/Primcodable.lean), so
+      # those numbers are gated rather than asserted.
+      - name: Check the LogicalInduction roll-call and hypothesis tallies
+        run: python3 scripts/check_li_rollcall.py
+
+      # Blocking: every census the LogicalInduction documents print is recomputed from the
+      # Lean source — the per-class binder tally over the canonical endpoints, the FIELD
+      # METERING TABLE (both directions: no row whose structure, field or class has moved,
+      # and no boundary-structure field at a metered class without a row), the summary
+      # lines above that table, and the module total with the four entry-point import
+      # closures. These numbers are hand-entered into `AxiomAudit.lean`, the coverage
+      # ledger, the README, `API.lean` and `KNOWLEDGE.md`, and hand-entered numbers drift:
+      # one closing audit found five independent count errors in a single pass, in
+      # documents whose whole purpose is to be checkable, because nothing recomputed them.
+      - name: Check the LogicalInduction censuses and module counts
+        run: python3 scripts/check_li_census.py
+
+      # Blocking: the prose class claims. A strength row or a trust-surface reading note
+      # that says an endpoint "carries `BigSentenceCodes`" is a statement about the Lean
+      # source, written by hand in a different file, and it stays green forever after the
+      # binder moves — the largest single defect class the closing audit found. This reads
+      # each label-keyed prose site against the endpoint's elaborated signature and the
+      # fields of every boundary structure it binds, and fails when a metering class is
+      # attributed as a current hypothesis that no such endpoint takes.
+      - name: Check the LogicalInduction prose class claims
+        run: python3 scripts/check_li_class_claims.py
+
       - name: Free runner disk space
         run: |
           sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL

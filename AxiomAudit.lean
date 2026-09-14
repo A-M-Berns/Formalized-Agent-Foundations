@@ -20,15 +20,48 @@ section:
     regression guard on a declaration is not a reason to publish it.
 
 Carrying a `Paper node:` label is a third, weaker thing again: it is *provenance*, not
-publication. `thm:scon` has 54 axiom-checked carriers and 4 canonical endpoints. The other
-50 are real, checked, and deliberately not shown.
+publication. `thm:scon` is the illustration: dozens of declarations across `Properties/` and
+the `Conditioning/` lane carry that label, every one of them is named in some
+`#assert_axioms_clean` block below, and five of them are canonical endpoints. The rest are
+real, checked, and deliberately not shown. The totals are not restated here because nothing
+would gate them: `scripts/check_endpoint_coverage.py` recomputes the per-declaration coverage
+and prints it, and the *endpoints* table of `scripts/coverage-classification.md` is the list
+of what is published.
 
 `scripts/check_endpoint_coverage.py` enforces that the canonical block and the endpoints
-table name exactly the same declarations, so the three artifacts cannot drift apart the way
-they had by 2026-08.
+table name exactly the same declarations, so the three artifacts cannot drift apart.
 
 The build fails if any listed endpoint acquires an axiom beyond `propext`,
 `Classical.choice`, `Quot.sound` (in particular `sorryAx`), or ceases to exist.
+
+**These blocks are the only axiom gate this repository has, and the coverage they give is
+exactly two things.** A declaration is gated either by being *named* in an
+`#assert_axioms_clean` block, or *transitively*, by appearing in the proof term of a
+declaration that is. Nothing else gates anything: a `#print axioms` command in a source file
+prints to the build log and fails no build, and `#assert_fields` checks field names, not
+axioms.
+
+Two consequences worth stating, because both have been got wrong:
+
+  * **Naming a declaration here requires annotating it.** `scripts/check-paper-nodes.sh`
+    fails on any inventoried name whose docstring carries no `Paper node:` line, and
+    `check_endpoint_coverage.py` fails on any annotated declaration that no block names. The
+    contract is fail-closed both ways, so *widening the inventory is a trust-surface
+    decision*, not a bookkeeping one: it publishes provenance for a declaration that may
+    have none to claim.
+  * **Transitive coverage reaches upstream, never downstream.** An endpoint universally
+    quantified over its data names no particular instance, so no assertion of it reaches an
+    applied witness, a non-vacuity witness, a negative result, or a faithfulness bridge that
+    only a *consumer* would name. Those have to be asserted directly — which is what the
+    dedicated blocks for `thm:incons`'s two applied day-machine witnesses and for
+    `loopsTheory` / `thm_loops_applied_at_loopsTheory` do. When a supporting layer is
+    described below as "covered transitively", that claim is about the first kind only, and
+    each such note names the asserting endpoint.
+
+Supporting layers that are neither annotated nor reachable from an asserted proof term are
+therefore **not gated**, and the notes below say so where it is the case rather than
+implying otherwise. Bringing one in means giving it a `Paper node:` line it has earned; a
+declaration that renders no paper node does not get one merely to be gated.
 
 Two independent claims, checked separately — do not conflate them:
   * **axiom cleanliness** (this build): every *listed* endpoint is `sorry`-free and uses no
@@ -46,8 +79,7 @@ by the `ProvabilityLogic/` development (a vendored subset of
 FormalizedFormalLogic/ProvabilityLogic, pinned in `lakefile.lean`; see
 `ModalAgents/FixedPoint.lean`),
 so every ModalAgents endpoint — including the cooperation results that rest on the GL fixed
-point — is asserted under `#assert_axioms_clean`. (`#assert_axioms_clean_except` is retained
-as a reusable tool but is no longer needed.)
+point — is asserted under `#assert_axioms_clean`, the one assertion form this file has.
 
 ## Tier-2 membership, annotations, and regeneration
 
@@ -68,6 +100,12 @@ of their own carry `def:ec`; graded-strength endpoints share their theorem's nod
 with the current `#assert_axioms_clean` names) and `#dump_fields` in
 `SurfaceProbe.lean`, update the `#assert_fields` block and affected `Paper node:`
 fields here, then run `scripts/check-paper-nodes.sh`.
+
+`SurfaceProbe.lean` sits at the repository root and is deliberately **not** a `lake` target
+and not imported by anything: it is a developer tool run by hand (`lake env lean
+SurfaceProbe.lean`) whose output is the Tier-2 block below. Nothing builds it, so the
+pointers to it are here and in `ShannonInformation/AxiomAudit.lean` rather than left
+implicit.
 -/
 import Lean.Util.CollectAxioms
 import LogicalInduction.Properties
@@ -101,20 +139,6 @@ elab "#assert_axioms_clean " ids:ident+ : command => do
       throwErrorAt id "'{name}' depends on disallowed axioms: {bad.toList}"
 
 open Lean Elab Command in
-/-- Like `#assert_axioms_clean`, but additionally permits the one named axiom `extra`
-(for the intentionally axiomatized `ModalAgents/` fixed-point fact). Still fails on `sorryAx`
-or any other axiom. -/
-elab "#assert_axioms_clean_except " extra:ident ids:ident+ : command => do
-  let extraName ← liftCoreM <| realizeGlobalConstNoOverloadWithInfo extra
-  for id in ids do
-    let name ← liftCoreM <| realizeGlobalConstNoOverloadWithInfo id
-    let axioms ← Lean.collectAxioms name
-    let allowed := [``propext, ``Classical.choice, ``Quot.sound, extraName]
-    let bad := axioms.filter (! allowed.contains ·)
-    unless bad.isEmpty do
-      throwErrorAt id "'{name}' depends on disallowed axioms: {bad.toList}"
-
-open Lean Elab Command in
 /-- Fail elaboration unless `struct` is a structure whose field-name set is exactly the
 listed idents. Freezes the field *names* of a boundary structure — adding or removing a
 field fails the build — but NOT their types: a field's type can change without failing
@@ -133,7 +157,7 @@ elab "#assert_fields " struct:ident fields:ident* : command => do
 
 namespace LogicalInduction
 
-open ConditioningCompile FeedbackTruth FeedbackEmission PrefixPatchCompile
+open ConditioningCompile FeedbackTruth FeedbackEmission
 
 /-! ## Public canonical endpoint inventory
 
@@ -143,15 +167,17 @@ declarations `docs/trust-surface.html` renders with full signatures, one small c
 per paper node, the paper's own printed form first.
 
 Every *other* `#assert_axioms_clean` block below is an **internal axiom regression
-assertion**: still under the build gate, so nothing lost its guard and build coverage is
-unchanged, but not public trust surface. Being worth freezing is not a reason to put a
-declaration in front of a reader. `thm:scon` has 54 axiom-checked carriers and 4 canonical
-endpoints; `def:ec` has 24 and 3.
+assertion**: equally under the build gate, so every listed name has a guard, but not public
+trust surface. Being worth freezing is not a reason to put a declaration in front of a
+reader. `thm:scon` publishes five canonical endpoints and `def:ec` three; both labels are
+carried, and axiom-checked, on many more declarations than that
+(`scripts/check_endpoint_coverage.py` recomputes the totals).
 
 The delimiters are machine-read: `scripts/check_endpoint_coverage.py` fails the run unless
 the name set here equals the endpoints table's, spelling included — so the two cannot drift,
-and a curated node cannot silently fall back to an arbitrary carrier (which is exactly what
-happened to `thm:ifp`, whose refutation and corrected theorem were both invisible).
+and a curated node cannot silently fall back to an arbitrary carrier, which is the failure
+mode this delimiter exists to prevent: a node whose curated rendering is a refutation, as
+`thm:ifp`'s is, reads as vacuously covered the moment an arbitrary carrier may stand in.
 
 Names are repeated from the topical blocks below on purpose: this list is a *view*, and the
 topical blocks stay the place where each endpoint is explained. -/
@@ -160,9 +186,9 @@ topical blocks stay the place where each endpoint is explained. -/
 #assert_axioms_clean
   AffineCombination AffineCombination.BoundedCombinationSequence LUVCombination.BoundedSequence
   PaperLUVCombination.boundedSequence unitFracPaperLUVBoundedSequence DeductiveProcess
-  DeductiveProcessComputation DeferralFunction MachineEfficientTrader EfficientlyComputable
-  EfficientlyComputable.toMachine GeneratedRatFeature PGenerableWeighting liaStates liaHistory
-  IsMachineLogicalInductor IsLogicalInductor PaperLUV LUV unitFracPaperLUVSeq Trader Strategy
+  DeductiveProcessComputation DeferralFunction EfficientlyComputable PolyFueledTrader
+  PolyFueledTrader.toEfficientlyComputable GeneratedRatFeature DivergentWeighting liaStates liaHistory
+  IsLogicalInductor PaperLUV LUV unitFracPaperLUVSeq Trader Strategy
   LUVCombination.BoundedSequence.mesh_independence_ofSyntax trading_firm_dominance
   AffineCombination.PolySequence.affcoh AffineCombination.BoundedCombinationSequence.affpolymax
   AffineCombination.PolySequence.affine_provind_theory_ge
@@ -178,13 +204,13 @@ topical blocks stay the place where each endpoint is explained. -/
   lic_iterated_expectations_closed LUVCombination.BoundedSequence.expcoh_ofSyntax
   LUVCombination.BoundedSequence.exppolymax_ofSyntax lic_expect_combination_provind_ge
   lic_expect_combination_provind_le lic_expect_combination_provind_eq
-  lia_learns_halting_patterns_unconditional
+  lic_learns_halting_patterns_unconditional
   FinitePerturbationCounterexample.not_overgeneral_ifp
-  FreezeOracle.machine_lic_iff_of_finiteSupport
-  LIAPerturbation.machineLogicalInductor_liaPerturbed
+  FreezeOracle.lic_iff_of_finiteSupport
+  LIAPerturbation.logicalInductor_liaPerturbed
   lic_disbelief_inconsistent_theories_unconditional lic_limitCoherence
   lic_learning_exclusive_exhaustive exists_computable_beliefSequence_logical_inductor
-  exists_machine_logical_inductor LIA_isMachineLogicalInductor LIA_is_logical_inductor
+  exists_logical_inductor LIA_is_logical_inductor
   lic_linearity_of_expectation_seq lic_learns_provable_nonhalting_patterns_unconditional
   lic_paradox_resistance_ofDiagonal_unconditional lic_nonDogmatism lic_nonDogmatism_dual
   UPrefix.lic_occamBounds_ofUniversalPrefix lic_uniform_nonDogmatism_ofCE
@@ -195,15 +221,16 @@ topical blocks stay the place where each endpoint is explained. -/
   lic_learning_varied_pseudorandom_below
   AffineCombination.BoundedCombinationSequence.prandaff_above
   AffineCombination.BoundedCombinationSequence.prandaff_below
-  AffineCombination.BoundedCombinationSequence.prandaff LUVCombination.BoundedSequence.prandexp
-  LUVCombination.BoundedSequence.prandexp_below LUVCombination.BoundedSequence.prandexp_eq
+  AffineCombination.BoundedCombinationSequence.prandaff LUVCombination.BoundedSequence.prandexp_above
+  LUVCombination.BoundedSequence.prandexp_below LUVCombination.BoundedSequence.prandexp
+  Trader.Exploits lic_expectation_indicator_unconditional
   lic_provind AffineCombination.BoundedCombinationSequence.recunbiasedaff
   AffineCombination.recurringunbiasedness
   LUVCombination.BoundedSequence.recurringunbiasednessexp lic_introspection_closed
-  lic_introspection ConditioningCompile.lic_conditioned_fixed_machine
-  ConditioningCompile.lic_conditioned_growing_machine_ofProcessComputation
-  ConditioningCompile.lic_conditioned_growing_machine_ofSequence
-  lic_conditioned_fixed_machine_unconditional lic_conditioned_growing_machine_unconditional
+  lic_introspection ConditioningCompile.lic_conditioned_fixed
+  ConditioningCompile.lic_conditioned_growing_ofProcessComputation
+  ConditioningCompile.lic_conditioned_growing_ofSequence
+  lic_conditioned_fixed_unconditional lic_conditioned_growing_unconditional
   AffineCombination.simcal AffineCombination.sentenceAffine_polySequence
   calibrationIndicator_pgenerable lic_self_trust_closed
   lic_strict_domination_universalSemimeasure_ofAtomCodes
@@ -218,15 +245,14 @@ topical blocks stay the place where each endpoint is explained. -/
 
 #assert_axioms_clean exists_logical_inductor LIA_is_logical_inductor
   exists_computable_beliefSequence_logical_inductor
-  exists_machine_logical_inductor LIA_isMachineLogicalInductor
 
--- The canonical trader universe is `MachineEfficientTrader` — ordinary machine
+-- The canonical trader universe is `EfficientlyComputable` — ordinary machine
 -- polynomial time, through `Complexity.FP`. The enumeration is sound and covers the whole
 -- class, and the fuel calculus's certificates land inside it.
 #assert_axioms_clean
-  trading_firm_dominance exists_enumeratedTrader_eq enumeratedTrader_machineEfficient
-  enumeratedOutput_mem_FP EfficientlyComputable.toMachine
-  lia_no_machine_trader_exploits
+  trading_firm_dominance exists_enumeratedTrader_eq enumeratedTrader_efficient
+  enumeratedOutput_mem_FP PolyFueledTrader.toEfficientlyComputable
+  lia_no_efficient_trader_exploits
 
 /-! ## Property tail, conditional on `[IsLogicalInductor P DP]` -/
 
@@ -240,13 +266,17 @@ topical blocks stay the place where each endpoint is explained. -/
 
 -- Properties/ProvabilityInduction.lean, Properties/AffineCoherence.lean
 -- Tier note: `lic_provind` / `lic_provind_true` / `lic_provind_false` are the
--- paper-facing `thm:provind` (theorems may appear arbitrarily late in the process).
--- `lic_deducible_*` and `lic_provind_seq` are retained FRAGMENTS whose membership
--- hypotheses (`φ ∈ D n` at every / its own index) are stronger than the paper's —
--- do not credit them as `thm:provind`.
+-- paper-facing `thm:provind`, at the paper's own quantifier: `φ n` holds in every world
+-- consistent with the completed deductive process.  The `lic_deducible_*` results are
+-- FRAGMENTS whose membership hypothesis (`φ ∈ D n` at every index, for a fixed sentence)
+-- is stronger than that — do not credit them as `thm:provind`.  They are annotated and
+-- inventoried because they are the paper's own fixed-sentence special case, but they carry
+-- no `Paper node` line either: stage membership at every index is strictly stronger than
+-- "is a theorem", and the paper's statement is about a sequence, so crediting them would
+-- overstate.  They stay inventoried because they are public and axiom-relevant.
 #assert_axioms_clean
   lic_deducible_eventually_ge lic_deducible_price_near_one lic_deducible_tendsto_one
-  lic_provind_seq lic_provind lic_provind_true lic_provind_false
+  lic_provind lic_provind_true lic_provind_false
 
 -- Properties/TimelyLearning.lean, Properties/AffinePersistence.lean
 #assert_axioms_clean
@@ -269,36 +299,38 @@ topical blocks stay the place where each endpoint is explained. -/
 
 -- Properties/NonDogmatism.lean, Properties/UniformNonDogmatism.lean
 -- Tier note: `lic_nonDogmatism` / `lic_nonDogmatism_dual` are the paper-facing `thm:nd`;
--- `lic_nonDogmatism_weak` is a retained FRAGMENT (its lower bound decays with `n`).
+-- `lic_nonDogmatism_weak` is a FRAGMENT (its lower bound decays with `n`).
 #assert_axioms_clean
   lic_nonDogmatism lic_nonDogmatism_dual lic_nonDogmatism_weak lic_limit_pos
-  lic_limit_lt_one lic_uniform_nonDogmatism lic_uniform_nonDogmatism_repeating
+  lic_limit_lt_one lic_exists_limit_pos lic_exists_limit_lt_one
+  lic_uniform_nonDogmatism lic_uniform_nonDogmatism_repeating
 
--- Properties/OccamBounds.lean, Properties/UniversalSemimeasure.lean
+-- Properties/OccamBounds.lean, Properties/UniversalSemimeasure.lean,
+-- Properties/Relationships.lean (`lic_limitingBelief_add_neg`)
 #assert_axioms_clean
   lic_occamBounds lic_occam_lower lic_limitingBelief_add_neg
   lic_domination_universalSemimeasure lic_strict_domination_universalSemimeasure
 
--- Construction/Witnesses/KraftInequality.lean — the Kraft inequality underlying the
+-- Construction/NonDogmatism/Kraft.lean — the Kraft inequality underlying the
 -- prefix-machine complexity bounds.  Proof body autoformalized by Aristotle and
 -- kernel-revalidated in-repo; the statement is audited surface, the generated interior
 -- has not had a line-by-line human read.
 #assert_axioms_clean
   kraft_inequality
 
--- Construction/Witnesses/PrefixMachine.lean — the concrete self-delimiting sentence code,
+-- Construction/NonDogmatism/PrefixMachine.lean — the concrete self-delimiting sentence code,
 -- with both fuel-model emission certificates constructed (no operational input remains).
 #assert_axioms_clean
   prefixKraft prefixNegationCompiler
   invalidBit_polyFueled prefixSentenceEnum_polySentenceCodes prefixApprox_polyRatCodes
   lic_occam_lower_ofPrefixMachine lic_occamBounds_ofPrefixMachine
 
--- Construction/Witnesses/UniversalPrefix.lean (the self-delimiting UNIVERSAL prefix
+-- Construction/NonDogmatism/UniversalPrefix.lean (the self-delimiting UNIVERSAL prefix
 -- machine).  `dom U` is prefix-free by construction, so the Kraft field
 -- needs no hypothesis; `kappaU_le_of_prefixMachine` is the invariance theorem that earns
 -- the word "universal"; `uSel_polyRatCodes` builds the polynomial clock (a self-clamped
 -- `evaln` selection) on top of the exact stage table, whose own program
--- `uCode` is now CONSTRUCTED (`exists_uCode`, via the bounded search `uMinLen`), so the
+-- `uCode` is CONSTRUCTED (`exists_uCode`, via the bounded search `uMinLen`), so the
 -- two endpoints carry no operational input at all.
 #assert_axioms_clean
   UPrefix.UHalt_prefixFree UPrefix.UHalt_functional UPrefix.acc_antichain
@@ -320,15 +352,19 @@ topical blocks stay the place where each endpoint is explained. -/
 -- process into the single world the price-floor argument consumes.  It is internal
 -- infrastructure, not a paper node, so it is not itself an inventory member; its axiom
 -- report is covered transitively by the `thm:scon` endpoints below.
+-- The three `lic_conditioned*` endpoints are ONE layer, at `def:ec`'s own quantifier; the
+-- compiler and the two operational witnesses carry one translation certificate each, typed
+-- at that class (FIELD note at `ConditioningTraderCompiler` below).  The degenerate branch
+-- is likewise ONE declaration, `isLogicalInductor_of_stage_unsatisfiable`
+-- (Framework/Affine.lean), at the same quantifier and consumed by the `thm:scon` endpoints
+-- below.
 #assert_axioms_clean
   lic_conditioned lic_conditioned_gated lic_conditioned_eventual
-  lic_conditioned_machine lic_conditioned_gated_machine lic_conditioned_eventual_machine
   isLogicalInductor_of_stage_unsatisfiable
-  isMachineLogicalInductor_of_stage_unsatisfiable
   lic_iff_of_finitePerturbation
-  lic_iff_of_finiteSupportPerturbation machine_lic_iff_of_finiteSupportPerturbation
+  lic_iff_of_finiteSupportPerturbation lic_iff_of_finiteSupportPerturbation_ofPatches
 
--- Construction/Witnesses/FinitePerturbationWitness.lean — the REFUTATION of `thm:ifp`.
+-- Construction/Freeze/Counterexample.lean — the REFUTATION of `thm:ifp`.
 -- The paper's printed statement is false; `not_overgeneral_ifp` proves its negation at the
 -- paper's own quantifier, with no theory parameter (`_ofTheory` is the same over any Σ₁-sound
 -- Δ₁ theory extending `𝗜𝚺₁`), from the constructed `LIA` and a day-`0` advice tape.  It is a
@@ -339,6 +375,15 @@ topical blocks stay the place where each endpoint is explained. -/
 -- PE1 is the ledger.
 #assert_axioms_clean
   FinitePerturbationCounterexample.not_overgeneral_ifp
+
+-- Properties/Calibration.lean — the §4.3 weighting vocabulary.  `DivergentWeighting` renders
+-- `def:fuz` (a `[0,1]` sequence with divergent sum) and is the canonical endpoint for that
+-- node, listed above.  `PGenerableWeighting` renders `def:ece`, but is not that node's
+-- canonical endpoint: it is the progression data *without* the denotation clause — the form
+-- the §4.3–4.5 hypotheses take — while `GeneratedRatFeature` is the paper's own "generable
+-- from ℙ" for a rational sequence.  `pGenerableWeighting_iff` relates the two.
+#assert_axioms_clean
+  DivergentWeighting PGenerableWeighting calibrationIndicator_pgenerable
 
 -- Properties/Pseudorandomness.lean
 #assert_axioms_clean
@@ -361,6 +406,7 @@ topical blocks stay the place where each endpoint is explained. -/
 -- Properties/SelfTrust.lean
 #assert_axioms_clean
   lic_linearity_of_expectation lic_expectation_indicator lic_expectation_provind
+  lic_expectation_indicator_unconditional
   lic_linearity_of_expectation_ofValuesAt lic_expectation_provind_ofValuesAt
   lic_expectation_provind_le lic_expectation_provind_eq
   lic_expect_combination_provind_zero lic_expect_combination_provind_le_ofDetermined
@@ -384,7 +430,7 @@ topical blocks stay the place where each endpoint is explained. -/
   LUVCombination.BoundedSequence.perexpkno
   LUVCombination.BoundedSequence.wubexp
 
--- Construction/Witnesses/LUVExpectationCertified.lean (`dd:luv-arith`): the
+-- Construction/LUV/Endpoints.lean (`dd:luv-arith`): the
 -- expectation endpoints whose world-value hypotheses are discharged from arithmetic
 -- (`thm:loe`, `thm:expprovind`).  The certified LUV, its derived world-value
 -- interfaces (`threshold_holds_iff`, `exactTheoryPresentation_ofArithmetic`), and the
@@ -400,7 +446,7 @@ topical blocks stay the place where each endpoint is explained. -/
 -- dd:fuel model card (`def:ec`): the fuel certificate's own trust facts — poly-fueled ⟹
 -- primrec, the runtime-gcd inhabitation witness, the size-based separation (2^n is not
 -- poly-fueled), and the two-sided EF.cost ↔ token-length seam.  The certificate's
--- relation to the paper's class is `EfficientlyComputable.toMachine`, audited above.
+-- relation to the paper's class is `PolyFueledTrader.toEfficientlyComputable`, audited above.
 #assert_axioms_clean
   PolyFueled.primrec gcdc_polyFueled not_polyFueled_two_pow
   EF.cost_le_serialize_length EF.serialize_length_le_cost
@@ -409,7 +455,7 @@ topical blocks stay the place where each endpoint is explained. -/
 -- dd:fuel digit layer (`def:ec`): the digit stream determines the token stream
 -- (round-trip + injectivity), and every token-model certificate transfers into the
 -- digit-metered class (the inclusion capstone).  The digit model is the
--- metering underneath the collapsed criterion class `EfficientlyComputable`.
+-- metering underneath the collapsed criterion class `PolyFueledTrader`.
 #assert_axioms_clean
   undigitize_digitize digitize_injective
   PolySegStream.digitizeStream
@@ -426,9 +472,9 @@ topical blocks stay the place where each endpoint is explained. -/
   ComputableLUV.lic_linearity_of_expectation_arith_unconditional
   lic_no_expected_net_update lic_no_expected_net_update_conditional
   LUVCombination.BoundedSequence.recurringunbiasednessexp
-  LUVCombination.BoundedSequence.prandexp
+  LUVCombination.BoundedSequence.prandexp_above
   LUVCombination.BoundedSequence.prandexp_below
-  LUVCombination.BoundedSequence.prandexp_eq
+  LUVCombination.BoundedSequence.prandexp
 
 -- Properties/MetaLearning.lean
 #assert_axioms_clean
@@ -441,18 +487,29 @@ topical blocks stay the place where each endpoint is explained. -/
 Each block below names the file whose constructions *discharge* an interface the property
 tail would otherwise assume, together with the criterion endpoints that consume them. -/
 
--- Construction/Witnesses/BoundedEvaluation.lean — the bounded-`evaln` compiler, repeated
--- enumeration of a c.e. set, settlement/patient clocks, and the prefix-freeze certificate.
+-- Framework/Emission/Emission.lean — the universal bounded simulator.
 #assert_axioms_clean
   codeEvalnNat_polyFueled
-  EfficientRepeatedEnumeration.ofBig EfficientRepeatedEnumeration.ofCE
+
+-- Construction/NonDogmatism/RepeatedEnumeration.lean — repeated enumeration of a c.e. set.
+#assert_axioms_clean
+  EfficientRepeatedEnumeration.ofMachineCodes EfficientRepeatedEnumeration.ofCE
   lic_uniform_nonDogmatism_ofCE
-  SettlementChecker.ofComputations PatientSettlementClock.ofComputations
+
+-- Construction/Freeze/Prefix.lean — the prefix-freeze certificate.
+#assert_axioms_clean
   liaFreezeBefore_preserves_ecTok
 
--- Construction/Witnesses/QuotationAffine.lean — the code-indexed quotation layer
+-- Construction/Statistics/SettlementCompiler.lean — the compiled settlement checker and the
+-- patient clock it closes.
+#assert_axioms_clean
+  SettlementChecker.ofComputations PatientSettlementClock.ofComputations
+  PatientSettlementClock.ofChecker
+
+-- Construction/Quotation/Packages.lean — the code-indexed quotation layer
 -- (`dd:quote-code`) and the diagonal price fixed point it makes constructible.
 #assert_axioms_clean
+  QuotationTheoryPresentation.mono
   diagonalPriceDecisionPart_partrec diagonalPriceDecisionCode_eval
   diagonalPriceQuotePos_iff diagonalPriceQuoteNeg_iff diagonalPriceFixedpoint_spec
   parameterizedDiagonalQuoteCodeOfMarket
@@ -466,25 +523,33 @@ tail would otherwise assume, together with the criterion endpoints that consume 
   paperDiagonalQuoteCode
   lic_paradox_resistance_ofDiagonal_unconditional
 
--- Construction/Witnesses/FeedbackEmission.lean — the emitter that turns a feedback
+-- Construction/Statistics/FeedbackEmission.lean — the emitter that turns a feedback
 -- trader schedule into an `def:ec`-certified trade stream.
 #assert_axioms_clean
   feedbackTraderEmissionSigns lic_wubaff_ofFeedbackTruth
   boundedCombination_wubaff_ofFeedbackTruth luv_wubexp_ofFeedbackTruth
 
--- Construction/Witnesses/FeedbackTruth.lean — the delayed-truth bridge: a computation of
+-- Construction/Statistics/FeedbackTruth.lean — the delayed-truth bridge: a computation of
 -- the feedback value, clocked to the deferral day, feeding the unbiasedness endpoints.
+-- Three witnesses, at three strengths.
 -- `FeedbackTruth.ordinaryFeedbackTruthComputation` inhabits the delayed-truth premise with
 -- a constant value stream (inhabitation only — see its docstring);
 -- `FeedbackTruth.alternatingFeedbackTruthComputation_nonempty` is the **non-degenerate**
 -- witness, whose stream takes both values along the deferral image, so the endpoints'
 -- dependence on `truth` is exercised by an actual inhabitant and not only by the
--- arbitrary-`truth` statement.  `FeedbackTruth.exists_nonconstant_feedbackTruthComputation`
--- records that non-constancy explicitly; it carries no `Paper node:` line and so is
--- deliberately not asserted here.
+-- arbitrary-`truth` statement; and
+-- `FeedbackTruth.unboundedFeedbackTruthComputation_nonempty` is the **unbounded** witness,
+-- whose value stream is `k ↦ (k : ℚ)` and whose `truth` argument is therefore unbounded
+-- above along the deferral image — certified by `ratNatCast_machineDigits` at
+-- `UnaryRuler.unpairFst`, so no finiteness of the value range is anywhere assumed.
+-- `FeedbackTruth.exists_nonconstant_feedbackTruthComputation` and
+-- `FeedbackTruth.exists_unbounded_feedbackTruthComputation` record those two facts about
+-- `truth` explicitly; they carry no `Paper node:` line and so are deliberately not
+-- asserted here.
 #assert_axioms_clean
   FeedbackTruth.ordinaryFeedbackTruthComputation
   FeedbackTruth.alternatingFeedbackTruthComputation_nonempty
+  FeedbackTruth.unboundedFeedbackTruthComputation_nonempty
   feedbackTruthSequence feedbackTruthSequence_ofDetermined
   lic_wubaff_ofComputation lic_wub_ofComputation
   boundedCombination_wubaff_ofComputation luv_wubexp_ofComputation
@@ -492,13 +557,13 @@ tail would otherwise assume, together with the criterion endpoints that consume 
   boundedCombination_wubaff_ofComputation_unconditional
   luv_wubexp_ofComputation_unconditional
 
--- Construction/Witnesses/BitPrefixSyntax.lean — the prefix-sentence family over
+-- Construction/NonDogmatism/BitPrefix.lean — the prefix-sentence family over
 -- independent bit atoms, its token-metered naming emitter, and the semimeasure-domination
 -- endpoint they feed.  `ordinaryBitPrefixSentences` is the **inhabitation witness** for
 -- `BitPrefixSentences`; `not_polySentenceCodes_bitPrefixSentence` records why that field must
 -- be metered in tokens rather than in the pair-code value.
 --
--- Two witness layers, and which one to cite (final audit).  `ordinaryBitPrefixSentences`
+-- Two witness layers, and which one to cite.  `ordinaryBitPrefixSentences`
 -- lives over `emptyBitDeductiveProcess`, whose every stage is `∅`, so its `realizable` field
 -- is discharged VACUOUSLY: it is an INHABITATION witness only, and the paper's
 -- Θ-load-bearing reading of `thm:dus` is not exercised by it.  What it does exercise is the
@@ -511,28 +576,27 @@ tail would otherwise assume, together with the criterion endpoints that consume 
 -- non-vacuously satisfiable.  Both endpoints remain proved for an arbitrary deductive
 -- process, so neither layer's limits bound the theorem.  See the declarations' docstrings.
 #assert_axioms_clean
+  BitChain.decode_chain
   not_polySentenceCodes_bitPrefixSentence ordinaryBitPrefixCodes
   bitPrefixSentencesOfIndependentAtoms ordinaryBitPrefixSentences
   lic_domination_universalSemimeasure_ofIndependentAtoms
   paperIndependentBitAtoms paperBitPrefixCodes paperBitPrefixSentences
   lic_domination_universalSemimeasure_paperDP
 
--- Construction/Witnesses/UniversalDovetailer.lean — the universal continuous semimeasure.
+-- Construction/NonDogmatism/UniversalDovetailer.lean — the universal continuous semimeasure.
 -- The universal continuous semimeasure is fully constructed: the semimeasure laws, the
 -- monotone from-below stage table, the explicit domination constant, and the emission
--- program for the stage table (column tabulation).  The *polynomial* clock is now
+-- program for the stage table (column tabulation).  The *polynomial* clock is
 -- discharged as well: the self-clamped stage table reads the fixed exact emitter under a
 -- polynomial `evaln` clock, so both `DUSApproximationPresentation` and
 -- `DUSThresholdEmission` are constructed objects.
 #assert_axioms_clean
   Dovetail.continuousSemimeasure Dovetail.universalMass_dominates
   Dovetail.exists_universalApprox_code Dovetail.universalSemimeasure
-  Dovetail.gridApprox_le_mass Dovetail.gridApprox_tendsto
-  Dovetail.isPolyBounded_encode_gridApprox
   Dovetail.dusApprox_tendsto Dovetail.dusApprox_polyRatCodes
   Dovetail.dusApproximationPresentation Dovetail.dusThresholdEmission
 
--- Construction/Witnesses/StrictSeparators.lean — the recursively inseparable pair and the
+-- Construction/NonDogmatism/StrictSeparators.lean — the recursively inseparable pair and the
 -- null stage classes that make the strict-domination separator presentation constructible.
 -- The separator presentation is fully constructed: Kleene's pair is recursively
 -- inseparable, the constraint theory's enumerator is built from the atom codes, and the
@@ -545,7 +609,7 @@ tail would otherwise assume, together with the criterion endpoints that consume 
   ordinaryAtom_code_computable
   lic_strict_domination_universalSemimeasure_ofAtomCodes
 
--- Construction/Witnesses/ConditioningPresentation.lean — the conditioning presentation
+-- Construction/Conditioning/Presentation.lean — the conditioning presentation
 -- (condition sentences plus their codes) built from the process computations.
 -- The compact interface's two witnesses: the degenerate one (empty adjoined process,
 -- inhabitation only) and the growing one, which is what carries the content burden.
@@ -557,14 +621,14 @@ tail would otherwise assume, together with the criterion endpoints that consume 
   deductiveStageCondition_growing_ne deductiveStageCondition_growing_ne_top
   prefixProcess prefixProcessComputation prefixConditioningPresentation
 
--- Construction/Witnesses/ConditioningCompiler.lean — the eventual price floor the
--- conditioning translation needs.  (The `def:ec`-preserving translations themselves are
--- the `_ecRpn` endpoints below, at the criterion's own class.)
+-- Construction/Conditioning/Compiler.lean — the eventual price floor the
+-- conditioning translation needs.  (The certificate-preserving translations themselves are
+-- the `_ecRpn` endpoints below, at the fuel model's own class.)
 #assert_axioms_clean
   exists_eventual_condition_price_floor
   eventualConditioningFloorOfJointConsistency
 
--- Construction/Witnesses/DigitConditioning.lean — the conditioning translation in the
+-- Construction/Conditioning/Compiler.lean — the conditioning translation in the
 -- digit metering model: guarded compilers, guard honesty, and the digit-to-digit
 -- preservation results.
 #assert_axioms_clean
@@ -575,108 +639,118 @@ tail would otherwise assume, together with the criterion endpoints that consume 
   ConditioningCompile.conditionedTranslation_preserves_ecDigit
   ConditioningCompile.eventualConditionedTranslation_preserves_ecDigit
 
--- Construction/Witnesses/RpnConditioning.lean — the conditioning translation in the RPN
--- symbol model: the run-aware price transducer and its master commutation, guard honesty,
--- the frame pass and its gated two-leg join, and the two `def:ec → def:ec` translation
--- endpoints.  The `thm:scon` packaging that used to close this block now lives in
--- `Construction/Machine/CondEndpoints.lean`, listed below: criterion endpoints sit above
--- both the fuel and the machine realization rather than inside either.
+-- Construction/Conditioning/PricePass.lean — the conditioning translation in the RPN
+-- symbol model, first half: the run-aware price transducer, its master commutation and
+-- guard honesty.
 #assert_axioms_clean
-  RpnConditioning.rpnGuardedConditionRun_polySegStream
-  RpnConditioning.rpnGuardedZeroAwareConditionRun_polySegStream
   RpnConditioning.unRpn_rpnConditionRun
-  RpnConditioning.unRpn_rpnZeroAwareConditionRun
   RpnConditioning.strategyOfTokens_rpnGuardedConditionTokens_trades
+
+-- Construction/Conditioning/FramePass.lean — the same translation, second half: the frame
+-- pass and its gated two-leg join, the zero-aware price pass, and the strategy-level cores
+-- of the assembled transduction.  The file publishes no class-preservation capstone of its
+-- own: the paper's class `def:ec` is transported by `CondStep`, two blocks down.
+-- The `thm:scon` packaging lives in `Construction/Conditioning/Endpoints.lean`,
+-- listed below: criterion endpoints sit above both the fuel and the machine realization
+-- rather than inside either.
+#assert_axioms_clean
+  RpnConditioning.unRpn_rpnZeroAwareConditionRun
   RpnConditioning.strategyOfTokens_rpnGuardedZeroAwareConditionTokens_trades
   RpnConditioning.rpnTradeCountAt_eq_frameTradeCount
   RpnConditioning.rpnStructurallyAccepts_agree
-  RpnConditioning.rpnSafeSeparatedFrameOutput_polySegStream
   RpnConditioning.strategyOfTokens_unRpn_rpnSafeSeparatedFrameOutput_trades
-  RpnConditioning.conditionedTranslation_preserves_ecRpn
-  RpnConditioning.eventualConditionedTranslation_preserves_ecRpn
   RpnConditioning.strategyOfTokens_rpnConditionOutput
   RpnConditioning.strategyOfTokens_rpnZeroAwareOutput
 
--- Construction/Machine/CondStep.lean — the conditioning transduction in the machine model:
--- the same token-level automaton as the fuel realization, driven as a `Complexity.FP` client
--- of `TokenFold.runFold`, and the transport theorem the machine criterion needs.
--- Both transport theorems take the *same* `BigSentenceCodes` hypothesis on the condition
--- sequence as their fuel counterparts — `def:ec`'s own write-out class, in which a
--- condition's Gödel code may be exponential in the day — so nothing about `ψ` is weakened;
--- their trader hypothesis is the machine class, so they are strictly stronger there.
--- The bridge to the transducer's block discipline is `CondStep.machineSentenceBlocks_of_big`,
--- clocked by `BigTokenStream.digitizeStream`.
+-- Construction/Conditioning/TransductionFrame.lean — the conditioning transduction in the
+-- machine model: the same token-level automaton as the fuel realization (built in
+-- `Construction/Conditioning/Transduction.lean`), driven as a `Complexity.FP` client of
+-- `TokenFold.runFold`, and the transport theorems the criterion needs.
+-- Both transport theorems take `MachineSentenceCodes` on the condition sequence —
+-- `def:ec`'s own machine-metered write-out class, in which a condition's Gödel code may be
+-- exponential in the day.  `BigSentenceCodes.toMachine` supplies it from a fuel-metered
+-- write-out certificate and no converse is claimed, so `ψ`'s hypothesis is strictly weaker;
+-- their trader hypothesis is the machine class, so they are strictly stronger on both
+-- binders.  The bridge to the transducer's block discipline is
+-- `CondStep.machineSentenceBlocks_of_machine`, a one-line read-off: a `MachineTokenStream`
+-- word already carries `TokenFold.BlockWF` and its decode law.
+-- `ConditioningPresentation.condition_codes` is itself `MachineSentenceCodes`, so the
+-- endpoint chain reaches these two with no crossing at all.
 #assert_axioms_clean
-  CondStep.conditionedTranslation_preserves_machine
-  CondStep.eventualConditionedTranslation_preserves_machine
+  CondStep.conditionedTranslation_preserves_ec
+  CondStep.eventualConditionedTranslation_preserves_ec
 
--- Construction/Machine/CondEndpoints.lean — the `thm:scon` packaging: operational witnesses
--- and criterion-level closure, over both realizations.  The block moved here unchanged from
--- `RpnConditioning.lean`; only the machine endpoint is new.
--- All three witnesses carry both certificates; the eventual one's machine field arrived
--- with its emitter (the finite-zero price rewrite, whose zero-day test is a fixed-finite-set
--- dispatch clamped at the floor's cutoff).  `thm:scon` stands at the paper's own quantifier
--- in all three forms.
+-- Construction/Conditioning/Endpoints.lean — the `thm:scon` packaging: operational witnesses
+-- and criterion-level closure, over both realizations.
+-- All three witnesses carry the machine certificate; the eventual one's field rests on the
+-- finite-zero price rewrite, whose zero-day test is a fixed-finite-set dispatch clamped at
+-- the floor's cutoff.  `thm:scon` stands at the paper's own quantifier in all three forms,
+-- and only there: there is no fuel-class parametric layer beside them.  There is no
+-- composite `base`+`more`+`market` gated constructor to inventory: that content is
+-- `lic_conditioned_gated_ofMarketComputation` at `conditioningPresentationOfComputations`,
+-- and its presentation-discharged sibling is `lic_conditioned_gated_ofComputations`
+-- (Construction/Conditioning/Presentation.lean), both at the machine class.
 #assert_axioms_clean
   ConditioningCompile.eventualConditioningOperationalWitness
   ConditioningCompile.gatedConditioningOperationalWitness
   ConditioningCompile.denominatorPatchedGatedConditioningOperationalWitness
   ConditioningCompile.lic_conditioned_gated_ofMarketComputation
-  ConditioningCompile.lic_conditioned_gated_machine_ofMarketComputation
   ConditioningCompile.lic_conditioned_eventualOfFloor
-  ConditioningCompile.lic_conditioned_eventualOfFloor_machine
   ConditioningCompile.lic_conditioned_eventual_ofMarketComputation
-  ConditioningCompile.lic_conditioned_eventual_machine_ofMarketComputation
-  ConditioningCompile.lic_conditioned_fixed_ofComputationAndMarket
-  ConditioningCompile.lic_conditioned_growing_ofComputationsAndMarket
-  ConditioningCompile.lic_conditioned_fixed_machine
-  ConditioningCompile.lic_conditioned_growing_machine_ofProcessComputation
-  ConditioningCompile.lic_conditioned_growing_machine_ofSequence
-  ConditioningCompile.lic_conditioned_gated_ofComputationsAndMarket
+  ConditioningCompile.lic_conditioned_fixed
+  ConditioningCompile.lic_conditioned_growing_ofProcessComputation
+  ConditioningCompile.lic_conditioned_growing_ofSequence
 
--- Construction/Witnesses/RpnFreeze.lean — the prefix-freeze transducer in the RPN symbol
--- model, the run-level quote lookup, and the spelling characterization the lookup rests on.
+-- Construction/Freeze/Compiler.lean — the prefix-freeze transducer in the RPN symbol
+-- model and the run-level quote lookup.
+-- `EF.strategyOfTokens_freezeTokenRunOn_trades` is the flat-token transducer's strategy
+-- transport, in `Framework/Emission/FreezeTransducer.lean`.
 --
--- MACHINE CLASS: closed.  `RpnFreeze.parseRpnLegacy_iff_patMatch` says a run denotes a
--- target exactly when it matches one of the target's finitely many spelling PATTERNS —
--- literal grammar tokens with a hole wherever an escape leaf may stand — so the lookup is a
--- fixed-depth automaton rather than a parser; `FreezeStep` runs the resulting transducer
+-- MACHINE CLASS: closed.  `StructPat.parseRpn_iff_segMatch`
+-- (`Construction/Freeze/StructuredPatterns.lean`) says a run denotes a target exactly when
+-- it matches one of the target's finitely many spelling PATTERNS — literal grammar tokens
+-- with a hole wherever an escape leaf may stand and a whole structured block as one
+-- segment — so the lookup is a fixed-depth automaton rather than a parser; `FreezeStep`
+-- runs the resulting transducer
 -- through `TokenFold.runFold_mem_FP`; `FreezeOracle` supplies the lookup for any finite
 -- table and compiles the patch from the market's own certificate.
--- The public statement is `FreezeOracle.machine_lic_iff_of_finiteSupport`: finite support
+-- The public statement is `FreezeOracle.lic_iff_of_finiteSupport`: finite support
 -- and computability of both markets, and NOTHING ELSE — no patch hypothesis, and no
 -- condition of any kind on the finitely many sentences whose price moves.
 --
--- FUEL CLASS: still open, and this is a true negative.  `EfficientPrefixPatch` and
--- `FiniteSupportPatch` remain uninhabited: the emitted segment's fuel certificate needs a
--- `BigDigits` decode test on exponentially large escape codes, and the digit model is not
--- closed under that inverse operation (`dd:fuel`).  `lic_iff_of_finitePerturbation` is
--- therefore still the only fuel-class coverage of `thm:ifp`.
+-- THE PREFIX FORM IS STILL UNINHABITED, and this is a true negative.  `thm:ifp` has one
+-- layer, with every patch certificate at `def:ec`:
+-- `lic_iff_of_finitePerturbation` keeps the paper's own hypothesis shape (finitely
+-- many changed DAYS) and `EfficientPrefixPatch` still has no inhabitant anywhere here — a
+-- prefix freeze hard-codes a day's quote at EVERY sentence, and the day-`0` huge-numeral
+-- market of `Properties/FinitePerturbations.lean` forces a constant no polynomial-time
+-- output word can hold.  That obstruction is about the market, not about a certificate
+-- calculus.  The corrected finite-support form is inhabited and discharged
+-- (`FreezeOracle.finiteSupportPatch`).
 --
--- THE `⊥` NARROWING IS GONE, and this is the substantive change.  It used to be the thing
--- that made the machine class work: `decode_eq_some_iff_of_botFree` proves Foundation's
+-- NO `⊥` NARROWING IS ASSUMED.  `decode_eq_some_iff_of_botFree` proves Foundation's
 -- decoder injective off the `⊥` fiber, so on a `⊥`-free target the escape-leaf test is a
 -- comparison against a fixed numeral, while `decode_falsum_noncanonical` /
 -- `decode_and_noncanonical` show the fiber really is infinite otherwise.  Those witnesses
--- now motivate the parser instead of restricting it: `DigitFP.sqrtRemW_mem_FP` and
+-- motivate the parser rather than restricting it: `DigitFP.sqrtRemW_mem_FP` and
 -- `DigitFP.unpairW_spec` put base-4 integer square root and `Nat.unpair` in
 -- `Complexity.FP`, `FiberTest.fiberW_mem_FP` builds the decode test on top of them (its
 -- correctness is `sentenceMatches_eq_one_iff`, already proved both ways), and
--- `PatAuto.ifParse_mem_FP` is the recognizer that consumes it.  So `BotFree` is DISCHARGED,
--- not assumed.
+-- `SegRec.ifParseFull_mem_FP` is the recognizer that consumes it.  So `BotFree` is
+-- DISCHARGED, not assumed.
 --
--- `NoReserved` IS GONE TOO, and it stood for TWO devices, not one.  A structured
+-- `NoReserved` IS DISCHARGED TOO, and it covers TWO devices, not one.  A structured
 -- paper-prime leaf is spelled `[1, 0, pol] ++ 1^L ++ [0] ++ p ++ [19]` with `L = |p|`.
 --   (i) The LENGTH IDENTIFICATION.  `L` is unbounded even for a fixed target because
 --   `parseStructuredNat` has a self-loop at the numeral `0` (`1^k 0` spells `0` for every
 --   `k`), so matching the unary field against the payload's own length is `a^n b^n`: no
---   finite-state device decides it, and no extension of a spelling list or of
---   `RunAuto.BlockAutomaton` could have.  `CtrAuto.ctrMachine` does — `BlockMachine`
---   instantiated as a finite control paired with one unary counter.
+--   finite-state device decides it, and no purely finite-state extension of a spelling list
+--   can.  `CtrAuto.ctrMachine` does — `BlockMachine` instantiated as a finite control paired
+--   with one unary counter.
 --   (ii) The PAYLOAD LANGUAGE: which token strings denote the fixed formula code.  This is
---   the larger half, it was NOT anticipated when `NoReserved` was first disclosed, and it
---   is not a spelling list either, since numeral padding and the double negation `[20, 20]`
---   both preserve a code.  `PayAuto` decides it exactly by top-down predictive parsing
+--   the larger half, and it is not a spelling list either, since numeral padding and the
+--   double negation `[20, 20]` both preserve a code.
+--   `PayAuto` decides it exactly by top-down predictive parsing
 --   against a stack of obligations that carries the pending negation as a PARITY BIT rather
 --   than applying `negFormulaCode`; that keeps every child code an `unpair` component of its
 --   parent, so a potential argument bounds the reachable stacks and the state set is finite.
@@ -695,8 +769,8 @@ tail would otherwise assume, together with the criterion endpoints that consume 
 --
 -- CAREFUL, two different "unrestricted" statements meet here.  The finite-SUPPORT statement
 -- without any syntactic condition — same two computable markets, differing on finitely many
--- `(day, sentence)` coordinates — is now PROVED
--- (`FreezeOracle.machine_lic_iff_of_finiteSupport`).  The PAPER's unrestricted statement,
+-- `(day, sentence)` coordinates — is PROVED
+-- (`FreezeOracle.lic_iff_of_finiteSupport`).  The PAPER's unrestricted statement,
 -- tail agreement past some day `N`, is a different and STRONGER claim, and it is FALSE:
 -- `FinitePerturbationCounterexample.not_overgeneral_ifp` refutes it (PE1).  Do not read the
 -- first as retracting the second.  The two hypotheses are separated mechanically:
@@ -705,116 +779,102 @@ tail would otherwise assume, together with the criterion endpoints that consume 
 -- theorem cannot re-derive the refuted one.
 #assert_axioms_clean
   EF.strategyOfTokens_freezeTokenRunOn_trades
-  MachineEfficientTrader.freezeOn
-  RpnFreeze.matchRun_iff
+  EfficientlyComputable.freezeOn
   RpnFreeze.runPrefixQuoteFromStates_exact
   RpnFreeze.unRpn_rpnFreezeRun
   RpnFreeze.unRpn_rpnFreezeRunOn
   RpnFreeze.freezeStreamRewriter_of_flatPass
-  RpnFreeze.parseStructuredPaperPrime_shape
-  RpnFreeze.spellings_sound
-  RpnFreeze.spellings_complete
-  RpnFreeze.parseRpnLegacy_iff_mem_spellings
-  RpnFreeze.parseRpn_imp_parseRpnLegacy
-  RpnFreeze.parseRpn_iff_mem_spellings
-  RpnFreeze.patterns_sound
-  RpnFreeze.patterns_complete
-  RpnFreeze.parseRpnLegacy_iff_patMatch
-  RpnFreeze.parseRpn_iff_patMatch
-  RpnFreeze.matchRun_eq_matchRunCanon
   decode_eq_some_iff_of_botFree
   sentenceMatches_of_botFree
   decode_falsum_noncanonical
   decode_and_noncanonical
 
--- Construction/Witnesses/FreezeStep.lean — the freeze transducer as a `Complexity.FP`
+-- Construction/Freeze/Step.lean — the freeze transducer as a `Complexity.FP`
 -- client of `TokenFold.runFold`, over the FLAT stream (the one a machine holds), reusing
 -- `CondStep.condStepR` as its automaton.  `decodeBits_freezePass` says the pass computes
 -- `rpnConditionRun (RpnFreeze.freezeEmitOn selRun quoteRun)` exactly — no day clamp, since
 -- the freeze oracle's output is bounded by a constant where the conditioning oracle's is
 -- not.  `freezeStreamRewriter_of_runOracle` closes the chain to `FreezeStreamRewriter`.
--- ALL of it is conditioned on a `FreezeStep.RunOracle`.  That structure is now INHABITED
+-- ALL of it is conditioned on a `FreezeStep.RunOracle`.  That structure is INHABITED
 -- (`FreezeOracle.runOracleOf`), so the chain closes; see the FreezeOracle block below for
--- what the inhabitant assumes and what it still does not supply.
--- The lookup's shape is settled too: `RpnFreeze.spellings` is the FINITE list of complete
--- legacy spellings of a target, and `spellings_sound` proves each member parses.  Under the
--- two side conditions (`BotFree`, and the target outside the reserved `atom (pair 7 _)`
--- shape) deciding "does this run denote ψ" is membership in that list, so NO streaming
--- automaton has to be proved to agree with `parseRpn`.  Both directions are now proved
--- (`parseRpnLegacy_iff_mem_spellings`), with `BotFree` load-bearing for exhaustiveness.
--- The full-grammar form `parseRpn_iff_mem_spellings` is now proved too, bridged by
--- `parseRpn_imp_parseRpnLegacy` (costing the `NoReserved` side condition) and the upstream
--- `parseRpn_of_legacy`.  All of this is RECOGNITION only: turning "membership in a list of
--- constants" into a `Complexity.FP` test, and thence into a `FreezeStep.RunOracle`, is not
--- done.  No `RunOracle` instance exists, so no patch structure is inhabited.
--- The table side conditions are collected in `CanonicalCodes.lean`'s "The recognition side
--- conditions, in one place": `Recognizable` (= `BotFree` + `NoReserved`) per sentence, plus
--- the constant output bound on the table as a whole.  Only the last is still assumed; both
--- halves of `Recognizable` are discharged by the recognizer chain
--- (`StructPat` / `PayAuto` / `CtrAuto` / `SegAuto` / `SegCtr` / `SegRec`).
+-- what the inhabitant assumes and what it does not supply.
+-- The lookup's shape is settled too: `StructPat.segPatterns` is the FINITE list of complete
+-- spelling PATTERNS of a target — literal tokens, with the escape leaf's decode obligation
+-- carried inside a hole rather than as a numeral, and a whole structured paper-prime block
+-- as a single segment — so deciding "does this run denote ψ" is
+-- pattern matching, and NO streaming automaton has to be proved to agree with `parseRpn`.
+-- Both directions are proved (`segPatterns_sound`, `segPatterns_complete`, packaged as
+-- `StructPat.parseRpn_iff_segMatch`), at the FULL grammar and with NEITHER side condition:
+-- the infinite `⊥` fibre lives inside the hole, and the reserved-atom spellings live inside
+-- the structured segment.  That is the form the recognizer compiles.
+-- The table side conditions are collected in `Construction/Freeze/CanonicalCodes.lean`'s
+-- "The recognition conditions and where the freeze stands": `Recognizable` (= `BotFree` +
+-- `NoReserved`) per sentence, plus
+-- the constant output bound on the table as a whole.  Both halves of `Recognizable` are
+-- discharged by the recognizer chain
+-- (`StructPat` / `PayAuto` / `CtrAuto` / `SegAuto` / `SegCtr` / `SegRec`), and the output
+-- bound is derived in `Construction/Freeze/Oracle.lean` (`oracleOf_length_le`).
 #assert_axioms_clean
   FreezeStep.decodeBits_flatEmitR
   FreezeStep.freezePass_mem_FP
   FreezeStep.decodeBits_freezePass
   FreezeStep.freezeStreamRewriter_of_runOracle
 
--- Construction/Witnesses/FreezeOracle.lean — the run-level lookup, and with it a
+-- Construction/Freeze/Oracle.lean — the run-level lookup, and with it a
 -- `FreezeStep.RunOracle` for any finite table (`runOracleOf`).  This CLOSES the freeze
--- chain: `machineFiniteSupportPatch_ofTable` inhabits `MachineFiniteSupportPatch` for any
--- market whose frozen table is presented by a recognizable entry list, and
--- `machineFiniteSupportPatch_example` / `_pair` do so at a table with a REAL row
--- (`exampleS_nonempty`), so the degenerate empty-table discharge is not what is happening.
--- SIDE CONDITIONS: THERE ARE NONE LEFT on the sentences.  `TablePresentation` is not one:
+-- chain: `finiteSupportPatch_ofTable` inhabits `FiniteSupportPatch` for any
+-- market whose frozen table is presented by an entry list, and
+-- `finiteSupportPatch_example` / `_pair` do so at a table with a REAL row
+-- (`pointS_nonempty`), so the degenerate empty-table discharge is not what is happening.
+-- SIDE CONDITIONS: THERE ARE NONE on the sentences.  `TablePresentation` is not one:
 -- `entriesOf` reads the entry list off `S` and the market's own quote table, so
--- `machineFiniteSupportPatch` needs only `ComputableMarket`, and the public
--- `machine_lic_iff_of_finiteSupport` carries no patch hypothesis and no syntactic condition
--- at all.  `machine_lic_iff_of_noReservedSupport` and `machine_lic_iff_of_recognizableSupport`
--- are retained as one-line compatibility corollaries, not as the strongest statement.
+-- `finiteSupportPatch` needs only `ComputableMarket`, and the public
+-- `lic_iff_of_finiteSupport` carries no patch hypothesis and no syntactic condition
+-- at all.  `lic_iff_of_noReservedSupport` and `lic_iff_of_recognizableSupport`
+-- are the corresponding one-line corollaries under the two syntactic restrictions; they are
+-- weaker statements, and the strictness comparison below is what they are for.
 -- The constant output budget is DERIVED here (`oracleOf_length_le`), not assumed.
 -- What IS disclosed is a property of the construction rather than the statement: the
 -- recognizer is compiled per frozen sentence, so its polynomial-time constants depend on
 -- that sentence — the paper's own hard-coded finite table, sound because the support is
 -- finite.
--- STRICTNESS is proved, not asserted, and now at BOTH retired conditions, at the
+-- STRICTNESS over both restricted forms is proved, not asserted, and at the
 -- PERTURBATION level (not merely the sentence level): `not_recognizableSupport_hardPoint`
 -- proves `¬ RecognizableSupportPerturbation` of the `hardSentence` market pair outright, and
 -- `not_noReservedSupport_reservedPoint` proves `¬ NoReservedSupportPerturbation` of the
 -- `reservedSentence` pair — each ruling out *every* admissible support set by forcing the
 -- differing coordinate into it (`pointHistory_ne_at`), which a sentence-level negative alone
--- cannot do.  `machine_lic_iff_hardPoint` then applies the new endpoint at
--- `hardSentence = atom 0 ⋏ ⊥` (which fails `BotFree`) and `machine_lic_iff_reservedPoint` at
+-- cannot do.  `lic_iff_hardPoint` then applies the unrestricted endpoint at
+-- `hardSentence = atom 0 ⋏ ⊥` (which fails `BotFree`) and `lic_iff_reservedPoint` at
 -- `reservedSentence` (a reserved atom failing `NoReserved`), each over a concrete pair of
 -- `ComputableMarket`s that genuinely differ there (`computableMarket_point`,
--- `pointHistory_ne_at`).  (`not_recognizable_hardS` / `not_noReserved_pointS_reserved` remain
--- as the underlying sentence/set-level facts, but are not themselves the unreachability
--- witnesses.)
--- The market pair is now supplied too: `computableMarket_twoPoint` builds two honest
+-- `pointHistory_ne_at`).  (`not_recognizable_hardS` / `not_noReserved_pointS_reserved` are
+-- the underlying sentence/set-level facts, not themselves the unreachability witnesses.)
+-- The market pair is supplied too: `computableMarket_twoPoint` builds two honest
 -- `ComputableMarket`s (rational table plus a `Nat.Partrec.Code` on the PAIRED input, so day
 -- zero gets no free special-casing), `twoPointHistory_ne_at` exhibits their disagreement,
--- and `machine_lic_iff_twoPoint` is the corrected `thm:ifp` at that pair with NO remaining
+-- and `lic_iff_twoPoint` is the corrected `thm:ifp` at that pair with NO remaining
 -- hypotheses.  So the theorem's antecedent is satisfiable: it is non-vacuous.
 -- That pair is non-vacuous but not informative on its own: those markets price almost
 -- everything at zero and are very likely exploitable, so the equivalence may hold there
 -- because both sides are false.  The informative instance is in
--- Construction/Witnesses/LIAPerturbation.lean; see that block.
+-- Construction/Freeze/LIAPerturbation.lean; see that block.
 #assert_axioms_clean
   FreezeOracle.decodeBits_oracleOf
   FreezeOracle.oracleOf_mem_FP
   FreezeOracle.runOracleOf
-  FreezeOracle.machineFiniteSupportPatch_ofTable
-  FreezeOracle.machineFiniteSupportPatch_example
-  FreezeOracle.machineFiniteSupportPatch_pair
-  FreezeOracle.exampleS_nonempty
-  FreezeOracle.machine_lic_iff_example
+  FreezeOracle.finiteSupportPatch_ofTable
+  FreezeOracle.finiteSupportPatch_example
+  FreezeOracle.finiteSupportPatch_pair
+  FreezeOracle.pointS_nonempty
+  FreezeOracle.lic_iff_example
   FreezeOracle.computableMarket_twoPoint
   FreezeOracle.twoPointHistory_ne_at
-  FreezeOracle.machine_lic_iff_twoPoint
-  FreezeOracle.machineFiniteSupportPatch_ofRecognizable
-  FreezeOracle.machine_lic_iff_of_recognizableSupport
-  FreezeOracle.machineFiniteSupportPatch_ofNoReserved
-  FreezeOracle.machine_lic_iff_of_noReservedSupport
-  FreezeOracle.machineFiniteSupportPatch
-  FreezeOracle.machine_lic_iff_reservedPoint
+  FreezeOracle.lic_iff_twoPoint
+  FreezeOracle.lic_iff_of_recognizableSupport
+  FreezeOracle.lic_iff_of_noReservedSupport
+  FreezeOracle.finiteSupportPatch
+  FreezeOracle.lic_iff_reservedPoint
   FreezeOracle.not_noReserved_pointS_reserved
   StructPat.parseRpn_iff_segMatch
   StructPat.segPatterns_sound
@@ -833,16 +893,15 @@ tail would otherwise assume, together with the criterion endpoints that consume 
   FreezeOracle.not_recognizable_hardS
   FreezeOracle.not_recognizableSupport_hardPoint
   FreezeOracle.not_noReservedSupport_reservedPoint
+  FreezeOracle.noReservedSupport_hardPoint
   FreezeOracle.computableMarket_point
   FreezeOracle.pointHistory_ne_at
-  FreezeOracle.machine_lic_iff_hardPoint
+  FreezeOracle.lic_iff_hardPoint
   FiniteSupportPerturbation.tail_agree
   DigitFP.sqrtRemW_mem_FP
   DigitFP.unpairW_spec
   FiberTest.fiberW_mem_FP
   FiberTest.holeGuards
-  PatAuto.ifParseLegacy_mem_FP
-  PatAuto.ifParse_mem_FP
   RunAuto.guardedAutomaton
   RunAuto.BlockAutomaton.ifAuto_mem_FP
   tailAgree_not_finiteSupport
@@ -854,15 +913,15 @@ tail would otherwise assume, together with the criterion endpoints that consume 
 -- `Paper node:` line, and the per-declaration gate admits no annotated declaration that no
 -- `#assert_axioms_clean` block names.  It is NOT public canonical trust surface: the
 -- LI-CANONICAL block is exactly the endpoints table of `scripts/coverage-classification.md`,
--- and `thm:ifp`'s canonical endpoint there is unchanged.
+-- whose `thm:ifp` row names `lic_iff_of_finiteSupport`.
 #assert_axioms_clean
-  lic_iff_of_finiteSupportPerturbation_machine
+  lic_iff_of_finiteSupportPerturbation
   lic_iff_of_noReservedSupportPerturbation
   lic_iff_of_recognizableSupportPerturbation
 
--- Construction/Witnesses/LIAPerturbation.lean — the corrected `thm:ifp` doing visible work.
--- `liaHistory DP` is a machine logical inductor; `liaPerturbed` moves ONE price, at the
--- `Recognizable` coordinate `(0, atom 0)`, and `machineLogicalInductor_liaPerturbed` derives
+-- Construction/Freeze/LIAPerturbation.lean — the corrected `thm:ifp` doing visible work.
+-- `liaHistory DP` is a logical inductor; `liaPerturbed` moves ONE price, at the
+-- `Recognizable` coordinate `(0, atom 0)`, and `logicalInductor_liaPerturbed` derives
 -- that the result is still one.  Nothing else in the repo derives that: the perturbed market
 -- is not the output of any construction, so its inductor-hood is exactly what the theorem
 -- buys.  `computableMarket_liaPerturbed` rebuilds the market program (the code is combined at
@@ -873,10 +932,10 @@ tail would otherwise assume, together with the criterion endpoints that consume 
 -- market program and a computable deductive process.  Nothing here discharges those.
 #assert_axioms_clean
   LIAPerturbation.computableMarket_liaPerturbed
-  LIAPerturbation.machineLogicalInductor_liaPerturbed
+  LIAPerturbation.logicalInductor_liaPerturbed
   LIAPerturbation.exists_informative_liaPerturbation
 
--- Construction/Witnesses/UnconditionalOverLIA.lean
+-- Construction/NonDogmatism/Endpoints.lean
 #assert_axioms_clean
   lic_domination_universalSemimeasure_unconditional
   lic_domination_dovetailSemimeasure_unconditional
@@ -884,24 +943,30 @@ tail would otherwise assume, together with the criterion endpoints that consume 
   lic_domination_dovetailSemimeasure_paperDP
   lic_domination_everyLowerSemicomputable_paperDP
   lic_strict_domination_universalSemimeasure_unconditional
+
+-- Construction/Conditioning/Endpoints.lean
+-- `lic_conditioned_fixed_unconditional` / `lic_conditioned_growing_unconditional` discharge
+-- the criterion internally through `paperLIA` / `LIA_is_logical_inductor` and conclude at
+-- `def:ec`'s own quantifier, so an `_unconditional` form here costs a client nothing to take
+-- at the paper's class rather than at the certification engine's.
+-- `lic_conditioned_ofCompiler_unconditional` concludes there for the same reason.
+#assert_axioms_clean
   lic_conditioned_ofCompiler_unconditional
   lic_conditioned_fixed_unconditional
   lic_conditioned_growing_unconditional
-  lic_conditioned_fixed_machine_unconditional
-  lic_conditioned_growing_machine_unconditional
-  exists_growing_conditioned_machine_inductor
+  exists_growing_conditioned_inductor
 
--- Construction/Witnesses/LUVSyntax.lean — LUV-combination syntax, the mesh-softmax
+-- Construction/LUV/Syntax.lean — LUV-combination syntax, the mesh-softmax
 -- operational witness it constructs (`lem:mesh`), and the four expectation endpoints
 -- that consume that witness with the operational hypothesis discharged
 -- (`lem:mesh`, `thm:exppolymax`, `thm:expcoh`, `thm:perexpkno`).
--- `ordinaryLUVCombinationSyntax` (QuoteCodeOfMarket.lean) is the constructed
+-- `ordinaryLUVCombinationSyntax` (Construction/Quotation/MarketQuoteCodes.lean) is the constructed
 -- non-vacuity witness for the `_ofSyntax` endpoints' caller data, over a
 -- non-degenerate index-varying sequence.
 #assert_axioms_clean LUVCombinationSyntax.meshSoftmaxOperationalWitness
   ordinaryLUVCombinationSyntax
 
--- Construction/Witnesses/PaperLUV.lean, StructuredPaperRpn.lean, ArithmeticSource.lean —
+-- Construction/LUV/PaperLUV.lean, SourceCodec.lean, ArithmeticSource.lean —
 -- the literal first-order frontend.  `PaperLUV` renders `def:luv` as an actual
 -- `ArithmeticSemisentence 1` with object-level `T`-proofs of unique existence and
 -- unit-interval membership; `toLUV` compiles it into the abstract threshold carrier and
@@ -914,13 +979,16 @@ tail would otherwise assume, together with the criterion endpoints that consume 
 -- unary numeral) and `dyadicPaperLUVSeq` at `2⁻ⁿ` (denominator the compact numeral of
 -- `2 ^ n`, `O(n)` symbols).  The second is what shows the token-metered class reaches the
 -- superpolynomially small values the paper writes.
--- `PaperLUV.rpnThresholdCodes` is the single-LUV route out of the frontend: the constant
--- family reindexed along `m ↦ ⟨0, m⟩`, giving the non-sequence `LUV.RpnThresholdCodes` that
--- the whole-LUV endpoints take as a hypothesis (`LUV.expect_converges`, `thm:ec`), with no
--- efficiency side condition, since a constant formula family is trivially token-metered.
+-- `PaperLUV.machineThresholdCodes` is the single-LUV route out of the frontend: the constant
+-- family reindexed along `m ↦ ⟨0, m⟩`, giving the non-sequence `LUV.MachineThresholdCodes`
+-- directly — which IS the whole-LUV endpoints' hypothesis (`LUV.expect_converges`,
+-- `thm:ec`) — with no efficiency side condition, since a constant formula family is
+-- trivially token-metered and `RpnSentenceCodes.toMachine` crosses to the machine class in
+-- one step.
 -- The metering is on the paper's **source**.  `PaperLUVSeq` carries each LUV's defining
 -- formula as the paper writes it (`source : ℕ → ArithSource 1`, over the primitive
--- connectives `¬ ∧ ∨ ⟹ ⟺` of tex:560 and quantifiers `∀ ∃` of tex:571-577), a proof that it denotes the LUV's Foundation
+-- connectives `¬ ∧ ∨ ⟹ ⟺` of tex:560 and quantifiers `∀ ∃` of tex:568-573), a proof that
+-- it denotes the LUV's Foundation
 -- formula (`compiles`), and `def:ec`'s condition on that writing (`structural`, i.e.
 -- `PolyArithmeticSourceSeq`).  Normal-form expansion happens inside
 -- `parseStructuredArithmeticFormula` (tags `20`/`21`/`22`), never on the emitted stream.
@@ -931,10 +999,10 @@ tail would otherwise assume, together with the criterion endpoints that consume 
 -- numeral notation (underline convention, tex:564) and the value is nameable compactly inside `ℒₒᵣ`.
 -- The compact numeral machinery it rests on (`binNumeral`, `binNumeralEnc_length_le`,
 -- `binNumeral_val`, `binNumeralEnc_two_pow_polySegStream`) and the shared template
--- `invFormula` are internal — though `binNumeral` is no longer only a foil-avoidance
--- device: since the R5-F08 repair it is how the represented claim families below spell the
--- argument that names the machine (`polySegStream_binNumeralEnc`).
--- `iffChain_not_polyArithmeticFormulaSeq` is no longer a disclosure: it is the **strictness
+-- `invFormula` are internal — though `binNumeral` does more than avoid the foil: it is how
+-- the represented claim families below spell the argument that names the machine
+-- (`polySegStream_binNumeralEnc`).
+-- `iffChain_not_polyArithmeticFormulaSeq` is not a disclosure: it is the **strictness
 -- separation** between the normal-form-metered foil `PolyArithmeticFormulaSeq` and the
 -- paper's class `PolyArithmeticSourceSeq`.  Foundation's `Semiformula` has no `⟺`
 -- constructor, so `A 🡘 B` duplicates both sides (`encodeArithmeticFormulaSymbols_iff`) and
@@ -942,15 +1010,15 @@ tail would otherwise assume, together with the criterion endpoints that consume 
 -- (`two_pow_le_encode_iffChain`, both internal) — while the *same* family is certified in
 -- the paper's class at `5n + 4` emitted tokens
 -- (`iffChainSource_polyArithmeticSourceSeq`, `sourceTokens_iffChainSource_length`).
--- `iffPaperLUVSeq` is that family carried all the way to `LUV.RpnThresholdCodeSeq`
+-- `iffPaperLUVSeq` is that family carried all the way to `LUV.MachineThresholdCodeSeq`
 -- (`iffPaperLUVSeq_frontend`): a literal paper LUV family whose `n`-th defining formula is
 -- `O(n)` characters to write and whose Foundation normal form has `≥ 2ⁿ` nodes.  With
 -- `PolyArithmeticFormulaSeq.toSource` for the inclusion, `PolyArithmeticFormulaSeq ⊊
 -- PolyArithmeticSourceSeq` is proved, not asserted.
 #assert_axioms_clean
   PaperLUV.toLUV PaperLUV.source_valued
-  PaperLUVSeq.rpnThresholdCodeSeq PaperLUVSeq.source_valued_and_rpnThresholdCodeSeq
-  PaperLUV.rpnThresholdCodes
+  PaperLUVSeq.machineThresholdCodeSeq PaperLUVSeq.source_valued_and_machineThresholdCodeSeq
+  PaperLUV.machineThresholdCodes
   invPaperLUV
   unitFracPaperLUVSeq unitFracPaperLUVSeq_frontend
   dyadicPaperLUVSeq dyadicPaperLUVSeq_frontend
@@ -966,31 +1034,39 @@ tail would otherwise assume, together with the criterion endpoints that consume 
   LUVCombination.BoundedSequence.expcoh_ofSyntax
   LUVCombination.BoundedSequence.perexpkno_ofSyntax
 
--- Construction/Witnesses/ComputationSyntax.lean — the claim-name syntax shared by the
--- meta-learning lanes.  Every *endpoint* has left this file.  The *bounded* lane that used
--- to live here — the `BoundedComputation` carrier, its two non-vacuity witnesses, the
--- represented decidable claims over it and the two finite-consistency `_ofComputation`
--- endpoints — is **retired**: `thm:pac` and `thm:pazfc` are stated directly at the
--- arithmetized `Con(Θ′)` family (`ComputationRepresented.lean`), which leaves no caller for
--- a caller-supplied bounded computation.  `thm:dontwait`'s bounded family is
--- `representedBoundedHaltingClaims`, audited under that heading below.  The **unbounded
--- halting lane** has moved the same way and for the same reason:
--- `representedHaltingClaims`, `lic_learns_halting_patterns_ofComputation` and
--- `lic_learns_provable_nonhalting_patterns_ofComputation` are stated over `paperTheoryDP`
--- at the day-indexed halting schema, and are listed under that heading below rather than
--- here.  The **`thm:incons` lane** has now moved too (tranche 8): it is stated over
--- `paperTheoryDP` at the base theory's provability schema, so `SemidecidableComputation`,
--- its `ordinarySemidecidableComputation` `0 < n` witness (superseded by a witness whose
--- day-`n` theory is an actually inconsistent theory),
--- `inconsistentTheoryClaimsOfComputation` and
--- `lic_disbelief_inconsistent_theories_ofComputation` are all **retired**.  What remains in
--- this file is the claim-name syntax (`computationClaimSentence` and its digit lemmas) and
--- the presentation interface.
+-- Construction/Knowledge/Syntax.lean — the claim-name syntax shared by the
+-- meta-learning lanes, and nothing else: this file holds `computationClaimSentence`, the
+-- write-out certificate `haltingClaimInput_digits` for the packed machine/input name, the
+-- two whole-value strictness foils, and the presentation interface; it carries no endpoint
+-- of its own.
+-- Every §4.9–§4.10 endpoint is stated over `paperTheoryDP` at an arithmetized claim family
+-- rather than over a caller-supplied computation, so each is audited under its own heading
+-- below: `thm:pac` / `thm:pazfc` at the `Con(Θ′)` family
+-- (`Construction/Knowledge/Endpoints.lean`), `thm:dontwait` at `representedBoundedHaltingClaims`,
+-- `thm:halts` and `thm:loops` at `representedHaltingClaims` and the day-indexed
+-- halting schema, and `thm:incons` at the base theory's provability schema.  Stating them
+-- at the arithmetized families is what removes the caller-supplied-computation hypothesis
+-- from all of them.
+--
+-- Three facts about that syntax are inventoried here rather than under an endpoint, because
+-- they are what keeps the claim families honest: the public atom of a claim determines the
+-- claim (`ComputationClaim.godelCode_injective`), the `Classical.epsilon`-chosen universal
+-- halting schema cannot be one that ignores its argument
+-- (`universalHaltingSchema_not_argument_insensitive`, so the family really depends on the
+-- machine it names), and the positive branch of a presentation actually fires
+-- (`computationRepresentation_positive_path`, the `N+` witness for `halting_enters`).
+#assert_axioms_clean
+  ComputationClaim.godelCode_injective
+  universalHaltingSchema_not_argument_insensitive
+  computationRepresentation_positive_path
 
--- Framework/RepresentsComputations.lean — the paper's representability premise.
+-- Framework/Theory/RepresentsComputations.lean — the paper's representability premise.
 -- `RepresentsComputations T` is the Lean rendering of the paper's standing §2 assumption
 -- that `Θ` *represents computations* (tex:600-606): for every total computable `f` there
--- is a two-variable formula `γ_f` with `y = f n ↔ T ⊢ ∀ν (γ_f(n̄, ν) ⟺ ν = ȳ)`.  It is a
+-- is a two-variable formula `γ_f` with `y = f n ↔ T ⊢ ∀ν (γ_f(n̄, ν) ⟺ ν = ȳ)`.  The Lean
+-- binder quantifies over `f : ℕ → ℕ` and all `n, y : ℕ` where the paper uses positive
+-- naturals; that index shift makes the class strictly stronger, and is recorded at the
+-- declaration in `Framework/Theory/RepresentsComputations.lean`.  It is a
 -- condition on what `T` *derives*, with no reference to truth in the standard model, and
 -- it is the interface that replaces Σ₁-soundness wherever the paper's own argument needs
 -- only the paper's own premise.  `represents_refutes` / `represents_refutes_all` are the
@@ -1010,7 +1086,7 @@ tail would otherwise assume, together with the criterion endpoints that consume 
 -- same applies to a `#assert_fields RepresentsComputations` freeze of its single field
 -- `repr`.
 
--- Framework/DerivationSize.lean — the §4.10 symbol measure.  Foundation exposes no size
+-- Framework/Theory/DerivationSize.lean — the §4.10 symbol measure.  Foundation exposes no size
 -- function on its internal derivations, so this module builds one: `dSize : ℕ → ℕ`, the
 -- symbol count of a derivation code, by external recursion at `V := ℕ`.  Two things make it
 -- usable.  (i) Faithfulness: `dSize_axL`, `dSize_cutRule`, … tie it to Foundation's own
@@ -1025,35 +1101,35 @@ tail would otherwise assume, together with the criterion endpoints that consume 
 -- index numeral from the following material) is `dd:symbolcount`, stated in that module's
 -- header; the paper fixes neither an encoding nor an alphabet, so a convention is
 -- unavoidable and no substitution is charged.
--- NOT YET INVENTORIED — none of this module's declarations carries a `Paper node:` line
+-- NOT INVENTORIED — none of this module's declarations carries a `Paper node:` line
 -- (the measure is a convention supporting `thm:pac` / `thm:pazfc`, not a paper node of its
 -- own), and `scripts/check-paper-nodes.sh` forbids unannotated names in an
--- `#assert_axioms_clean` block.  Axiom accounting for the module is therefore the
--- `#print axioms` footer at the foot of the file, which covers its whole public surface;
--- that footer is logging-only — the check is the human read of the build log, per the
--- audit doctrine, not a failing gate.
+-- `#assert_axioms_clean` block.  Axiom coverage for the module is therefore transitive,
+-- through `lic_belief_finitistic_consistency_unconditional`, whose proof term names `dSize`
+-- and the tower `G`.  Nothing else gates it: an `#assert_axioms_clean` block here is the
+-- only axiom gate this repository has, so a declaration named in no block, directly or
+-- transitively, is unchecked.
 
--- Framework/DerivationSizeComputable.lean — the computability layer for the §4.10 symbol
--- measure.  `DerivationSize.lean` defines `tSize`, `tvSize`, `fSize`, `sSize`, `dSize` and
--- the tower `G` by well-founded recursion at `ℕ`, which says nothing about effectivity;
--- this module proves each of them primitive recursive (hence computable) by Mathlib's
--- course-of-values recursor `Primrec.nat_strong_rec`, and adds
--- `computable_boundedSearchValue`, the bounded-existential search that
+-- Framework/Theory/DerivationSize.lean, computability half — the effectivity layer for the
+-- §4.10 symbol measure.  The measures `tSize`, `tvSize`, `fSize`, `sSize`, `dSize` and the
+-- tower `G` are defined by well-founded recursion at `ℕ`, which says nothing about
+-- effectivity; the second half of that module proves each of them primitive recursive
+-- (hence computable) by Mathlib's course-of-values recursor `Primrec.nat_strong_rec`, and
+-- adds `computable_boundedSearchValue`, the bounded-existential search that
 -- `BoundedConsistency.lean` spends to make `bProv` decidable in both polarities.  Nothing
 -- here is a modeling choice: it is the effectivity half of `dd:symbolcount`, without which
 -- the §4.10 proof search would be a classical existence statement rather than an algorithm.
--- NOT YET INVENTORIED — same reason as its base module: no declaration carries a
--- `Paper node:` line.  Axiom accounting is the `#print axioms` footer at the foot of the
--- file, covering all of its public lemmas; logging-only, checked by the human read of the
--- build log per the audit doctrine.
+-- NOT INVENTORIED — same reason as the measures themselves: no declaration carries a
+-- `Paper node:` line, so its axiom coverage is likewise transitive through
+-- `lic_belief_finitistic_consistency_unconditional`.
 
--- Framework/BoundedConsistency.lean — the §4.10 bounded-provability substrate.
+-- Framework/Theory/BoundedConsistency.lean — the §4.10 bounded-provability substrate.
 -- `BProv T φ k` is "some `T`-derivation of the sentence coded by `φ` has `k` or fewer
 -- symbols", over Foundation's internal `Bootstrapping.Proof` and `dSize`, with the bound
 -- **inclusive** as the paper's is; `conWithin T k` is the paper's `Con(T)(k)` at that
--- measure.  (The former `dd:proofcode` substitution — metering by the derivation's Gödel
--- number — was retired in tranche 9a and is gone from the surface.)  Decidability is
--- obtained without a proof checker: `Proof` is `𝚫₁`, so the packed proof predicate and its
+-- measure.  Metering is by symbol count, not by the derivation's Gödel number: the paper's
+-- `Con(T)(k)` bounds the size of a proof, and a code bound is a different predicate.
+-- Decidability is obtained without a proof checker: `Proof` is `𝚫₁`, so the packed proof predicate and its
 -- negation are both `𝚺₁` by `definability`, and `re_iff_sigma1` +
 -- `ComputablePred.computable_iff_re_compl_re'` decide it; the *search* is then finite by
 -- `bProv_iff_bounded`, which is where `le_G_dSize` is spent, giving
@@ -1063,15 +1139,15 @@ tail would otherwise assume, together with the criterion endpoints that consume 
 -- takes the metered theory `T'` as an ordinary parameter, independent of the representing
 -- theory `T`: `thm:pac` is the diagonal `T' = T` (consistency from `RepresentsComputations`),
 -- `thm:pazfc` a stronger `T'` (consistency an explicit hypothesis, the paper's own premise).
--- NOT YET INVENTORIED, for the same reason as `Framework/RepresentsComputations.lean`
+-- NOT INVENTORIED, for the same reason as `Framework/Theory/RepresentsComputations.lean`
 -- above: `scripts/check-paper-nodes.sh` requires every name in an `#assert_axioms_clean`
 -- block to carry a `Paper node:` docstring line, and these are internal `lemma`s and
 -- `def`s that deliberately carry none — the paper node lives on the endpoint that consumes
--- them.  All are axiom-clean (`[propext, Classical.choice, Quot.sound]`, checked by the
--- `#print axioms` lines at the foot of that file) and are inventoried transitively through
--- `lic_belief_finitistic_consistency_unconditional`.
+-- them.  They are inventoried transitively through
+-- `lic_belief_finitistic_consistency_unconditional`, whose proof term reaches every one of
+-- them; that assertion is what checks them axiom-clean.
 
--- Construction/Witnesses/R0Representability.lean — the concrete instantiation, i.e. the
+-- Framework/Theory/R0Instances.lean — the concrete instantiation, i.e. the
 -- non-vacuity of `RepresentsComputations`: it holds for every theory extending `𝗣𝗔⁻` that
 -- is true in `ℕ`, with instances registered at `𝗣𝗔⁻`, `𝗜𝚺₁` and `𝗣𝗔`.  Note the
 -- asymmetry: standard-model truth is used to **verify** the premise for these particular
@@ -1082,35 +1158,37 @@ tail would otherwise assume, together with the criterion endpoints that consume 
 -- axiom, so the `rfind` case of single-valuedness is unavailable there.  `𝗣𝗔⁻` is the
 -- weakest theory in Foundation's hierarchy for which the argument closes.  Not inventoried
 -- for the same reason as the block above: `representsComputations_of_peanoMinus` and the
--- three registered instances carry no `Paper node:` line yet.
+-- three registered instances carry no `Paper node:` line, so they are covered transitively
+-- through the endpoints that instantiate them.
 
--- Construction/Witnesses/SubstEmission.lean — numeral-substitution emission, and the
+-- Construction/Knowledge/SubstEmission.lean — numeral-substitution emission, and the
 -- `def:ec` certificate for the represented claim family on the paper's SOURCE language.
 -- `⟺` is a primitive of the paper's syntax (tex:560) and only a duplicating macro in
 -- Foundation's negation normal form, so the body `γ(n̄,ν) ⟺ ν = 0̄` is metered as ONE `iff`
 -- node over two leaves.  Nothing is assumed about `γ`: it may be `Classical.choice`-obtained.
--- This discharges what was previously the `hpoly` hypothesis of `representedBoundedClaims`.
--- Since the R5-F08 repair the *live* certificate path is the argument-term family — the
--- claim's argument is a closed term (a compact `binNumeral`), not a unary numeral — so what
--- the endpoints consume is `polyArithmeticFormulaSeq_subst_arg`, `schemaArgBody`,
+-- The certificate is what lets `representedBoundedClaims` take no emission hypothesis of its
+-- own.  The *live* certificate path is the argument-term family — the claim's argument is a
+-- closed term (a compact `binNumeral`), not a unary numeral — so what the endpoints consume
+-- is `polyArithmeticFormulaSeq_subst_arg`, `schemaArgBody`,
 -- `reprArgBodySource`, `reprArgClaimSource`, `schemaArgSource`, their `compile_*` and
--- `*_polyArithmeticSourceSeq` companions, and `bigSentenceCodes_reprArgClaim` /
--- `bigSentenceCodes_schemaArgClaim`.  The numeral-substitution family
+-- `*_polyArithmeticSourceSeq` companions, and `machineSentenceCodes_reprArgClaim` /
+-- `machineSentenceCodes_schemaArgClaim`.  The numeral-substitution family
 -- (`polyArithmeticFormulaSeq_subst_numeral`, `compile_reprBodySource`,
 -- `compile_reprClaimSource`, `reprBodySource_polyArithmeticSourceSeq`,
 -- `reprClaimSource_polyArithmeticSourceSeq`, `rpnSentenceCodes_reprClaim`,
--- `bigSentenceCodes_reprClaim`) and the day-numeral schema family (`schemaDayBody`,
--- `schemaDaySource` and their companions) are retained — `schemaDayBody_eq_arg` records
--- that the day form is the argument form at the day numeral — but are no longer consumed by
--- any claim family.
--- Not inventoried yet, for the annotation reason recorded above: none of them carries a
--- `Paper node:` line.  They are covered transitively by the `ComputationRepresented.lean`
+-- `machineSentenceCodes_reprClaim`) and the day-numeral schema family (`schemaDayBody`,
+-- `schemaDaySource` and their companions) are the unary-numeral and day-indexed variants of
+-- the same emission; no claim family consumes them, and they stand as the general form
+-- of the certificate, with `schemaDayBody_eq_arg` recording that the day form is the
+-- argument form at the day numeral.
+-- Not inventoried, for the annotation reason recorded above: none of them carries a
+-- `Paper node:` line.  They are covered transitively by the `Construction/Knowledge/Endpoints.lean`
 -- endpoints below.
 
--- Construction/Witnesses/ComputationRepresented.lean — the bounded *and* unbounded lanes
+-- Construction/Knowledge/Endpoints.lean — the bounded *and* unbounded lanes
 -- at the premise, with the machine named in the sentence.
 --
--- **The design (R5-F08/F09 repair, 2026-08-30).**  What is *represented* here is a
+-- **The design.**  What is *represented* here is a
 -- UNIVERSAL object, fixed once per theorem and mentioning no machine sequence: the total
 -- computable `universalRunValue steps` on the bounded lane — it decodes a packed
 -- `⟨⟨source, input⟩, day⟩` argument, so `RepresentsComputations` supplies ONE `γ` per
@@ -1126,29 +1204,28 @@ tail would otherwise assume, together with the criterion endpoints that consume 
 -- (`boundedArg_digits`, `polySegStream_binNumeral_const`), so the two hypotheses are
 -- load-bearing on the `def:ec` obligation rather than decorative.  Provability is
 -- insensitive to the numeral spelling (`provable_subst_iff_of_val`, Gödel completeness in
--- both directions, needing only `𝗣𝗔⁻ ⪯ T`, which those endpoints now carry as their own
+-- both directions, needing only `𝗣𝗔⁻ ⪯ T`, which those endpoints carry as their own
 -- binder), so only the emission cost changes.
 --
--- This replaces a rendering (through 2026-08-30) that built the family from
+-- **Why the argument has to enter syntactically.**  Building the family instead from
 -- `codeOfREPred (fun n => CodeHalts (machines n) (inputs n))`, or from
--- `RepresentsComputations.repr` of a decider that mentioned the sequence.  Both see their
--- data only up to EXTENSIONAL equality, and each endpoint's own hypothesis pinned that
--- extension to a constant, so the family was literally one sentence family for every
--- admissible machine sequence.  The standing test against that failure mode is now proved
--- in-file rather than assumed, and since tranche 7 in its FULL syntactic form:
--- `haltingArgClaimSentence_ne_of_source_ne` separates two claim families by their machines'
--- source numbers ALONE, whatever those machines do, via the substitution-occurrence
--- machinery of `LogicalInduction/Framework/SubstOccurrence.lean` (`Semiformula.Mentions`,
--- `eq_of_rew_eq_of_mentions`) and the side condition
+-- `RepresentsComputations.repr` of a decider mentioning the sequence, sees the data only up
+-- to EXTENSIONAL equality; each endpoint's own hypothesis pins that extension to a
+-- constant, and the family collapses to one sentence family for every admissible machine
+-- sequence.  The standing test against that collapse is proved in-file, in its FULL
+-- syntactic form: `haltingArgClaimSentence_ne_of_source_ne` separates two claim families by
+-- their machines' source numbers ALONE, whatever those machines do, via the
+-- substitution-occurrence machinery of `LogicalInduction/Framework/Theory/SubstOccurrence.lean`
+-- (`Semiformula.Mentions`, `eq_of_rew_eq_of_mentions`) and the side condition
 -- `universalHaltingSchema_mentions_zero`; `representedClaimSentence_ne_of_const_ne` is the
 -- bounded-lane analogue, with the occurrence side condition on the existentially supplied
--- `γ` stated as a hypothesis.  The older behavioural pair
+-- `γ` stated as a hypothesis.  The behavioural pair
 -- `haltingArgClaimSentence_ne_of_halts_ne` (unbounded) and
--- `representedClaimSentence_ne_of_runValue_ne` (bounded) show that data differing in
--- halting behaviour receive DIFFERENT claim sentences.  Neither carries a `Paper node:`
--- line — they are anti-vacuity witnesses, not paper claims — so neither is inventoried as
--- an endpoint; they are named here because they are the test any future represented claim
--- family has to pass.
+-- `representedClaimSentence_ne_of_runValue_ne` (bounded) is the weaker form of the same
+-- test: data differing in halting behaviour receive DIFFERENT claim sentences.  None of the
+-- four carries a `Paper node:` line — they are anti-vacuity witnesses, not paper claims —
+-- so none is inventoried as an endpoint; they are named here because they are the test any
+-- represented claim family has to pass.
 -- The bounded-halting claim family is stated as the paper states it (`⌜f⌝(⌜n⌝)`), carried
 -- by `paperTheoryDP` (which enumerates every `T`-provable proposition and therefore needs
 -- no fixed schema).  Both public literals come from the *same* sentence: the positive one
@@ -1159,7 +1236,7 @@ tail would otherwise assume, together with the criterion endpoints that consume 
 -- `RepresentsComputations`.
 -- The supporting layer of this file — `paperPrimeDecompose_all` / `_exs` /
 -- `_reprAllTerm` / `_neg_reprAllTerm`, `paperTheoryDP_covers_representedClaim(_neg)`,
--- `representedClaimSentence`, `representedClaimSentence_bigSentenceCodes`,
+-- `representedClaimSentence`, `representedClaimSentence_machineSentenceCodes`,
 -- `provable_subst_binNumeral_iff`, `provable_reprAllTerm_binNumeral_iff` and its negated
 -- form, `boundedArg`, `boundedArg_digits`, `universalRunValue`,
 -- `universalRunValue_boundedArg`, `universalRunValue_computable`,
@@ -1179,7 +1256,7 @@ tail would otherwise assume, together with the criterion endpoints that consume 
 -- invisibility is proved rather than assumed (`provable_schemaArgClaim_iff`,
 -- `provable_neg_schemaArgClaim_iff`).
 -- Supporting declarations of this lane — `schemaArgClaim`, `schemaArgClaimSentence`,
--- `schemaArgClaimSentence_bigSentenceCodes`, `paperPrimeDecompose_schemaArgClaim(_neg)`,
+-- `schemaArgClaimSentence_machineSentenceCodes`, `paperPrimeDecompose_schemaArgClaim(_neg)`,
 -- `provable_iff_of_realize_iff`, `paperTheoryDP_covers_schemaArgClaim(_neg)`,
 -- `haltingArgClaimSentence`, `haltingArgClaimInstance`, `haltingArgClaimInstance_true_iff`
 -- — are axiom-clean and carry no `Paper node:` line, so they are covered transitively here
@@ -1189,65 +1266,61 @@ tail would otherwise assume, together with the criterion endpoints that consume 
 -- to the same rule as the two lanes above and enumerated here for the same reason — every
 -- one of these is an internal `def`/`lemma` carrying no `Paper node:` line, which
 -- `scripts/check-paper-nodes.sh` forbids in an `#assert_axioms_clean` block, so they are
--- **covered transitively** by the two annotated endpoints listed below and axiom-checked by
--- the `#print axioms` block at the foot of `ComputationRepresented.lean`:
+-- **covered transitively** by the two annotated endpoints listed below:
 -- `conClaimArg`, `conClaimArg_digits`, `conClaimSentence`,
--- `conClaimSentence_bigSentenceCodes`, `conClaimSentence_ne_of_day_ne`,
+-- `conClaimSentence_machineSentenceCodes`, `conClaimSentence_ne_of_day_ne`,
 -- `exists_reprAll_conRunValue`, `conGamma`, `conGamma_spec`, `representedConClaims`, and
--- the occurrence-discharge family added in R7 — `conGamma_mentions_zero`,
+-- the occurrence-discharge family — `conGamma_mentions_zero`,
 -- `conGamma_mentions_zero_of_bProv`, `conGamma_mentions_zero_of_horizon_unbounded`,
 -- `conGamma_mentions_zero_ackermann` — together with the general lemma they rest on,
--- `mentions_zero_of_repr_ne` (`Framework/RepresentsComputations.lean`).
--- That family closes a claimed boundary that turned out not to be one (R7-B1): the
--- occurrence side condition `γ.Mentions 0`, which the docstrings here previously asserted
--- could **not** be discharged from the representation spec, IS derivable from it whenever
--- the represented decider is non-constant.  The counterexample that motivated the old
--- wording — a horizon constantly `0`, at which the decider is constant and a `γ` ignoring
--- its argument represents it correctly — bounds the claim to constant deciders only.  Every
--- unbounded horizon, the paper's own `Ack` included, is on the other side.
+-- `mentions_zero_of_repr_ne` (`Framework/Theory/RepresentsComputations.lean`).
+-- That family is why the occurrence side condition `γ.Mentions 0` is not a boundary: it IS
+-- derivable from the representation spec whenever the represented decider is non-constant.
+-- The one case it does not cover is exactly the degenerate one — a horizon constantly `0`,
+-- at which the decider is constant and a `γ` ignoring its argument represents it correctly.
+-- Every unbounded horizon, the paper's own `Ack` included, is on the other side.
 --
--- The **§4.10 `thm:incons` lane** likewise.  As of tranche 10 that lane is stated at the
--- paper's own subject matter — an arbitrary e.c. sequence of **recursively axiomatizable**
--- theories — and the deduction-family paraphrase is **retired**, not paraphrased differently.
+-- The **§4.10 `thm:incons` lane** likewise.  It is stated at the paper's own subject matter,
+-- an arbitrary e.c. sequence of **recursively axiomatizable** theories, with no
+-- deduction-family paraphrase.
 -- `theoryOf m` is the theory whose axioms are the sentences whose written sources the machine
 -- `m` enumerates; the endpoint's premises are the paper's own two and no others,
 -- `hm : DigitMachineCodes m` (`def:ec` on the *naming*, the same write-out class `thm:halts`
--- uses for machines) and `hinc : ∀ n, ¬Consistent (theoryOf (m n))`.  Gone from the signature:
--- the base theory `T'`, its `[T'.Δ₁]` instance, the adjoined-axiom sequence `σ`, its source
--- `s`, the emission premise `hs` and the compilation bridge `hcompile`.
+-- uses for machines) and `hinc : ∀ n, ¬Consistent (theoryOf (m n))`.  In particular the
+-- signature mentions no base theory `T'`, no adjoined-axiom sequence and no compilation
+-- bridge.
 --
 -- The uniformity is bought by **compactness**, not by an internal uniform-in-theory
--- derivability predicate — which Foundation cannot host, and that obstruction (9b) still
--- stands verbatim; this design sidesteps it rather than contradicting it.  Inconsistency is
+-- derivability predicate, which Foundation cannot host: this design sidesteps that
+-- obstruction rather than contradicting it.  Inconsistency is
 -- always witnessed by finitely many axioms (`exists_inconsistent_list`, from the axiom list
 -- Foundation's own proof object carries), a finite list of written axioms splices into one
 -- written conjunction (`combineTokens`/`combineSourceNats`,
--- `Construction/Witnesses/SourceWindow.lean`), and refuting that conjunction is a question of
+-- `Construction/Knowledge/SourceWindow.lean`), and refuting that conjunction is a question of
 -- pure logic — so the represented predicate `MachineTheoryInconsistent` runs over the **empty
 -- theory** (`Theory.Δ₁.empty`) and mentions no base theory at all.  It is r.e. because its
 -- matrix is decidable (`proofPacked_computable ∅`), by `Partrec.rfind`/`Partrec.dom_re`;
 -- Mathlib has no r.e.-projection lemma and none is used.
 --
--- The supporting layer, none of it annotated.  **Two coverage classes, distinguished** — the
--- note here used to claim all of it was "covered transitively by the endpoint", which was
--- false by construction for half of it (R11-B1/B2):
+-- The supporting layer, none of it annotated, splits into **two coverage classes, and the
+-- distinction is load-bearing**: transitive coverage reaches only what an asserted
+-- declaration's proof term names, so a downstream application is not covered by the
+-- endpoint it applies.
 --
---  (i) declarations the endpoint's own proof term *uses* really are covered transitively by
+--  (i) declarations the endpoint's own proof term *uses* are covered transitively by
 --      `lic_disbelief_inconsistent_theories_unconditional` below;
 -- (ii) the day-machine write-out layer and the two applied witnesses are **not**: the
 --      endpoint is universally quantified over `m`, so its proof term names no machine
 --      family and no transitive check can reach a downstream application.  They are covered
 --      instead by asserting the two applied witnesses directly — their *statements* name
 --      `deepDayMachine` / `infiniteDayMachine` / `digitMachineCodes_dayMachine`, so the whole
---      `DayMachine.lean` layer is genuinely transitive through them — in the dedicated
---      `#assert_axioms_clean` block below.  The precedent is
---      `#assert_axioms_clean loopsTheory thm_loops_applied_at_loopsTheory` on the `thm:loops`
---      lane.  The same block asserts `machineTheoryInconsistent_iff`, the R11 faithfulness
---      bridge, which likewise no endpoint's proof term reaches.
---
--- Everything in both classes is additionally axiom-checked by the `#print axioms` blocks at
--- the feet of `ComputationRepresented.lean`, `SourceWindow.lean`, `SourceRecognizer.lean` and
--- `DayMachine.lean`.
+--      `Construction/Knowledge/DayMachine.lean` layer is genuinely transitive through
+--      them — in the dedicated `#assert_axioms_clean` block below.  The same pattern
+--      carries the `thm:loops` lane
+--      (`#assert_axioms_clean loopsTheory thm_loops_applied_at_loopsTheory`).  That block
+--      also asserts `machineTheoryInconsistent_iff`, the faithfulness bridge between the
+--      represented predicate and `dd:machinetheory`, which likewise no endpoint's proof term
+--      reaches.
 --
 -- Covered transitively by the endpoint:
 -- `theoryOf`, `mem_theoryOf`, `not_consistent_of_refutable_mem`, `exists_window`,
@@ -1260,20 +1333,20 @@ tail would otherwise assume, together with the criterion endpoints that consume 
 -- `machineArg`, `inconsistencyArgClaimSentence`, `inconsistencyArgClaimInstance`,
 -- `inconsistencyArgClaimSentence_ne_of_arg_ne`, `representedInconsistentTheoryClaims`; the
 -- shared substrate `listConj`, `consistent_empty`, `exists_inconsistent_list`,
--- `provable_neg_listConj_of_not_consistent`, `provable_listConj`, `not_provableCode_zero`
--- (`Framework/BoundedConsistency.lean`), the gated token splice
--- (`Construction/Witnesses/SourceWindow.lean`) and the source recognizer it gates on
--- (`Construction/Witnesses/SourceRecognizer.lean`).
+-- `provable_neg_listConj_of_not_consistent`, `provable_listConj`
+-- (`Framework/Theory/BoundedConsistency.lean`), the gated token splice
+-- (`Construction/Knowledge/SourceWindow.lean`) and the source recognizer it gates on
+-- (`Construction/Knowledge/SourceRecognizer.lean`).
 --
 -- **Downstream of the endpoint, hence covered through the block asserted below rather than
--- through the endpoint** — the R11 converse chain
+-- through the endpoint** — the converse chain of `machineTheoryInconsistent_iff`
 -- (`exists_source_of_sourceRun`, `exists_source_of_admissibleName`, `exists_source_gateName`,
 -- `exists_sources_axiomWindow`, `not_consistent_theoryOf_of_machineTheoryInconsistent`, all
 -- reached by `machineTheoryInconsistent_iff`, and
 -- `ArithSource.compile_eq_of_sourceTokens_eq`, reached by both it and
 -- `theoryOf_const_ofNNF`); and the
--- day-machine write-out layer (`Construction/Witnesses/DayMachine.lean`, whose
--- `BigDigits.ofBase16PolySegStream` is re-homed to `Framework/CodeSource.lean` beside its
+-- day-machine write-out layer (`Construction/Knowledge/DayMachine.lean`, whose
+-- `BigDigits.ofBase16PolySegStream` lives in `Framework/Emission/CodeSource.lean` beside its
 -- base-64 twin) and the two applied witnesses
 -- (`deepInconsistentSource`, `deepInconsistentAxiom`, `compile_deepInconsistentSource`,
 -- `deepInconsistentSource_polyArithmeticSourceSeq`,
@@ -1286,76 +1359,68 @@ tail would otherwise assume, together with the criterion endpoints that consume 
 -- `infinite_theoryOf_infiniteDayMachine`, `not_consistent_theoryOf_infiniteDayMachine`,
 -- `thm_incons_applied_infinite`).
 --
--- **No charge stands on that row.**  Both former charges are retired: the over-strength
--- `def:ec` premise `hσ : BigDigits (deductionFamilyArg σ)`, which metered a formula's Gödel
--- code (tranche 9-pre — see the WRITE-OUT FIELD MIGRATION block below), and now the
--- deduction-family paraphrase itself.  What remains is the global `[T.Δ₁]` / `[𝗣𝗔⁻ ⪯ T]`
+-- **No charge stands on that row.**  Nothing here meters a formula's Gödel code, and the
+-- endpoint paraphrases nothing: it is stated at the paper's own e.c. sequence of theories.
+-- What remains is the global `[T.Δ₁]` / `[𝗣𝗔⁻ ⪯ T]`
 -- disclosure on the **market's** theory, which is charged once globally and not against this
 -- node, plus the stated presentation convention `dd:machinetheory` (what it means for a
 -- machine to present a theory), which is a convention rather than a substitution — as
 -- `dd:symbolcount` is — and is disclosed at the section header and in the glossary.
 --
--- **R11 window repair (the sentence now matches the convention exactly).**  The audit found
--- the ungated window *unsound* against `dd:machinetheory`, in three independent ways:
+-- **The window gate is what makes the sentence match the convention exactly.**  An ungated
+-- window is *unsound* against `dd:machinetheory`, in three independent ways:
 -- `tokensOfNat` stops at the first sentinel, so numbers that are no name at all decode like
 -- shorter names; the token splice is list surgery, so two *incomplete* runs concatenate into
 -- one complete refutable run; and a genuine source may compile to a formula with free
 -- variables, which pure logic can refute without it being a sentence of any theory.  Each
--- made `MachineTheoryInconsistent` hold of machines whose `theoryOf` is *empty*.  The repair
--- is a per-entry gate (`AdmissibleName`, `gateName`,
--- `Construction/Witnesses/SourceWindow.lean`): a number is admitted only if it is literally
+-- makes `MachineTheoryInconsistent` hold of machines whose `theoryOf` is *empty*.  The gate
+-- is per entry (`AdmissibleName`, `gateName`,
+-- `Construction/Knowledge/SourceWindow.lean`): a number is admitted only if it is literally
 -- the name of its own decoded run and that run is the complete emitted run of one
--- `ArithSource 0` whose compiled form is a sentence, certified by the new depth-tracking,
+-- `ArithSource 0` whose compiled form is a sentence, certified by the depth-tracking,
 -- free-variable-rejecting recognizer `sourceRun`
--- (`Construction/Witnesses/SourceRecognizer.lean`, with `exists_source_of_sourceRun` its
--- soundness and `sourceRun_sourceTokens` its completeness).  **The endpoint's signature is
--- unchanged** and no premise moved; what changed is that the day-`n` sentence's content now
--- *equals* the convention's claim rather than being implied by it —
--- `machineTheoryInconsistent_iff` proves both directions, where before only
--- `machineTheoryInconsistent_of_not_consistent` held and its converse was false.  The
+-- (`Construction/Knowledge/SourceRecognizer.lean`, with `exists_source_of_sourceRun` its
+-- soundness and `sourceRun_sourceTokens` its completeness).  The gate costs the endpoint no
+-- premise; what it buys is that the day-`n` sentence's content *equals* the convention's
+-- claim rather than merely being implied by it — `machineTheoryInconsistent_iff` proves both
+-- directions, where the ungated form gives only
+-- `machineTheoryInconsistent_of_not_consistent`.  The
 -- surjectivity justification is likewise scoped to what is proved: `theoryOf_const_ofNNF`
 -- realizes every one-axiom theory exactly; the *uniform* enumeration half is stated as not
 -- formalized, and is not consumed by the endpoint.
 --
--- The anti-extensionality lemma **got stronger in the same change**:
--- `inconsistencySchema_mentions_zero` now has **no hypothesis at all**, where the
--- deduction-family version required `Entailment.Consistent Θ₀` (over an inconsistent base the
--- old provability predicate was extensionally constant and the schema could ignore its
--- argument).  The new represented predicate is non-constant outright — the machine that keeps
--- writing `⊥` presents an inconsistent theory, the machine that never writes presents the
--- empty one — so `inconsistencyArgClaimSentence_ne_of_arg_ne` is unconditional too.
+-- The anti-extensionality lemma is unconditional: `inconsistencySchema_mentions_zero` takes
+-- **no hypothesis at all**.  It can, because the represented predicate is non-constant
+-- outright — the machine that keeps writing `⊥` presents an inconsistent theory, the machine
+-- that never writes presents the empty one — so
+-- `inconsistencyArgClaimSentence_ne_of_arg_ne` is unconditional too.  (A predicate defined by
+-- provability over a base theory would need `Entailment.Consistent Θ₀` here: over an
+-- inconsistent base it is extensionally constant and the schema may ignore its argument.)
+-- `not_consistent_adjoin_iff` (`Framework/Theory/BoundedConsistency.lean`) is the
+-- deduction-theorem bridge, with no consumer on this lane; `dayMachine_sourceNat_ne`
+-- separates days by the *machine's* source rather than by an axiom's, which is what the
+-- day-`n` sentence writes out.
 --
--- Retired with the paraphrase, in collapsed form (no ₙ-suffixed layer, no parallel lane):
--- `deductionFamilyArg`, `falsumSource_polyArithmeticSourceSeq`, `provableCode_negSource_re`,
--- `deepInconsistentSource_sourceNat_ne`, `deepInconsistentAxiom_inconsistent`, and the
--- one-line `⊥`-adjunction `example`.  `provableCode_neg_iff_not_consistent_adjoin`
--- (`Framework/BoundedConsistency.lean`) loses its consumer on this lane and is kept only as
--- the deduction-theorem bridge it was; `deepInconsistentSource_sourceNat_ne` is replaced by
--- `dayMachine_sourceNat_ne`, which separates days by the *machine's* source rather than the
--- axiom's, because that is what the day-`n` sentence now writes out.  Earlier retirements on
--- this lane, recorded here for continuity: `alternatingInconsistentAxiom` and its family, and
--- `deductionFamilyArg_ne_of_ne` (R7).
---
--- What the new rendering buys that the old could not state: `thm_incons_applied_infinite`
+-- What stating the lane over machine-presented theories buys: `thm_incons_applied_infinite`
 -- exhibits day-theories with **infinitely many** axioms (`infinite_theoryOf_infiniteDayMachine`
--- — a deduction family adjoins one sentence and can never do this), each axiom having
+-- — a single adjoined sentence can never do this), each axiom having
 -- `≥ 2 ^ k` nodes in normal form, all named by machine sources of `O(n)` symbols.
--- `thm_incons_applied_deep` keeps the finite analogue of the retired witness and is the one
+-- `thm_incons_applied_deep` is the finite analogue and is the one
 -- that exercises the metering gap: the day machine's source is short, its single axiom is
 -- `(∀x. A(x) ⟺ ⋯ ⟺ A(x)) ∧ ⊥`, and nothing about that axiom is metered because the paper
 -- meters only the naming (tex:1931: "the runtime of an individual `mₙ` is immaterial").
 --
 -- Asserted here because the endpoint below cannot reach any of them: it is universally
 -- quantified over `m`, so its proof term names no machine family and no transitive check
--- touches a downstream application, and `machineTheoryInconsistent_iff`'s new half is
+-- touches a downstream application, and `machineTheoryInconsistent_iff`'s converse half is
 -- consumed by nothing the endpoint proves.  The two witnesses carry the whole
--- `DayMachine.lean` layer with them, by naming it in their statements.
+-- `Construction/Knowledge/DayMachine.lean` layer with them, by naming it in their statements.
 #assert_axioms_clean
   machineTheoryInconsistent_iff theoryOf_const_ofNNF
   thm_incons_applied_deep thm_incons_applied_infinite
 
 #assert_axioms_clean
-  DigitMachineCodes.computable ComputableHorizon.computable
+  DigitMachineCodes.computable MachineMachineCodes.computable ComputableHorizon.computable
   lic_does_not_anticipate_halting_ofComputation
   lic_belief_finitistic_consistency_unconditional
   lic_belief_stronger_theory_consistency_unconditional
@@ -1364,42 +1429,40 @@ tail would otherwise assume, together with the criterion endpoints that consume 
   lic_learns_provable_nonhalting_patterns_ofComputation
   lic_disbelief_inconsistent_theories_unconditional
 
--- Construction/Witnesses/LUVArithmetic.lean, LUVDeductiveProcess.lean — the LUV threshold
--- lane, migrated off soundness.  Both threshold literals are now taken over ONE sentence
+-- Construction/LUV/Arithmetic.lean, Presentation.lean — the LUV threshold
+-- lane.  Both threshold literals are taken over ONE sentence
 -- (`thresholdSchema` and its literal negation) at the representability premise, so the LUV
 -- provability world `luvWorld` is consistent by `Entailment.Consistent T` rather than by a
--- semantic argument.
--- Not inventoried yet, again for want of `Paper node:` lines:
+-- semantic argument, and the lane asks for no Σ₁-soundness.
+-- Not inventoried, again for want of `Paper node:` lines:
 -- `ComputableLUV.thresholdValue_computable`, `.thresholdGamma_spec`,
 -- `.thresholdSchema_subst`, `.threshold_provable`, `.threshold_refutable`,
 -- `.luvWorld_consistent`, `.luvThresholdDP_hworld`.  The `ArithmeticLUVPresentation`
 -- freeze below is the Tier-2 record of this lane's field surface.
 
--- Construction/Witnesses/ComputationRepresented.lean — the N+ witness for `thm:loops`'s
--- refutation
--- premise `hloops`, which had none (2026-08-28 audit, R2-F17).  `loopsTheory` is `𝗜𝚺₁` plus
+-- Construction/Knowledge/Endpoints.lean — the N+ witness for `thm:loops`'s
+-- refutation premise `hloops`.  `loopsTheory` is `𝗜𝚺₁` plus
 -- one *true* Π₁ axiom.  That axiom is the literal negation of the endpoint's own claim
 -- sentence at the witness family:
 -- `loopsWitnessSentence = ∼(haltingArgClaimInstance (fun _ => neverHaltMachine) (fun _ => 0) 0)`.
--- It is a *single* sentence rather than the `∀`-closure the previous rendering needed,
--- because the witness machine family is constant — the machine, not the day, is what left
--- the schema — so `loopsTheory_refutes` is plain `Entailment.by_axm` with no specialization
+-- It is a *single* sentence rather than a `∀`-closure, because the witness machine family is
+-- constant — the machine enters the argument, not the schema — so `loopsTheory_refutes` is
+-- plain `Entailment.by_axm` with no specialization
 -- step.  The theory is `Δ₁` and consistent (both
 -- fall out of every axiom being true in `ℕ`), and the machines it speaks of provably never
 -- halt, so the endpoint's `≈ₙ 0` conclusion is the semantically correct one.  It is also
--- Σ₁-sound, but that is now only a record of the witness's quality:
--- `lic_learns_provable_nonhalting_patterns_unconditional` takes no soundness instance any
--- more, so `loopsTheory_soundOnSigma1` is consumed by nothing the endpoint asks for.
+-- Σ₁-sound, which is a record of the witness's quality rather than a demand of the endpoint:
+-- `lic_learns_provable_nonhalting_patterns_unconditional` takes no soundness instance, so
+-- `loopsTheory_soundOnSigma1` is consumed by nothing the endpoint asks for.
 -- `thm_loops_applied_at_loopsTheory` applies the endpoint with every instance and every
 -- hypothesis discharged.  **The refutation holds by axiom fiat, not by arithmetic
 -- reasoning** — the disclosure at `loopsTheory` records why the slot is **unreachable with
--- the installed substrate**, which is a weaker and more accurate claim than the one this
--- note carried before (2026-08-28 audit, R3-F01/R3-F12).  What is *not* true is that no
+-- the installed substrate**.  What is *not* true is that no
 -- natural theory could refute a false halting instance: refuting a false Σ₁ sentence is
 -- proving a true Π₁ one, which Σ₁-soundness permits, and the uniform
 -- `incomplete_of_REPred_not_ComputablePred_Nat'` constrains no single instance — `𝗜𝚺₁`
 -- would refute a natural arithmetization of `rfind' succ` diverging by trivial induction.
--- The actual obstruction is representational, and the R5-F08 repair does not touch it: the
+-- The obstruction is representational: the
 -- endpoint's schema is `universalHaltingSchema = codeOfREPred UniversalCodeHalts`, and
 -- Foundation picks that formula by `Classical.epsilon`
 -- (`R0/Representation.lean:232-247`), so its *shape* is unreachable from the API and nothing
@@ -1408,13 +1471,14 @@ tail would otherwise assume, together with the criterion endpoints that consume 
 -- `loopsTheory` names two honest strengthenings — a Π₁-reflection hypothesis on `T`, or a
 -- hand-rolled Δ₀/Σ₁ halting formula carrying its own representability lemma; a
 -- `halting_fails` field on `ComputationTheoryPresentation` would be a third.
--- The *bounded* half of that gap is now closed by the paper's own premise rather
+-- The *bounded* half of that gap is closed by the paper's own premise rather
 -- than by any of them: `boundedFailure_refutes` takes the literal negation of the
--- bounded-halting sentence, supplied by `RepresentsComputations`, so the retired
--- `universalBoundedFailureSchema` apparatus is gone and `theoremDP_hworld`'s tag-3 case
--- closes from consistency; tag 7 closes the same way as of 2026-08-30 (one `code` formula,
--- two value fibers — see the `BooleanQuoteCode` block below).  The *unbounded* half — `thm:loops`'s `hloops`, a Π₁ refutation
--- of a non-halting instance — is not, and is what `loopsTheory` still witnesses by axiom.
+-- bounded-halting sentence, supplied by `RepresentsComputations`, needing no second
+-- independent schema, so `theoremDP_hworld`'s tag-3 case
+-- closes from consistency; the ¬quotation tag closes the same way (one `code` formula,
+-- two value fibers — see the `BooleanQuoteCode` block below).  The *unbounded* half —
+-- `thm:loops`'s `hloops`, a Π₁ refutation
+-- of a non-halting instance — is not, and is what `loopsTheory` witnesses by axiom.
 -- `loopsTheory_refutes` is deliberately *not* inventoried: it is the internal
 -- premise-discharge step (`Entailment.by_axm`), not a paper claim, so it carries no
 -- `Paper node` line and is covered transitively by the applied endpoint below.
@@ -1422,8 +1486,8 @@ tail would otherwise assume, together with the criterion endpoints that consume 
   loopsTheory
   thm_loops_applied_at_loopsTheory
 
--- Construction/Witnesses/QuoteCodeOfMarket.lean (market-generic parts) and
--- Construction/Witnesses/PaperMarket.lean (the instantiations at the single market
+-- Construction/Quotation/MarketQuoteCodes.lean (market-generic parts) and
+-- Construction/Paper/Market.lean (the instantiations at the single market
 -- `paperDP`) — constructed rational quote codes: the first *discharge* of the
 -- `RationalQuoteCode` reflection data.  `lic_expectations_of_probabilities_closed` is
 -- `thm:epr` over the constructed LIA with no reflection hypotheses at all.
@@ -1445,21 +1509,21 @@ tail would otherwise assume, together with the criterion endpoints that consume 
   paperFutureQuoteCode paperDeferredExpectationQuoteCode
   paperConfidenceQuoteCode
   PGenerableRat.computable
-  indicatorProductLUV_valuesAt indicatorProductLUV_bigThresholdCodeSeq
+  indicatorProductLUV_valuesAt indicatorProductLUV_machineThresholdCodeSeq
   lic_no_expected_net_update_closed
   lic_expected_future_expectations_closed
   lic_self_trust_closed
   paperIntervalQuoteCode lic_introspection_closed
 
--- Historical mesh `ccee`: the weighted conditional, **general-source** closed form. The deferred-weight
+-- The mesh `ccee` lane: the weighted conditional, **general-source** closed form. The deferred-weight
 -- quote code names the `w ∘ f` program (deferral costs nothing at emission), and
 -- `meshProductLUV` renders the product from that quote's own threshold atoms on a
 -- width-`n+1` mesh, so no emitter ever needs the value `w (f n)` (which is neither
 -- available — P-generable, and deferred — nor polynomially sized).  The price is that the
 -- left product reflects only to within `1/(n+1)`: a **disclosed type-`(c)` substitution**
 -- carried by `ConditionalExpectationQuote.slack`.  `indicatorProductLUV_exact_left_reflected`
--- is the non-vacuity witness at the exact (`slack = 0`) end.  See the Part F header and the
--- README's modeling-boundary history.  This is the **general-input** `thm:ccee` form: it
+-- is the non-vacuity witness at the exact (`slack = 0`) end.  See `dd:mesh` and the
+-- README's modeling-boundary section.  This is the **general-input** `thm:ccee` form: it
 -- admits an arbitrary threshold-only e.c. source, and pays the mesh for it.  The exact
 -- same-market endpoint for the paper's *literal* sources is audited two blocks down.
 #assert_axioms_clean
@@ -1467,12 +1531,12 @@ tail would otherwise assume, together with the criterion endpoints that consume 
   theoremDeferredWeightQuoteCode paperDeferredWeightQuoteCode
   paperConditionalExpectationQuoteCode
   meshProductLUV_valuesAt
-  meshProductLUV_rpnThresholdCodeSeq
+  meshProductLUV_machineThresholdCodeSeq
   indicatorProductLUV_exact_left_reflected
   lic_no_expected_net_update_conditional_closed
 
--- Construction/Witnesses/PaperExactProduct.lean, PaperRepresentedWeight.lean,
--- PaperExactCCEE.lean — the exact `thm:ccee` endpoint **on the single market**.
+-- Construction/Quotation/ExactProduct.lean, Construction/Quotation/RepresentedWeight.lean,
+-- Construction/Quotation/ExactCCEE.lean — the exact `thm:ccee` endpoint **on the single market**.
 --
 -- A `PaperLUV` names its value by a numerator/positive-denominator pair code, so two of
 -- them multiply exactly inside arithmetic: `paperProductPaperLUV` is the unreduced product
@@ -1493,8 +1557,61 @@ tail would otherwise assume, together with the criterion endpoints that consume 
   lic_no_expected_net_update_conditional_paperLUV_ofWeightSeq
   lic_no_expected_net_update_conditional_paperLUV_closed
 
--- Construction/Witnesses/SemanticLiftedCCEE.lean — the generalized semantic-extension form
--- of `thm:ccee`, retained but no longer the canonical paper rendering.
+-- Construction/SemanticExtension/Prime.lean — the obstruction that shapes the whole lane.
+-- `no_nonvacuous_worldValued_presented_of_machine` proves that no fixed deductive process can
+-- wrap *every* efficiently emitted, completed-world-valued source in a `PresentedLUVSeq`
+-- reflecting its thresholds: the diagonal source negates the presentation's own schema leaf.
+-- It is the reason every admission gate in the lane below is proof-carrying or
+-- entailment-checked rather than universal, and it is inventoried so that reason stays
+-- axiom-checked.
+-- `presentedLUVSeq` is the unconditional inhabitant of `PresentedLUVSeq`, so the
+-- interface the gates are stated over is not empty.
+#assert_axioms_clean
+  no_nonvacuous_worldValued_presented_of_machine presentedLUVSeq
+
+-- Construction/SemanticExtension/{Product,Source}.lean — the two further obstructions that
+-- shape the product half of the lane, and the non-vacuity that keeps them from being about
+-- an empty class of worlds.  They REFUTE candidate universal designs rather than render a
+-- paper claim, so they carry no `Paper node` line (the same discipline as the `thm:ifp`
+-- refutations above) and are named in `check-paper-nodes.sh`'s exemption table; they are
+-- inventoried because they are public and must stay axiom-clean.
+-- `semanticProductDP_no_increasing_factor_assignment` — the unguarded product clauses cannot
+-- be satisfied by a factor family false at `0` and true at `1`, a pattern no genuine `[0,1]`
+-- rational cut has; `semanticFreshIncreasing_not_jointly_reflected` exhibits a syntactically
+-- fresh, efficiently emitted family with exactly that defect, so neither freshness nor
+-- efficient emission is sufficient; `semanticFreshIncreasing_no_cutCertificate` is the
+-- registry-level counterpart (that family carries no executable cut certificate over any
+-- non-vacuous base).  `theorem_quote_product_not_jointly_satisfiable` rules out the
+-- schema-unrestricted product closure beside the universal quote interpreter.  Together they
+-- are why `semanticRegistryProductDP` admits factors through a gate.
+-- `semanticProductDP_hworld` is the kind `N+` witness that the process all four quantify
+-- over has a completed world, so none of them is vacuously true, and
+-- `semanticFreshIncreasingLUVSeq_fresh` / `_machineThresholdCodeSeq` are what make the
+-- malformed witness family interesting: it satisfies the two premises — syntactic freshness
+-- and `def:ec`'s write-out emission class — that a candidate universal design would impose,
+-- so neither premise excludes it.
+#assert_axioms_clean
+  semanticProductDP_hworld
+  semanticProductDP_no_increasing_factor_assignment
+  semanticFreshIncreasingLUVSeq_fresh
+  semanticFreshIncreasingLUVSeq_machineThresholdCodeSeq
+  semanticFreshIncreasing_not_jointly_reflected
+  semanticFreshIncreasing_no_cutCertificate
+  theorem_quote_product_not_jointly_satisfiable
+
+-- Construction/Quotation/Packages.lean — non-vacuity of the two quotation paths through
+-- `QuotationTheoryPresentation`.  `quote_positive_enters` and `quote_negative_refutes` are
+-- fields an interface could satisfy vacuously; these two exhibit an actual quote reaching
+-- the process as a literal and an actual complementary quote reaching it as a negated
+-- literal.  Kind `N+` witnesses, so no `Paper node` line — they inhabit an interface rather
+-- than rendering a node — and they are named in the exemption table for that reason.
+#assert_axioms_clean
+  quotationRepresentation_positive_path
+  quotationRepresentation_negative_path
+
+-- Construction/SemanticExtension/Endpoints.lean — the generalized semantic-extension form
+-- of `thm:ccee`, which is not the canonical paper rendering (that is
+-- `lic_no_expected_net_update_conditional_paperLUV_closed`, on the single market).
 -- A fixed old-language copy prevents semantic self-reference; finite-stage entailment
 -- admits every source satisfying the paper-facing `source_valued` premise, including
 -- threshold-only ones that are not literal paper LUVs. The one canonical process is fixed
@@ -1506,18 +1623,19 @@ tail would otherwise assume, together with the criterion endpoints that consume 
   liftedCCEEBaseWorld_hworld
   canonicalCCEEDP_computable
   canonicalCCEEDP_hworld
-  liftedRpnSemanticHandle_valuesAt
-  liftedRpnSource_factor_eventually
+  liftedMachineSemanticHandle_valuesAt
+  liftedMachineSource_factor_eventually
   canonicalRationalQuote_factor_eventually
+  canonicalCCEE_weight_nonvacuous
   lic_no_expected_net_update_conditional_exact_canonical
 
--- Construction/Witnesses/ProductDefinition.lean — the exact-reflection route for the quoted
+-- Construction/Quotation/ProductDefinition.lean — the exact-reflection route for the quoted
 -- product.  Fresh product atoms are defined by the deductive process itself (a definitional
 -- extension of the *process*, not of the theory), so a completed world values the product at
 -- exactly `x · w` — `slack = 0`, no positivity hypothesis on the weight.
 --
--- This historical diagnostic does **not** carry the `thm:ccee` row, and is inventoried so
--- its axiom cleanliness is gated. The endpoint of record is now the fixed-language
+-- This diagnostic does **not** carry the `thm:ccee` row, and is inventoried so
+-- its axiom cleanliness is gated. The endpoint of record is the fixed-language
 -- construction `lic_no_expected_net_update_conditional_exact_canonical` above.
 --
 -- The route reaches a closed statement, `lic_no_expected_net_update_conditional_exact_productExtension`:
@@ -1530,20 +1648,17 @@ tail would otherwise assume, together with the criterion endpoints that consume 
 --
 -- It establishes nothing about the base inductor's conditional expectations: `LIA` over the
 -- extended process is a different inductor, and conservativity of completed-world truth does
--- not carry prices across.  This was adjudicated cross-family on 2026-08-11 (rejecting the
--- reading of it as `thm:ccee` at an instance; ranking mesh > this > weight-narrowing), and
--- the two costs it carries and the mesh endpoint does not — a genuine freshness restriction
--- on the source class, and `def:pgen` at the extended market — are stated at the theorem, in
--- `LogicalInduction/README.md` and in `scripts/coverage-classification.md`.  Full assessment
--- and the adjudication outcome in `LogicalInduction/notes/boundary-propositional-substrate.md`.
+-- not carry prices across.  Reading it as `thm:ccee` at an instance is therefore wrong, and
+-- the two costs it carries that the mesh endpoint does not — a genuine freshness restriction
+-- on the source class, and `def:ece` at the extended market — are stated at the theorem, in
+-- `LogicalInduction/README.md` and in `scripts/coverage-classification.md`.
 #assert_axioms_clean
   productDefDP_computable
   productDefDP_union_consistentWithTheory
   productLUV_valuesAt
   productLUV_valuesAt_union
-  productLUV_rpnThresholdCodeSeq
+  productLUV_machineThresholdCodeSeq
   lic_no_expected_net_update_conditional_exact
-  QuotationTheoryPresentation.mono
   exactProductDP_hworld
   lic_no_expected_net_update_conditional_exact_productExtension
   lic_no_expected_net_update_conditional_exact_productExtension_nonvacuous
@@ -1552,18 +1667,19 @@ tail would otherwise assume, together with the criterion endpoints that consume 
 -- (parity with the paradox-resistance and conditioning `_unconditional` endpoints above).
 -- The quotation family below discharges market/inductor/presentation/hworld; the
 -- reflection data (`RationalQuoteCode`, `*_reflected`) stays a caller hypothesis here,
--- discharged where needed by `RationalQuoteCode.ofComputable` (QuoteCodeOfMarket.lean).
--- What `ComputationDP.lean` still owns is the presentation (`theoremPresentation`), the
--- quotation lane over `theoremDP` and `thm:incons`.  The halting lane is **not** here any
--- more: `lia_learns_halting_patterns_unconditional` and
+-- discharged where needed by `RationalQuoteCode.ofComputable`
+-- (Construction/Quotation/MarketQuoteCodes.lean).
+-- What `Construction/Paper/ComputationDP.lean` owns is the presentation
+-- (`theoremPresentation`) and the quotation lane over `theoremDP`.  The halting lane lives
+-- elsewhere:
+-- `lic_learns_halting_patterns_unconditional` and
 -- `lic_learns_provable_nonhalting_patterns_unconditional` are stated in
--- `ComputationRepresented.lean` over `paperTheoryDP T` under
--- `[T.Δ₁] [𝗣𝗔⁻ ⪯ T] [Entailment.Consistent T]`, with no soundness instance and, since
--- tranche 7, no `[𝗜𝚺₁ ⪯ T]` either, as
--- `thm:pac` / `thm:pazfc` / `thm:dontwait` beside them already were.  They are listed here
--- because this block is the capstone roll-up, not because of where they live.
+-- `Construction/Knowledge/Endpoints.lean` over `paperTheoryDP T` under
+-- `[T.Δ₁] [𝗣𝗔⁻ ⪯ T] [Entailment.Consistent T]` — no soundness instance and no
+-- `[𝗜𝚺₁ ⪯ T]`, matching `thm:pac` / `thm:pazfc` / `thm:dontwait` beside them.  They are
+-- listed here because this block is the capstone roll-up, not because of where they live.
 #assert_axioms_clean
-  lia_learns_halting_patterns_unconditional
+  lic_learns_halting_patterns_unconditional
   lic_expectations_of_probabilities_ofCode_unconditional
   lic_iterated_expectations_ofCode_unconditional
   lic_introspection_ofCode_unconditional
@@ -1590,11 +1706,11 @@ paper node as provenance without being that node's headline endpoint.
 They are internal axiom regression assertions, not public trust surface: the public
 canonical endpoint inventory is the `LI-CANONICAL` block alone.  They add no paper node,
 so the tallies in `scripts/coverage-classification.md` and `LogicalInduction/README.md`,
-which are per-*label*, are unchanged by anything here.  The reverse gate used to be
-per-label too, and that was the hole: one asserted carrier satisfied a label, so a second
-annotated declaration for the same label passed every checker while sitting under no
-axiom gate.  A `#assert_fields` freeze does not close it either — it checks field names,
-not axioms.  Grouped by defining file. -/
+which are per-*label*, are unchanged by anything here.  The gate is deliberately
+per-*declaration* and not per-label: a per-label gate lets one asserted carrier satisfy a
+label, so a second annotated declaration for the same label would pass every checker while
+sitting under no axiom gate.  A `#assert_fields` freeze does not close that either — it
+checks field names, not axioms.  Grouped by defining file. -/
 
 -- LogicalInduction/Framework/Affine.lean
 #assert_axioms_clean
@@ -1607,59 +1723,64 @@ not axioms.  Grouped by defining file. -/
 -- LogicalInduction/Framework/Expectations.lean
 #assert_axioms_clean
   LUV.RpnThresholdCodeSeq LUV.RpnThresholdCodes LUV.BigThresholdCodeSeq
+  LUV.BigThresholdCodes
 
--- LogicalInduction/Framework/RpnEmission.lean
+-- LogicalInduction/Framework/Emission/RpnEmission.lean
 #assert_axioms_clean
-  EfficientlyComputable.ofDigitEmitter EfficientlyComputable.ofSingleTradeBlocks
-  EfficientlyComputable.ofTokenEmitter IsLogicalInductor.noExploitDigit
+  PolyFueledTrader.ofDigitEmitter PolyFueledTrader.ofSingleTradeBlocks
+  PolyFueledTrader.ofTokenEmitter IsLogicalInductor.noExploitDigit
   IsLogicalInductor.noExploitTok RpnSpliceStream.ec
 
--- LogicalInduction/Framework/RpnSplice.lean
+-- LogicalInduction/Framework/Emission/RpnSplice.lean
 #assert_axioms_clean
   RpnSentenceCodes RpnSentenceCodes.bigOr RpnSentenceCodes.bigAnd
 
--- LogicalInduction/Framework/WriteOut.lean
+-- LogicalInduction/Framework/Emission/WriteOut.lean
 #assert_axioms_clean
   BigSentenceCodes BigSentenceCodes.bigAnd BigSpliceStream.ec BigTokenStream
   BigTokenStream.digitizeStream
-  DigitRatCodes EfficientlyComputable.ofSingleTradeBlocksBig ec_of_bigTokenStream
+  DigitRatCodes PolyFueledTrader.ofSingleTradeBlocksBig ec_of_bigTokenStream
 
 -- LogicalInduction/Construction/TradingFirm.lean
 #assert_axioms_clean
-  trading_firm_dominance_of_ec
+  trading_firm_dominance_of_polyFueled
 
--- LogicalInduction/Construction/Witnesses/ArithmeticSource.lean
+-- LogicalInduction/Construction/LUV/ArithmeticSource.lean
 #assert_axioms_clean
   PaperLUVCombination PaperLUVSeq iffChainSource_polyArithmeticSourceSeq iffPaperLUV
   invPaperLUVWith
 
--- LogicalInduction/Construction/Witnesses/BoundedEvaluation.lean
+-- LogicalInduction/Construction/NonDogmatism/RepeatedEnumeration.lean
 #assert_axioms_clean
-  CEEnumeration SettlementChecker
+  CEEnumeration
 
--- LogicalInduction/Construction/Witnesses/ComputationDP.lean
+-- LogicalInduction/Construction/Statistics/SettlementClock.lean
+#assert_axioms_clean
+  SettlementChecker
+
+-- LogicalInduction/Construction/Paper/ComputationDP.lean
 #assert_axioms_clean
   liaMarketComputation quotationPresentation quotation_presentation_nonvacuous
 
--- LogicalInduction/Construction/Witnesses/ComputationSyntax.lean
+-- LogicalInduction/Construction/Knowledge/Syntax.lean
 #assert_axioms_clean
-  ComputableHorizon ComputationTheoryPresentation
+  ComputableHorizon ComputationTheoryPresentation PolyMachineCodes.toDigitMachineCodes
 
--- LogicalInduction/Construction/Witnesses/ConditioningPresentation.lean
+-- LogicalInduction/Construction/Conditioning/Presentation.lean
 #assert_axioms_clean
   CompactConditioningProcessComputation
 
--- LogicalInduction/Construction/Witnesses/FeedbackTruth.lean
+-- LogicalInduction/Construction/Statistics/FeedbackTruth.lean
 #assert_axioms_clean
   FeedbackTruth.FeedbackTruthComputation
 
--- LogicalInduction/Construction/Witnesses/FinitePerturbationWitness.lean
+-- LogicalInduction/Construction/Freeze/Counterexample.lean
 #assert_axioms_clean
   FinitePerturbationCounterexample.exists_advice_perturbation
   FinitePerturbationCounterexample.exists_advice_perturbation_ofTheory
   FinitePerturbationCounterexample.not_overgeneral_ifp_ofTheory
 
--- LogicalInduction/Construction/Witnesses/HistoricalMaturity.lean
+-- LogicalInduction/Construction/Statistics/HistoricalMaturity.lean
 #assert_axioms_clean
   AffineCombination.ApproxDeterminedViaTheory.lic_prandaff
   AffineCombination.ApproxDeterminedViaTheory.lic_prandaff_above
@@ -1668,62 +1789,68 @@ not axioms.  Grouped by defining file. -/
   AffineCombination.DeterminedViaTheory.lic_prandaff_above
   AffineCombination.DeterminedViaTheory.lic_prandaff_below
 
--- LogicalInduction/Construction/Witnesses/LUVArithmetic.lean
+-- LogicalInduction/Construction/LUV/Arithmetic.lean
 #assert_axioms_clean
   ComputableLUV ComputableLUV.toLUV ComputableLUV.toLUV_polyThresholdCodes
 
--- LogicalInduction/Construction/Witnesses/LUVPresentation.lean
+-- LogicalInduction/Construction/LUV/Presentation.lean
 #assert_axioms_clean
   ArithmeticLUVPresentation
 
--- LogicalInduction/Construction/Witnesses/LUVSyntax.lean
+-- LogicalInduction/Construction/LUV/Syntax.lean
 #assert_axioms_clean
   LUVCombinationSyntax
 
--- LogicalInduction/Construction/Witnesses/PrefixMachine.lean
+-- LogicalInduction/Construction/NonDogmatism/PrefixMachine.lean
 #assert_axioms_clean
   approx_polyRat_of_sentence dcStep natCode prefixApprox prefixKappa prefixKraft_of_code
   prefixMachinePresentation prefixSentenceEnum prefixThresholdEmission sentCode
   sentencePoly_of_invalidBit validCode
 
--- LogicalInduction/Construction/Witnesses/ProductDefinition.lean
+-- LogicalInduction/Construction/Quotation/ProductDefinition.lean
 #assert_axioms_clean
   exactProductDP exactWeightLUV productAtom_mesh_encode_polyFueled productDefDP
   productExtensionWorld_consistentWithTheory productExtensionWorld_holds_schema
 
--- LogicalInduction/Construction/Witnesses/QuotationAffine.lean
+-- LogicalInduction/Construction/Quotation/Packages.lean
 #assert_axioms_clean
-  BooleanQuoteCode PairedWeighting ParameterizedDiagonalQuoteCode
+  BooleanQuoteCode ParameterizedDiagonalQuoteCode
   QuotationTheoryPresentation RationalQuoteCode
 
--- LogicalInduction/Construction/Witnesses/QuoteCodeOfMarket.lean
+-- LogicalInduction/Construction/Quotation/DeferralFibre.lean
+#assert_axioms_clean
+  PairedWeighting
+
+-- LogicalInduction/Construction/Quotation/MarketQuoteCodes.lean
 #assert_axioms_clean
   conditionalExpectationQuoteCode deferredWeightQuoteCode ordinaryLUVCombinationSeq
   quoteAtom_mesh_encode_polyFueled
 
--- LogicalInduction/Construction/Witnesses/RpnConditioning.lean
+-- LogicalInduction/Construction/Conditioning/PricePass.lean
+#assert_axioms_clean
+  RpnConditioning.strategyOfTokens_unRpn_trades_eq_nil_of_rpnBigDay
+  RpnConditioning.unRpn_rpnConditionRun_of
+
+-- LogicalInduction/Construction/Conditioning/FramePass.lean
 #assert_axioms_clean
   RpnConditioning.depthMode_unRpn_agree RpnConditioning.frameAgree_unRpn_rpnFrameOutput
   RpnConditioning.frameContract_rpnFrameOutput
   RpnConditioning.frameJoint_unRpn_rpnFrameOutput RpnConditioning.rpnFrameEmit_contractsTo
-  RpnConditioning.rpnFrameOutput_polySegStream
-  RpnConditioning.rpnGuardedConditionRun_polySegStream_of
   RpnConditioning.strategyOfTokens_unRpn_rpnFrameOutput_trades
-  RpnConditioning.strategyOfTokens_unRpn_trades_eq_nil_of_rpnBigDay
-  RpnConditioning.tradeRuns_unRpn_agree RpnConditioning.unRpn_rpnConditionRun_of
+  RpnConditioning.tradeRuns_unRpn_agree
   RpnConditioning.unRpn_split
 
--- LogicalInduction/Construction/Witnesses/StrictSeparators.lean
+-- LogicalInduction/Construction/NonDogmatism/StrictSeparators.lean
 #assert_axioms_clean
   exists_pos_mass_of_ce_nested
 
--- LogicalInduction/Construction/Witnesses/UniversalDovetailer.lean
+-- LogicalInduction/Construction/NonDogmatism/UniversalDovetailer.lean
 #assert_axioms_clean
   Dovetail.dovetailMass Dovetail.dovetailMass_eq_mass Dovetail.dusApprox
   Dovetail.lowerSemicomputable Dovetail.rawVal Dovetail.trim_tendsto_of_exact
   Dovetail.universalApprox Dovetail.universalMass
 
--- LogicalInduction/Construction/Witnesses/UniversalPrefix.lean
+-- LogicalInduction/Construction/NonDogmatism/UniversalPrefix.lean
 #assert_axioms_clean
   UPrefix.UHalt UPrefix.kappaStage UPrefix.kappaU UPrefix.uCode UPrefix.uMinLen
   UPrefix.uSel
@@ -1746,8 +1873,8 @@ not axioms.  Grouped by defining file. -/
 
 -- LogicalInduction/Properties/FinitePerturbations.lean
 #assert_axioms_clean
-  EfficientPrefixPatch FiniteSupportPatch MachineFiniteSupportPatch
-  machineFiniteSupportPatch_of_rewriter
+  EfficientPrefixPatch FiniteSupportPatch
+  finiteSupportPatch_of_rewriter
 
 -- LogicalInduction/Properties/Introspection.lean
 #assert_axioms_clean
@@ -1756,6 +1883,7 @@ not axioms.  Grouped by defining file. -/
 
 -- LogicalInduction/Properties/LimitCoherence.lean
 #assert_axioms_clean
+  GaifmanCoherent
   gaifmanMeasure_sentence gaifmanWorldMeasure_sentence lic_gaifmanMeasure_supported
   lic_gaifmanWorldMeasure_supported lic_limitingBelief_gaifman
 
@@ -1767,9 +1895,6 @@ not axioms.  Grouped by defining file. -/
 #assert_axioms_clean
   OccamThresholdEmission PrefixMachinePresentation PrefixNegationCompiler
 
--- LogicalInduction/Properties/ProvabilityInduction.lean
-#assert_axioms_clean
-  buySeq_ec_big
 
 -- LogicalInduction/Properties/Pseudorandomness.lean
 #assert_axioms_clean
@@ -1798,8 +1923,98 @@ not axioms.  Grouped by defining file. -/
   DUSThresholdEmission IndependentBitAtoms LowerSemicomputableContinuousSemimeasure
   StrictSeparatorPresentation UniversalContinuousSemimeasure
 
+-- ## Non-vacuity witnesses — the one block exempt from the annotation rule
+--
+-- Everything named here *inhabits* something rather than rendering a paper claim, so none
+-- of it carries a `Paper node:` line and none of it should: an inhabitant of `def:ec`'s
+-- machine reading is not a rendering of `def:ec`, and annotating it would file a witness as
+-- a statement.  The rule stated at the top of this file — naming a declaration here
+-- requires annotating it — is therefore suspended for this block, and the suspension is
+-- itself checked: `scripts/check-paper-nodes.sh` carries these names in its exemption
+-- table, which fails if a name there stops being inventoried or starts carrying an
+-- annotation.  This is the discipline the Cartesian Frames and Finite Factored Sets witness
+-- blocks use.
+--
+-- Why they must be asserted directly: transitive coverage reaches upstream only (see the
+-- top of this file).  A universally quantified endpoint names no instance, so no assertion
+-- of `thm:simcal` or of `def:lic` reaches the witness that inhabits its data premise.  A
+-- `sorry` in any of these would fail no gate without this block.
+--
+-- Framework/Machine/Witnesses.lean — one constructed, day-varying inhabitant of each
+-- machine emission class, each paired with the lemma saying it is not a constant sequence,
+-- plus the trader capstone certified at `EfficientlyComputable` with no fuel certificate in
+-- its derivation.
+#assert_axioms_clean
+  unaryRuler_triangle unaryRuler_triangle_nonconstant
+  machineDigits_id machineDigits_id_nonconstant
+  machineDigits_two_pow machineDigits_two_pow_nonconstant
+  machineMachineCodes_nest machineMachineCodes_nest_nonconstant
+  machineRatCodes_two_pow_inv machineDigits_ratCode_two_pow_inv
+  machineRatCodes_two_pow_inv_nonconstant
+  machineTokenStream_atom machineSentenceCodes_atom machineSentenceCodes_atom_nonconstant
+  machineSentenceCodes_conjRange machineSentenceCodes_conjRange_nonconstant
+  machineSpliceStream_atomTrade machineSpliceStream_atomTrade_nonconstant
+  buyAtomDaily buyAtomDaily_nonconstant efficientlyComputable_buyAtomDaily
+  machineTokenStream_marks machineDigits_tokenListNat_marks
+  machineDigits_tokenListNat_marks_nonconstant
+-- Framework/Criterion.lean — `Exploits` is refutable, so `def:lic` is not vacuously true.
+-- Properties/Calibration.lean — `thm:simcal`'s data premise is inhabited at the paper's own
+-- tolerance sequence `2⁻ⁿ`.
+-- Properties/ExpectationAffine.lean — `expectation_indicator_not_identity` REFUTES the
+-- degenerate reading of `thm:ei` at the constructed indicator: it exhibits a market pricing
+-- `φ` at `0` and the equivalent threshold `φ ⋏ ∼∼φ` at `1`, so
+-- `lic_expectation_indicator_unconditional`'s conclusion is false of markets in general and
+-- `[IsLogicalInductor]` is what forces the two prices together.  Without it nothing on the
+-- gate would distinguish that endpoint from an arithmetic identity.
+#assert_axioms_clean
+  Trader.zero Trader.zero_not_exploits polyPositiveWidths_two_pow_inv
+  expectation_indicator_not_identity
 
-open AffineCombination LUVCombination in
+-- Properties/SelfTrust.lean — the two constructed `DeferralFunction`s, one at each end of
+-- the growth range `def:deferralfunc`'s output-sensitive efficiency clause admits.
+-- `succDeferral` is the slow one (`n ↦ n + 1`); `doublingDeferral` is the fast one
+-- (`n ↦ 2 ^ n`), whose graph is decided on the unary pair through `UnaryRuler.two_pow_min`,
+-- a doubling loop truncated at the candidate value every step.  Without the second, the
+-- regime the machine reading of the clause exists to admit would have no inhabitant and the
+-- twenty-three endpoints binding a `DeferralFunction` would be exercised only by a
+-- schedule a fuel clock could also have carried.  `not_polyFueled_doublingDeferral` is the
+-- record that it could not: `not_polyFueled_two_pow` refutes a whole-value fuel certificate
+-- for `n ↦ 2 ^ n` on output size.
+#assert_axioms_clean
+  succDeferral doublingDeferral not_polyFueled_doublingDeferral
+
+-- Construction/LUV/SourceCodec.lean, ArithmeticSource.lean — the day-varying inhabitants of
+-- the machine emission classes this lane's endpoints bind, each with its non-constancy
+-- record: the compact numeral of the day itself (`MachineTokenStream`), and the
+-- biconditional chain carried both as an emitted source run and as the *value* of its own
+-- name (`MachineDigits`).  Without them the source-metered hypotheses would be exercised
+-- only by constant families.
+-- Construction/LUV/Presentation.lean — `luvThresholdDP_computable` is the process half of
+-- the `[IsLogicalInductor P (L.luvThresholdDP T)]` instance hypothesis that four `_arith`
+-- endpoints in `Construction/LUV/Endpoints.lean` bind; nothing else on the gate would rule
+-- out those endpoints being vacuous, since the class's other field is the caller's market.
+#assert_axioms_clean
+  machineTokenStream_binNumeralEnc_id binNumeralEnc_nonconstant
+  machineArithmeticSourceSeq_iffChainSource iffChainSource_nonconstant
+  machineDigits_sourceNat_iffChainSource sourceNat_iffChainSource_nonconstant
+  ComputableLUV.luvThresholdDP_computable
+
+-- Construction/LUV/ArithmeticSource.lean, Construction/Knowledge/Endpoints.lean — the
+-- fully discharged applications of the paper's own endpoints at the constructed families.
+-- Each is a *client* of a canonical endpoint with every hypothesis supplied concretely, so
+-- it renders no paper node of its own; what it records is that the endpoint's premises are
+-- jointly satisfiable at a named family.  They were anonymous `example`s, which neither the
+-- inventory nor the axiom audit can see.
+#assert_axioms_clean
+  lic_expectation_indicator_dyadicPaperLUVSeq expect_converges_dyadicPaperLUV
+  lic_expectation_indicator_iffPaperLUVSeq expect_converges_iffPaperLUV
+  lic_does_not_anticipate_halting_neverHalt
+  lic_belief_finitistic_consistency_ackermann
+  lic_belief_stronger_theory_consistency_ackermann
+  conClaimSentence_ackermann_day_ne
+  lic_learns_halting_patterns_nest
+
+
 /-! ## Tier-2 boundary structures — field (hypothesis) surface
 
 Each structure below appears in the *type* of a Tier-1 endpoint (directly, or
@@ -1808,12 +2023,16 @@ read-through must audit. `#assert_fields` freezes that field-name set: adding or
 a field — smuggling a premise in or out of a boundary — fails the build. It does not
 freeze field *types* (see the macro's docstring); deliberate type changes are recorded in
 comments beside the affected structure. The set is order-insensitive. Regenerate with
-`SurfaceProbe`/`FieldProbe` if the surface changes deliberately. -/
+`#surface_types` and `#dump_fields` in `SurfaceProbe.lean` if the surface changes
+deliberately. -/
 
 #assert_fields AffineCombination
   const terms
 #assert_fields AffineCombination.BoundedCombinationSequence
   poly bounded
+-- FIELD TYPE, invisible to `#assert_fields`: `tradeCount_poly` is at `UnaryRuler`, and the
+-- two emission fields at the machine write-out classes, exactly as
+-- `AffineCombination.PolySequence`'s are and for the same reason.
 #assert_fields AffineCombination.FeedbackTraderEmission
   tradeCount coefficient sentence tradeCount_poly coefficient_poly sentence_poly trades_eq
 #assert_fields AffineCombination.FeedbackTraderEmissionFamily
@@ -1822,6 +2041,19 @@ comments beside the affected structure. The set is order-insensitive. Regenerate
   positive negative
 #assert_fields AffineCombination.FeedbackTruthSequence
   determined sequence poly bounded magnitude value_vanishing feedback_price
+-- FIELD TYPE, invisible to `#assert_fields` (which freezes field *names* only):
+-- ALL FOUR operational fields of `AffineCombination.PolySequence` are machine-metered.
+-- The three emission fields are at the MACHINE write-out classes —
+-- `const_poly`/`coefficient_poly` at `MachineSpliceStream`, `sentence_poly` at
+-- `MachineSentenceCodes` — and `termCount_poly` is at `UnaryRuler`
+-- (`Framework/Machine/Ruler.lean`), the machine reading of a COUNT: a polynomial-time
+-- machine writes out `termCount n` marks on the unary day.  So a client discharges every
+-- field from ordinary `Complexity.FP` data and never writes a `Nat.Partrec.Code`.  That is
+-- what lets `PolySequence.buyBelowTrader_ec` certify at `EfficientlyComputable`, and it is
+-- why every §4 result routed through that trader takes `[IsLogicalInductor P DP]`.
+-- `UnaryRuler.of_polyFueled` converts a fuel certificate into the field; no converse is
+-- claimed, so the field is the strictly WEAKER hypothesis and every consumer of the
+-- structure is the strictly stronger theorem.
 #assert_fields AffineCombination.PolySequence
   termCount coefficient sentence termCount_poly const_poly coefficient_poly sentence_poly terms_eq const_rank coefficient_rank const_closed coefficient_closed
 #assert_fields AffineQuoteEq
@@ -1830,51 +2062,52 @@ comments beside the affected structure. The set is order-insensitive. Regenerate
   toAffineQuotePortfolio future_coherent
 #assert_fields AffineQuotePortfolio
   family poly scale scale_pos current_price bounded magnitude_le_one
--- TYPE CHANGE, invisible to `#assert_fields` (which freezes field *names* only).
--- `ArithmeticLUVPresentation` now carries an `[RepresentsComputations T]` instance binder,
+-- FIELD TYPES, invisible to `#assert_fields` (which freezes field *names* only).
+-- `ArithmeticLUVPresentation` carries an `[RepresentsComputations T]` instance binder,
 -- and its two fields are the two literals over ONE sentence:
 --     threshold_enters  : T ⊢ (L.thresholdSchema T)/[code]      → …
 --     threshold_refutes : T ⊢ ∼((L.thresholdSchema T)/[code])   → …
--- Previously `threshold_refutes` consumed a *second*, complementary r.e. schema
--- (`L.thresholdFailureSchema`, now retired), which is why the LUV world needed
--- Σ₁-soundness.  See `LUVArithmetic.lean`, "The threshold schema, at the paper's
+-- One sentence and its literal negation is what keeps the LUV world consistent from
+-- `Entailment.Consistent T`: a second, independent r.e. failure schema would separate the
+-- two literals only by truth in `ℕ`, and the world would need Σ₁-soundness.  See
+-- `Construction/LUV/Arithmetic.lean`, "The threshold schema, at the paper's
 -- representability premise".
 #assert_fields ArithmeticLUVPresentation
   threshold_enters threshold_refutes
--- Tier-2 field change (2026-07-30, superseded 2026-08-28): `prefix_codes` moved from the
--- whole-value `PolySentenceCodes` to the token-metered `RpnSentenceCodes`, and then to the
--- write-out class `BigSentenceCodes` in the migration recorded in the WRITE-OUT FIELD
--- MIGRATION block below.  `#assert_fields` freezes field *names* only, so the type change is
--- recorded here explicitly; it is what makes the structure inhabitable
--- (`ordinaryBitPrefixSentences`).
+-- FIELD TYPE, invisible to `#assert_fields`: `prefix_codes` is at the machine-metered
+-- write-out class `MachineSentenceCodes` (producers cross by
+-- `BigSentenceCodes.toMachine`), not at a whole-value code bound.  That is what makes the
+-- structure inhabitable (`ordinaryBitPrefixSentences`): a whole-value bound on these codes
+-- is unsatisfiable.
 #assert_fields BitPrefixSentences
   atom prefixSentence enumeration enumeration_covers prefix_codes holds_prefix realizable
--- TYPE CHANGE, invisible to `#assert_fields` (which freezes field *names* only).
+-- FIELD CONTENT, invisible to `#assert_fields` (which freezes field *names* only).
 -- The `pos_complete`/`neg_complete` fields of `BooleanQuoteCode` and `RationalQuoteCode`,
 -- and `quote_positive_enters`/`quote_negative_refutes` of `QuotationTheoryPresentation`,
--- still read `T ⊢ universalQuotePos/[…]` / `T ⊢ universalQuoteNeg/[…]` — but those two
--- schemas are no longer two *independent* `codeOfREPred` Σ₁ formulas.  As of 2026-08-30
--- they are the value-`1` and value-`0` fibers of ONE Foundation `code` formula for the
+-- read `T ⊢ universalQuotePos/[…]` / `T ⊢ universalQuoteNeg/[…]`, where those two
+-- schemas are the value-`1` and value-`0` fibers of ONE Foundation `code` formula for the
 -- universal quote evaluation (`universalQuoteCode`; `valueSchema`,
--- `Framework/QuoteRepresentability.lean`).  Field names and the printed field types are
--- unchanged, so the freezes below still pass, but the *content* is strictly different:
--- `T ⊢ ∼(pos/[w̄] ⋏ neg/[w̄])` is now provable (`universalQuote_exclusive_prov`, from the
--- locally revived `code_uniq` plus Gödel completeness under `𝗣𝗔⁻ ⪯ T`), where before the
--- fibers were separated only by truth in `ℕ`.  That is what retired `[T.SoundOnHierarchy
--- 𝚺 1]` from `theoremDP_hworld`'s tag 7 and from every endpoint downstream of it.
--- `quoteSchemas_exclusive_prov` is spelled `universalQuote_exclusive_prov` here and is
--- **not** inventoried: it is an internal exclusivity step, not a paper claim, so it carries
+-- `Framework/Theory/QuoteRepresentability.lean`) — not two independent `codeOfREPred` Σ₁ formulas.
+-- The printed field types do not show the difference, and it is the load-bearing one:
+-- `T ⊢ ∼(pos/[w̄] ⋏ neg/[w̄])` is provable (`universalQuote_exclusive_prov`, from the
+-- locally revived `code_uniq` plus Gödel completeness under `𝗣𝗔⁻ ⪯ T`), where independent
+-- fibers would be separated only by truth in `ℕ`.  That is why `theoremDP_hworld`'s
+-- quotation case needs no `[T.SoundOnHierarchy 𝚺 1]`, and no declaration downstream of it
+-- does either.
+-- `universalQuote_exclusive_prov` is **not** inventoried: it is an internal exclusivity
+-- step, not a paper claim, so it carries
 -- no `Paper node` line (`check-paper-nodes.sh` requires one of every inventoried name) and
 -- is covered transitively by the quotation endpoints below.
 #assert_fields BooleanQuoteCode
   code pos_complete neg_complete
 #assert_fields CEEnumeration
   code halts outputs_sound
--- TYPE CHANGE, invisible to `#assert_fields` (which freezes field *names* only).
--- 2026-09-02: `condition_codes` moved from `RpnSentenceCodes` to `BigSentenceCodes`
--- (`def:ec`'s own write-out class) — a WIDENING of what a caller may supply, carried by
--- `BigTokenStream.digitizeStream` + `CondStep.machineSentenceBlocks_of_big`.  The field
--- name is unchanged, so this block passes without moving; the freeze does not see it.
+-- FIELD TYPE, invisible to `#assert_fields` (which freezes field *names* only).
+-- `condition_codes` is at `MachineSentenceCodes`, `def:ec`'s own machine class.
+-- A condition's Gödel code may be exponential in the day and nothing bounds it; the
+-- transducer reads the blocks straight off it through
+-- `CondStep.machineSentenceBlocks_of_machine`, with no `.toMachine` crossing.  No fuel
+-- data premise reaches a canonical endpoint on this lane, this structure included.
 #assert_fields CompactConditioningProcessComputation
   toDeductiveProcessComputation condition_codes
 #assert_fields CompletedAffineQuoteApprox
@@ -1883,99 +2116,152 @@ comments beside the affected structure. The set is order-insensitive. Regenerate
   toAffineQuotePortfolio theory_coherent
 #assert_fields ComputableHorizon
   program program_spec
--- TYPE CHANGE, invisible to `#assert_fields` (which freezes field *names* only).
--- `ComputationTheoryPresentation.boundedFailure_refutes` now consumes the LITERAL
+-- FIELD TYPES, invisible to `#assert_fields` (which freezes field *names* only).
+-- `ComputationTheoryPresentation.boundedFailure_refutes` consumes the LITERAL
 -- NEGATION of the sentence its positive partner consumes:
 --     boundedHalting_enters  : T ⊢ universalBoundedHaltingSchema/[↑z]    → …
 --     boundedFailure_refutes : T ⊢ ∼(universalBoundedHaltingSchema/[↑z]) → …
--- Previously it consumed a *second*, independent r.e. schema
--- (`universalBoundedFailureSchema`, now retired), which is why `theoremDP_hworld`'s
--- tag-3 case needed Σ₁-soundness; it now closes from `Entailment.Consistent T` exactly
--- like tag 1.  Tag 7 (¬quotation) followed on 2026-08-30 by the same principle applied to
--- the quotation schemas — one `code` formula, two value fibers — so `theoremDP_hworld` now
--- reads `[T.Δ₁] [𝗣𝗔⁻ ⪯ T] [Entailment.Consistent T]` (tranche 7 replaced `[𝗜𝚺₁ ⪯ T]` with
--- the `𝗣𝗔⁻` the tag-7 case actually spends) and NO declaration in
--- `LogicalInduction/` carries a `SoundOnHierarchy` instance binder any more.
--- 2026-08-31 (T8/8, tag-space retirement).  The `inconsistency_enters` and
--- `inconsistency_refutesConsistency` fields are GONE, together with
--- `ComputationClaimKind.inconsistency`/`.consistency`, `inconsistencyClaim`/
--- `consistencyClaim` and their claim sentences: the T8/iv restatement moved `thm:incons`
--- onto `paperTheoryDP` (`representedInconsistentTheoryClaims`,
--- `ComputationRepresented.lean`), leaving those two rows of `theoremDP`'s tag table with
--- no consumer.  `theoremDP`'s event tag space is now `0`–`5` and gapless: `0`/`1`
--- halting ±, `2`/`3` bounded halting ±, `4`/`5` quotation ± (the quotation tags were
--- `6`/`7` before this change, and audit prose above and below dated earlier than
--- 2026-08-31 refers to them by those numbers).  `theoremDP_hworld` was re-established
--- over the shrunk space by deleting the two retired cases; the surviving cases are
--- unchanged, and no endpoint's elaborated signature moved.  The block below is shortened
--- by exactly the two retired field names.
+-- A second, independent r.e. failure schema would make `theoremDP_hworld`'s bounded-halting
+-- case need Σ₁-soundness; over the literal negation that case closes from
+-- `Entailment.Consistent T` exactly like the halting case, and the quotation case closes the
+-- same way (one `code` formula, two value fibers).  So `theoremDP_hworld` reads
+-- `[T.Δ₁] [𝗣𝗔⁻ ⪯ T] [Entailment.Consistent T]` — the `𝗣𝗔⁻` is what the quotation case
+-- spends — and NO declaration in `LogicalInduction/` carries a `SoundOnHierarchy` instance
+-- binder.
+-- `theoremDP`'s event tag space is `0`–`5` and gapless: `0`/`1`
+-- halting ±, `2`/`3` bounded halting ±, `4`/`5` quotation ±.  `thm:incons` is stated
+-- elsewhere, over `paperTheoryDP` (`representedInconsistentTheoryClaims`,
+-- `Construction/Knowledge/Endpoints.lean`), so this presentation carries no inconsistency
+-- fields and `ComputationClaimKind` has no inconsistency/consistency constructors.
 #assert_fields ComputationTheoryPresentation
   theory_deltaOne process halting_enters halting_refutes boundedHalting_enters boundedFailure_refutes
+-- FIELD TYPE, invisible to `#assert_fields` (which freezes field *names* only):
+-- `source_codes`, `left_codes` and `right_codes` are at
+-- `LUV.MachineThresholdCodeSeq`.
 #assert_fields ConditionalExpectationQuote
   weight_mem weight_generable source_codes left_codes right_codes slack slack_tendsto source_valued left_reflected right_reflected affine
--- TYPE CHANGE, invisible to `#assert_fields` (which freezes field *names* only).
--- 2026-09-02: `condition_codes` moved from `RpnSentenceCodes` to `BigSentenceCodes`, the
--- same widening recorded at `CompactConditioningProcessComputation` above.
+-- FIELD TYPE, invisible to `#assert_fields`: `condition_codes` is at
+-- `MachineSentenceCodes`, for the reason recorded at
+-- `CompactConditioningProcessComputation` above.
 #assert_fields ConditioningPresentation
   condition condition_codes holds_condition combined_computable
+-- ONE TRANSLATION FIELD, and it is at `def:ec`: `translate_ec` is typed
+-- `∀ T, EfficientlyComputable T → EfficientlyComputable (translate T)`, and there is no
+-- fuel-class sibling here or on the two operational witnesses below.  That is deliberate,
+-- not a weakening: `def:ec` quantifies over ordinary polynomial time, so this is the
+-- certificate `thm:scon` actually needs, and a fuel-class field would support only a
+-- conclusion about the certification engine's own class rather than a paper claim.  Every
+-- endpoint on the lane takes `[IsLogicalInductor]` and concludes `IsLogicalInductor`.  The
+-- fuel calculus certifies traders — `PolyFueledTrader.toEfficientlyComputable` is how a
+-- fuel-side client reaches `translate_ec` — and having no fuel field is what lets
+-- `condition_codes` sit at `MachineSentenceCodes`, since a fuel-typed proof
+-- would need a `BigTokenStream` and there is no map back from `MachineTokenStream`.  The
+-- fuel model publishes no class-preservation capstone of its own
+-- (`Construction/Conditioning/FramePass.lean` stops at the strategy-level cores), so it puts
+-- nothing on the paper surface to inventory here; the `PolySegStream` chain is the
+-- fuel-model rendering of the same transducer, and the machine pass in
+-- `Construction/Conditioning/Transduction.lean` shares its definitions.
 #assert_fields ConditioningTraderCompiler
-  conditioned_computable translate translate_ec translate_machine tracks_on_condition
+  conditioned_computable translate translate_ec tracks_on_condition
   preserves_floor
 #assert_fields ContinuousSemimeasure
   mass nonneg root_le_one children_le
+-- FIELD TYPE, invisible to `#assert_fields` (which freezes field *names* only):
+-- `source_codes` and `quote_codes` are at `LUV.MachineThresholdCodeSeq`.
 #assert_fields CurrentExpectationQuote
   source_codes quote_codes reflected affine
+-- FIELD TYPE, invisible to `#assert_fields` (which freezes field *names* only):
+-- `sentence_codes` is at `MachineSentenceCodes` and `quote_codes` at
+-- `LUV.MachineThresholdCodeSeq`.
 #assert_fields CurrentPriceExpectationQuote
   sentence_codes quote_codes reflected affine
 #assert_fields DUSApproximationPresentation
   approximation nonneg le_mass tendsto
+-- FIELD TYPE, invisible to `#assert_fields` (which freezes field *names* only):
+-- both fields are at `MachineRatCodes`, not at the *value*-metered `PolyRatCodes`, so this
+-- structure is not on the whole-value list below; the constructed producer
+-- `Dovetail.dusThresholdEmission` proves the value-metered form and crosses by
+-- `DigitRatCodes.ofPolyRatCodes` then `DigitRatCodes.toMachine`.
 #assert_fields DUSThresholdEmission
   threshold_sum_codes inverse_width_codes
 #assert_fields DeductiveProcess
   D mono
 #assert_fields DeductiveProcessComputation
   code code_spec
+-- FIELD TYPE, invisible to `#assert_fields` (which freezes field *names* only):
+-- `graph_fp` is a bare `Complexity.FP` membership, the machine reading of
+-- `def:deferralfunc`'s condition 2 (tex:1244).  The decided predicate is the *graph*
+-- `f n = m` and the machine's input is the unary pair `⟨n, m⟩`, whose length is
+-- `Nat.pair n m ≥ m`, so "polynomial in the input length" is the paper's own
+-- output-sensitive "polynomial in `f n`".  Retyping it back to an `evaln` fuel clock
+-- would put a `dd:fuel` substitution on twenty-three canonical endpoints.
 #assert_fields DeferralFunction
-  f lt code fueled
+  f lt graph_fp
 #assert_fields EfficientPrefixPatch
   quote quote_exact preserves_ec
 #assert_fields FiniteSupportPatch
   quote quote_exact preserves_ec
+-- FIELD TYPE, invisible to `#assert_fields` (which freezes field *names* only):
+-- `sequence_poly` is at `MachineSentenceCodes`, so the ladder trader
+-- `obuTrader_ec` certifies at `EfficientlyComputable` and the three `thm:obu` endpoints
+-- carry `[IsLogicalInductor P DP]`.
 #assert_fields EfficientRepeatedEnumeration
   sequence sequence_poly repeats sound covers
 #assert_fields EventualConditioningFloor
   cutoff zeroDays zeroDays_lt epsilon epsilon_pos zero_exact positive_floor
+-- ONE TRANSLATION FIELD, at `def:ec`; see the note at `ConditioningTraderCompiler`.
 #assert_fields EventualConditioningOperationalWitness
-  floor conditioned_computable translation_ec translation_machine
+  floor conditioned_computable translation_ec
+-- FIELD TYPE, invisible to `#assert_fields` (which freezes field *names* only):
+-- `source_codes` and `quote_codes` are at `LUV.MachineThresholdCodeSeq`.
 #assert_fields ExpectedFutureExpectationQuote
   source_codes quote_codes reflected affine
+-- FIELD TYPE, invisible to `#assert_fields` (which freezes field *names* only):
+-- `computes` is at `MachineDigits`, the machine reading of `thm:wub`'s feedback premise
+-- (tex:1251).  The stream is read at the unary pair `⟨k, f (k+1)⟩`, whose length is
+-- `Nat.pair k (f (k+1)) ≥ f (k+1)`, so the polynomial in the input's length is the
+-- paper's `O(f(k+1))`; `computes_at` pins the answers on the deferred days.  Retyping it
+-- back to an `evaln` fuel clock would put a `dd:fuel` substitution on the six
+-- `thm:wub`/`thm:wubaff`/`thm:wubexp` endpoints.
 #assert_fields FeedbackTruth.FeedbackTruthComputation
-  value code a degree computes agrees
+  value code computes computes_at agrees
+-- FIELD TYPE, invisible to `#assert_fields` (which freezes field *names* only):
+-- `sentence_codes` is at `MachineSentenceCodes` and `quote_codes` at
+-- `LUV.MachineThresholdCodeSeq`.
 #assert_fields FuturePriceQuote
   sentence_codes quote_codes reflected affine
+-- `GaifmanCoherent` is the *conclusion* type of `lic_limitingBelief_gaifman`, not a
+-- hypothesis: freezing its fields freezes what `thm:lc` is claimed to deliver.  Weakening
+-- the structure — dropping `disjoint_add`, say — would silently weaken that endpoint while
+-- leaving its printed statement identical.
+#assert_fields GaifmanCoherent
+  mem_Icc top_eq_one congr disjoint_add
+-- ONE TRANSLATION FIELD, at `def:ec`; see the note at `ConditioningTraderCompiler`.
 #assert_fields GatedConditioningOperationalWitness
-  epsilon_pos denominator_floor conditioned_computable translation_ec translation_machine
+  epsilon_pos denominator_floor conditioned_computable translation_ec
 #assert_fields GeneratedRatFeature
   rank_le polyTok closed denote
+-- FIELD TYPE, invisible to `#assert_fields` (which freezes field *names* only):
+-- `inconsistency_poly` is at `MachineSentenceCodes`.
 #assert_fields InconsistentTheoryClaims
   inconsistencySentence inconsistency_poly inconsistency_provable
 #assert_fields IndependentBitAtoms
   atom realizable
+-- FIELD TYPE, invisible to `#assert_fields` (which freezes field *names* only):
+-- `source_codes` and `quote_codes` are at `MachineSentenceCodes`, and
+-- `inverse_width_codes` at `MachineRatCodes` (strictly weaker than
+-- the fuel-metered `DigitRatCodes` it replaced, so the consumers are strictly stronger).
 #assert_fields IntrospectionIntervalQuote
   source_codes lower_feature lower_generated upper_feature upper_generated
   inverse_width_codes width_pos width_tendsto_zero probability_bounds quote
   quote_codes reflected inside_affine outside_affine
--- Both criteria are frozen. `IsMachineLogicalInductor` is `def:lic` at the paper's own
--- quantifier and is what the construction proves; `IsLogicalInductor` is the fuel-class
--- compatibility reading reached from it by `IsMachineLogicalInductor.toIsLogicalInductor`,
--- and is what the §4 tail is conditioned on. Freezing only the second left the canonical
--- criterion's premise set unguarded.
-#assert_fields IsMachineLogicalInductor
-  marketComputable processComputable noExploit
+-- The criterion is frozen. `IsLogicalInductor` is `def:lic` at the paper's own quantifier
+-- (`noExploit` ranges over `EfficientlyComputable`, ordinary polynomial time), it is what
+-- the construction proves, and it is what the whole §4 tail is conditioned on.  It is the
+-- only criterion class: nothing here states the criterion over `PolyFueledTrader`, the
+-- certification engine's own class, so this freeze guards the whole surface.
 #assert_fields IsLogicalInductor
   marketComputable processComputable noExploit
-#assert_fields MachineFiniteSupportPatch
-  quote quote_exact preserves_ec
 #assert_fields LUV
   gt
 #assert_fields LUVCombination
@@ -1988,18 +2274,65 @@ comments beside the affected structure. The set is order-insensitive. Regenerate
   poly bounded magnitude lower_poly lower_bounded lower_magnitude
 #assert_fields LUVCombination.PolySequence
   mesh_poly
+-- FIELD TYPE, invisible to `#assert_fields`: `threshold_poly` is
+-- `LUV.MachineThresholdCodeSeq`, the *machine reading* of the write-out threshold class —
+-- `def:ec`'s own metering at the paper's own quantifier, bounding how many symbols each
+-- threshold sentence `⌜X_j > i/k⌝` takes an ordinary polynomial-time machine to write and
+-- not its Gödel value.  `#assert_fields` freezes field names only, so a caller could retype
+-- this field to the narrower token-metered `LUV.RpnThresholdCodeSeq`, or to the fuel-metered
+-- `LUV.BigThresholdCodeSeq`, without tripping the freeze, and either would narrow the four
+-- `_ofSyntax` endpoints' admissible data silently.  Both narrower classes embed into this
+-- one (`RpnSentenceCodes.toMachine`, `LUV.BigThresholdCodeSeq.toMachine`), which is how
+-- `PaperLUVCombination.toSyntax` and `ordinaryLUVCombinationSyntax` fill the field.
+-- Moving this field is `def:luv`-neutral: the threshold sentences it certifies, and the
+-- index convention they are certified at, are untouched — only the meter on the emitting
+-- stream changes.
+-- FIELD TYPE, invisible to `#assert_fields`: the other three efficiency fields are at the
+-- machine reading too — `const_poly` and `coefficient_poly` at `MachineSpliceStream` and
+-- `termCount_poly` at `UnaryRuler termCount` — so no field of this structure is
+-- fuel-metered and the four `_ofSyntax` endpoints carry no data premise stronger than the
+-- paper's.  Retyping any of the three back to `BigSpliceStream` or to
+-- `∃ c, PolyFueled c termCount` would strengthen those endpoints' premises silently, since
+-- the freeze sees names only.  The move is `def:luv`-neutral by the same argument as
+-- `threshold_poly`: same shares, same paired-index convention, only the meter on the
+-- emitting stream.  Producers holding fuel certificates cross by `BigSpliceStream.toMachine`
+-- and `UnaryRuler.of_polyFueled`; no converse is claimed.
 #assert_fields LUVCombinationSyntax
   termCount coefficient luv termCount_poly const_poly coefficient_poly threshold_poly terms_eq const_rank coefficient_rank const_closed coefficient_closed
 #assert_fields LowerSemicomputableContinuousSemimeasure
   toContinuousSemimeasure approximation approximation_code approximation_computes approximation_nonneg approximation_mono approximation_le approximation_tendsto
 #assert_fields MarketComputation
   quote code quote_exact code_spec price_mem_Icc
+-- FIELD TYPE, invisible to `#assert_fields` (which freezes field *names* only): all three
+-- runs are at `MachineDigits`, the machine reading of a written-out VALUE, so no field is
+-- fuel-metered and none bounds the value polynomially.  That is what lets a rational
+-- sequence whose codes grow exponentially in the day inhabit the class
+-- (`machineRatCodes_two_pow_inv`, `Framework/Machine/Witnesses.lean`), and it is why
+-- producers holding the fuel-side `DigitRatCodes` cross by `.toMachine` rather than the
+-- other way.
+#assert_fields MachineRatCodes
+  numCode natAbsNum den
+-- FIELD TYPE, invisible to `#assert_fields` (which freezes field *names* only): both
+-- fields are at `MachineRatCodes`, not at the *value*-metered `PolyRatCodes`, so this row
+-- is not on the whole-value list below; the constructed presentations prove their emission
+-- in the fuel model and cross at the boundary by `DigitRatCodes.ofPolyRatCodes` +
+-- `.toMachine`.
 #assert_fields OccamThresholdEmission
   threshold_sum_codes inverse_width_codes
+-- FIELD TYPE, invisible to `#assert_fields`: `PGenerableWeighting.polySeg` and
+-- `PairedWeighting.polySeg` are at `MachineSpliceStream`, not `BigSpliceStream`.  Both
+-- share that class with `AffineCombination.PolySequence`, because their witnesses
+-- (`patientUnderpriceWeight_pgenerable`, `priceFeat_paired`,
+-- `pairedExpectationFeature_paired`) are built out of `PolySequence.priceFeature_polySeg`,
+-- which is machine-metered and has no fuel form.  `GeneratedRatFeature.polyTok` is at the
+-- same class, which is what keeps `pGenerableWeighting_iff` a plain two-way bridge between
+-- the two `def:ece` renderings.
 #assert_fields PGenerableWeighting
   polySeg rank_le closed
 #assert_fields PairedWeighting
   polySeg rank_le closed
+-- FIELD TYPE, invisible to `#assert_fields` (which freezes field *names* only):
+-- `sentence_codes` is at `MachineSentenceCodes`.
 #assert_fields ParadoxResistanceQuote
   sentence sentence_codes width width_pos width_tendsto_zero diagonal_reflected
   lower_affine upper_affine
@@ -2007,257 +2340,463 @@ comments beside the affected structure. The set is order-insensitive. Regenerate
   toBooleanQuoteCode body represents_fixedpoint
 #assert_fields PaperLUV
   formula unique unit
--- Field-type record (Part I, 2026-08-29).  `structural` changed class: it was
--- `PolyArithmeticFormulaSeq` of the LUVs' Foundation normal forms and is now
--- `PolyArithmeticSourceSeq` of the new `source` field — the paper's own writing of each
+-- FIELD TYPE, invisible to `#assert_fields`: `structural` is
+-- `MachineArithmeticSourceSeq` of the `source` field — the paper's own writing of each
 -- defining formula, metered one token per *source* node (`def:ec`, tex:753, over the
--- primitive connectives of tex:560).  `compiles` is the bridge: `compile (source n)` is
--- the LUV's Foundation formula, so nothing about the denoted object changed, only what is
--- charged for writing it.  `#assert_fields` freezes names, not types; this note is the
--- freeze on the type.
+-- primitive connectives of tex:560) — and NOT `PolyArithmeticFormulaSeq` of the LUVs'
+-- Foundation normal forms, which meters an expansion the paper never writes.  `compiles` is
+-- the bridge: `compile (source n)` is the LUV's Foundation formula, so the two classes agree
+-- on the denoted object and differ only on what writing it costs.  The metering device is
+-- the `Complexity.FP` one rather than the fuel-clocked `PolyArithmeticSourceSeq`; the
+-- emitted run is the same either way, and the fuel class certifies here by
+-- `PolyArithmeticSourceSeq.toMachine`.  This note is the freeze on the type.
 #assert_fields PaperLUVSeq
   luv source compiles structural
+-- FIELD TYPE, invisible to `#assert_fields`: the three efficiency fields are at the machine
+-- reading — `const_poly`/`coefficient_poly` at `MachineSpliceStream`, `termCount_poly` at
+-- `UnaryRuler termCount` — matching `LUVCombinationSyntax`, into which `toSyntax` passes
+-- them unchanged.  `def:blcp` therefore binds no fuel-metered data.  Retyping them back to
+-- `BigSpliceStream` / `∃ c, PolyFueled c termCount` would strengthen `boundedSequence`'s
+-- premise silently.
 #assert_fields PaperLUVCombination
   luvs termCount const coefficient termCount_poly const_poly coefficient_poly const_rank coefficient_rank const_closed coefficient_closed
+-- FIELD TYPE, invisible to `#assert_fields` (which freezes field *names* only):
+-- `active_codes` is at `MachineRatCodes`, not at the *value*-metered `PolyRatCodes`, so
+-- this row is not on the whole-value list below.
 #assert_fields PatientSettlementClock
   active active_codes antitone active_through_envelope eventually_inactive settled_of_inactive
--- Metering note (2026-08-27 audit).  Both of these are **whole-value** classes: `code_poly`
+-- Metering note.  Both of these are **whole-value** classes: `code_poly`
 -- is `PolyFueled code v`, and `PolyFueled` bundles `IsPolyBounded` of the *output value*
 -- alongside the fuel bound, so what is polynomial is the Gödel number, not the symbol
 -- count.  `def:ec` meters the time to write an object out (tex:753-755, and explicitly at
 -- tex:1931-1933), which admits objects of exponential magnitude, so these are strictly
 -- narrower than the paper's class and are charged at each row that takes one rather than
 -- once at `def:ec` — see `scripts/coverage-classification.md`'s disclosure section.  The
--- same holds of `PolyRatCodes`, `PolySentenceCodes` and `PolyThresholdCode(Seq)`, and of
--- the structures still carrying them as fields (`PolyPositiveWidths`,
--- `DUSApproximationPresentation`, `DUSThresholdEmission`, `PrefixMachinePresentation`,
--- `PatientSettlementClock`) — which is why several of those rows are `qualified` on a
--- hypothesis invisible in the elaborated signature.
+-- same holds of `PolyRatCodes`, `PolySentenceCodes` and `PolyThresholdCode(Seq)` — which is
+-- why such a hypothesis is invisible in the elaborated signature and has to be frozen here.
+-- **No boundary structure field is at a whole-value class:** `PolyPositiveWidths.codes`,
+-- `PatientSettlementClock.active_codes`, `DUSThresholdEmission`'s two fields,
+-- `OccamThresholdEmission`'s two and `PrefixMachinePresentation.sentence_codes` are all at
+-- `MachineRatCodes` or `MachineSentenceCodes`.  `PolyMachineCodes`
+-- and `PolyNatCodes` exist as strictness foils with no paper-facing binder.
 --
--- Correction (2026-08-28 audit, R2-F13/F06).
--- `SemidecidableComputation` (since **retired**, tranche 8), `IntrospectionIntervalQuote`,
--- `SelfTrustQuote` and `ParadoxResistanceQuote` were listed above as whole-value carriers and
--- are **no longer**.  Field by field, as of this commit: `IntrospectionIntervalQuote`
--- carries `BigSentenceCodes` (`source_codes`, `quote_codes`) and `DigitRatCodes`
--- (`inverse_width_codes`); `ParadoxResistanceQuote.sentence_codes` and
--- `SelfTrustQuote.sentence_codes` are `BigSentenceCodes`.  `SelfTrustQuote`'s two remaining
--- threshold fields (`product_codes`, `confidence_codes`) were `LUV.RpnThresholdCodeSeq` —
--- token-metered, not whole-value, and not `PolyThresholdCodeSeq` as the paragraph above
--- implied.  As of 2026-08-31 both are at the write-out `LUV.BigThresholdCodeSeq`; see the
--- migration block below.  The migrated fields are enumerated in the block below.
+-- Which structures are whole-value carriers, and which are not.  `IntrospectionIntervalQuote`
+-- carries `MachineSentenceCodes` (`source_codes`, `quote_codes`) and `MachineRatCodes`
+-- (`inverse_width_codes`), so it is not one; `ParadoxResistanceQuote.sentence_codes` and
+-- `SelfTrustQuote.sentence_codes` are at `MachineSentenceCodes`, and `SelfTrustQuote`'s two
+-- threshold fields (`product_codes`, `confidence_codes`, at
+-- `LUV.MachineThresholdCodeSeq`) are write-out metered.  None of those four is a
+-- whole-value carrier.
 --
--- ## WRITE-OUT FIELD MIGRATION (2026-08-27/28)
+-- ## CLASS CENSUS
 --
--- Every field below moved from a whole-value or token-metered class to a **write-out**
--- class, in which the object's numeric magnitude is unrestricted and only the number of
--- symbols a poly-time writer must emit is bounded.  This is what `def:ec` actually meters
--- (tex:753-755, explicitly at tex:1931-1933).  `#assert_fields` freezes field *names* only,
--- so each type change is recorded here; each is a **widening** of the structure's
--- hypothesis, hence a strengthening of every theorem taking that structure.  In particular
--- `SelfTrustQuote.product_codes` and `.confidence_codes` changed *type* on 2026-08-31, from
--- `LUV.RpnThresholdCodeSeq` to the write-out `LUV.BigThresholdCodeSeq`, and the freeze below
--- passed unchanged — as it always will for a type change.
+-- Direct sentence-codes binders printed on the 107 canonical endpoints:
+-- `MachineSentenceCodes` — **22** endpoints, **23** occurrences; `BigSentenceCodes` —
+-- **0**, printed or structure-mediated.
+-- Direct LUV-threshold binders on those endpoints: `LUV.MachineThresholdCodes(Seq)` —
+-- **all of them**; `LUV.RpnThresholdCodeSeq` and `LUV.BigThresholdCode(Seq)` — **0**.
+-- Direct rational binders: `MachineRatCodes` on `thm:ref`, `thm:st` and `thm:perkno`;
+-- `DigitRatCodes` — **0**, and `PolyRatCodes` — **0**, including through structure fields.
+-- Boundary structures, library-wide (`structure` declarations under `LogicalInduction/`):
+-- **15** carry a sentence field at `MachineSentenceCodes`, **16** fields in all; **16**
+-- threshold fields across **11** structures are at `LUV.MachineThresholdCodes(Seq)` (15
+-- fields over 10 structures at the sequence form, 1 at the single-LUV form); **seven**
+-- rational fields across **five** structures are at `MachineRatCodes`; **11** emission fields
+-- across **8** structures are at `MachineSpliceStream`; **5** count fields across **5**
+-- structures are at `UnaryRuler`; `FeedbackTruth.FeedbackTruthComputation.computes` is the
+-- one boundary-structure field at `MachineDigits`; `DeferralFunction.graph_fp` is the one
+-- at a bare `Complexity.FP` membership; and `PaperLUVSeq.structural` is at
+-- `MachineArithmeticSourceSeq`.  Direct digit binders on the canonical endpoints:
+-- `MachineMachineCodes` on `thm:halts`, `thm:loops`, `thm:dontwait` and `thm:incons`, and
+-- `MachineDigits` on the first three of those (`thm:incons` names its day-machine alone);
+-- `DigitMachineCodes` — **0**, and `BigDigits` — **0**, including through structure fields.
+-- The *value*-metered classes `PolySentenceCodes` and `PolyRatCodes` are off the boundary
+-- entirely, and both `condition_codes` fields are at `MachineSentenceCodes`.
+-- **Every canonical endpoint's data premise is machine-metered**: no canonical endpoint
+-- binds an emission class outside the `Machine*`/`UnaryRuler` ladder, printed or through a
+-- boundary structure, and no canonical endpoint takes a fuel-metered data premise anywhere.
+-- Of the emission classes, what remains fuel- or value-metered is
+-- `DigitRatCodes`, the two ROI maturity schedules' `check_poly`, and the two whole-value
+-- strictness foils `PolyMachineCodes` and `PolyNatCodes` — none of which any canonical
+-- endpoint takes as a premise.  The two *output-sensitive* clocks that are not emission
+-- premises — `DeferralFunction.graph_fp` (tex:1244) and
+-- `FeedbackTruth.FeedbackTruthComputation.computes` (tex:1251), on twenty-three endpoints
+-- between them — are machine-metered as well, each read on the unary pair whose length
+-- carries the paper's own output-sensitive bound; see their rows in the FIELD METERING
+-- TABLE below.  `def:ec` is therefore `exact` in
+-- `scripts/coverage-classification.md`, with no residue.
+-- The census scans for the metering *classes* by name, so an inline `evaln` bound would be
+-- invisible to it — that is how the two clocks above went unnoticed.  A separate scan for
+-- the bounded interpreter in a structure field's TYPE — `evaln` and its wrapper
+-- `codeEvalnNat`, which a case-sensitive search for `evaln` misses — finds exactly THREE
+-- fields, across TWO structures.  Two of them,
+-- `LowerSemicomputableContinuousSemimeasure.approximation_computes` and
+-- `CEEnumeration.halts`, are `∃ fuel, …`: plain semicomputability and c.e.-ness, the
+-- paper's own conditions, with no polynomial bound and hence no metering claim.  The third
+-- is `CEEnumeration.outputs_sound`, which is NOT an `∃ fuel` field: it is a soundness
+-- clause on `codeEvalnNat code z`, saying every halting output of the enumerator is some
+-- `⌜source i⌝`.  It carries no fuel quantifier and no bound of any kind, so it makes no
+-- metering claim either — it is the range condition that makes `thm:obu`'s enumeration an
+-- enumeration *of* `source`.
+-- `BigDigits`, `DigitMachineCodes` and `PolyArithmeticSourceSeq` survive with no consumer
+-- binding them: like `DigitRatCodes` they are the fuel-side calibration classes and the
+-- producer routes (`BigDigits.toMachine`, `DigitMachineCodes.toMachine`,
+-- `PolyArithmeticSourceSeq.toMachine`), and `BigDigits`/`DigitMachineCodes` remain the
+-- subjects of the strictness proofs `bigDigits_two_pow_not_polyNatCodes` and
+-- `digitMachineCodes_nest_not_polyMachineCodes`.
+-- `DigitRatCodes` itself survives with no consumer binding it: it is the fuel-side
+-- calibration class and the producer route into `MachineRatCodes` (reason (e) below).
 --
---   `LUV.RpnThresholdCodeSeq` → `LUV.BigThresholdCodeSeq` (2026-08-31):
---     `SelfTrustQuote.product_codes`, `SelfTrustQuote.confidence_codes`.
+-- ## FIELD METERING TABLE
 --
---   `PolySentenceCodes`/`RpnSentenceCodes` → `BigSentenceCodes`:
---     `PolyTradeEmulatable.sentence_poly`, `AffineCombination.PolySequence.sentence_poly`,
---     `RepresentedSemidecidableClaims.sentence_poly` (hence
---     `RepresentedDecidableClaims`), `InconsistentTheoryClaims.inconsistency_poly`
---     (its `.consistency_poly` sibling is **retired**: the consistency family is now the
---     syntactic negation of the inconsistency family, tranche 8),
---     `BitPrefixSentences.prefix_codes`,
---     `CurrentPriceExpectationQuote.sentence_codes`,
---     `IntrospectionIntervalQuote.source_codes` and `.quote_codes`,
---     `ParadoxResistanceQuote.sentence_codes`, `FuturePriceQuote.sentence_codes`,
---     `SelfTrustQuote.sentence_codes`, `EfficientRepeatedEnumeration.sequence_poly`,
---     `FeedbackTraderEmission.sentence_poly`.
---   `PolyNatCodes` → `BigDigits`:
---     `SemidecidableComputation.input_poly` (the structure is since **retired**, tranche 8).
---     CORRECTION (2026-08-30, R7-C1), and its **REPAIR** (2026-08-30, tranche 9-pre): the
---     sentence that stood here — that the premise `hσ : BigDigits (deductionFamilyArg σ)` of
---     `lic_disbelief_inconsistent_theories_unconditional` takes over that role "at the same
---     write-out class" — was **wrong**, and was the one place in this file that oversold a
---     hypothesis.  The retired `input_poly` metered a natural-number *input*, where the
---     base-4 digit count IS the written length, so `BigDigits` there was genuinely the
---     paper's write-out class.  `hσ` applied `BigDigits` to `⌜∼σₙ⌝`, the **Gödel code of a
---     formula**.  Foundation's formula encoding pairs at every node, so the code value is
---     roughly doubly exponential in the parse tree and its digit count roughly `2 ^ depth`
---     — the same failure mode that disqualified `Encodable.encode` as a machine-naming map
---     (see the `DigitMachineCodes` doctrine at `Framework/WriteOut.lean`).  `hσ` was
---     therefore STRICTLY STRONGER than `def:ec` on this lane: it admitted only
---     `O(log n)`-depth (e.g. `binNumeral`-spelled) theory-name families and EXCLUDED
---     paper-admissible families whose source text is short but whose parse tree is deep.
+-- `#assert_fields` freezes field *names* only, so the metering **class** of every
+-- boundary-structure field is frozen here instead.  One row per field.  A field at a
+-- *write-out* class (`Machine*`, `Big*`, `UnaryRuler`) leaves the object's numeric
+-- magnitude unrestricted and bounds only the symbols a poly-time writer must emit — which
+-- is what `def:ec` meters (tex:753-755, explicitly at tex:1931-1933) — so each such row is
+-- at the paper's own class rather than at a narrower value bound, and every theorem taking
+-- one is correspondingly stronger.  A field at a *value* class (`Poly*`) bounds the Gödel
+-- number itself and is strictly narrower than `def:ec`; those rows are flagged, and **no
+-- canonical endpoint reaches one**, printed or through a boundary structure.  The `def:ec`
+-- row of `scripts/coverage-classification.md` is `exact`: no lettered row below is a
+-- premise of any canonical endpoint.
 --
---     That premise is **gone**.  The endpoint now takes the day's adjoined axiom by its
---     source text and meters it with `hs : PolyArithmeticSourceSeq s`
---     (`Construction/Witnesses/ArithmeticSource.lean`) — one token per symbol the writer
---     writes, which is `def:ec` verbatim — together with `hcompile`, saying that writing
---     denotes `σₙ`.  What the sentence emits is `ArithSource.sourceNat sₙ`, the run read as
---     a base-`64` numeral with a sentinel (`tokenListNat`, `Framework/CodeSource.lean`),
---     whose base-`4` digit count is `3 * (sourceTokens sₙ).length + 3`: **linear in the
---     written text**, exactly as `Code.sourceNat` is for machines.  The Gödel code is
---     recovered from that numeral *inside* the represented predicate, by
---     `negSourceFormulaCode` (`Construction/Witnesses/SourceNumbering.lean`), which is
---     computable and therefore all `codeOfREPred` consumes — the paper asks only for
---     recursive enumerability there, and the code's size is free.  The class is strictly
---     wider for it: `deepInconsistentSource` is admitted and no digit bound on codes can
---     admit it.  The charge is retired from the `thm:incons` row; the deduction-family
---     paraphrase is the sole remaining one.
---   `RpnSpliceStream` → `BigSpliceStream`:
---     `GeneratedRatFeature.polyTok`.
+-- A row carrying a letter is one whose class is fuel- or value-metered by
+-- design; the letter keys the reason under the table.  Every other row is at the machine
+-- reading of the write-out ladder, which is `def:ec`'s own metering.
 --
--- MIGRATED (2026-09-02, `thm:scon` widening).  The conditioning lane is no longer a
--- token-metered retention.  `ConditioningPresentation.condition_codes`,
--- `CompactConditioningProcessComputation.condition_codes`, both machine transports
--- (`CondStep.conditionedTranslation_preserves_machine`,
--- `eventualConditionedTranslation_preserves_machine`) and both fuel transports
--- (`RpnConditioning.conditionedTranslation_preserves_ecRpn`,
--- `…eventualConditionedTranslation_preserves_ecRpn`) now take `BigSentenceCodes`.
--- The `_ecRpn` suffix on the two fuel transports is **not** a sentence-class name and was
--- deliberately left unchanged: `ec` names the efficiency class they preserve
--- (`EfficientlyComputable`) and `Rpn` names the RPN *symbol model* their compiler emits
--- in, the sibling lane being `ConditioningCompile.conditionedTranslation_preserves_ecDigit`
--- over the digit model.  Neither theorem mentions any `Rpn` sentence class.
--- `RpnSentenceCodes` survives on this lane only as a convenient sufficient subclass, via
--- `BigSentenceCodes.ofRpnSentenceCodes`.
+--   STRUCTURE                              FIELD                  CLASS
+--   -------------------------------------- ---------------------- ----------------------------
+--   AffineCombination.PolySequence         const_poly             MachineSpliceStream
+--   AffineCombination.PolySequence         coefficient_poly       MachineSpliceStream
+--   AffineCombination.PolySequence         sentence_poly          MachineSentenceCodes
+--   AffineCombination.PolySequence         termCount_poly         UnaryRuler
+--   AffineCombination.FeedbackTraderEmission sentence_poly        MachineSentenceCodes
+--   AffineCombination.FeedbackTraderEmission coefficient_poly     MachineSpliceStream
+--   AffineCombination.FeedbackTraderEmission tradeCount_poly      UnaryRuler
+--   PolyTradeEmulatable                    sentence_poly          MachineSentenceCodes
+--   PolyTradeEmulatable                    coefficient_poly       MachineSpliceStream
+--   PolyTradeEmulatable                    tradeCount_poly        UnaryRuler
+--   PGenerableWeighting                    polySeg                MachineSpliceStream
+--   PairedWeighting                        polySeg                MachineSpliceStream
+--   GeneratedRatFeature                    polyTok                MachineSpliceStream
+--   RepresentedSemidecidableClaims         sentence_poly          MachineSentenceCodes
+--   InconsistentTheoryClaims               inconsistency_poly     MachineSentenceCodes
+--   EfficientRepeatedEnumeration           sequence_poly          MachineSentenceCodes
+--   CurrentPriceExpectationQuote           sentence_codes         MachineSentenceCodes
+--   IntrospectionIntervalQuote             source_codes           MachineSentenceCodes
+--   IntrospectionIntervalQuote             quote_codes            MachineSentenceCodes
+--   ParadoxResistanceQuote                 sentence_codes         MachineSentenceCodes
+--   FuturePriceQuote                       sentence_codes         MachineSentenceCodes
+--   SelfTrustQuote                         sentence_codes         MachineSentenceCodes
+--   LUVCombinationSyntax                   threshold_poly         LUV.MachineThresholdCodeSeq
+--   ConvergencePresentation                threshold_code         LUV.MachineThresholdCodes
+--   RationalQuoteCode                      threshold_poly         LUV.MachineThresholdCodeSeq
+--   PresentedLUVSeq                        threshold_codes        LUV.MachineThresholdCodeSeq
+--   CertifiedSourceLUVSeq                  threshold_codes        LUV.MachineThresholdCodeSeq
+--   SelfTrustQuote                         product_codes          LUV.MachineThresholdCodeSeq
+--   SelfTrustQuote                         confidence_codes       LUV.MachineThresholdCodeSeq
+--   CurrentPriceExpectationQuote           quote_codes            LUV.MachineThresholdCodeSeq
+--   CurrentExpectationQuote                source_codes           LUV.MachineThresholdCodeSeq
+--   CurrentExpectationQuote                quote_codes            LUV.MachineThresholdCodeSeq
+--   ExpectedFutureExpectationQuote         source_codes           LUV.MachineThresholdCodeSeq
+--   ExpectedFutureExpectationQuote         quote_codes            LUV.MachineThresholdCodeSeq
+--   FuturePriceQuote                       quote_codes            LUV.MachineThresholdCodeSeq
+--   ConditionalExpectationQuote            source_codes           LUV.MachineThresholdCodeSeq
+--   ConditionalExpectationQuote            left_codes             LUV.MachineThresholdCodeSeq
+--   ConditionalExpectationQuote            right_codes            LUV.MachineThresholdCodeSeq
+--   PolyPositiveWidths                     codes                  MachineRatCodes
+--   IntrospectionIntervalQuote             inverse_width_codes    MachineRatCodes
+--   PatientSettlementClock                 active_codes           MachineRatCodes
+--   BitPrefixSentences                     prefix_codes           MachineSentenceCodes
+--   DUSThresholdEmission                   threshold_sum_codes    MachineRatCodes
+--   DUSThresholdEmission                   inverse_width_codes    MachineRatCodes
+--   PaperLUVSeq                            structural             MachineArithmeticSourceSeq
+--   MachineRatCodes                        numCode                MachineDigits                (the class)
+--   MachineRatCodes                        natAbsNum              MachineDigits                (the class)
+--   MachineRatCodes                        den                    MachineDigits                (the class)
+--   GatedConditioningOperationalWitness    translation_ec    EfficientlyComputable
+--   EventualConditioningOperationalWitness translation_ec    EfficientlyComputable
+--   ConditioningTraderCompiler             translate_ec      EfficientlyComputable
+--   EfficientPrefixPatch                   preserves_ec           EfficientlyComputable
+--   FiniteSupportPatch                     preserves_ec           EfficientlyComputable
+--   IsLogicalInductor                      noExploit              EfficientlyComputable
+--   OccamThresholdEmission                 threshold_sum_codes    MachineRatCodes
+--   OccamThresholdEmission                 inverse_width_codes    MachineRatCodes
+--   PrefixMachinePresentation              sentence_codes         MachineSentenceCodes
+--   ConditioningPresentation               condition_codes        MachineSentenceCodes
+--   CompactConditioningProcessComputation  condition_codes        MachineSentenceCodes
+--   LUVCombinationSyntax                   const_poly             MachineSpliceStream
+--   LUVCombinationSyntax                   coefficient_poly       MachineSpliceStream
+--   LUVCombinationSyntax                   termCount_poly         UnaryRuler
+--   PaperLUVCombination                    const_poly             MachineSpliceStream
+--   PaperLUVCombination                    coefficient_poly       MachineSpliceStream
+--   PaperLUVCombination                    termCount_poly         UnaryRuler
+--   FeedbackTruth.FeedbackTruthComputation computes               MachineDigits          (i)
+--   DeferralFunction                       graph_fp               Complexity.FP          (i)
+--   ---- fuel- or value-metered by design ----------------------------------------------
+--   DigitRatCodes                          numCode                BigDigits              (e)
+--   DigitRatCodes                          natAbsNum              BigDigits              (e)
+--   DigitRatCodes                          den                    BigDigits              (e)
+--   VerifiedMaturitySchedule               check_poly             PolyFueled  [value]    (f)
+--   HistoricalVerifiedMaturitySchedule     check_poly             PolyFueled  [value]    (f)
+--   PolyMachineCodes                       code_poly              PolyFueled  [value]    (g)
+--   PolyNatCodes                           code_poly              PolyFueled  [value]    (g)
 --
--- What this retires is the **conditioning lane's** token-metered retention, and only that.
--- Token-metered retentions do remain elsewhere on the day-indexed, paper-node-annotated
--- surface, all of them in the LUV *threshold* interfaces
--- (`LUV.RpnThresholdCodes` / `LUV.RpnThresholdCodeSeq`, which unfold to `RpnSentenceCodes`
--- on the threshold family `⌜Xₙ > i/k⌝`, so a census grepping signatures for
--- `RpnSentenceCodes` does not see them):
---   * `LUVCombinationSyntax.threshold_poly` (`Construction/Witnesses/LUVSyntax.lean`), a
---     Tier-2 frozen field, reached by the LI-CANONICAL `_ofSyntax` endpoints — so this one
---     **is** on the canonical endpoint census;
---   * `ConvergencePresentation.threshold_code` (`Properties/ExpectationProperties.lean`);
---   * direct `RpnThresholdCodes` / `RpnThresholdCodeSeq` binders on the `thm:expcoh`,
---     `thm:perexpkno` and `lic_expectation_provind*` endpoints and on the affine tail
---     (`Properties/ExpectationAffine.lean`);
---   * the quote certificates `ExpectedFutureExpectationQuote` (`thm:cee`), `FuturePriceQuote`
---     (`thm:ceu`), `ConditionalExpectationQuote` (`thm:ccee`),
---     `CurrentPriceExpectationQuote` (`thm:epr`) and `CurrentExpectationQuote` (`thm:er`).
--- `LUV.BigThresholdCodeSeq` exists as the write-out counterpart and is what
--- `SelfTrustQuote.product_codes`/`.confidence_codes` were widened to, but the migration of
--- the remaining threshold carriers has not been done.  Why this is a *rendering
--- sensitivity* rather than a narrowing of the paper's admissible LUVs — the threshold
--- route meters a formula string over a fixed finite alphabet (`0..19`), so the per-token value
--- clause is vacuous along it — is worked out in
--- `scripts/coverage-classification.md`, *LUV-threshold metering: rendering sensitivity,
--- witnessed*.
+-- Reasons for the lettered rows.  Every other structure field in this development is at the
+-- machine reading of the write-out ladder, so a lettered row under the fuel/value heading is
+-- a deliberate exception and not an unfinished one: none of them is a data premise of a
+-- canonical endpoint.  Row (i) is not an exception at all — it flags the two rows whose
+-- machine metering is read on a *pair* rather than on the day, because that is the only
+-- place in the development where the input the machine is handed is not simply the index.
 --
--- The obstruction this file previously recorded here was **mis-diagnosed**, and the record
--- is corrected rather than merely updated.  It claimed that `machineSentenceBlocks_of_rpn`
--- clocked the certificate in a way only a value-bounded stream supports, so that widening
--- meant a `BigSentenceCodes → CondStep.MachineSentenceBlocks` re-blocking in `FP` at the
--- scale of `CondStep.lean`'s own `_mem_FP` suite.  Both halves were wrong.  (a) The digit
--- clamp `min · 4` is the identity because the clamped object is literally a list of base-4
--- digits and terminators — `CondStep.mem_digitize_le_four` is a fact about `digitize ts`
--- for an ARBITRARY token list `ts`, and bounds no token's value.  (b) A write-out stream
--- does supply the clock: `PolySegStream.undigitizeTokens` reads a poly-fueled token count
--- and `BigDigits` per-token digit access off the certificate's own digit stream, and
--- `BigDigits.blockSeg |>.concatVar` re-emits the canonical digitization.  Packaged as
--- `BigTokenStream.digitizeStream` (`Framework/WriteOut.lean`, ~12 lines), it makes
--- `machineSentenceBlocks_of_big` a hypothesis-type change with no proof-body edit, and
--- every downstream consumer widens the same way.  No `_mem_FP` lemma was added.
+-- (e) **`DigitRatCodes` is the fuel-side calibration class and stays one.**  Its machine
+--     reading is `MachineRatCodes` (`Framework/Machine/WriteOutMachine.lean`), field for
+--     field, with the one-way bridge `DigitRatCodes.toMachine`.  Collapsing the two would
+--     delete a `def:ec` carrier, the producer route `DigitRatCodes.ofPolyRatCodes`, and the
+--     subject of the strictness proof `digitRatCodes_two_pow_inv_not_polyRatCodes`; the
+--     fuel/machine pair here is the same deliberate calibration `BigDigits`/`MachineDigits`
+--     and `BigSentenceCodes`/`MachineSentenceCodes` are, not a versioning artifact.
+--     Consumers bind `MachineRatCodes`; producers build `DigitRatCodes` and cross.
 --
--- MIGRATED (2026-08-31, FINAL-audit defect 4).  `lic_self_trust_closed` (`thm:st`) no longer
--- sits at `RpnSentenceCodes φ`; it takes `hφ : BigSentenceCodes φ`, like every other closed
--- endpoint.  The write-out threshold class `LUV.BigThresholdCodeSeq`
--- (`Framework/Expectations.lean`) now **exists** — `BigSentenceCodes` at the same
--- `⟨n,⟨k,i⟩⟩` paired index `LUV.RpnThresholdCodeSeq` uses — with
--- `LUV.RpnThresholdCodeSeq.toBig` the embedding and `LUV.BigThresholdCodeSeq.reindex` the
--- reindexing.  `SelfTrustQuote.product_codes` and `.confidence_codes` are widened to it,
--- `indicatorProductLUV_rpnThresholdCodeSeq` is now `indicatorProductLUV_bigThresholdCodeSeq`
--- (`BigSentenceCodes.and` supplies the `⋏`-shell token), and `paperConfidenceQuoteCode`
--- takes `BigSentenceCodes` — it consumed its hypothesis only through `.primrec`.  Nothing on
--- the self-trust lane opened a threshold certificate as value-bounded emission data: every
--- consumer either reindexes it (`.comp`/`.reindex`) or hands it to
--- `AffineCombination.PolySequence`, whose `sentence_poly` field is already write-out metered
--- — which is why this was a widening at each binder, not a rebuild of the splice.
+-- (f) **Deliberately fuel-metered, not forced.**  The two ROI maturity schedules'
+--     `check_poly` is a *schedule predicate* — whether a maturity check fires on a day —
+--     not a reindexer and not emitted data, so it binds no canonical endpoint and no
+--     emission crosses at it.  Nothing in the development forces the fuel meter there;
+--     it stays as the fuel side's own exhibit.  The `def:luv` syntax carriers are NOT on
+--     this list: their emission and count fields are at the machine reading.
 --
--- Widened in this change (2026-08-28 audit, R2-F11), each having consumed its sentence-codes
--- hypothesis only through `.primrec`, which `BigSentenceCodes.primrec` supplies:
--- `paperPriceQuoteCode` and `lic_expectations_of_probabilities_closed` (`thm:epr`),
--- `paperFutureQuoteCode` and `lic_no_expected_net_update_closed` (`thm:ceu`),
--- `paperIntervalQuoteCode` and `lic_introspection_closed` (`thm:ref`).  Those three closed
--- paper endpoints now admit sentence families whose Gödel codes are exponential while their
--- emitted symbol count stays polynomial.
--- Retired from the Tier-2 freeze (2026-08-28 audit, R2-F15/F18).  `PolyMachineCodes` and
--- `PolyNatCodes` were inventoried under a `Paper node: def:ec` line they did not earn: both
+-- (g) **Strictness foils, with no paper-facing binder.**  `PolyMachineCodes` and
+--     `PolyNatCodes` exist only to be refuted (`digitMachineCodes_nest_not_polyMachineCodes`,
+--     `bigDigits_two_pow_not_polyNatCodes`); they carry no `Paper node` line and must stay
+--     whole-value.
+--
+-- (i) **The two output-sensitive clocks, at the machine model.**  These two fields do sit
+--     on canonical endpoints, and neither meters an emission: what they clock is the paper's
+--     own *output-sensitive* condition, a bound in the value the program returns rather than
+--     in the day.  The machine ladder states them by choosing the input that carries the
+--     bound — the **unary pair** — so nothing here is a `dd:fuel` substitution.
+--       * `DeferralFunction.graph_fp` renders `def:deferralfunc`'s condition 2 —
+--         "`f(n)` can be computed in time polynomial in `f(n)`" (tex:1244) — as
+--         `∃ G ∈ Complexity.FP, ∀ n m, G (unary ⟨n, m⟩) = ⟦f n = m⟧`.  What is decided is
+--         the *graph*, and the input's length is `Nat.pair n m ≥ m`, so "polynomial in the
+--         input length" is "polynomial in the candidate value".  The two readings are
+--         equivalent: from a program computing `f n` within `h (f n)` steps, decide the
+--         graph at `⟨n, m⟩` by running it `h m` steps; conversely, from the graph decider
+--         compute `f n` by testing `m = n+1, n+2, …`, each test polynomial in `m ≤ f n` and
+--         at most `f n` of them.  Only the first direction is used in Lean; the argument is
+--         recorded at the structure.
+--       * `FeedbackTruth.FeedbackTruthComputation.computes` renders `thm:wub`'s premise
+--         "`Th(φ_{f(n)})` is computable in `O(f(n+1))` time" (tex:1251) as
+--         `MachineDigits code` together with
+--         `computes_at : ∀ k, code ⟨k, f (k+1)⟩ = ⌜value k⌝`.  The stream is read at the
+--         unary pair `⟨k, f (k+1)⟩`, whose length is `Nat.pair k (f (k+1)) ≥ f (k+1)`.  The
+--         `MachineDigits` certificate is *total* — it meters every paired index, not only
+--         the deferred ones — and that costs nothing: a program meeting the paper's clause
+--         on the deferred inputs can be clocked by the same polynomial in the input's
+--         length at every input, answering `0` on a timeout, which agrees with it on the
+--         deferred inputs and is machine-metered everywhere.
+--         Unlike `graph_fp`, this field is a RELAXATION of the printed clause and not an
+--         equivalent of it: the paper asks for *linear* time `O(f(k+1))`, and polynomial
+--         time in the length of `⟨k, f (k+1)⟩` is implied by that (by the timeout argument
+--         just given) and does not imply it back.  So the field is a WEAKER hypothesis than
+--         the printed premise and the six endpoints taking it are correspondingly
+--         STRONGER — the safe direction — never narrower.  `Complexity.FP` is a
+--         polynomial-time class and has no linear-time form, so the relaxation is
+--         deliberate and is stated as such at the structure and in `LogicalInduction/README.md`.
+--     Twenty-three canonical endpoints bind a `DeferralFunction`, six of them a
+--     `FeedbackTruthComputation` as well:
+--     `AffineCombination.BoundedCombinationSequence.prandaff` / `_above` / `_below`
+--     (`thm:prandaff`); `LUVCombination.BoundedSequence.prandexp` / `_above` / `_below`
+--     (`thm:prandexp`); `lic_learning_pseudorandom_frequency` / `_above` / `_below`
+--     (`thm:benford`); `lic_learning_varied_pseudorandom` / `_above` / `_below`
+--     (`thm:prand`); `FeedbackTruth.lic_wub_ofComputation` / `_unconditional` (`thm:wub`);
+--     `FeedbackTruth.boundedCombination_wubaff_ofComputation` / `_unconditional`
+--     (`thm:wubaff`); `FeedbackTruth.luv_wubexp_ofComputation` / `_unconditional`
+--     (`thm:wubexp`); `lic_expected_future_expectations_closed` (`thm:cee`);
+--     `lic_no_expected_net_update_closed` (`thm:ceu`);
+--     `lic_no_expected_net_update_conditional_exact_canonical` and
+--     `lic_no_expected_net_update_conditional_paperLUV_closed` (`thm:ccee`); and
+--     `lic_self_trust_closed` (`thm:st`).  `DeferralFunction` itself is the
+--     `def:deferralfunc` carrier, so the census block lists twenty-four rows.  None of them
+--     takes a fuel-metered premise, which is why the `def:ec` row of
+--     `scripts/coverage-classification.md` is `exact`.
+--
+-- No freeze certificate is fuel-metered: `EfficientPrefixPatch.preserves_ec` and
+-- `FiniteSupportPatch.preserves_ec` (`Properties/FinitePerturbations.lean`) are both at
+-- `def:ec`, as is `IsLogicalInductor.noExploit`, the criterion's own quantifier.
+-- `EfficientPrefixPatch` is uninhabited, for a reason about the market rather than about the
+-- calculus; see the `thm:ifp` block above.  `FiniteSupportPatch` is inhabited
+-- (`finiteSupportPatch_of_rewriter`) and carries the corrected `thm:ifp`.
+--
+-- **Primitive recursiveness of a machine-metered field.**  The three consumers that need
+-- `Primrec` off an emission field (`AffineCombination.PolySequence.primrec`,
+-- `PolyTradeEmulatable.trades_primrec`, `MachineSpliceStream.feature_primrec`) read it
+-- off `MachineTokenStream.primrec` (`Construction/MachineTraderEnumeration.lean`), which
+-- is proved through that file's own coverage bridge — an `FP` witness names a description
+-- and a clock, and `primrec_machineTokens` is that budgeted run's primitive recursiveness.
+-- The count-level twin is `UnaryRuler.primrec`, in the same file and by the same bridge,
+-- reading the count off the budgeted run's raw output *word length*; the token-level
+-- lemma cannot serve, because `machineTokens` returns `bitsToDigits` of that word and so
+-- loses its length modulo three, and a ruler's length IS its value.
+-- `Complexity.FP ⊆ Primrec` in general is still not available and is not claimed.
+--
+-- **Why a Gödel-code digit bound is not the paper's class, on the `thm:incons` lane.**
+-- `BigDigits` applied to a natural-number *input* is genuinely write-out metering, because
+-- there the base-4 digit count IS the written length.  Applied to `⌜∼σₙ⌝`, the Gödel code of
+-- a formula, it is not: Foundation's formula encoding pairs at every node, so the code value
+-- is roughly doubly exponential in the parse tree and its digit count roughly `2 ^ depth` —
+-- the failure mode that disqualifies `Encodable.encode` as a machine-naming map (the
+-- `DigitMachineCodes` doctrine at `Framework/Emission/WriteOut.lean`).  Such a premise would be
+-- STRICTLY STRONGER than `def:ec` on this lane, admitting only `O(log n)`-depth
+-- (`binNumeral`-spelled) theory-name families and excluding paper-admissible families whose
+-- source text is short but whose parse tree is deep.  The `thm:incons` endpoint takes no such
+-- premise: the day's adjoined axiom enters by its source text, metered with
+-- `hs : PolyArithmeticSourceSeq s` (`Construction/LUV/ArithmeticSource.lean`) — one
+-- token per symbol the writer writes, `def:ec` verbatim.  What the sentence emits is
+-- `ArithSource.sourceNat sₙ`, the run read as a base-`64` numeral with a sentinel
+-- (`tokenListNat`, `Framework/Emission/CodeSource.lean`), whose base-`4` digit count is
+-- `3 * (sourceTokens sₙ).length + 3`: **linear in the written text**, exactly as
+-- `Code.sourceNat` is for machines.  The Gödel code is recovered from that numeral *inside*
+-- the represented predicate, by `negSourceFormulaCode`
+-- (`Construction/Knowledge/SourceNumbering.lean`), which is computable and therefore all
+-- `codeOfREPred` consumes — the paper asks only for recursive enumerability there, and the
+-- code's size is free.  The class is strictly wider for it: `deepInconsistentSource` is
+-- admitted and no digit bound on codes can admit it.
+--
+-- **The `_ecRpn` suffix is not a sentence-class name.**  `ec` names the efficiency class the
+-- two fuel transports preserve (`PolyFueledTrader`) and `Rpn` names the RPN *symbol
+-- model* their compiler emits in, the sibling lane being
+-- `ConditioningCompile.conditionedTranslation_preserves_ecDigit` over the digit model.
+-- Neither theorem mentions any `Rpn` sentence class; `RpnSentenceCodes` appears on this lane
+-- only as a convenient sufficient subclass, via `BigSentenceCodes.ofRpnSentenceCodes`.
+--
+-- **There are no token-metered retentions.**  The place they would live is the LUV
+-- *threshold* interfaces (`LUV.RpnThresholdCodes` / `LUV.RpnThresholdCodeSeq`, which unfold
+-- to `RpnSentenceCodes` on the threshold family `⌜Xₙ > i/k⌝`, so a census grepping
+-- signatures for `RpnSentenceCodes` does not see them).  Every one of those binds
+-- `LUV.MachineThresholdCodes` / `LUV.MachineThresholdCodeSeq`
+-- (`Framework/Machine/ThresholdMachine.lean`), the machine reading of the write-out pair:
+--   * `LUVCombinationSyntax.threshold_poly` and `ConvergencePresentation.threshold_code`,
+--     hence the four `_ofSyntax` endpoints, `LUV.expect_converges` (`thm:ec`) with
+--     `LUV.expectInf` and its two characterizations, `BoundedSequence.expcoh` /
+--     `.perexpkno` / `.limexpapprox`, the `lic_expectation_provind*` family,
+--     `lic_linearity_of_expectation(_ofValuesAt)` and their `_arith` instances;
+--   * `lic_expectation_indicator` (`thm:ei`), whose printed `hcode` binder is the one the
+--     canonical endpoint census reads directly;
+--   * the quote certificates `ExpectedFutureExpectationQuote` (`thm:cee`),
+--     `FuturePriceQuote` (`thm:ceu`), `ConditionalExpectationQuote` (`thm:ccee`),
+--     `CurrentPriceExpectationQuote` (`thm:epr`), `CurrentExpectationQuote` (`thm:er`) and
+--     `SelfTrustQuote` (`thm:st`);
+--   * `RationalQuoteCode.threshold_poly` with the whole `_ofRepresentation` layer of the
+--     quotation family, and the product, registry, prime and source lanes
+--     (`PresentedLUVSeq.threshold_codes`, `CertifiedSourceLUVSeq.threshold_codes`).
+-- The bridges in are `RpnSentenceCodes.toMachine` from the token-metered class and
+-- `LUV.BigThresholdCodes(Seq).toMachine` from the fuel-metered one; no converse is claimed,
+-- so every binder above is strictly weaker than either bridge's source and every consumer
+-- strictly stronger.
+-- `LUV.MachineThresholdCodeSeq.reindex` is the reindexing at the machine class (a unary
+-- ruler in place of a fuel certificate).  The mesh product of `thm:ccee` is the one consumer
+-- needing a combinator the machine side does not get from the sentence suite directly —
+-- `meshProductLUV_machineThresholdCodeSeq` is a variable-width disjunction — so
+-- `MachineSentenceCodes.bigOr` sits beside `bigAnd`, off the same `parseRpn_disjChain`
+-- parse law `RpnSentenceCodes.bigOr` runs (`Framework/Emission/RpnSplice.lean`).  Metering a
+-- LUV threshold through the token route is a *rendering sensitivity* rather than a narrowing
+-- of the paper's admissible LUVs — the threshold route meters a formula string over a fixed
+-- finite alphabet (`0..19`), so the per-token value clause is vacuous along it — and that is
+-- worked out in `scripts/coverage-classification.md`, *LUV-threshold metering: rendering
+-- sensitivity, witnessed*.  No statement here binds the token class, so the point does not
+-- arise on the surface itself.
+--
+-- **Widening a sentence-codes binder is usually free**, which is why the write-out classes
+-- reach as far as they do: a consumer that opens its hypothesis only through `.primrec`
+-- accepts `BigSentenceCodes.primrec` unchanged.  `paperPriceQuoteCode` and
+-- `lic_expectations_of_probabilities_closed` (`thm:epr`), `paperFutureQuoteCode` and
+-- `lic_no_expected_net_update_closed` (`thm:ceu`), `paperIntervalQuoteCode` and
+-- `lic_introspection_closed` (`thm:ref`), and `paperConfidenceQuoteCode` are all of that
+-- shape, so those closed paper endpoints admit sentence families whose Gödel codes are
+-- exponential while their emitted symbol count stays polynomial.  The conditioning lane is
+-- the other shape: there the certificate has to be re-blocked, and
+-- `BigTokenStream.digitizeStream` (`Framework/Emission/WriteOut.lean`, ~12 lines) is what supplies
+-- the clock — `PolySegStream.undigitizeTokens` reads a poly-fueled token count and
+-- `BigDigits` per-token digit access off the certificate's own digit stream, and
+-- `BigDigits.blockSeg |>.concatVar` re-emits the canonical digitization — which makes
+-- `CondStep.machineSentenceBlocks_of_machine` a one-line read-off off the machine word.
+-- (The digit clamp `min · 4` there is the identity, because the clamped object is literally a
+-- list of base-4 digits and terminators: `TokenFold.mem_digitize_le_four` is a fact about
+-- `digitize ts` for an ARBITRARY token list `ts` and bounds no token's value.)
+--
+-- **`PolyMachineCodes` and `PolyNatCodes` are strictness foils, not trust surface.**  Both
 -- bound the *numeric value* of a name, which is precisely what `def:ec`'s write-out metering
--- does not bound.  They are now what they always were — strictness foils, named only inside
+-- does not bound, so neither carries a paper annotation.  They are named inside
 -- `not_polyNatCodes_ack`, `bigDigits_two_pow_not_polyNatCodes` and
--- `digitMachineCodes_nest_not_polyMachineCodes` — so they carry no paper annotation and are
--- not trust surface.  The paper's machine-naming class, `DigitMachineCodes`, carries the
--- `def:ec` line in their place.
+-- `digitMachineCodes_nest_not_polyMachineCodes`, and `PolyNatCodes` in one place besides: it
+-- is a *hypothesis* of `quotationClaimSentence_poly`
+-- (`Construction/Quotation/Packages.lean`), the one internal helper taking it, where
+-- it bounds a **caller-chosen index sequence** and never the paper's `⟨x⟩`, so it levies no
+-- charge on a paper-facing statement.  The paper's machine-naming class,
+-- `DigitMachineCodes`, carries the `def:ec` line in their place.
 --
--- Accounting correction (2026-08-28 audit, R3-F07/R3-F08).  `PolyNatCodes` is named in one
--- place beyond those foils: it is a *hypothesis* of `quotationClaimSentence_poly`
--- (`Construction/Witnesses/QuotationAffine.lean:67`), which is the one remaining internal
--- helper taking it.  (`semanticPrimeSentence_poly` was the second; it had no callers and was
--- deleted in the same change.)  That hypothesis bounds a **caller-chosen index sequence**,
--- never the paper's `⟨x⟩`, so it levies no charge on a paper-facing statement — but the
--- retirement note above should not be read as saying the class occurs nowhere else.
--- Framework/CodeSource.lean, Framework/WriteOut.lean — the machine-naming map that
--- `DigitMachineCodes` is built on (2026-08-28 audit, R3-F24).  `DigitMachineCodes` carries
+-- Framework/Emission/CodeSource.lean, Framework/Emission/WriteOut.lean — the machine-naming
+-- map that `DigitMachineCodes` is built on.  `DigitMachineCodes` carries
 -- the `Paper node: def:ec` line for machine names, and it is worth exactly what `sourceNat`
 -- and `ofSource` are worth: the linearity bound `len4_sourceNat_le` (`len4 c.sourceNat ≤
 -- 2 * c.size`) is what makes the name writable in time polynomial in the day, and the
--- decoder is what makes the name a name rather than a hash.  Those guarantees were
--- axiom-checked only by `#print axioms` inside their own file, with no block here.
+-- decoder is what makes the name a name rather than a hash.
 --
--- The decoder's cost is now stated, not assumed (R3-F02/F06/F13).  `ofSource` previously
--- peeled one digit per unit of the name's *value* — primitive recursive and correct, and
--- 18158869 peel steps on a 7-node code — while the docstrings called it "efficiently
--- decodable".  It now peels `len4 n` digits: `ofSource_peelSteps` gives the exact step
+-- The decoder's cost is stated, not assumed.  `ofSource` peels `len4 n` digits, not one per
+-- unit of the name's *value*: `ofSource_peelSteps` gives the exact step
 -- count and `sourceNat_peelSteps_le` bounds it by `2 * c.size`.  `size_le_len4_sourceNat`
 -- is the fuel-adequacy side condition that makes the roundtrip go through, and
--- `len4_primrec` (Framework/DigitArith.lean) is what keeps `ofSource` primitive recursive
+-- `len4_primrec` (Framework/Emission/DigitArith.lean) is what keeps `ofSource` primitive recursive
 -- once its fuel is a digit count.  No `PolyFueled`/`Complexity.FP` certificate is claimed
 -- for `ofSource`, and none is inventoried here.
 --
 -- Only `DigitMachineCodes` is listed: the inventory contract is fail-closed both ways —
 -- `scripts/check-paper-nodes.sh` requires every inventoried member to carry a `Paper node`
--- annotation — and the supporting declarations are internal, so annotating them to make
--- them listable would be exactly the over-broad labelling this same audit trimmed
--- elsewhere.  They remain axiom-checked by the `#print axioms` block at the foot of
--- `Framework/CodeSource.lean`, which covers, in that file, `sourceNat`,
--- `pow_pred_le_sourceNat`, `len4_sourceNat_le`, `size_le_len4_sourceNat`, `ofSource`,
--- `ofSource_peelSteps`, `sourceNat_peelSteps_le`, `ofSource_sourceNat` and
--- `ofSource_primrec`, and by the block in `Framework/DigitArith.lean` for `len4_primrec`.
--- A future change that widens the inventory contract should pull them in here.
+-- annotation — and the supporting declarations (`sourceNat`, `pow_pred_le_sourceNat`,
+-- `len4_sourceNat_le`, `size_le_len4_sourceNat`, `ofSource`, `ofSource_peelSteps`,
+-- `sourceNat_peelSteps_le`, `ofSource_sourceNat`, `ofSource_primrec`, and `len4_primrec` in
+-- `Framework/Emission/DigitArith.lean`) are internal, so annotating them to make them
+-- listable would be exactly the over-broad labelling this inventory exists to avoid.  They
+-- are covered transitively, through the endpoints whose proof terms name them.
 #assert_axioms_clean
   DigitMachineCodes
 
+-- FIELD TYPE, invisible to `#assert_fields`: `sentence_codes` is at
+-- `MachineSentenceCodes`, not the *value*-metered
+-- `PolySentenceCodes` it carried before, so nothing bounds an enumerated sentence's Gödel
+-- code.  `prefixMachinePresentation` and `universalPrefixPresentation` fill it through
+-- `MachineSentenceCodes.ofPolySentenceCodes` from the same constructed fuel certificate.
 #assert_fields PrefixMachinePresentation
   sentence sentence_codes approximation approximation_nonneg approximation_le
   approximation_tendsto kraft covers
 #assert_fields PrefixNegationCompiler
   overhead complexity_neg_le
--- FIELD REMOVAL (tranche 7).  `QuotationTheoryPresentation` no longer carries
--- `theory_sigmaOne : 𝗜𝚺₁ ⪯ T`.  This is a loud Tier-2 freeze change: the field is gone from
--- the block below, and every inhabitant (`quotationPresentation`,
--- `ProductDefinition`'s stage-extension transport) drops the corresponding
--- `theory_sigmaOne := …` line.  The field was never a hypothesis of the quotation
--- presentation's own content — its only two consumers were on the `thm:lp` diagonal path,
--- `ParameterizedDiagonalQuoteCode.diagonal_law` and `paradoxResistanceQuoteOfDiagonal`,
--- each of which opened it with `letI : 𝗜𝚺₁ ⪯ T := Q.theory_sigmaOne` in order to reach
--- Foundation's `parameterized_diagonal₁`.  Those two now take an ordinary `[𝗜𝚺₁ ⪯ T]`
--- instance binder, so `thm:lp` still charges `𝗜𝚺₁` (legitimately, at the one step that
--- spends it) while the seven closed quotation endpoints, which merely *inherited* the field,
--- no longer charge it at all.  `diagonal_law` additionally lost its `(Q : …)` and `{DP}`
--- arguments, which became unused once the `letI` was gone; it has no callers in the library.
+-- `QuotationTheoryPresentation` carries NO `theory_sigmaOne : 𝗜𝚺₁ ⪯ T` field, deliberately:
+-- `𝗜𝚺₁` is not a hypothesis of the quotation presentation's own content.  It is spent at
+-- exactly one place, the `thm:lp` diagonal path — `ParameterizedDiagonalQuoteCode.diagonal_law`
+-- and `paradoxResistanceQuoteOfDiagonal`, which reach Foundation's `parameterized_diagonal₁`
+-- — and both take an ordinary `[𝗜𝚺₁ ⪯ T]` instance binder there.  So `thm:lp` charges `𝗜𝚺₁`
+-- at the one step that spends it, and the seven closed quotation endpoints, which would
+-- otherwise inherit a presentation field, charge it nowhere.  `diagonal_law` correspondingly
+-- takes neither a `(Q : …)` nor a `{DP}` argument; it has no callers in the library.
 #assert_fields QuotationTheoryPresentation
   toComputationTheoryPresentation quote_positive_enters quote_negative_refutes
+-- FIELD TYPE, invisible to `#assert_fields` (which freezes field *names* only):
+-- `threshold_poly` is at `LUV.MachineThresholdCodeSeq`.
 #assert_fields RationalQuoteCode
   code value_mem pos_complete neg_complete threshold_poly
 #assert_fields RepresentedDecidableClaims
   toRepresentedSemidecidableClaims disprovable_of_false
+-- FIELD TYPE, invisible to `#assert_fields` (which freezes field *names* only):
+-- `sentence_poly` is at `MachineSentenceCodes` (hence also for
+-- `RepresentedDecidableClaims`, which extends it).
 #assert_fields RepresentedSemidecidableClaims
   sentence sentence_poly provable_of_true
+-- FIELD TYPE, invisible to `#assert_fields` (which freezes field *names* only):
+-- `sentence_codes` is at `MachineSentenceCodes`; `product_codes` and
+-- `confidence_codes` are at `LUV.MachineThresholdCodeSeq`.
 #assert_fields SelfTrustQuote
   delta_pos probability_mem sentence_codes probability_generable product_codes
   confidence_codes confidence_reflected product_reflected affine
@@ -2282,7 +2821,7 @@ Every ModalAgents endpoint is now strictly clean. The former sole intentional ax
 development (vendored from FormalizedFormalLogic/ProvabilityLogic, pinned in
 `lakefile.lean`; see `ModalAgents/FixedPoint.lean`); `glFixedPoint_thm42`
 is a proved theorem, so the cooperation endpoints that rest on it are asserted strictly
-clean below rather than via `#assert_axioms_clean_except`.
+clean below, like every other endpoint in this file.
 
 That paper numbers its nodes off a single section-scoped counter shared by
 `theorem`/`lemma`/`proposition`/`corollary`/`condition`, and only 22 of them carry a
@@ -2383,59 +2922,66 @@ Everything above is asserted of the endpoints **as stated**, and the arithmetic-
 family (`thm:cee`, `thm:ceu`, `thm:ccee`, `thm:st`, `thm:ref`, `thm:epr`, `thm:er`,
 `thm:lp`, `thm:halts`, …) is stated parametrically over an arithmetic theory:
 `(T : ArithmeticTheory) [T.Δ₁] [Entailment.Consistent T]` plus, per lane, `[𝗣𝗔⁻ ⪯ T]` or
-`[𝗜𝚺₁ ⪯ T]` — the consistency binder having replaced `[T.SoundOnHierarchy 𝚺 1]` on
-2026-08-30, when the quotation schemas became value fibers of one `code` formula, and the
-`𝗜𝚺₁` binder having been *deleted* in tranche 7 everywhere it was unused.
+`[𝗜𝚺₁ ⪯ T]`. No endpoint carries `[T.SoundOnHierarchy 𝚺 1]`: the quotation schemas are value
+fibers of one `code` formula, whose exclusivity is provable inside `T`, so consistency is
+what the market non-vacuity witnesses close from.
 
-**The census, and how it is taken.** Both figures below are measured by elaborating a
-generated file of `#check @name`, one line per name in the `LI-CANONICAL-BEGIN` …
-`LI-CANONICAL-END` block above, and grepping the *printed* binder lists — never by reading
-docstrings, and never by grepping the sources, which is how the `[ISigma 1 ⪯ T]` spelling in
-the semantic-lifted lane stayed invisible for two tranches.
+**The census, and how it is taken.** The figures below are measured by elaborating a
+generated file whose body is `#check @name`, one line per name in the `LI-CANONICAL-BEGIN` …
+`LI-CANONICAL-END` block above, under `import LogicalInduction.API` and
+`open LogicalInduction`, then counting the *printed* binder lists — never by reading
+docstrings, and never by grepping the sources alone, which would miss a binder inherited
+through a structure field or a section variable, and would miss the ASCII `[ISigma 1 ⪯ T]`
+spelling if it ever returned. Reproduce it with `lake env lean` on that file; the whole
+census takes one elaboration. The `[𝗜𝚺₁ ⪯ T]` list is the one figure a purely textual check
+can own, and `scripts/check_li_rollcall.py` recomputes it from the signatures and fails the
+build when it drifts from the list `LogicalInduction/README.md` names.
 
-  * `[T.SoundOnHierarchy 𝚺 1]` — **0 of 105**. Down from 16, in three migrations; the last
-    (2026-08-30) removed twelve at once, all of which reached the instance through
-    `theoremDP_hworld`'s tag 7. The paper treats soundness as a further assumption it
+  * `[T.SoundOnHierarchy 𝚺 1]` — **0 of 105**. Every endpoint that would otherwise inherit
+    the instance does so through `theoremDP_hworld`'s quotation tag, which closes from
+    consistency instead. The paper treats soundness as a further assumption it
     explicitly declines (tex:2673), and nothing here takes it. The only surviving occurrence
     of the name anywhere in `LogicalInduction/` is `loopsTheory_soundOnSigma1`, a fact about
     one concrete theory used as a non-vacuity witness for `thm:loops`'s `hloops`.
-  * `𝗣𝗔⁻ ⪯ ·` — **16 of 105**, and `𝗥₀ ⪯ ·` — **0**.  `thm:incons` carried the last one
-    redundantly, beside the stronger `𝗣𝗔⁻` it also carries; it was dropped on 2026-08-30
-    and the binder is gone from the elaborated signature, Foundation's
-    `instance [𝗣𝗔⁻ ⪯ T] : 𝗥₀ ⪯ T` (`Arithmetic/Schemata.lean`) supplying it.
-    `T.Δ₁` — **23 of 105**.  Note that
-    `𝗣𝗔⁻` is **not** implied by "Θ represents computations", though an earlier edition of the
-    classification ledger said it was: the paper's premise gives `Θ ⊬ n̄ = m̄` for `n ≠ m` but
+  * `𝗣𝗔⁻ ⪯ ·` — **16 of 105**, and `𝗥₀ ⪯ ·` — **0**.  An explicit `𝗥₀` binder is always
+    redundant beside the stronger `𝗣𝗔⁻` one, since Foundation's
+    `instance [𝗣𝗔⁻ ⪯ T] : 𝗥₀ ⪯ T` (`Arithmetic/Schemata.lean`) supplies it.
+    `T.Δ₁` — **24 of 105**.  Note that
+    `𝗣𝗔⁻` is **not** implied by "Θ represents computations", though it reads as if it
+    should be: the paper's premise gives `Θ ⊬ n̄ = m̄` for `n ≠ m` but
     never `Θ ⊢ n̄ ≠ m̄`, and Robinson's R represents every computable function without
     containing `𝗣𝗔⁻`.  It is a genuine, small strengthening, spent on the compact-`binNumeral`
     value transfer that `def:ec` forces and on `code_uniq`'s `rfind` case — the object-level
-    fiber exclusivity that replaced Σ₁-soundness at tag 7.  Disclosed globally in
-    `scripts/coverage-classification.md`; its charging (global vs per row) is pending a ruling.
-  * `𝗜𝚺₁ ⪯ ·` (either spelling) — **3 of 105**, in each case because a proof step spends it,
+    fiber exclusivity that stands in place of Σ₁-soundness at the quotation tag.  Disclosed
+    globally in `scripts/coverage-classification.md`, and charged there once rather than per
+    row.
+  * `𝗜𝚺₁ ⪯ ·` (either spelling) — **4 of 105**, in each case because a proof step spends it,
     and in each case the substrate's own indexing rather than a theory-strength assumption
     the statement needs: `unitFracPaperLUVSeq` and `unitFracPaperLUVBoundedSequence`, the two
     literal-`PaperLUV` frontends, whose `threshold_provable_of_neg` / `rationalCutAt` /
-    `source_valued` steps prove rational-cut arithmetic *inside* `T`; and
+    `source_valued` steps prove rational-cut arithmetic *inside* `T`;
+    `lic_no_expected_net_update_conditional_paperLUV_closed` (`thm:ccee` at zero slack), which
+    is stated over a `PaperLUVSeq` and inherits the same rational-cut indexing; and
     `lic_paradox_resistance_ofDiagonal_unconditional` (`thm:lp`), whose diagonal is
     Foundation's `parameterized_diagonal₁`, stated over `𝗜𝚺₁`.  That endpoint prints
     `[T.Δ₁] [Entailment.Consistent T] [𝗜𝚺₁ ⪯ T]` and carries **no** `[𝗣𝗔⁻ ⪯ T]`: the two
     would be redundant (`𝗜𝚺₁ ⪯ T` implies `𝗣𝗔⁻ ⪯ T` by instance), so that endpoint is
-    declared *outside* the `𝗣𝗔⁻` section of `ComputationDP.lean` and recovers the weaker
-    instance in its proof term, where `paperLIA`/`theoremDP_hworld` need it.  `omit`
-    cannot do this job: it does not take the variable out of the local context, so instance
-    search still reaches it from the conclusion's `paperDiagonalQuoteCode`.  It is therefore
-    not one of the 17 above.
+    declared *outside* the `𝗣𝗔⁻` section of `Construction/Paper/ComputationDP.lean` and
+    recovers the weaker instance in its proof term, where `paperLIA`/`theoremDP_hworld`
+    need it.  `omit` cannot do this job: it does not take the variable out of the local
+    context, so instance search still reaches it from the conclusion's
+    `paperDiagonalQuoteCode`.  It is therefore
+    not one of the `𝗣𝗔⁻` endpoints counted above.
 
-The tranche-7/D step that closed the last eight was deleting `theory_sigmaOne` from
-`QuotationTheoryPresentation` (see the FIELD REMOVAL note above): the seven closed quotation
-endpoints (`thm:ref`, `thm:st`, `thm:epr`, `thm:er`, `thm:cee`, `thm:ceu`, `thm:ccee`)
-inherited `𝗜𝚺₁` from that field and from no step of their own, and now all seven read
-`[T.Δ₁] [𝗣𝗔⁻ ⪯ T] [Entailment.Consistent T]`.  `thm:ccee` additionally required migrating the
-semantic-lifted lane (`SemanticQuote`, `SemanticQuoteFactor`, `OldLanguageLift`,
-`SemanticRegistryProduct`, `SemanticLiftedCCEE`), where the same binder was spelled
-`[ISigma 1 ⪯ T]` rather than `[𝗜𝚺₁ ⪯ T]` and so was invisible to the earlier tranches' greps;
-all 64 of those sites are now `[𝗣𝗔⁻ ⪯ T]`.  Those endpoints are axiom-clean, but only because
-the theory data are *hypotheses*.
+`QuotationTheoryPresentation` carries no `theory_sigmaOne` field (see the FIELD REMOVAL note
+above), which is why the seven closed quotation endpoints (`thm:ref`, `thm:st`, `thm:epr`,
+`thm:er`, `thm:cee`, `thm:ceu`, `thm:ccee`) read `[T.Δ₁] [𝗣𝗔⁻ ⪯ T] [Entailment.Consistent T]`
+and inherit `𝗜𝚺₁` from nothing: an interface field is a binder every consumer pays, so a
+theory-strength field would have charged all seven for a step none of them takes.  The
+semantic-lifted lane (`SemanticExtension/Quote`, `SemanticExtension/Product`,
+`SemanticExtension/LanguageCopy`, `SemanticExtension/Registry`,
+`SemanticExtension/Endpoints`) reads `[𝗣𝗔⁻ ⪯ T]` throughout for the same reason.  Those
+endpoints are axiom-clean, but only because the theory data are *hypotheses*.
 
 Instantiating them at a concrete theory is a different claim, and it is pinned here so that
 a regression would fail the build. At the pinned Foundation revision it costs nothing:
@@ -2453,16 +2999,16 @@ noncomputable def concreteArithmeticInstantiation :=
 
 #assert_axioms_clean concreteArithmeticInstantiation
 
-/-! ### No Σ₁-soundness is asked for at a concrete theory (2026-08-30)
+/-! ### No Σ₁-soundness is asked for at a concrete theory
 
 `thm:ref` elaborates exactly three instance arguments — `[T.Δ₁]`, `[𝗣𝗔⁻ ⪯ T]` and
 `[Entailment.Consistent T]` — and `thm:lp` exactly three as well: `[T.Δ₁]`,
 `[Entailment.Consistent T]`, and the `[𝗜𝚺₁ ⪯ T]` its diagonal genuinely spends, with no
-`[𝗣𝗔⁻ ⪯ T]` beside it.  Both would fail to typecheck as written if
-`[T.SoundOnHierarchy 𝚺 1]` were still in either binder list; the arity is also the live
-regression test for tranche 7's `𝗜𝚺₁` deletion, since restoring the binder on `thm:ref` would
-give it a fourth argument.  The corresponding `grep` is
-`grep -rn SoundOnHierarchy LogicalInduction/ | grep -v loopsTheory`, which now finds prose
+`[𝗣𝗔⁻ ⪯ T]` beside it.  The two `example`s below are the regression test for both facts:
+each supplies exactly three instances, so either a `[T.SoundOnHierarchy 𝚺 1]` binder or a
+restored `[𝗜𝚺₁ ⪯ T]` on `thm:ref` would give the term a fourth argument and fail to
+typecheck.  The corresponding `grep` is
+`grep -rn SoundOnHierarchy LogicalInduction/ | grep -v loopsTheory`, which finds prose
 only. -/
 
 open LO LO.FirstOrder LO.FirstOrder.Arithmetic in
@@ -2475,14 +3021,14 @@ example :=
   @LogicalInduction.lic_paradox_resistance_ofDiagonal_unconditional 𝗜𝚺₁
     inferInstance inferInstance inferInstance
 
-/-! ### `thm:ref` below `𝗜𝚺₁` (tranche 7/D)
+/-! ### `thm:ref` below `𝗜𝚺₁`
 
-The two examples below are the positive witness that tranche 7/D's deletion of
-`QuotationTheoryPresentation.theory_sigmaOne` actually widened the closed quotation lane, not
-merely renamed a binder.  `lic_introspection_closed` now instantiates at `𝗣𝗔⁻` itself —
-a theory that proves **no** induction, so `𝗜𝚺₁ ⪯ 𝗣𝗔⁻` is false and no `𝗜𝚺₁` instance is
-available anywhere in the elaboration.  Before the field was removed this did not typecheck.
-The `𝗣𝗔` instantiation is the same statement at the theory the paper actually cares about. -/
+The closed quotation lane reaches theories strictly below `𝗜𝚺₁`, and the first example below
+is what holds it there: `lic_introspection_closed` instantiates at `𝗣𝗔⁻` itself — a theory
+that proves **no** induction, so `𝗜𝚺₁ ⪯ 𝗣𝗔⁻` is false and no `𝗜𝚺₁` instance is available
+anywhere in the elaboration.  Any step of the lane that acquired one, whether directly or
+through a `QuotationTheoryPresentation` field, would break this term.  The `𝗣𝗔`
+instantiation is the same statement at the theory the paper actually cares about. -/
 
 open LO LO.FirstOrder LO.FirstOrder.Arithmetic in
 /-- `thm:ref` at `𝗣𝗔⁻`, with no `𝗜𝚺₁ ⪯ ·` instance in scope. -/
@@ -3366,9 +3912,9 @@ The pending block has **two sections**, separated by a `-- SECTION: …` marker 
 first names annotated endpoints.  The second, `consumers (un-annotated)`, names
 declarations that depend on `sorryAx` but carry no `Paper node:` line at all — small
 consequences of a staged theorem, which are not claims about the paper and so cannot be
-annotated, but which a reader must still not mistake for proved.  Round 2 found three of
-them living outside both blocks (R2-F22), which is precisely the drift the ledger exists to
-prevent; `scripts/check_sorry_ledger.py` now enumerates every `sorryAx`-dependent
+annotated, but which a reader must still not mistake for proved.  An audit once found three of
+them living outside both blocks, which is precisely the drift the ledger exists to
+prevent; `scripts/check_sorry_ledger.py` enumerates every `sorryAx`-dependent
 declaration of the library from the compiled environment and fails on any that is named in
 neither section, so the two sections together are mechanically complete rather than
 maintained by hand.
@@ -4752,9 +5298,9 @@ open Condensation in
   Condensation.noisyModel Condensation.noisyLatent Condensation.noisyLatent_reconScore
   Condensation.noisyLatent_reconScore_pos Condensation.noisyLatent_simpleScore
   Condensation.noisyLatent_condScore
-  -- Round 3 (2026-08-18): witnesses for the *conditions* of §4 rather than its structures
-  -- (R3-F08).  Definitions 4.3 and 4.8 had no constructed inhabitant before this, so
-  -- Theorem 4.9, Proposition 4.10 and Theorem 4.15 were non-vacuous only in the sense that
+  -- Witnesses for the *conditions* of §4 rather than its structures.  Without them,
+  -- Definitions 4.3 and 4.8 would have no constructed inhabitant, and Theorem 4.9,
+  -- Proposition 4.10 and Theorem 4.15 would be non-vacuous only in the sense that
   -- their statements elaborate.  `coinLatent_perfectlyCondenses` is Definition 4.3's
   -- conditioned clause on the fair coin; `coinLatent_orderedMarkov` is Definition 4.8, got
   -- from it by Theorem 4.9's (B1 => B2) rather than proved by hand;
@@ -4768,8 +5314,8 @@ open Condensation in
   -- which is `Example44.simplyPerfectlyCondenses` in the inventory block above -- so they
   -- belong here.
   --
-  -- **The `coinLatent_*` witnesses above are DEGENERATE, and round 4 (R4-F23) corrected the
-  -- over-claim this comment used to make.**  At `I = Unit` the ordered Markov condition
+  -- **The `coinLatent_*` witnesses above are DEGENERATE.**  At `I = Unit` the ordered Markov
+  -- condition
   -- holds for *every* `RVModel (PPlus Unit)` and `condScore = simpleScore` for *every*
   -- latent over an `RVModel Unit`, so `coinLatent_orderedMarkov` witnesses satisfiability
   -- and nothing about the content of Definition 4.8.  The witnesses that carry content are
@@ -4781,8 +5327,8 @@ open Condensation in
   Condensation.Example44.L44_coin_simplyPerfectlyCondenses
   Condensation.Example44.L44_coin_perfectlyCondenses
   Condensation.noisyModel_entropy_joint Condensation.noisyLatent_not_perfectlyCondenses
-  -- Round 4 (2026-08-18, R4-F23): the witnesses that carry CONTENT, at `I = Bool`, plus the
-  -- two lemmas that prove the `Unit`-indexed ones above do not.
+  -- The witnesses that carry CONTENT, at `I = Bool`, plus the two lemmas that prove the
+  -- `Unit`-indexed ones above do not.
   --
   -- The degeneracy, proved rather than asserted: over a subsingleton `P⁺I`,
   -- `condScore_eq_simpleScore_of_subsingleton_index` says `χ_L = σ_L` for **every** latent

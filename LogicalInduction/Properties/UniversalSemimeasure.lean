@@ -1,20 +1,80 @@
-/-
-# Non-Dogmatism: the universal semimeasure (paper §4.6)
-
-Renders `thm:dus` (Domination of the Universal Semimeasure) and `thm:strict` (Strict
-Domination), together with the semimeasure substrate and the unit-budget trader they need.
-
-A continuous semimeasure is not a discrete a-priori semimeasure: one path may retain mass
-`1` through infinitely many prefixes, so `thm:dus` does not reduce to ordinary sentence
-prefix complexity with a fixed coding constant.
--/
 import LogicalInduction.Properties.OccamBounds
 import LogicalInduction.Properties.LimitCoherence
-import LogicalInduction.Framework.WriteOut
+import LogicalInduction.Framework.Emission.WriteOut
+
+/-!
+# Non-dogmatism: the universal semimeasure
+
+Renders paper §4.6: `thm:dus` (Domination of the Universal Semimeasure) and `thm:strict`
+(Strict Domination), whose proofs are `app:dus` and `app:strict`.
+
+## Contents
+
+* The semimeasure substrate: `ContinuousSemimeasure`,
+  `LowerSemicomputableContinuousSemimeasure`, `UniversalContinuousSemimeasure`.  A
+  continuous semimeasure is not a discrete a-priori one: one path may retain mass `1`
+  through infinitely many prefixes, so `thm:dus` does not reduce to `thm:ob`'s
+  prefix-complexity bound with a fixed coding constant.
+* The presentation interfaces a client supplies: `IndependentBitAtoms` (the paper's fresh
+  zero-arity predicates `b₁, b₂, …`), `BitPrefixSentences` (their finite-prefix
+  conjunctions), `DUSApproximationPresentation`, `DUSThresholdEmission` and
+  `StrictSeparatorPresentation`.
+* Finite-tree machinery: `semimeasureMean`, `prefixPurchaseMax`, `bitTreeNodes`,
+  `prefixPathPayout`, and `semimeasureMean_le_mass_mul_max`, which is the appendix's
+  `MeanPayout ≤ MaxPayout` obtained from the split inequality alone.
+* The trader: `dusScaleTrader` is the unit-budget scale-`k` member over
+  `ROIBudget.sharedFeatureWeight`, and `dusTrader` joins the inverse-square diagonal
+  `dusDiagonalScale j = (j+1)^4` at weight `1/(j+1)^2`, with downside bounded by `2`.
+* The two paper-facing endpoints, `lic_domination_universalSemimeasure` and
+  `lic_strict_domination_universalSemimeasure`.
+
+## Conventions
+
+Every hypothesis structure in this file is **conclusion-free**: it carries computational
+data only — no market price, no purchase and no domination claim — so none of them can
+smuggle a theorem in as a hypothesis.  Each is documented by what it does carry.
+
+Prefix sentences are named by write-out metered `MachineSentenceCodes` (`def:ec`), the
+machine reading of `BigSentenceCodes`; a producer holding the fuel-metered form crosses by
+`BigSentenceCodes.toMachine`.  That
+metering is forced: a literal prefix conjunction's Gödel code grows as `2 ^ 4 ^ m` against
+an enumeration index `≤ 5 ^ 2 ^ m`, so the whole-value form is unsatisfiable
+(`not_polySentenceCodes_bitPrefixSentence`, `Construction/NonDogmatism/BitPrefix.lean`)
+while the canonical Polish run is `Θ(m)` tiny tokens.
+
+The trader buys one prefix per day, at index `n.unpair.2`, so that every index recurs
+cofinally; the appendix instead buys every prefix on every late day.  The economics is
+unchanged.
+
+Trader efficiency certificates are at `def:ec`'s own machine quantifier — `dusTrader_ec`
+concludes `EfficientlyComputable` — and the limit vocabulary is `dd:asymp`'s.  The strict
+half proves the market side only.
+
+## Where the results are consumed
+
+`lic_domination_universalSemimeasure` is stated for *any* lower-semicomputable continuous
+semimeasure, where the paper assumes a universal one.  It is discharged at
+`lic_domination_universalSemimeasure_ofIndependentAtoms`
+(`Construction/NonDogmatism/BitPrefix.lean`) and in the `_paperDP` and `_unconditional`
+forms in `Construction/NonDogmatism/Endpoints.lean`.
+`lic_strict_domination_universalSemimeasure` is discharged at
+`lic_strict_domination_universalSemimeasure_ofAtomCodes`
+(`Construction/NonDogmatism/StrictSeparators.lean`), whose separator comes from Kleene's
+recursively inseparable pair through `strictSeparatorPresentationOfKleene`.
+
+`ordinaryBitPrefixSentences` inhabits `BitPrefixSentences` over the constantly-empty
+deductive process, and is an inhabitation witness only.  The substantive layer over
+`paperDP T` is `bitPrefixSentencesOfIndependentAtoms (paperIndependentBitAtoms T)
+paperBitPrefixCodes` (`Construction/NonDogmatism/Endpoints.lean`; see the README's
+non-vacuity caveat).
+
+-/
 
 namespace LogicalInduction
 
 open Filter Topology
+
+/-! ## Continuous semimeasures -/
 
 /-- A continuous semimeasure on finite bitstrings. Mass can disappear but cannot be
 created when a node is split into its two children.
@@ -50,10 +110,13 @@ structure UniversalContinuousSemimeasure extends
   universal : ∀ ν : LowerSemicomputableContinuousSemimeasure,
     ∃ c : ℝ, 0 < c ∧ ∀ σ, c * ν.mass σ ≤ mass σ
 
-/-- The semantic premise behind the independent zero-arity predicates used in `thm:dus`:
-every finite Boolean assignment to the atoms remains compatible with every finite deductive
-stage.  It carries no preassembled prefix sentence, syntax semantics, market data, or
-domination conclusion.
+/-! ## Independent bit atoms and their prefix sentences -/
+
+/-- The semantic premise behind the independent zero-arity predicates `b₁, b₂, …` of
+`thm:dus`: the atom family, together with the fact that every finite Boolean assignment to
+it remains compatible with every finite deductive stage.  Conclusion-free, as the module
+docstring records.  Over the paper's own process the inhabitant is
+`paperIndependentBitAtoms T` (`Construction/NonDogmatism/Endpoints.lean`).
 Paper node: `thm:dus` -/
 structure IndependentBitAtoms (DP : DeductiveProcess) where
   atom : ℕ → Sentence
@@ -61,50 +124,58 @@ structure IndependentBitAtoms (DP : DeductiveProcess) where
     v.ConsistentWith (DP.D n) ∧ ∀ k, (v.Holds (atom k) ↔ f k = true)
 
 /-- Propositional syntax for the independent zero-arity predicates and their finite-prefix
-conjunctions from `thm:dus`. `holds_prefix` fixes the exact Boolean semantics, while
-`finite_realizable` records compatibility with each finite deductive stage.  The
-enumeration/code fields record the paper's efficient list of all finite strings.
+conjunctions from `thm:dus`.  It carries the atom family, the prefix sentences,
+`enumeration` — the paper's efficient list of all finite bit strings — the write-out
+metered names `prefix_codes` (`MachineSentenceCodes`, `def:ec`; the module docstring
+records why that metering is forced), the exact Boolean semantics `holds_prefix`, and
+compatibility with each finite deductive stage.  Conclusion-free, as the module docstring
+records.
 
-`prefix_codes` is the paper's efficient naming of the prefix sentences, metered in
-**symbols** (`BigSentenceCodes`, `dd:ec`) rather than in the whole pair-code value.  That
-choice is forced: a literal prefix conjunction's Gödel code grows as `2 ^ 4 ^ m` against an
-enumeration index `≤ 5 ^ 2 ^ m`, so the whole-value form of this field is *unsatisfiable*
-(`not_polySentenceCodes_bitPrefixSentence`, `Construction/Witnesses/BitPrefixSyntax.lean`)
-while its canonical Polish run is `Θ(m)` tiny tokens.  The structure is inhabited over the
-repo's concrete atoms by `ordinaryBitPrefixSentences`.
+Over the paper's own process the inhabitant is
+`bitPrefixSentencesOfIndependentAtoms (paperIndependentBitAtoms T) paperBitPrefixCodes`
+(`Construction/NonDogmatism/Endpoints.lean`); `ordinaryBitPrefixSentences` sits
+over the constantly-empty process and is an inhabitation witness only (README, non-vacuity
+caveat).
 Paper node: `thm:dus` -/
 structure BitPrefixSentences (DP : DeductiveProcess) where
   atom : ℕ → Sentence
   prefixSentence : List Bool → Sentence
   enumeration : ℕ → List Bool
   enumeration_covers : ∀ σ, ∃ i, enumeration i = σ
-  prefix_codes : BigSentenceCodes (fun i ↦ prefixSentence (enumeration i))
+  prefix_codes : MachineSentenceCodes (fun i ↦ prefixSentence (enumeration i))
   holds_prefix : ∀ (v : PCWorld) (σ : List Bool), v.Holds (prefixSentence σ) ↔
     ∀ k : Fin σ.length, (v.Holds (atom k) ↔ σ.get k = true)
   realizable : ∀ (n : ℕ) (f : ℕ → Bool), ∃ v : PCWorld,
     v.ConsistentWith (DP.D n) ∧ ∀ k, (v.Holds (atom k) ↔ f k = true)
 
-/-- The finite-prefix form of realizability: every finite bit string is compatible with
-every finite deductive stage.  Specialization of the total field, which is what a theory
-constraining infinitely many bits (`thm:strict`) needs. -/
-lemma IndependentBitAtoms.finite_realizable {DP : DeductiveProcess}
-    (I : IndependentBitAtoms DP) (n : ℕ) (σ : List Bool) : ∃ v : PCWorld,
+/-- The finite-prefix form of realizability, read off the total realizability field: every
+finite bit string is compatible with every finite deductive stage.  This is the form a
+theory constraining infinitely many bits (`thm:strict`) needs. -/
+private lemma finite_realizable_of_realizable {DP : DeductiveProcess} {atom : ℕ → Sentence}
+    (realizable : ∀ (n : ℕ) (f : ℕ → Bool), ∃ v : PCWorld,
+      v.ConsistentWith (DP.D n) ∧ ∀ k, (v.Holds (atom k) ↔ f k = true))
+    (n : ℕ) (σ : List Bool) : ∃ v : PCWorld,
       v.ConsistentWith (DP.D n) ∧
-        ∀ k : Fin σ.length, (v.Holds (I.atom k) ↔ σ.get k = true) := by
-  obtain ⟨v, hv, hbits⟩ := I.realizable n (fun k ↦ σ.getD k false)
+        ∀ k : Fin σ.length, (v.Holds (atom k) ↔ σ.get k = true) := by
+  obtain ⟨v, hv, hbits⟩ := realizable n (fun k ↦ σ.getD k false)
   refine ⟨v, hv, fun k ↦ ?_⟩
   rw [hbits k, List.getD_eq_getElem _ _ k.isLt]
   simp
+
+/-- The finite-prefix form of realizability for a bare atom family; the convenience a
+client assembling a `BitPrefixSentences` out of an `IndependentBitAtoms` wants. -/
+lemma IndependentBitAtoms.finite_realizable {DP : DeductiveProcess}
+    (I : IndependentBitAtoms DP) (n : ℕ) (σ : List Bool) : ∃ v : PCWorld,
+      v.ConsistentWith (DP.D n) ∧
+        ∀ k : Fin σ.length, (v.Holds (I.atom k) ↔ σ.get k = true) :=
+  finite_realizable_of_realizable I.realizable n σ
 
 /-- The finite-prefix form of realizability for an assembled prefix presentation. -/
 lemma BitPrefixSentences.finite_realizable {DP : DeductiveProcess}
     (B : BitPrefixSentences DP) (n : ℕ) (σ : List Bool) : ∃ v : PCWorld,
       v.ConsistentWith (DP.D n) ∧
-        ∀ k : Fin σ.length, (v.Holds (B.atom k) ↔ σ.get k = true) := by
-  obtain ⟨v, hv, hbits⟩ := B.realizable n (fun k ↦ σ.getD k false)
-  refine ⟨v, hv, fun k ↦ ?_⟩
-  rw [hbits k, List.getD_eq_getElem _ _ k.isLt]
-  simp
+        ∀ k : Fin σ.length, (v.Holds (B.atom k) ↔ σ.get k = true) :=
+  finite_realizable_of_realizable B.realizable n σ
 
 lemma BitPrefixSentences.prefix_possible
     {DP : DeductiveProcess} (B : BitPrefixSentences DP) (σ : List Bool) :
@@ -348,19 +419,20 @@ lemma semimeasureMean_root_le_max
   have hroot := M.root_le_one
   nlinarith [mul_le_mul_of_nonneg_right hroot hmax0]
 
-/-! ## The direct unit-budget purchase family
+/-! ## The unit-budget scale trader
 
-Deviation from the appendix, which considers every prefix on every sufficiently late day:
-the dovetail below considers one prefix per day, visiting enumeration index `n.unpair.2`
-on day `n`, so every index `i` recurs on the unbounded subsequence `Nat.pair m i`.  The
-economic argument is unchanged.
+The dovetail below buys one prefix per day, visiting enumeration index `n.unpair.2` on day
+`n`, so every index `i` recurs on the unbounded subsequence `Nat.pair m i` (module
+docstring).
 
 The paper first slows an arbitrary lower approximation down to a polynomial-time table.
-That compiler fact is kept separate from the mathematical semimeasure presentation: the
-structure below carries only the rational table and its syntax-level polynomial
-certificate — no prices, purchases, or domination conclusion. -/
+That compiler fact is kept separate from the mathematical semimeasure presentation, and so
+are the two obligations: the structure below carries the rational table and its
+*approximation* properties only, and the polynomial emission obligation on the derived gate
+rationals is the separate `DUSThresholdEmission` further down. -/
 
-/-- Polynomially emitted from-below approximation used by the DUS trader.
+/-- From-below approximation table used by the DUS trader: nonnegative, under the mass, and
+converging to it.  It carries **no** emission certificate — that is `DUSThresholdEmission`.
 Paper node: `thm:dus` -/
 structure DUSApproximationPresentation {DP : DeductiveProcess}
     (M : LowerSemicomputableContinuousSemimeasure)
@@ -396,15 +468,20 @@ def dusEmitBase {DP : DeductiveProcess}
     (z : ℕ) : ℚ :=
   dusBase A z.unpair.1 z.unpair.2
 
-/-- Derived rational tokens used by the continuous low-price gate. This is a
-syntax-only compiler boundary: it contains neither market data nor a domination claim.
+/-- Uniform token emission for the derived rationals of the continuous low-price gate.
+Conclusion-free, as the module docstring records: it carries write-out certificates and
+nothing else.
 Paper node: `thm:dus` -/
 structure DUSThresholdEmission {DP : DeductiveProcess}
     {M : LowerSemicomputableContinuousSemimeasure}
     {B : BitPrefixSentences DP} (A : DUSApproximationPresentation M B) : Prop where
-  threshold_sum_codes : PolyRatCodes
+  /-- Write-out access to the doubled support threshold.  A producer holding the
+  *value*-metered `PolyRatCodes` form crosses by `DigitRatCodes.ofPolyRatCodes` then
+  `DigitRatCodes.toMachine`; write-out metering is strictly weaker. -/
+  threshold_sum_codes : MachineRatCodes
     (fun z ↦ dusEmitBase A z + dusEmitBase A z)
-  inverse_width_codes : PolyRatCodes (fun z ↦ 1 / dusEmitBase A z)
+  /-- Write-out access to the reciprocal gate width. -/
+  inverse_width_codes : MachineRatCodes (fun z ↦ 1 / dusEmitBase A z)
 
 /-- Dovetailed low-price signal for scale `k`. -/
 def dusSignal {DP : DeductiveProcess}
@@ -444,16 +521,6 @@ lemma dusBase_cast {DP : DeductiveProcess}
   rw [dusBase]
   push_cast
   ring
-
-lemma dusBase_nonneg {DP : DeductiveProcess}
-    {M : LowerSemicomputableContinuousSemimeasure}
-    {B : BitPrefixSentences DP} (A : DUSApproximationPresentation M B)
-    (k n : ℕ) :
-    0 ≤ ((dusBase A k n : ℚ) : ℝ) := by
-  rw [dusBase_cast]
-  have ha : 0 ≤ ((A.approximation n n.unpair.2 : ℚ) : ℝ) := by
-    exact_mod_cast A.nonneg n n.unpair.2
-  positivity
 
 lemma dusBase_pos {DP : DeductiveProcess}
     {M : LowerSemicomputableContinuousSemimeasure}
@@ -562,49 +629,50 @@ lemma dusCostEF_closed {DP : DeductiveProcess}
 /-! ### Uniform syntax emission for the purchase inputs -/
 
 /-- Segment emission for the padded, scale-varying low-price signal. -/
-lemma dusSignal_rpnSpliceStream
+lemma dusSignal_machineSpliceStream
     {DP : DeductiveProcess}
     {M : LowerSemicomputableContinuousSemimeasure}
     {B : BitPrefixSentences DP} (A : DUSApproximationPresentation M B)
     (emit : DUSThresholdEmission A)
     {ck cn : Nat.Partrec.Code} {kf nf : ℕ → ℕ}
     (hk : PolyFueled ck kf) (hn : PolyFueled cn nf) :
-    BigSpliceStream (fun x ↦ (dusSignal A (kf x) (nf x)).serialize) := by
-  have hinput : PolyFueled _ (fun x ↦ Nat.pair (kf x) (nf x)) := hk.pair hn
-  have hsumCodes : PolyRatCodes (fun x ↦
-      dusBase A (kf x) (nf x) + dusBase A (kf x) (nf x)) := by
-    obtain ⟨c, hc⟩ := emit.threshold_sum_codes
-    exact ⟨_, (hc.comp hinput).of_eq (fun x ↦ by simp [dusEmitBase])⟩
-  have hinvCodes : PolyRatCodes (fun x ↦ 1 / dusBase A (kf x) (nf x)) := by
-    obtain ⟨c, hc⟩ := emit.inverse_width_codes
-    exact ⟨_, (hc.comp hinput).of_eq (fun x ↦ by simp [dusEmitBase])⟩
-  have hidx : PolyFueled _ (fun x ↦ (nf x).unpair.2) :=
-    PolyFueled.right.comp hn
-  have hprice := BigSpliceStream.serialize_price B.prefix_codes hidx hn
-  have hsum : BigSpliceStream (fun x ↦
+    MachineSpliceStream (fun x ↦ (dusSignal A (kf x) (nf x)).serialize) := by
+  have hinput : UnaryRuler (fun x ↦ Nat.pair (kf x) (nf x)) :=
+    UnaryRuler.of_polyFueled (hk.pair hn)
+  have hsumCodes : MachineRatCodes (fun x ↦
+      dusBase A (kf x) (nf x) + dusBase A (kf x) (nf x)) :=
+    (emit.threshold_sum_codes.comp hinput).of_eq (fun x ↦ by simp [dusEmitBase])
+  have hinvCodes : MachineRatCodes (fun x ↦ 1 / dusBase A (kf x) (nf x)) :=
+    (emit.inverse_width_codes.comp hinput).of_eq (fun x ↦ by simp [dusEmitBase])
+  have hidx : UnaryRuler (fun x ↦ (nf x).unpair.2) :=
+    UnaryRuler.of_polyFueled (PolyFueled.right.comp hn)
+  have hprice := MachineSpliceStream.serialize_price B.prefix_codes hidx
+    (MachineDigits.ofUnaryRuler (UnaryRuler.of_polyFueled hn))
+  have hsum : MachineSpliceStream (fun x ↦
       (EF.const (dusBase A (kf x) (nf x) +
         dusBase A (kf x) (nf x))).serialize) :=
-    BigSpliceStream.serialize_const_comp hsumCodes
-  have hinv : BigSpliceStream (fun x ↦
+    MachineSpliceStream.serialize_const_write hsumCodes.toMachineDigits
+  have hinv : MachineSpliceStream (fun x ↦
       (EF.const (1 / dusBase A (kf x) (nf x))).serialize) :=
-    BigSpliceStream.serialize_const_comp hinvCodes
-  have hlive : BigSpliceStream (fun x ↦
+    MachineSpliceStream.serialize_const_write hinvCodes.toMachineDigits
+  have hlive : MachineSpliceStream (fun x ↦
       (buyIndEF (dusSentence B (nf x))
         (dusBase A (kf x) (nf x)) (dusBase A (kf x) (nf x))
         (nf x)).serialize) := by
-    have hraw := BigSpliceStream.serialize_mul
-      (BigSpliceStream.serialize_add hsum
-        (BigSpliceStream.serialize_mul
-          (BigSpliceStream.serialize_const (-1))
+    have hraw := MachineSpliceStream.serialize_mul
+      (MachineSpliceStream.serialize_add hsum
+        (MachineSpliceStream.serialize_mul
+          (MachineSpliceStream.serialize_const (-1))
           hprice)) hinv
     simpa [buyIndEF, dusSentence, dusPrefix] using
-      BigSpliceStream.serialize_clip01 hraw
-  have hzero : BigSpliceStream (fun _ : ℕ ↦ (EF.const 0).serialize) :=
-    BigSpliceStream.serialize_const 0
-  have htest : PolyFueled _ (fun x ↦ nf x + 1 - kf x) :=
-    (subc_polyFueled.comp (hn.succ_comp.pair hk)).of_eq
-      (fun x ↦ by simp only [Nat.unpair_pair])
-  refine BigSpliceStream.of_eq (BigSpliceStream.ifZero hzero hlive htest) ?_
+      MachineSpliceStream.serialize_clip01 hraw
+  have hzero : MachineSpliceStream (fun _ : ℕ ↦ (EF.const 0).serialize) :=
+    MachineSpliceStream.serialize_const 0
+  have htest : UnaryRuler (fun x ↦ nf x + 1 - kf x) :=
+    UnaryRuler.of_polyFueled
+      ((subc_polyFueled.comp (hn.succ_comp.pair hk)).of_eq
+        (fun x ↦ by simp only [Nat.unpair_pair]))
+  refine MachineSpliceStream.of_eq (MachineSpliceStream.ifZero hzero hlive htest) ?_
   intro x
   by_cases hpad : nf x < kf x
   · have ht : nf x + 1 - kf x = 0 := by omega
@@ -613,19 +681,22 @@ lemma dusSignal_rpnSpliceStream
     simp [ht, dusSignal, hpad]
 
 /-- Uniform emission of the per-event spent-fraction feature. -/
-lemma dusCostEF_rpnSpliceStream
+lemma dusCostEF_machineSpliceStream
     {DP : DeductiveProcess}
     {M : LowerSemicomputableContinuousSemimeasure}
     {B : BitPrefixSentences DP} (A : DUSApproximationPresentation M B)
     (emit : DUSThresholdEmission A) :
-    BigSpliceStream (fun z ↦ (dusCostEF A z.unpair.1 z.unpair.2).serialize) := by
-  have hsignal := dusSignal_rpnSpliceStream A emit PolyFueled.left PolyFueled.right
-  have hidx : PolyFueled _ (fun z ↦ z.unpair.2.unpair.2) :=
-    PolyFueled.right.comp PolyFueled.right
-  have hprice := BigSpliceStream.serialize_price B.prefix_codes hidx PolyFueled.right
-  exact BigSpliceStream.serialize_mul hsignal hprice
+    MachineSpliceStream (fun z ↦ (dusCostEF A z.unpair.1 z.unpair.2).serialize) := by
+  have hsignal := dusSignal_machineSpliceStream A emit PolyFueled.left PolyFueled.right
+  have hidx : UnaryRuler (fun z ↦ z.unpair.2.unpair.2) :=
+    (UnaryRuler.unpairSnd.comp UnaryRuler.unpairSnd)
+  have hprice := MachineSpliceStream.serialize_price B.prefix_codes hidx
+    (MachineDigits.ofUnaryRuler UnaryRuler.unpairSnd)
+  exact MachineSpliceStream.serialize_mul hsignal hprice
 
-/-- All earlier purchases remain charged to the one unit of cash. -/
+/-- The all-open closing schedule: no purchase is ever released, so every purchase stays
+charged to the one unit of cash and `ROIBudget.weight dusActive` is the remaining budget
+(`dusActive_closing`). -/
 def dusActive (_ _ : ℕ) : Bool := true
 
 lemma dusActive_closing : ROIBudget.ClosingSchedule dusActive := by
@@ -646,14 +717,14 @@ def dusSharesEF {DP : DeductiveProcess}
     (k n : ℕ) : EF :=
   .mul (dusRemainingEF A k n) (dusSignal A k n)
 
-/- Uniform emission of the all-open budget-recurrence body for input `⟨k,j⟩`. -/
 attribute [local irreducible] Nat.sqrt in
-lemma dusWeightBody_rpnSpliceStream
+/-- Uniform emission of the all-open budget-recurrence body for input `⟨k, j⟩`. -/
+lemma dusWeightBody_machineSpliceStream
     {DP : DeductiveProcess}
     {M : LowerSemicomputableContinuousSemimeasure}
     {B : BitPrefixSentences DP} (A : DUSApproximationPresentation M B)
     (emit : DUSThresholdEmission A) :
-    BigSpliceStream (fun z ↦
+    MachineSpliceStream (fun z ↦
       (ROIBudget.featureWeightBody dusActive (dusCostEF A z.unpair.1)
         z.unpair.2).serialize) := by
   have hk : PolyFueled _ (fun z ↦ z.unpair.1.unpair.1) :=
@@ -661,97 +732,100 @@ lemma dusWeightBody_rpnSpliceStream
   have hj : PolyFueled _ (fun z ↦ z.unpair.1.unpair.2) :=
     PolyFueled.right.comp PolyFueled.left
   have hi : PolyFueled _ (fun z ↦ z.unpair.2) := PolyFueled.right
-  have hidx : PolyFueled _ (fun z ↦ z.unpair.1.unpair.2 - 1 - z.unpair.2) :=
-    (subc_polyFueled.comp
-      ((predc_polyFueled.comp hj).pair hi)).of_eq
-        (fun z ↦ by simp [Nat.pred_eq_sub_one])
-  have hvar : BigSpliceStream (fun z ↦
+  have hidx : UnaryRuler (fun z ↦ z.unpair.1.unpair.2 - 1 - z.unpair.2) :=
+    UnaryRuler.of_polyFueled
+      ((subc_polyFueled.comp
+        ((predc_polyFueled.comp hj).pair hi)).of_eq
+          (fun z ↦ by simp [Nat.pred_eq_sub_one]))
+  have hvar : MachineSpliceStream (fun z ↦
       (EF.var (z.unpair.1.unpair.2 - 1 - z.unpair.2)).serialize) :=
-    BigSpliceStream.serialize_var hidx
-  have hcanonical : PolyFueled _ (fun z ↦
-      Nat.pair z.unpair.1.unpair.1 z.unpair.2) := hk.pair hi
-  have hcost : BigSpliceStream (fun z ↦
+    MachineSpliceStream.serialize_var (MachineDigits.ofUnaryRuler hidx)
+  have hcanonical : UnaryRuler (fun z ↦
+      Nat.pair z.unpair.1.unpair.1 z.unpair.2) :=
+    UnaryRuler.of_polyFueled (hk.pair hi)
+  have hcost : MachineSpliceStream (fun z ↦
       (dusCostEF A z.unpair.1.unpair.1 z.unpair.2).serialize) := by
-    refine BigSpliceStream.of_eq
-      ((dusCostEF_rpnSpliceStream A emit).comp hcanonical) ?_
+    refine MachineSpliceStream.of_eq
+      ((dusCostEF_machineSpliceStream A emit).comp hcanonical) ?_
     intro z
     simp only [Nat.unpair_pair]
-  have hterm : BigSpliceStream (fun z ↦
+  have hterm : MachineSpliceStream (fun z ↦
       (EF.mul (EF.var (z.unpair.1.unpair.2 - 1 - z.unpair.2))
         (dusCostEF A z.unpair.1.unpair.1 z.unpair.2)).serialize) :=
-    BigSpliceStream.serialize_mul hvar hcost
-  have hterms : BigSpliceStream (fun z ↦
+    MachineSpliceStream.serialize_mul hvar hcost
+  have hterms : MachineSpliceStream (fun z ↦
       (List.range z.unpair.2).flatMap (fun i ↦
         (EF.mul (EF.var (z.unpair.2 - 1 - i))
           (dusCostEF A z.unpair.1 i)).serialize)) := by
-    refine BigSpliceStream.of_eq
-      (BigSpliceStream.concatVar hterm PolyFueled.right) ?_
+    refine MachineSpliceStream.of_eq
+      (MachineSpliceStream.concatVar hterm UnaryRuler.unpairSnd) ?_
     intro z
     simp only [Nat.unpair_pair]
-  have hzero : BigSpliceStream (fun _ : ℕ ↦ (EF.const 0).serialize) :=
-    BigSpliceStream.serialize_const 0
-  have htags : BigSpliceStream (fun z ↦ List.replicate z.unpair.2 2) :=
-    BigSpliceStream.repeatTag 2 (by norm_num) PolyFueled.right
+  have hzero : MachineSpliceStream (fun _ : ℕ ↦ (EF.const 0).serialize) :=
+    MachineSpliceStream.serialize_const 0
+  have htags : MachineSpliceStream (fun z ↦ List.replicate z.unpair.2 2) :=
+    MachineSpliceStream.repeatTag 2 (by norm_num) UnaryRuler.unpairSnd
   have hsumRaw := (hterms.append hzero).append htags
-  have hsum : BigSpliceStream (fun z ↦
+  have hsum : MachineSpliceStream (fun z ↦
       (ROIBudget.sumFeatures (List.ofFn (fun i : Fin z.unpair.2 ↦
         EF.mul (EF.var (z.unpair.2 - 1 - i))
           (dusCostEF A z.unpair.1 i)))).serialize) := by
-    refine BigSpliceStream.of_eq hsumRaw ?_
+    refine MachineSpliceStream.of_eq hsumRaw ?_
     intro z
     rw [ROIBudget.serialize_sumFeatures]
     simp only [List.length_ofFn]
     congr 2
     rw [← List.map_coe_finRange_eq_range, List.flatMap_map]
     simp only [List.ofFn_eq_map, List.flatMap_map]
-  have hone : BigSpliceStream (fun _ : ℕ ↦ (EF.const 1).serialize) :=
-    BigSpliceStream.serialize_const 1
-  have hneg : BigSpliceStream (fun _ : ℕ ↦ (EF.const (-1)).serialize) :=
-    BigSpliceStream.serialize_const (-1)
-  have hbody := BigSpliceStream.serialize_add hone
-    (BigSpliceStream.serialize_mul hneg hsum)
-  refine BigSpliceStream.of_eq hbody ?_
+  have hone : MachineSpliceStream (fun _ : ℕ ↦ (EF.const 1).serialize) :=
+    MachineSpliceStream.serialize_const 1
+  have hneg : MachineSpliceStream (fun _ : ℕ ↦ (EF.const (-1)).serialize) :=
+    MachineSpliceStream.serialize_const (-1)
+  have hbody := MachineSpliceStream.serialize_add hone
+    (MachineSpliceStream.serialize_mul hneg hsum)
+  refine MachineSpliceStream.of_eq hbody ?_
   intro z
   simp only [ROIBudget.featureWeightBody, dusActive, if_true]
 
 /-- The shared remaining-budget feature is uniformly polynomial across both scale and
 day; previous recurrence values are referenced by `EF.var`, not duplicated. -/
-lemma dusRemainingEF_rpnSpliceStream
+lemma dusRemainingEF_machineSpliceStream
     {DP : DeductiveProcess}
     {M : LowerSemicomputableContinuousSemimeasure}
     {B : BitPrefixSentences DP} (A : DUSApproximationPresentation M B)
     (emit : DUSThresholdEmission A) :
-    BigSpliceStream (fun z ↦ (dusRemainingEF A z.unpair.1 z.unpair.2).serialize) := by
-  have hbody := dusWeightBody_rpnSpliceStream A emit
-  have hcanonical : PolyFueled _ (fun q ↦
+    MachineSpliceStream (fun z ↦ (dusRemainingEF A z.unpair.1 z.unpair.2).serialize) := by
+  have hbody := dusWeightBody_machineSpliceStream A emit
+  have hcanonical : UnaryRuler (fun q ↦
       Nat.pair q.unpair.1.unpair.1 q.unpair.2) :=
-    (PolyFueled.left.comp PolyFueled.left).pair PolyFueled.right
-  have hbodies : BigSpliceStream (fun z ↦
+    ((UnaryRuler.unpairFst.comp UnaryRuler.unpairFst).pair UnaryRuler.unpairSnd)
+  have hbodies : MachineSpliceStream (fun z ↦
       (List.range (z.unpair.2 + 1)).flatMap (fun j ↦
         (ROIBudget.featureWeightBody dusActive (dusCostEF A z.unpair.1) j).serialize)) := by
-    refine BigSpliceStream.of_eq
-      (BigSpliceStream.concatVar (hbody.comp hcanonical)
-        PolyFueled.right.succ_comp) ?_
+    refine MachineSpliceStream.of_eq
+      (MachineSpliceStream.concatVar (hbody.comp hcanonical)
+        (UnaryRuler.unpairSnd.succ)) ?_
     intro z
     simp only [Nat.unpair_pair]
-  have hvar : BigSpliceStream (fun _ : ℕ ↦ (EF.var 0).serialize) :=
-    BigSpliceStream.serialize_var (PolyFueled.const 0)
-  have htags : BigSpliceStream (fun z ↦ List.replicate (z.unpair.2 + 1) 8) :=
-    BigSpliceStream.repeatTag 8 (by norm_num) PolyFueled.right.succ_comp
-  refine BigSpliceStream.of_eq ((hbodies.append hvar).append htags) ?_
+  have hvar : MachineSpliceStream (fun _ : ℕ ↦ (EF.var 0).serialize) :=
+    MachineSpliceStream.serialize_var (MachineDigits.const 0)
+  have htags : MachineSpliceStream (fun z ↦ List.replicate (z.unpair.2 + 1) 8) :=
+    MachineSpliceStream.repeatTag 8 (by norm_num)
+      (UnaryRuler.unpairSnd.succ)
+  refine MachineSpliceStream.of_eq ((hbodies.append hvar).append htags) ?_
   intro z
-  rw [dusRemainingEF, ROIBudget.sharedFeatureWeight,
-    ROIBudget.sharedWeights_serialize, List.range_eq_range']
+  rw [dusRemainingEF, ROIBudget.sharedFeatureWeight, ROIBudget.sharedOf,
+    ROIBudget.letChain_serialize, List.range_eq_range']
 
 /-- Uniform emission of the share coefficient. -/
-lemma dusSharesEF_rpnSpliceStream
+lemma dusSharesEF_machineSpliceStream
     {DP : DeductiveProcess}
     {M : LowerSemicomputableContinuousSemimeasure}
     {B : BitPrefixSentences DP} (A : DUSApproximationPresentation M B)
     (emit : DUSThresholdEmission A) :
-    BigSpliceStream (fun z ↦ (dusSharesEF A z.unpair.1 z.unpair.2).serialize) :=
-  BigSpliceStream.serialize_mul (dusRemainingEF_rpnSpliceStream A emit)
-    (dusSignal_rpnSpliceStream A emit PolyFueled.left PolyFueled.right)
+    MachineSpliceStream (fun z ↦ (dusSharesEF A z.unpair.1 z.unpair.2).serialize) :=
+  MachineSpliceStream.serialize_mul (dusRemainingEF_machineSpliceStream A emit)
+    (dusSignal_machineSpliceStream A emit PolyFueled.left PolyFueled.right)
 
 lemma dusRemainingEF_rank_le {DP : DeductiveProcess}
     {M : LowerSemicomputableContinuousSemimeasure}
@@ -1083,19 +1157,6 @@ lemma dusSpendPrefix_mul_le_meanPrefix
       (lt_div_iff₀ hkpos).mp hprice
     nlinarith
 
-/-- Every dollar spent increases semimeasure-weighted payout by at least the paper's
-factor `2(k+1)`. -/
-lemma dusSpend_mul_le_meanPayout
-    {DP : DeductiveProcess}
-    {M : LowerSemicomputableContinuousSemimeasure}
-    {B : BitPrefixSentences DP} (A : DUSApproximationPresentation M B)
-    (P : History) (hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1)
-    (k n : ℕ) :
-    (2 * ((k + 1 : ℕ) : ℝ)) * dusSpendThrough A P k n ≤
-      dusMeanPayoutThrough A P k n := by
-  simpa [dusSpendThrough, dusMeanPayoutThrough] using
-    dusSpendPrefix_mul_le_meanPrefix A P hP k (n + 1)
-
 lemma dusSpendThrough_eq
     {DP : DeductiveProcess}
     {M : LowerSemicomputableContinuousSemimeasure}
@@ -1119,6 +1180,8 @@ lemma dusSpendThrough_eq
     ring
   · rw [dusShares_eq, dusCostEF_denote]
     ring
+
+/-! ### Budget accounting and the divergence hinge -/
 
 /-- The reified recurrence is exactly one minus all earlier purchase costs. -/
 lemma dusRemainingEF_denote_eq_one_sub_spendBefore
@@ -1186,6 +1249,31 @@ lemma tendsto_pair_left_atTop (i : ℕ) :
   filter_upwards [eventually_ge_atTop N] with m hm
   exact hm.trans (Nat.left_le_pair m i)
 
+/-- A prefix whose limiting belief falls below its scaled mass has positive mass: a
+nonpositive mass would make the scaled bound nonpositive, contradicting the nonnegativity
+of a limiting belief. -/
+private lemma dus_mass_pos_of_low_limit
+    {DP : DeductiveProcess}
+    {M : LowerSemicomputableContinuousSemimeasure}
+    {B : BitPrefixSentences DP}
+    (P : History) [IsLogicalInductor P DP]
+    (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
+    (k i : ℕ)
+    (hlow : limitingBelief P (B.prefixSentence (B.enumeration i)) <
+      M.mass (B.enumeration i) / (8 * ((k + 1 : ℕ) : ℝ))) :
+    0 < M.mass (B.enumeration i) := by
+  set φ := B.prefixSentence (B.enumeration i) with hφ
+  have hconv := lic_limitingBelief_tendsto P DP hworld φ
+  have hlim0 : 0 ≤ limitingBelief P φ :=
+    ge_of_tendsto hconv (Filter.Eventually.of_forall
+      (fun n ↦ (IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n φ).1))
+  have hkpos : 0 < (8 * ((k + 1 : ℕ) : ℝ)) := by positivity
+  by_contra h
+  push Not at h
+  have hdivle : M.mass (B.enumeration i) / (8 * ((k + 1 : ℕ) : ℝ)) ≤ 0 :=
+    div_nonpos_of_nonpos_of_nonneg h hkpos.le
+  linarith
+
 /-- A prefix violating the scale-`k` domination bound eventually fires at full strength
 on every sufficiently late revisit. -/
 lemma eventually_dusSignal_eq_one_of_low_limit
@@ -1199,8 +1287,6 @@ lemma eventually_dusSignal_eq_one_of_low_limit
       M.mass (B.enumeration i) / (8 * ((k + 1 : ℕ) : ℝ))) :
     ∀ᶠ m in atTop,
       (dusSignal A k (Nat.pair m i)).denote P = 1 := by
-  have hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1 :=
-    fun n φ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n φ
   let φ := B.prefixSentence (B.enumeration i)
   have hvisit := tendsto_pair_left_atTop i
   have hconv0 := lic_limitingBelief_tendsto P DP hworld φ
@@ -1209,18 +1295,8 @@ lemma eventually_dusSignal_eq_one_of_low_limit
   have happ : Tendsto
       (fun m ↦ ((A.approximation (Nat.pair m i) i : ℚ) : ℝ)) atTop
       (𝓝 (M.mass (B.enumeration i))) := (A.tendsto i).comp hvisit
-  have hlim0 : 0 ≤ limitingBelief P φ :=
-    ge_of_tendsto hconv0 (Filter.Eventually.of_forall (fun n ↦ (hP n φ).1))
-  have hmass : 0 < M.mass (B.enumeration i) := by
-    have hlow' : limitingBelief P φ < M.mass (B.enumeration i) /
-        (8 * ((k + 1 : ℕ) : ℝ)) := by simpa only [φ] using hlow
-    have hkpos : 0 < (8 * ((k + 1 : ℕ) : ℝ)) := by positivity
-    by_contra h
-    push_neg at h
-    have hdivle : M.mass (B.enumeration i) /
-        (8 * ((k + 1 : ℕ) : ℝ)) ≤ 0 :=
-      div_nonpos_of_nonpos_of_nonneg h hkpos.le
-    linarith
+  have hmass : 0 < M.mass (B.enumeration i) :=
+    dus_mass_pos_of_low_limit P hworld k i hlow
   have hscale : Tendsto
       (fun m ↦ (1 / (4 * ((k + 1 : ℕ) : ℝ))) *
         ((A.approximation (Nat.pair m i) i : ℚ) : ℝ)) atTop
@@ -1286,22 +1362,10 @@ lemma exists_dusMeanPayout_ge_of_low_limit
     fun n φ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n φ
   have hevent := eventually_dusSignal_eq_one_of_low_limit A P hworld k i hlow
   obtain ⟨N, hN⟩ := Filter.eventually_atTop.1 hevent
-  have hmass : 0 < M.mass (B.enumeration i) := by
-    let φ := B.prefixSentence (B.enumeration i)
-    have hconv := lic_limitingBelief_tendsto P DP hworld φ
-    have hlim0 : 0 ≤ limitingBelief P φ :=
-      ge_of_tendsto hconv (Filter.Eventually.of_forall (fun n ↦ (hP n φ).1))
-    have hlow' : limitingBelief P φ < M.mass (B.enumeration i) /
-        (8 * ((k + 1 : ℕ) : ℝ)) := by simpa only [φ] using hlow
-    have hkpos : 0 < (8 * ((k + 1 : ℕ) : ℝ)) := by positivity
-    by_contra h
-    push_neg at h
-    have hdivle : M.mass (B.enumeration i) /
-        (8 * ((k + 1 : ℕ) : ℝ)) ≤ 0 :=
-      div_nonpos_of_nonpos_of_nonneg h hkpos.le
-    linarith
+  have hmass : 0 < M.mass (B.enumeration i) :=
+    dus_mass_pos_of_low_limit P hworld k i hlow
   by_contra hreach
-  push_neg at hreach
+  push Not at hreach
   let g : ℕ → ℕ := fun r ↦ Nat.pair (N + r) i
   have hg : StrictMono g := by
     intro a b hab
@@ -1427,22 +1491,19 @@ def dusScaleTrader_polyTradeEmulatable
   coefficient z := dusSharesEF A z.unpair.1.unpair.1 z.unpair.1.unpair.2
   sentence z := dusSentence B z.unpair.1.unpair.2
   tradeCount_poly := by
-    have htest : PolyFueled _ (fun w ↦ w.unpair.2 + 1 - w.unpair.1) :=
-      (subc_polyFueled.comp
-        (PolyFueled.right.succ_comp.pair PolyFueled.left)).of_eq
-          (fun w ↦ by simp only [Nat.unpair_pair])
-    refine ⟨_, (ifzSel_polyFueled.comp
-      ((PolyFueled.const (Nat.pair 0 1)).pair htest)).of_eq (fun w ↦ ?_)⟩
-    simp only [Nat.unpair_pair, ifzSelFn]
+    have htest : UnaryRuler (fun w ↦ w.unpair.2 + 1 - w.unpair.1) :=
+      UnaryRuler.unpairSnd.succ.sub UnaryRuler.unpairFst
+    refine UnaryRuler.of_eq
+      (htest.ifZero (UnaryRuler.const 0) (UnaryRuler.const 1)) (fun w ↦ ?_)
     by_cases h : w.unpair.2 < w.unpair.1
     · rw [if_pos (by omega), if_pos h]
     · rw [if_neg (by omega), if_neg h]
   coefficient_poly :=
-    ((dusSharesEF_rpnSpliceStream A emit).comp PolyFueled.left).of_eq
-      (fun _ ↦ rfl)
+    ((dusSharesEF_machineSpliceStream A emit).comp
+      (UnaryRuler.unpairFst)).of_eq (fun _ ↦ rfl)
   sentence_poly :=
-    (B.prefix_codes.comp
-      (PolyFueled.right.comp (PolyFueled.right.comp PolyFueled.left))).of_eq
+    (B.prefix_codes.comp (f := fun z : ℕ ↦ z.unpair.1.unpair.2.unpair.2)
+      (UnaryRuler.unpairSnd.comp (UnaryRuler.unpairSnd.comp UnaryRuler.unpairFst))).of_eq
       (fun z ↦ by simp only [dusSentence, dusPrefix])
   trades_eq := by
     intro k n
@@ -1452,12 +1513,12 @@ def dusScaleTrader_polyTradeEmulatable
       simp
 
 /-- Uniform token stream for the entire scale family. -/
-lemma dusScaleTrader_family_rpnSpliceStream
+lemma dusScaleTrader_family_machineSpliceStream
     {DP : DeductiveProcess}
     {M : LowerSemicomputableContinuousSemimeasure}
     {B : BitPrefixSentences DP} (A : DUSApproximationPresentation M B)
     (emit : DUSThresholdEmission A) :
-    BigSpliceStream (fun z ↦
+    MachineSpliceStream (fun z ↦
       serializeTrades ((dusScaleTrader A z.unpair.1).strat z.unpair.2).trades) :=
   (dusScaleTrader_polyTradeEmulatable A emit).polySeg
 
@@ -1470,13 +1531,14 @@ lemma dusScaleTrader_ec
     EfficientlyComputable (dusScaleTrader A k) := by
   have hinput : PolyFueled _ (fun n ↦ Nat.pair k n) :=
     (PolyFueled.const k).pair PolyFueled.id
-  have hseg : BigSpliceStream (fun n ↦
+  have hseg : MachineSpliceStream (fun n ↦
       serializeTrades ((dusScaleTrader A k).strat n).trades) := by
-    refine BigSpliceStream.of_eq
-      ((dusScaleTrader_family_rpnSpliceStream A emit).comp hinput) ?_
+    refine MachineSpliceStream.of_eq
+      ((dusScaleTrader_family_machineSpliceStream A emit).comp
+        (f := fun n : ℕ => Nat.pair k n) (UnaryRuler.of_polyFueled hinput)) ?_
     intro n
     rw [Nat.unpair_pair k n]
-  exact BigSpliceStream.ec _ hseg
+  exact MachineSpliceStream.ec _ hseg
 
 lemma dusScaleTrader_value
     {DP : DeductiveProcess}
@@ -1747,8 +1809,6 @@ lemma exists_live_consistent_dusScaleTrader_netWorth_ge_of_low_limit
       M.mass (B.enumeration i) / (8 * ((k + 1 : ℕ) : ℝ))) :
     ∃ n, ∃ v : PCWorld, k ≤ n ∧ v.ConsistentWith (DP.D n) ∧
       (k : ℝ) ≤ (dusScaleTrader A k).netWorth P v n := by
-  have hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1 :=
-    fun n φ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n φ
   obtain ⟨n, v, hv, hnet⟩ :=
     exists_consistent_dusScaleTrader_netWorth_ge_of_low_limit
       A P hworld k i hlow
@@ -1878,68 +1938,73 @@ lemma dusDiagonalWeight_polyRatCodes
   rw [encode_dusDiagonalWeight]
 
 /-- Token-metered emitter for the inverse-square diagonal trader. -/
-lemma dusTrader_rpnSpliceStream
+lemma dusTrader_machineSpliceStream
     {DP : DeductiveProcess}
     {M : LowerSemicomputableContinuousSemimeasure}
     {B : BitPrefixSentences DP} (A : DUSApproximationPresentation M B)
     (emit : DUSThresholdEmission A) :
-    BigSpliceStream (fun n ↦ serializeTrades ((dusTrader A).strat n).trades) := by
+    MachineSpliceStream (fun n ↦ serializeTrades ((dusTrader A).strat n).trades) := by
   have hday : PolyFueled _ (fun q ↦ q.unpair.1) := PolyFueled.left
   have hrung : PolyFueled _ (fun q ↦ q.unpair.2) := PolyFueled.right
   obtain ⟨cscale, hscale⟩ := dusDiagonalScale_polyFueled hrung
-  have hcanonical : PolyFueled _ (fun q ↦
+  have hcanonical : UnaryRuler (fun q ↦
       Nat.pair (dusDiagonalScale q.unpair.2) q.unpair.1) :=
-    hscale.pair hday
-  have hshares : BigSpliceStream (fun q ↦
+    UnaryRuler.of_polyFueled (hscale.pair hday)
+  have hshares : MachineSpliceStream (fun q ↦
       (dusSharesEF A (dusDiagonalScale q.unpair.2) q.unpair.1).serialize) := by
-    refine BigSpliceStream.of_eq
-      ((dusSharesEF_rpnSpliceStream A emit).comp hcanonical) ?_
+    refine MachineSpliceStream.of_eq
+      ((dusSharesEF_machineSpliceStream A emit).comp hcanonical) ?_
     intro q
     simp only [Nat.unpair_pair]
-  have hweight : BigSpliceStream (fun q ↦
+  have hweight : MachineSpliceStream (fun q ↦
       (EF.const (dusDiagonalWeight q.unpair.2)).serialize) :=
-    BigSpliceStream.serialize_const_comp
-      (dusDiagonalWeight_polyRatCodes hrung)
-  have hscaled : BigSpliceStream (fun q ↦
+    MachineSpliceStream.serialize_const_write
+      (MachineRatCodes.toMachineDigits
+        (DigitRatCodes.toMachine
+          (DigitRatCodes.ofPolyRatCodes (dusDiagonalWeight_polyRatCodes hrung))))
+  have hscaled : MachineSpliceStream (fun q ↦
       (EF.mul (EF.const (dusDiagonalWeight q.unpair.2))
         (dusSharesEF A (dusDiagonalScale q.unpair.2) q.unpair.1)).serialize) :=
-    BigSpliceStream.serialize_mul hweight hshares
-  have hidx : PolyFueled _ (fun q ↦ q.unpair.1.unpair.2) :=
-    PolyFueled.right.comp hday
-  have hframe : BigSpliceStream (fun q ↦
+    MachineSpliceStream.serialize_mul hweight hshares
+  have hidx : UnaryRuler (fun q ↦ q.unpair.1.unpair.2) :=
+    UnaryRuler.of_polyFueled (PolyFueled.right.comp hday)
+  have hframe : MachineSpliceStream (fun q ↦
       [6, Encodable.encode (dusSentence B q.unpair.1)]) :=
-    (BigSpliceStream.tradeSlot B.prefix_codes hidx).of_eq
+    (MachineSpliceStream.tradeSlot B.prefix_codes hidx).of_eq
       (fun q ↦ by simp [dusSentence, dusPrefix])
-  have hlive : BigSpliceStream (fun q ↦ serializeTrades [
+  have hlive : MachineSpliceStream (fun q ↦ serializeTrades [
       (EF.mul (EF.const (dusDiagonalWeight q.unpair.2))
         (dusSharesEF A (dusDiagonalScale q.unpair.2) q.unpair.1),
       dusSentence B q.unpair.1)]) := by
-    refine BigSpliceStream.of_eq (hscaled.append hframe) ?_
+    refine MachineSpliceStream.of_eq (hscaled.append hframe) ?_
     intro q
     simp [serializeTrades]
-  have hzero : BigSpliceStream (fun _ : ℕ ↦ serializeTrades []) :=
-    BigSpliceStream.ofTransparent
-      (BigTokenStream.ofPolySegStream
-        (PolySegStream.ofTokenStream PolyTokenStream.trades_nil))
+  have hzero : MachineSpliceStream (fun _ : ℕ ↦ serializeTrades []) :=
+    MachineSpliceStream.ofTransparent
+      (BigTokenStream.toMachine
+        (BigTokenStream.ofPolySegStream
+          (PolySegStream.ofTokenStream PolyTokenStream.trades_nil)))
       (fun _ ↦ by simpa [serializeTrades] using UnRpnTransparent.nil)
-  have htest : PolyFueled _ (fun q ↦
+  have htest : UnaryRuler (fun q ↦
       q.unpair.1 + 1 - dusDiagonalScale q.unpair.2) :=
-    (subc_polyFueled.comp (hday.succ_comp.pair hscale)).of_eq
-      (fun q ↦ by simp only [Nat.unpair_pair])
-  have hone : BigSpliceStream (fun q ↦
+    UnaryRuler.of_polyFueled
+      ((subc_polyFueled.comp (hday.succ_comp.pair hscale)).of_eq
+        (fun q ↦ by simp only [Nat.unpair_pair]))
+  have hone : MachineSpliceStream (fun q ↦
       serializeTrades
         ((Strategy.scaleBy (EF.const (dusDiagonalWeight q.unpair.2))
           (by simp [EF.rank])
           ((dusScaleTrader A (dusDiagonalScale q.unpair.2)).strat q.unpair.1)).trades)) := by
-    refine BigSpliceStream.of_eq (BigSpliceStream.ifZero hzero hlive htest) ?_
+    refine MachineSpliceStream.of_eq (MachineSpliceStream.ifZero hzero hlive htest) ?_
     intro q
     by_cases hpad : q.unpair.1 < dusDiagonalScale q.unpair.2
     · have ht : q.unpair.1 + 1 - dusDiagonalScale q.unpair.2 = 0 := by omega
       simp [ht, Strategy.scaleBy, dusScaleTrader, hpad]
     · have ht : q.unpair.1 + 1 - dusDiagonalScale q.unpair.2 ≠ 0 := by omega
       simp [ht, Strategy.scaleBy, dusScaleTrader, hpad]
-  have hall := BigSpliceStream.concatVar hone PolyFueled.id.succ_comp
-  refine BigSpliceStream.of_eq hall ?_
+  have hall := MachineSpliceStream.concatVar hone
+    (UnaryRuler.id.succ)
+  refine MachineSpliceStream.of_eq hall ?_
   intro n
   rw [dusTrader]
   simp only [Strategy.join]
@@ -1951,20 +2016,35 @@ lemma dusTrader_rpnSpliceStream
   rw [hdayeq]
   simp
 
-/-- The diagonal trader is efficiently computable. -/
+/-- The diagonal trader is efficiently computable, at `def:ec`'s own quantifier: some
+`Complexity.FP` function of the unary day emits the day's strategy. -/
 lemma dusTrader_ec
     {DP : DeductiveProcess}
     {M : LowerSemicomputableContinuousSemimeasure}
     {B : BitPrefixSentences DP} (A : DUSApproximationPresentation M B)
     (emit : DUSThresholdEmission A) :
     EfficientlyComputable (dusTrader A) :=
-  BigSpliceStream.ec _ (dusTrader_rpnSpliceStream A emit)
+  MachineSpliceStream.ec _ (dusTrader_machineSpliceStream A emit)
 
-/-! ### Paper-facing domination theorem -/
+/-! ## Domination of the universal semimeasure (`thm:dus`) -/
 
-/-- **Domination of the Universal Semimeasure** (`thm:dus`). One positive constant
+/-- **Domination of the Universal Semimeasure** (`thm:dus`).  One positive constant
 simultaneously lower-bounds the limiting probability of every finite bit prefix by its
 continuous-semimeasure mass.
+
+Stronger than printed: the paper fixes a *universal* continuous semimeasure, while this
+holds of every lower-semicomputable one.
+
+Four inputs have no counterpart in the paper, all of them conclusion-free presentation
+data (module docstring): `B`, the prefix sentences naming the paper's independent bit
+atoms; `A`, the polynomial-time from-below rational table the paper's proof first
+compiles; `emit`, the uniform token emission certifying the resulting trader efficient;
+and `hworld`, non-emptiness of the worlds consistent with each finite stage,
+which the paper takes for granted.
+
+The criterion binder is `IsLogicalInductor` because the exploiting trader is
+certified at `EfficientlyComputable` (`dusTrader_ec`) — `def:ec`'s own machine quantifier
+on both sides, which is the paper's statement rather than a loss.
 Paper node: `thm:dus` -/
 theorem lic_domination_universalSemimeasure
     {DP : DeductiveProcess}
@@ -1975,14 +2055,10 @@ theorem lic_domination_universalSemimeasure
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     ∃ C : ℝ, 0 < C ∧ ∀ σ,
       C * M.mass σ ≤ limitingBelief P (B.prefixSentence σ) := by
-  have hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1 :=
-    fun n φ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n φ
   by_cases hscale : ∃ j : ℕ, ∀ σ,
       M.mass σ / (8 * ((dusDiagonalScale j + 1 : ℕ) : ℝ)) ≤
         limitingBelief P (B.prefixSentence σ)
   · obtain ⟨j, hall⟩ := hscale
-    have hden : (0 : ℝ) < 8 * ((dusDiagonalScale j + 1 : ℕ) : ℝ) := by
-      positivity
     refine ⟨1 / (8 * ((dusDiagonalScale j + 1 : ℕ) : ℝ)),
       by positivity, fun σ ↦ ?_⟩
     convert hall σ using 1
@@ -2009,25 +2085,11 @@ theorem lic_domination_universalSemimeasure
       (dusTrader A) (dusTrader_ec A emit)
       (dusTrader_exploits_of_failed_scales A P hworld hfail)
 
+/-! ## Strict domination of the universal semimeasure (`thm:strict`)
 
-#print axioms semimeasureMean_root_le_max
-#print axioms dusSpendThrough_le_one
-#print axioms dusScaleTrader_netWorth_ge_neg_one
-#print axioms dusScaleTrader_ec
-#print axioms exists_dusMeanPayout_ge_of_low_limit
-#print axioms exists_consistent_dusGrossPayout_ge_mean
-#print axioms dusTrader_netWorth_ge_neg_two
-#print axioms dusTrader_exploits_of_failed_scales
-#print axioms dusTrader_ec
-#print axioms lic_domination_universalSemimeasure
-
-/-! ## Strict Domination of the Universal Semimeasure (`thm:strict`)
-
-Only the market half is proved here.  It is factored over
-`StrictSeparatorPresentation`, an interface holding the computability-theory data, and
-that interface mentions no market price and no strict-domination conclusion — it cannot
-smuggle the theorem in as a hypothesis.  The interface is discharged by
-`strictSeparatorPresentationOfKleene` in `Construction/Witnesses/StrictSeparators.lean`,
+Only the market half is proved here.  It is factored over `StrictSeparatorPresentation`,
+the conclusion-free interface holding the computability-theory data, discharged by
+`strictSeparatorPresentationOfKleene` in `Construction/NonDogmatism/StrictSeparators.lean`,
 which builds it from Kleene's recursively inseparable pair.
 
 The separator data is the paper's (`app:strict`): a **c.e. constraint theory** — one
@@ -2037,8 +2099,6 @@ the constraints decided so far.  Undecided bits stay free, so the constraints ne
 assemble into a single nested prefix family, and no such family would do: by
 `no_ce_null_prefix_family` (same construction file), a nested prefix family with a
 computable enumeration always keeps positive universal-semimeasure mass. -/
-
-open Filter Topology
 
 /-- Interface to the recursively-inseparable separator class used in the paper's proof of
 Strict Domination.  `mass_class_tendsto_zero` is the computability-theory fact it exists
@@ -2065,18 +2125,28 @@ structure StrictSeparatorPresentation
   mass_class_tendsto_zero :
     Tendsto (fun n ↦ ((consistentAt n).map M.mass).sum) atTop (𝓝 0)
 
-/-- General market half of the strict-domination proof.  Uniform Non-Dogmatism puts a fixed
-positive floor under every stage of the constraint theory; limit coherence spreads that
-floor over the stage's finite consistent class; and vanishing class mass then forces some
-member of the class to beat any fixed multiple of its semimeasure mass. -/
-lemma strict_domination_of_null_separator_class
+/-- **Strict Domination of the Universal Semimeasure** (`thm:strict`).  The universal
+continuous semimeasure does not dominate the logical inductor's limiting prefix beliefs:
+no positive constant `C` bounds every prefix belief by `C` times its mass.
+
+The paper states no hypothesis here, because `app:strict` constructs the separator inside
+the proof.  `S` is that construction's data, held at the conclusion-free interface
+described in the section header and discharged by `strictSeparatorPresentationOfKleene`
+(`Construction/NonDogmatism/StrictSeparators.lean`).
+
+The proof is the paper's: Uniform Non-Dogmatism puts a fixed positive floor under every
+stage of the constraint theory; limit coherence spreads that floor over the stage's finite
+consistent class; and vanishing class mass then forces some member of the class to beat any
+fixed multiple of its semimeasure mass.
+Paper node: `thm:strict` -/
+theorem lic_strict_domination_universalSemimeasure
     {DP : DeductiveProcess}
     {M : UniversalContinuousSemimeasure}
     {B : BitPrefixSentences DP}
     (P : History) [IsLogicalInductor P DP]
     (S : StrictSeparatorPresentation M B) :
     ∀ C : ℝ, 0 < C → ∃ σ : List Bool,
-      C * M.mass σ < limitingBelief P (B.prefixSentence σ) := by
+      limitingBelief P (B.prefixSentence σ) > C * M.mass σ := by
   have hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n) := by
     intro n
     obtain ⟨v, hv, -⟩ := S.jointly_possible n
@@ -2086,7 +2156,7 @@ lemma strict_domination_of_null_separator_class
     S.constraint S.repetition S.jointly_possible
   intro C hC
   by_contra hno
-  push_neg at hno
+  push Not at hno
   have hscaled : Tendsto (fun n ↦ C * ((S.consistentAt n).map M.mass).sum) atTop (𝓝 0) := by
     simpa using S.mass_class_tendsto_zero.const_mul C
   obtain ⟨N, hN⟩ := Filter.eventually_atTop.1 ((tendsto_order.1 hscaled).2 ε hε)
@@ -2112,23 +2182,5 @@ lemma strict_domination_of_null_separator_class
   have hfloor : ε ≤ limitingBelief P (S.constraint N) := hlower N
   rw [hscale] at hterm
   linarith
-
-/-- **Strict Domination of the Universal Semimeasure** (`thm:strict`). The universal
-continuous semimeasure does not dominate the logical inductor's limiting prefix beliefs.
-Paper node: `thm:strict` -/
-theorem lic_strict_domination_universalSemimeasure
-    {DP : DeductiveProcess}
-    {M : UniversalContinuousSemimeasure}
-    {B : BitPrefixSentences DP}
-    (P : History) [IsLogicalInductor P DP]
-    (S : StrictSeparatorPresentation M B) :
-    ∀ C : ℝ, 0 < C → ∃ σ : List Bool,
-      limitingBelief P (B.prefixSentence σ) > C * M.mass σ := by
-  intro C hC
-  obtain ⟨σ, hσ⟩ := strict_domination_of_null_separator_class P S C hC
-  exact ⟨σ, hσ⟩
-
-#print axioms strict_domination_of_null_separator_class
-#print axioms lic_strict_domination_universalSemimeasure
 
 end LogicalInduction

@@ -197,7 +197,10 @@ arithmetic, has formalized nothing we didn't already assume.
    mid-flight; elaboration/type errors are not. Small compiling commits over large
    broken ones. The checked gates are `lake build AxiomAudit` (endpoint inventory:
    axiom cleanliness + Tier-2 field freeze) plus `scripts/check-paper-nodes.sh`,
-   `scripts/check_endpoint_coverage.py`, and `scripts/lint_paper_labels.py`.
+   `scripts/check_endpoint_coverage.py`, `scripts/lint_paper_labels.py`,
+   `scripts/check_li_census.py` (every printed census and module count recomputed from
+   the source) and `scripts/check_li_class_claims.py` (no prose may name a metering
+   class as a hypothesis of an endpoint that does not take it).
 
 4. **Provenance is written at proof time, by the person who knows they cheated.**
    Record the proof kind and provenance in the theorem's docstring as you go, never
@@ -210,11 +213,14 @@ arithmetic, has formalized nothing we didn't already assume.
      object stands in for the intended one — the dangerous kind; eliminate it or
      disclose it).
 
-5. **Modeling choices are disclosed, not discovered.** The two standing type-`(c)`
-   substitutions — `dd:fuel` (efficiency = a fuel-clocked interpreter, not a
-   complexity class; model card in `Framework/Computable.lean`) and the propositional
-   substrate (LUVs as threshold families) — are documented in
-   `LogicalInduction/README.md`. Any new substitution gets the same treatment at the
+5. **Modeling choices are disclosed, not discovered.** The one standing type-`(c)`
+   substitution is the **propositional substrate** — the market prices propositional
+   sentences where the paper's background theory is first-order, with the paper's literal
+   object reached through explicit interfaces. `dd:fuel` is **not** a second: it is the
+   *certification device* for `def:ec` (a fuel-clocked interpreter certifies membership),
+   while the statement class everywhere is `EfficientlyComputable`, `Complexity.FP` of the
+   unary day; the model card is in `Framework/Emission/Computable.lean`. Both are documented
+   in `LogicalInduction/README.md`. Any new substitution gets the same treatment at the
    statement, in the README, and in the audit ledger — before an auditor finds it.
 
 6. **Surface friction; don't work around it silently.** If a design decision fights

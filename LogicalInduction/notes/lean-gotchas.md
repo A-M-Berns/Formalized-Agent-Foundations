@@ -17,6 +17,51 @@ the settled design decisions and the correspondence table, and points here for p
 - **A witness-file edit blocks everyone downstream of it in a shared worktree.** Parallel
   sessions in one tree see each other's syntax errors; poll and do unaffected work rather
   than assuming your own edit broke the build.
+- **Count columns in CHARACTERS, not bytes.** `awk`'s `length` and most shell one-liners
+  count bytes, so every line carrying `𝗜𝚺₁`, `≈ₙ`, `⊢` or a theory glyph over-reports its
+  width by 3-4x. A survey that "found 60 over-long lines" found 10. Use
+  `python3 -c 'len(line)'` on decoded text.
+- **Check for a file-level disclosure before reflowing to 100 columns.** The character-count
+  sweep over `LogicalInduction/` reports 124 over-long lines and 123 of them are in
+  `Construction/Brouwer.lean`, whose header states that its Sperner interior is
+  machine-generated, is not hand-edited, and is deliberately neither reflowed nor linted
+  (`set_option linter.unusedSimpArgs false`, `linter.unusedVariables false` at the top of the
+  file). Reflowing them would silently edit generated bodies. The real backlog outside that
+  file was one line. `AxiomAudit.lean`'s `#assert_axioms_clean` / `#assert_fields` name lists
+  are likewise out of scope — that file is not under `LogicalInduction/`.
+- **The worktree isolation guard rejects a command containing the substring `git` anywhere**,
+  including inside an identifier like `digitAt` or a path like `DigitBits.lean`, and rejects
+  shell loops and variable assignments outright. Split such commands, or drive them from a
+  script file.
+- **`lake env lean <file>` IS the right instrument for a `maxHeartbeats` sweep**, and it is
+  twenty times cheaper than a gate. It elaborates the file with the same options against the
+  existing oleans, so a heartbeat timeout shows up in one to three minutes per file with no
+  rebuild — and the usual stale-olean objection does not apply, because a heartbeat budget is
+  a property of the file's own elaboration. Method: strip every bump, probe each touched file,
+  restore what times out, probe again (a timed-out declaration makes its dependents fail with
+  `unknown constant` before they burn their own budget, so pass one under-reports). Measured
+  here: **41 of 53** bumps outside `Construction/Brouwer.lean` were cargo, including all eight
+  in `TraderMachine.lean` and nineteen of the twenty in `Descriptions.lean`. Do not keep a
+  bump because its siblings have one — heartbeats are deterministic and a single module probe
+  settles it.
+- **`nohup cmd > log 2>&1 &` inside a backgrounded shell call reports completion
+  IMMEDIATELY** (the shell forks and exits 0) while the build is still running, so the log you
+  then read is truncated and the "errors" in it are phantoms. Use the plain command and let
+  the harness background it. Two apparent build failures in one session were this artifact.
+- **Full-gate calibration is set by machine contention, not by file count.** A full
+  `lake build LogicalInduction APITests AxiomAudit` with `Framework/Criterion.lean` touched —
+  all LogicalInduction modules rebuilt, ~3750 jobs — is **under ten minutes** on a quiet
+  machine. The same gate measured 50-70 minutes, and once ~2 hours, with another agent
+  competing for the same cores. Check the machine before quoting a number; the spread is a
+  factor of six. The slowest single modules are `Construction/Descriptions` (160 s),
+  `SemanticExtension/LanguageCopy` (85 s), `SemanticExtension/Product` (69 s),
+  `Framework/Theory/DerivationSize` (59 s), `Construction/LIACompiler` (55 s),
+  `Conditioning/FramePass` (54 s), `Framework/Machine/EvalnCompiler` (48 s). Prefer twenty
+  single-module probes to one gate.
+- **`#print axioms` is not a gate and never was.** It prints to the build log; nothing fails
+  on it. The `#assert_axioms_clean` blocks in `AxiomAudit.lean` are the only axiom gate, and
+  they reach a declaration only by naming it or through an asserted declaration's proof term
+  — never downstream, so an applied witness needs its own assertion.
 
 ## Parsing and elaboration
 
@@ -25,6 +70,37 @@ the settled design decisions and the correspondence table, and points here for p
   field or definition of that name fails to parse with `unexpected token 'stacks'`,
   reported at the *following* line. Recognize the class: a parse error naming a token you
   took for an ordinary identifier, in a file that parses fine without Mathlib imported.
+- **`open Classical in` and `omit [Inst] in` are COMMAND prefixes and go ABOVE the
+  docstring**, not between the docstring and the declaration (`unexpected token 'omit';
+  expected 'lemma'`), and `open Classical in` does not work as a *term* prefix inside a
+  definition body at all: `noncomputable def f := open Classical in if p then 1 else 0` does
+  not elaborate. The `unusedSectionVars` linter reports one `omit` at a time, so fixing a file
+  full of them is an iteration, not a pass.
+- **`cases hs : e with` SUBSTITUTES `e` in the goal, not only in the context.** When
+  extracting a case-split helper whose conclusion mentions `e` (`codedStep d c = none ∧ …`),
+  the branch's goal has already become `none = none` and is discharged by `rfl`, not by `hs`.
+  The caller still gets `hs`, because the lemma's statement was fixed before the `cases`.
+- **`PrimrecRel p` unfolds to `PrimrecPred fun q => p q.1 q.2`, and `PrimrecPred` is an
+  EXISTENTIAL** (`∃ (_ : DecidablePred p), Primrec fun a => decide (p a)`). So `.to_comp` on
+  one fails with `Exists.to_comp`, and a `Computable`/`Primrec` consumer needs a Bool-valued
+  companion: `obtain ⟨_, h⟩ := isPrefix_prim; exact h.of_eq fun p => by simp` — the `simp`
+  bridges the existentially bound `Decidable` instance to the ambient one.
+- **Mathlib has `Primrec.list_map` but NO `Computable.list_map`.** To certify
+  `Computable fun n => (List.range (n+1)).map ψ` from `Computable ψ`, build the reversed list
+  by `Computable.nat_rec` and transport across `List.reverse` with a two-line induction;
+  `prefixProcess_computable` (`Construction/DeductiveDovetail.lean`) is the worked instance.
+- **`simpa [...] using (lemma args)` can fail with a MEMBERSHIP INSTANCE mismatch**
+  (`Finset.adjunctiveSet.toMembership` vs `SetLike.instMembership`) even though both sides are
+  `φ ∈ (s : Finset Sentence)`: `simp` normalizes the goal's instance and the supplied term's
+  differently. Pin the term first — `have h : φ ∈ DP.D e := lemma _ …; simpa [...] using h` —
+  so the expected type fixes the instance before `simp` runs.
+- **An `if (b : Bool)` and an `if (p : Prop)` with `decide p = b` are NOT definitionally equal
+  goals.** After replacing a Boolean test by its Prop, a `| zero => rfl` leaf in a
+  `Nat.rec`-vs-definition proof has to become `by_cases h : p <;> simp [theDef, h]`.
+- **A `private abbrev`, not a `private def`, for the claim a long induction carries.** The
+  anonymous-constructor notation `⟨_, _⟩` and `refine ⟨?_, ?_⟩` whnf the expected type at
+  *reducible* transparency, which does not unfold a plain `def`; `abbrev` is reducible and the
+  lifted leaf proofs then read exactly as they did inline.
 - **`#assert_fields` compares field *names* only**, despite its wording. A boundary
   structure's field *type* can change under a green freeze. Read it as a rename guard, not
   a premise-smuggling guard.
@@ -34,6 +110,24 @@ the settled design decisions and the correspondence table, and points here for p
   gets stuck); use `simp [evaln]` for concrete evaluations. Likewise `native_decide`
   misreports on goals with free variables in the token-decode area, and
   `simp [strategyOfTokens, …]` sticks on the dependent `match hdecode :` — use bare `rfl`.
+- **A docstring must come AFTER `open … in` / `set_option … in`, not before.** Written
+  before the modifier the file still elaborates — Lean silently drops the modifier — and the
+  failure surfaces later, somewhere else, as a missing instance or a heartbeat blowup. The
+  same block must not be moved above a `/-! … -/` header.
+- **A `/-! … -/` section header between a docstring and its declaration is a syntax error.**
+  Detector: a line ending in `-/` immediately followed by a line opening `/-!`. Two
+  consecutive `/-- … -/` docstrings are likewise a parse error.
+- **`obtain` does not typecheck against an existential in a `Type`-valued goal.** Producing
+  data from `∃ …` there needs `Classical.choose` / `Classical.choose_spec`, not `rcases`
+  destructuring; the error names the motive, not the tactic.
+- **A `private lemma` declared inside a `variable` section auto-includes that section's
+  instance binders** (e.g. `[T.Δ₁]`), silently widening its signature. Declare such helpers
+  above the section, or `omit` the binder explicitly.
+- **`try simp only []` can be load-bearing.** It beta-reduces a redex left by a preceding
+  `rw`; deleting it as a no-op breaks the next step with an unrelated-looking error. If you
+  remove one, replace it with an explicit `show`.
+- **`Option.pure_def` is the missing rewrite when collapsing an `Option.bind` idiom** —
+  `pure x` does not `simp` to `some x` on its own.
 
 ## Proof shapes
 
@@ -62,9 +156,10 @@ the settled design decisions and the correspondence table, and points here for p
 - **`Complexity.FP` has `selectHead` but no `tail`.** A digit handed over as a flat
   three-bit word can be branched on once and no further; hand it over as three separately
   headable one-bit slots.
-- **Degenerate instantiations prove nothing.** `MachinePolyEC` over `Fin 0` holds for every
-  `f`, and an empty freeze table (`S = ∅`) inhabits any freeze certificate while forcing
-  `P = P'`. Neither is evidence that a machine statement has content.
+- **Degenerate instantiations prove nothing.** An efficiency predicate quantified over an
+  empty index type holds for every function, and an empty freeze table (`S = ∅`) inhabits
+  any freeze certificate while forcing `P = P'`. Neither is evidence that a machine
+  statement has content.
 
 ## Definitional shapes that fight `simp`
 
@@ -75,9 +170,133 @@ the settled design decisions and the correspondence table, and points here for p
   definitional, so close it with `rfl` after rewriting.
 - **Doc comments on `example` are legal** in this toolchain. Do not refactor away from them
   on the assumption that they error.
+- **Clearing `linter.unusedSimpArgs` is a fixed point, not a pass.** The linter names a
+  `(line, column)`, so resolve every warning to its token *before* editing — one removal
+  shifts every later column on the line — and expect a second round: removing an argument
+  can make a neighbour unused. 51 warnings in `Construction/Primcodable.lean` went to 0 in
+  one pass here, but the check is "re-run until the count is zero", not "apply the list".
+  Watch for a stranded `have`: if the deleted argument was the only consumer of a local
+  (`hof` in `intCodeNatAbs_eq_decode`), the `have` becomes dead and must go with it, or the
+  unused-variable linter — currently at zero repo-wide — starts reporting. Removing an
+  argument the linter names cannot change a `simp` call, and deleting an unreferenced `have`
+  cannot either, since these calls pass an explicit list rather than `simp [*]`.
+
+## Moving, merging and splitting modules
+
+- **A moved or deleted module leaves its `.olean` behind, and the import still resolves.**
+  `lake` does not garbage-collect `.lake/build/lib/lean`, so after a rename the *old* module
+  keeps compiling from a stale artifact and an importer of the old path builds green in your
+  tree and red in a fresh checkout. Sweep before the first build after any move: delete every
+  artifact under `.lake/build/lib/lean` whose source file no longer exists. Key the sweep on
+  the **first** dot of the relative path, not on `os.path.splitext` — the build directory
+  holds `Foo.olean`, `Foo.ilean`, `Foo.trace` and `Foo.hash`, and `splitext` on `Foo.hash`
+  leaves `Foo`, so a naive sweep deletes live `.hash` files and forces a full rebuild.
+- **Removing a `lean_lib` from the lakefile does not invalidate the cache**, so retiring a
+  build target costs nothing and proves nothing; the modules it rooted keep their oleans.
+- **Path-rewriting a docstring with one regex misses three shapes.** Repository paths appear
+  in prose as brace-expanded lists (`Construction/Quotation/{ExactProduct,ExactCCEE}.lean`),
+  as module-qualified references without the `.lean` (`Construction.Quotation.Packages`), and
+  as bare basenames (`Oracle.lean` for `Construction/Freeze/Oracle.lean`). A substitution pass keyed on the full path leaves
+  the other two silently stale. Finish every move with a checker that resolves *every*
+  backticked `….lean` citation against the files on disk, not with a grep for the old string.
+- **A `re.DOTALL` regex over a module header eats the file.** Module docstrings here run to
+  fifty lines with blank lines inside; a header pattern written with `.*` under `DOTALL`
+  matches from the first `/-!` to the last `-/` in the file. Parse headers line-based, and
+  name-diff every merge — the count of declarations before and after must be equal.
+- **A merge can silently move a declaration into a different namespace.** Two modules whose
+  bodies each sit under `namespace Foo … end Foo` concatenate into a file where the second
+  body lands inside the first's namespace only if the `end` was carried across with it. Diff
+  the *qualified* names, not the leaf names.
+- **A split can produce references that are wrong rather than stale.** When a module is cut
+  in two, re-pointing an importer to the half that does not hold the declaration still
+  compiles, because the other half is transitively imported. Verify that each re-pointed
+  reference names a declaration that actually lives in the file the path names.
+- **Usage scans must admit a preceding dot.** Searching for `Foo` to decide whether a module
+  is still used misses `Bar.Foo` and `X.Foo.bar`; a lookbehind that excludes identifier
+  characters but not `.` reports a live module as dead. It also misses transitive consumers:
+  before dropping an import, check what the *downstream* modules reach through it.
+- **Comparing inventories across a rename needs the old path.** `git show <rev>:<old path>`
+  is the way to diff a moved file's declaration list against its predecessor; a plain diff
+  reports the whole file as added and tells you nothing about whether a name was lost.
+- **Splitting a file breaks every `private` name that crosses the cut, and a static usage
+  scan will not tell you which.** A file-internal helper is invisible from the other half the
+  moment the cut lands, so before a split, diff the *private* declarations of each half
+  against the identifiers the other half mentions. Splitting `Construction/LIACompiler.lean`
+  found 23 such names — the rational and `EF` arithmetic certificates, the list-dedup
+  utilities — all of which had to become public in the new module. Publishing them is the
+  right answer here (they are the certificate layer's natural API), but it is a surface
+  decision, not a mechanical one, so it must be taken deliberately.
+- **A newly public name can collide with a `private` one downstream.** Check every
+  de-privatized name against the whole repo before landing the split: two of the 23 above
+  (`ratNeg_prim`, `ratSub_prim`) are also declared `private` in
+  `Construction/Statistics/HistoricalMaturity.lean`. That one was safe because the downstream
+  copies sit inside `namespace HistoricalMaturityCompile`, where Lean resolves the
+  namespace-local name first — but a root-namespace collision would have been an ambiguity
+  error in a file the split never touched.
+- **Cutting an import edge breaks *free riders*, not just the module you edited.** Removing
+  `Paper/FirstOrder.lean → SemanticExtension/Prime.lean` — an edge used for exactly two
+  constants — dropped 27 modules out of that lane's cone, and five of them were reaching real
+  declarations through it (`Paper/Market.lean` alone lost sixteen names, and
+  `Paper/TheoremDP.lean` lost the process-union vocabulary the *first* line of `paperDP` uses).
+  The check that finds them is a graph diff, not a grep: rebuild the import graph with the old
+  edge restored, and for every module report the declarations its old cone had, its new one
+  does not, and its text still mentions. Filter the report by hand — English words and
+  structure-field names dominate it — but do **not** filter a name away because it looks like a
+  common word: `union` in that report was `DeductiveProcess.union`, and skipping it cost a
+  50-minute gate.
+- **A free rider's real need is usually a *different* module from the one it imported.**
+  Cutting `Quotation/DeferralFibre.lean → Statistics/FeedbackEmission.lean` also stranded
+  `Quotation/Packages.lean`, which imported `FeedbackEmission` and mentioned nothing from it —
+  its single at-risk name was `ratLE_prim`, from `Construction/Primcodable.lean`, four modules
+  down the cut cone. Re-point a free rider at the module that *declares* the name the cone
+  diff reports, never at the module it happened to import; the diff on `DeferralFibre` itself
+  named three more (`PGenerableWeighting`, `StrictlyIncreasingDeferral`,
+  `expectAffine_priceAt`), each in a different `Properties/` module.
+- **The nine `Construction/` lanes are not a DAG and were never meant to be.** Seven lane
+  pairs import each other at module granularity — every lane's `Endpoints.lean` reaches
+  `Paper/TheoremDP.lean` for the market while `Paper/`'s own market definition reaches back
+  into the lanes it is assembled from, and `Conditioning`↔`Freeze`, `Knowledge`↔`LUV`,
+  `LUV`↔`Quotation` are genuine two-way subject dependencies. The *module* graph is acyclic
+  (Lean enforces that); "no lane cycle" is not an invariant of this tree, so do not treat a
+  mutual lane pair as a defect without first checking whether the two directions are about
+  different subjects. The `Quotation`↔`Statistics` pair was worth dissolving because both
+  directions were about the same object, a deferral schedule.
 
 ## Auditing names
 
+- **A reference-count script over Lean must match the LAST dotted component and must admit
+  subscripts.** Indexing declarations by the name as written (`lemma PCWorld.foo`) while
+  tokenizing uses with a dot-free regex means a dotted declaration is never matched — 36 live
+  declarations once read as dead, one of them used seven times in a single file. And an
+  identifier class of `[A-Za-z0-9_']` splits `holds_imp₂` into `holds_imp`, so its uses never
+  match its declaration. Key the index on `name.split('.')[-1]` and add the subscript and
+  Greek ranges to the identifier class.
+- **A declaration-span deleter must not end the span at the next declaration's HEAD line.**
+  The next declaration's docstring, its `open … in` / `set_option … in` prefix commands and
+  any `/-! … -/` section marker all sit between the two heads, so `[decl, next_decl)` swallows
+  them; `end` / `end <Namespace>` lines lying in the gap go too. Run a namespace/section
+  balance check over every edited file before building. The same heuristic is outright unsafe
+  on machine-generated Lean (`Construction/Brouwer.lean`: proof lines starting at column 0,
+  comments written `/- … -/` rather than `/-- … -/`), where it silently removed six live
+  declarations.
+- **A word-boundary rename is safe for the DEFINITIONS and unsafe for the LEMMA NAMES built on
+  them.** Python's `\b` treats `_` as a word character, so `\bselfW\b` never matches inside
+  `selfW_ne_leftLoc` and a naive pass leaves dozens of lemma names spelling the old window.
+  Rename the compound identifiers first (longest first, exact), then the bare names; ~780
+  sites across two files went green on the first probe that way.
+- **Grep is not evidence of deadness in a file whose proofs are `grind` / `aesop` /
+  `simp_all`.** Those pick lemmas out of the *environment*, so a lemma can be load-bearing
+  with zero textual references. In `Construction/Brouwer.lean`, deleting seven
+  textually-unreferenced lemmas produced eleven errors (two `whnf` heartbeat timeouts, three
+  `grind` failures, one elaboration failure). Delete one and build the single module (17 s
+  there) rather than trusting the grep.
+- **An import a file uses only TRANSITIVELY is invisible to "does this file name anything from
+  that module".** `Construction/Conditioning/Compiler.lean` named nothing from its sibling
+  `Presentation.lean` but reached `AffineCombination.sentenceAffine_bounded`
+  (`Properties/TimelyLearning.lean`) through it. When dropping an import, build the module.
+  Likewise check which way an import edge actually runs before hoisting: `Source.lean` imports
+  `Product.lean`, so the surviving copy of a duplicate had to go further upstream than
+  "hoist to `Source.lean`" suggested.
 - **`rg -r` is the *replace* flag, not recursive.** `rg -rn "foo"` rewrites every match to
   `n` in the displayed output, which once made `EfficientPrefixPatch.preserves_ec` display
   as a dangling name. Use `rg -n --fixed-strings` when auditing declaration names.
@@ -88,7 +307,7 @@ the settled design decisions and the correspondence table, and points here for p
   scratch-checking hazard that a real `lake build` would have caught — one more reason the
   entry above says `lake env lean` is not a gate.
 
-## Traps recorded in the 2026-08-28 write-out / source-encoding round
+## Write-out and source-encoding traps
 
 - **A failed elaboration makes `#print axioms` report `sorryAx` on *downstream* declarations
   in the same file.** Check the error list and `grep -rn sorry` before treating a build-log
@@ -104,12 +323,12 @@ the settled design decisions and the correspondence table, and points here for p
   `_root_.Computable`; `open _root_.Primrec` collides with `Code`'s constructors.
 - **Foundation name traps:** `Semantics.Not.models_not` (a class field, `@[simp]`);
   `Entailment.by_axm h` takes only the membership proof; `WeakerThan.trans` needs explicit
-  `(S := …) (T := …)`; `ISigma1.Delta1` needs
+  `(S := …) (T := …)`; `ISigma1_delta1Definable` needs
   `import Foundation.FirstOrder.Incompleteness.InductionSchemeDelta1` explicitly, and the
   failure is a bare "failed to synthesize Theory.Delta1 ISigma1".
 - **Don't `rw [thyName]` to unfold a theory built as `insert σ 𝗜𝚺₁`**; use
   `inferInstanceAs (Theory.Delta1 (insert σ 𝗜𝚺₁))` and state provability lemmas at the
-  unfolded sentence. `[ℕ ⊧* T] → T.SoundOn F` (`Arithmetic/Basic/Model.lean:99`) gives
+  unfolded sentence. `[ℕ ⊧* T] → T.SoundOn F` (Foundation, `FirstOrder/Arithmetic/Basic/Model.lean`, the `Theory.SoundOn` instance) gives
   `SoundOnHierarchy 𝚺 1` *and* `Consistent` for free once every axiom is true in ℕ.
 - **`split_ifs <;> omega` is unsafe when a guard is decidably false on literals** — it leaves
   `h : False ⊢ 5 = 1`. Discharge guards explicitly: `rw [if_neg (by omega), …, if_pos (by decide)]`.
@@ -120,8 +339,8 @@ the settled design decisions and the correspondence table, and points here for p
   obtain ⟨v, hv⟩ := h; simp only [Code.eval, Nat.unpaired, Part.mem_map_iff, Nat.mem_rfind] at hv;
   obtain ⟨a, ⟨h1, -⟩, -⟩ := hv; simp at h1`.
 - **`Nat.ofDigits_lt_base_pow_length` / `Nat.ofDigits_div_pow_eq_ofDigits_drop`** are not
-  reachable through `Framework/DigitArith` — `import Mathlib.Data.Nat.Digits.Defs` explicitly.
-- **The `models_haltingSchema_iff` transport** is exactly
+  reachable through `Framework/Emission/DigitArith` — `import Mathlib.Data.Nat.Digits.Defs` explicitly.
+- **The `codeOfREPred` → standard-model-truth transport** (inlined in `re_complete_mp`, `Construction/Knowledge/Syntax.lean`) is exactly
   `simpa [models_iff, Semiformula.eval_substs, Matrix.constant_eq_singleton] using (codeOfREPred_spec hp (x := z))`;
   that triple is required. Reuse it for other `codeOfREPred` schemas.
 - **Shell/monitoring:** `grep --include=*.lean` fails under this zsh unless quoted (a false
@@ -140,7 +359,7 @@ the settled design decisions and the correspondence table, and points here for p
 - **Extracting `IsPolyBounded` from a `PolySegStream`:** `rintro ⟨ct, cl, tokenFn, lenFn, ht, hl, hlen, hget⟩;
   obtain ⟨b, hrun, hpb, hbb⟩ := hl`; `hlen n` comes back beta-unreduced — restate it with an
   explicit type ascription before `rw`. `PolySegStream.constList` is declared late in
-  `StructuredPaperRpn.lean` (Frontend section); term-level sections must use
+  `Construction/LUV/SourceCodec.lean` (Frontend section); term-level sections must use
   `PolySegStream.ofTokenStream (PolyTokenStream.const t)`.
 - **`check-paper-nodes.sh` matches inventory members by SHORT name** (everything after the last
   dot), so `PaperLUV.toLUV` is satisfied by any annotated `toLUV` anywhere — a check that can
@@ -148,15 +367,21 @@ the settled design decisions and the correspondence table, and points here for p
 - **`safe-lake.sh build X 2>&1 | tee log | tail -40` reports `tail`'s exit status**, so a failed
   build looks like exit 0 (and a background-task notice says so too). Redirect
   (`> log 2>&1; echo EXIT=$?`) and grep the log for `^error`.
-- **`LUV.RpnThresholdCodes`/`RpnThresholdCodeSeq` are `def`s**, so `h.comp` dot-notation fails;
-  ascribe to the unfolded `RpnSentenceCodes _` first. The index shift Seq→single is reindexing
-  along `m ↦ Nat.pair 0 m` (`(PolyFueled.const 0).pair PolyFueled.id`); `RpnThresholdCodes.constSeq`
-  goes the OPPOSITE way. In `StructuredPaperRpn.lean`, `dyadicPaperLUV`/`unitFracPaperLUV` live
+- **The four `LUV.*ThresholdCodes(Seq)` classes are `def`s**, not structures, so dot notation on
+  them resolves only by unfolding: `h.comp` finds `RpnSentenceCodes.comp` / `BigSentenceCodes.comp`
+  where the elaborator can whnf the class away (as `S.threshold_poly.comp hquery` in
+  `Construction/LUV/Syntax.lean` does, at both meters), and fails where it cannot — ascribe to
+  the unfolded `RpnSentenceCodes _` / `BigSentenceCodes _` first when it does. Widening a
+  consumer from `RpnThresholdCodes` to `BigThresholdCodes` is usually a *deletion*: the wrapper
+  `BigSentenceCodes.ofRpnSentenceCodes h` becomes `h`, and a `sentence_poly` field that was
+  built from the hypothesis becomes the hypothesis. The index shift Seq→single is reindexing
+  along `m ↦ Nat.pair 0 m` (`(PolyFueled.const 0).pair PolyFueled.id`); there is no lemma
+  going the other way. In `Construction/LUV/SourceCodec.lean`, `dyadicPaperLUV`/`unitFracPaperLUV` live
   near the END of the file — client examples at concrete LUVs must be placed after them.
 - **Adding a tag to `parseStructuredArithmeticFormula` (Framework/Criterion.lean) has FOUR obligatory
   downstream repairs:** `parseStructuredArithmeticFormula_consumed_lt` and `_suffix`
-  (Framework/RpnSentence.lean; both end in a `simp at h` closing the no-branch case),
-  `structuredFormulaGCore` + `_spec` (Framework/RpnComputation.lean, the memoized mirror), and
+  (Framework/Emission/RpnSentence.lean; both end in a `simp at h` closing the no-branch case),
+  `structuredFormulaGCore` + `_spec` (Framework/Emission/RpnComputation.lean, the memoized mirror), and
   `structuredFormulaG_prim` (Construction/LIACompiler.lean). Criterion.lean is upstream of the
   whole library: `lake env lean` downstream fails with "object file … does not exist" until a
   full ~35–45 min build replaces the oleans.
@@ -193,9 +418,9 @@ the settled design decisions and the correspondence table, and points here for p
   at `Semiformula.all/exs`; `Rewriting.emb X` vs `Rewriting.app Rew.emb X` likewise (trailing `rfl`).
 - **After editing an upstream module, `lake env lean` downstream reports spurious "unknown
   identifier"** for the new declarations — rebuild just that module first
-  (`safe-lake.sh build LogicalInduction.Framework.RepresentsComputations`).
+  (`safe-lake.sh build LogicalInduction.Framework.Theory.RepresentsComputations`).
 - **Vacuous-quantifier introduction is not in Foundation's `Theory.Proof` API** (`specialize` only
-  eliminates). Route: `Theory.Proof.complete_iff : T ⊨ φ ↔ T ⊢ φ` (Completeness/CounterModel.lean:253)
+  eliminates). Route: `Theory.Proof.complete_iff : T ⊨ φ ↔ T ⊢ φ` (Foundation, `FirstOrder/Completeness/CounterModel.lean`)
   → `provable_iff_of_realize_iff`; write the model lambda as `fun M _ _ => by …` so `[Nonempty M]` is
   introduced. In `∀ n, T ⊢ ∼(σ/[↑n])` the binder infers as a closed TERM, not ℕ — spell `∀ n : ℕ`.
   `ArithmeticTerm` takes a type argument; closed terms are `(‘↑n’ : ArithmeticSemiterm Empty 0)`.
@@ -207,7 +432,9 @@ the settled design decisions and the correspondence table, and points here for p
   `PolySegStream.blocks` needs a constant block width. `binNumeralEnc_length_le` is `8·log₂v+7`.
 - **`provable_subst_iff_of_val T φ t v hval : T ⊢ φ/[t.const] ↔ T ⊢ φ/[↑v]`** (RepresentsComputations.lean):
   completeness out, `Theory.Proof.sound` back; needs only `𝗣𝗔⁻ ⪯ T` (Foundation derives it from
-  `[𝗜𝚺₁ ⪯ T]`, Schemata.lean:404); state `hval` over `M : Type` to match `Arithmetic.complete.{0}`.
+  `[𝗜𝚺₁ ⪯ T]` — `FirstOrder/Arithmetic/Schemata.lean` registers `[𝗜𝚺₀ ⪯ T]`, `[𝗜𝚺₁ ⪯ T]`
+  and `[𝗣𝗔 ⪯ T]` instances for it, and `[𝗣𝗔⁻ ⪯ T] : 𝗥₀ ⪯ T` besides, so a `⪯` binder is
+  often redundant and can be checked dead by reading that file rather than by a build); state `hval` over `M : Type` to match `Arithmetic.complete.{0}`.
   `Structure.numeral_eq_numeral` lands on `ORingStructure.numeral`; bridge with `numeral_eq_natCast`.
 - **`𝗣𝗔⁻`/`⊧*` are PARSE errors ("expected token") without `import …PeanoMinus.Basic`/`.Schemata`.**
 - **Atom-equality → formula-equality chain:** `paperPrimeSentence_injective` (explicit `(a₁ := (true, φ))`),
@@ -250,4 +477,4 @@ Splicing a replacement theorem by cutting from the START of its docstring to the
 `check_endpoint_coverage.py` and `check_paper_wiring.py` all fail — the last two with a
 confusing "carries Paper node(s) none" curation error pointing at the wrong problem.
 Always run the four checkers after a docstring-boundary edit, and cut to the start of
-the next *docstring*, not the next declaration keyword. (Observed T8/i.)
+the next *docstring*, not the next declaration keyword.

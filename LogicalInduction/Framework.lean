@@ -1,61 +1,191 @@
-/-
-# Framework (`LogicalInduction.Framework`)
-
-Everything upstream of both `Properties/` and `Construction/`: the paper's §2–3
-substrate and the shared proof machinery.
-
-* `Asymptotics`    — the single limit vocabulary (`dd:asymp`).
-* `Foundations`    — language, worlds, markets, deductive processes (`def:lang`–`def:worlds`).
-* `Computable`     — the fuel-clocked computability model (`def:ec`, `dd:fuel`).
-* `Emission`       — bounded-simulation compilers over `Nat.Partrec.Code` and the clocked
-                     token-emission layer they feed.
-* `DigitArith`     — bignum arithmetic on digit streams, so emission is metered in token
-                     *bits* rather than in code values (`dd:fuel`).
-* `RpnSentence`    — sentences as Polish-notation symbol runs (one token per formula
-                     symbol), so stream length tracks symbol count rather than code size.
-* `RpnSplice`      — the token-metered sentence-sequence class and its combinators.
-* `RpnEmission`    — realizes those sequences as emitted digit streams.
-* `RpnComputation` — primitive recursion for the Polish-notation contraction, which the
-                     trading firm's compiler runs to decode candidate traders.
-* `Criterion`      — expressible features (`def:tf`), traders, the LI criterion (`def:lic`).
-* `RepresentsComputations` — the paper's standing assumption on the first-order background
-                     theory `Θ` (§2, "Representing computations"), and the two literals it
-                     yields over a represented value graph.
-* `DerivationSize` — the symbol count `dSize` of a Foundation derivation code, tied to
-                     Foundation's own constructors by equation, with the converse bound
-                     `le_G_dSize` that makes a symbol-bounded proof search finite
-                     (`dd:symbolcount`); `DerivationSizeComputable` carries its
-                     computability layer.
-* `BoundedConsistency` — bounded provability over Foundation's internal derivations, its
-                     computable decider, and the paper's finite-consistency predicate
-                     `Con(Θ)(ν)` (§4.10, `dd:symbolcount`).
-* `Compactness`    — propositional compactness over Cantor space: per-stage satisfiability
-                     of a deductive process yields one world consistent with every stage.
-* `Affine`         — trade magnitude/net-worth bounds and affine combinations (buy orders).
-* `ROI`            — the repeatable return-on-investment lemma (`lem:type3`) and the
-                     budgeted-trader machinery its proof needs.
-* `Expectations`   — logically uncertain variables (`def:luv`).
-* `RationalCut`    — generic bounded-cut semantics yielding completed-world LUV values.
-
-The four `Rpn*` modules together discharge `def:ec`'s token-metered sentence slots.
--/
-import LogicalInduction.Framework.Asymptotics
 import LogicalInduction.Framework.Foundations
-import LogicalInduction.Framework.Computable
-import LogicalInduction.Framework.Emission
-import LogicalInduction.Framework.DigitArith
-import LogicalInduction.Framework.RpnSentence
-import LogicalInduction.Framework.RpnSplice
-import LogicalInduction.Framework.RpnEmission
-import LogicalInduction.Framework.RpnComputation
+import LogicalInduction.Framework.Asymptotics
 import LogicalInduction.Framework.Criterion
-import LogicalInduction.Framework.RepresentsComputations
-import LogicalInduction.Framework.BoundedConsistency
-import LogicalInduction.Framework.QuoteRepresentability
 import LogicalInduction.Framework.Compactness
 import LogicalInduction.Framework.Affine
+import LogicalInduction.Framework.BooleanWorlds
 import LogicalInduction.Framework.ROI
 import LogicalInduction.Framework.Expectations
-import LogicalInduction.Framework.RationalCut
-import LogicalInduction.Framework.WriteOut
+import LogicalInduction.Framework.Efficiency
+import LogicalInduction.Framework.Theory.RepresentsComputations
+import LogicalInduction.Framework.Theory.R0Instances
+import LogicalInduction.Framework.Theory.SubstOccurrence
+import LogicalInduction.Framework.Theory.QuoteRepresentability
+import LogicalInduction.Framework.Theory.DerivationSize
+import LogicalInduction.Framework.Theory.BoundedConsistency
+import LogicalInduction.Framework.Emission.Computable
+import LogicalInduction.Framework.Emission.Emission
+import LogicalInduction.Framework.Emission.DigitArith
+import LogicalInduction.Framework.Emission.CodeSource
+import LogicalInduction.Framework.Emission.RpnSentence
+import LogicalInduction.Framework.Emission.RpnSplice
+import LogicalInduction.Framework.Emission.RpnEmission
+import LogicalInduction.Framework.Emission.RpnComputation
+import LogicalInduction.Framework.Emission.WriteOut
+import LogicalInduction.Framework.Emission.FreezeTransducer
+import LogicalInduction.Framework.Machine.EvalnCompiler
+import LogicalInduction.Framework.Machine.EvalnRegBound
+import LogicalInduction.Framework.Machine.FPFold
+import LogicalInduction.Framework.Machine.TokenFold
+import LogicalInduction.Framework.Machine.DigitBits
+import LogicalInduction.Framework.Machine.DigitArithFP
+import LogicalInduction.Framework.Machine.Ruler
+import LogicalInduction.Framework.Machine.TraderMachine
 import LogicalInduction.Framework.Machine.WriteOutMachine
+import LogicalInduction.Framework.Machine.SentenceMachine
+import LogicalInduction.Framework.Machine.SpliceMachine
+import LogicalInduction.Framework.Machine.ThresholdMachine
+import LogicalInduction.Framework.Machine.Witnesses
+
+/-!
+# Framework (`LogicalInduction.Framework`)
+
+The paper's §2–3 objects together with the substrate the later directories consume.  A
+module belongs here when it is one of those objects or serves `Properties/` (§4),
+`Construction/` (§5) or both; several modules here — all of `Theory/`,
+`Emission.RpnComputation` — are consumed
+only by `Construction/`.  The rule is closure, not precedence: nothing under `Framework/`
+imports outside `Framework/`, so `lake build LogicalInduction.Framework` is the gate for
+all of it.
+
+The layer has four parts.  The modules named directly below are the paper's own §2–3
+objects.  `Theory/` is the background first-order theory `Θ` the §4.9–4.10 endpoints reason
+inside.  `Emission/` is the `dd:fuel` certificate calculus that renders `def:ec`.
+`Machine/` compiles a fuel certificate into the ordinary machine `def:ec` is actually read
+on, and supplies the polynomial-time word arithmetic the syntactic transports need.
+
+## The paper's objects
+
+* `Foundations` — the object language, valuations and histories: sentences of the ambient
+  propositional language (tex:560), the paper's valuations (`def:market`) and the
+  day-indexed history a feature's denotation is a function of.
+* `Asymptotics` — the single limit vocabulary `≈ₙ`, `≳ₙ`, `≲ₙ`, "eventually within ε" and
+  `ConvergesTo` (`dd:asymp`), never redefined per file.
+* `Criterion` — expressible features (`def:valfeature`, `def:tf`), trading strategies and
+  traders (`def:tradestrat`, `def:trader`), exploitation (`def:exploitation`), deductive
+  processes (`def:dedproc`), worlds (`def:world`), the efficient-trader class `def:ec` with
+  the `dd:fuel` certificate `PolyFueledTrader` beside it, and the criterion `def:lic` over
+  `def:ec`.
+* `Compactness` — propositional compactness over Cantor space: per-stage satisfiability of
+  a deductive process yields one world consistent with every stage.
+* `Affine` — trade magnitude and net-worth bounds (`def:tradermag`, `def:bap`), the
+  `Strategy` scale-and-join algebra, affine combinations of sentences (`def:affcomsen`)
+  with their pointwise operations, the return-on-investment predicate `HasROI`
+  (`def:roi`), and the degenerate branch `isLogicalInductor_of_stage_unsatisfiable`
+  (`thm:scon`).
+* `BooleanWorlds` — the Boolean reading `ℕ → Bool` of a world, its finite-support
+  restrictions `FiniteWorld B` and the executable rational payouts over them, and the
+  product-space compactness the §4 affine arguments consume
+  (`eventually_affineValue_gt_of_theory`).
+* `ROI` — the repeatable return-on-investment lemma (`lem:type3`) and the budgeted-trader
+  machinery its proof needs (`def:emulatabletraders`).
+* `Expectations` — logically uncertain variables (`def:luv`), the ℙ̄-generable class
+  (`def:ece`), the threshold-code interfaces, the finite price sum `def:e`, and the
+  rational-cut semantics by which a completed world values a LUV (`lem:conluvapprox`).
+* `Efficiency` — the bridge `PolyFueledTrader.toEfficientlyComputable` that lands a
+  `dd:fuel` certificate inside `def:ec`, and the two no-exploitation forms of `def:lic` it
+  yields at the emission calculus's own certificates
+  (`IsLogicalInductor.noExploitTok` / `.noExploitDigit`).
+
+## `Theory/` — the background theory `Θ`
+
+* `Theory.RepresentsComputations` — the paper's standing §2 assumption on the first-order
+  background theory `Θ` ("Representing computations", tex:600-606), and the two literals it
+  yields over a represented value graph.
+* `Theory.R0Instances` — non-vacuity of that assumption: `𝗣𝗔⁻`, `𝗜𝚺₁` and `𝗣𝗔` satisfy it.
+  Every registered instance is `ℕ`-sound, and the module states in full why that is a gap in
+  the non-vacuity argument rather than a hypothesis any endpoint inherits.
+* `Theory.SubstOccurrence` — bound-variable occurrence for Foundation semiformulas
+  (`Semiformula.Mentions`, counted under quantifiers) and the rewrite-transport lemmas over
+  it.  Foundation records occurrence for terms only; the representability side conditions
+  need it for formulas.
+* `Theory.QuoteRepresentability` — the object-level quotation schema the reflection
+  endpoints read their quote codes off (`dd:quote-code`), with the single-valuedness lemmas
+  `codeAux_uniq` / `code_uniq` that both it and `Theory.R0Instances` rest on.
+* `Theory.DerivationSize` — the symbol count `dSize` of a Foundation derivation code
+  (`dd:symbolcount`), tied to Foundation's own constructors by equation, with the converse
+  bound `le_G_dSize` that makes a symbol-bounded proof search finite, and the primitive
+  recursiveness that makes that search an algorithm rather than an existence statement.
+* `Theory.BoundedConsistency` — bounded provability over Foundation's internal derivations,
+  its computable decider, and the paper's finite-consistency predicate `Con(Θ)(ν)` (§4.10,
+  the substrate of `thm:pac`, `thm:pazfc` and `thm:incons`).
+
+## `Emission/` — the `def:ec` certificate calculus (`dd:fuel`)
+
+* `Emission.Computable` — the fuel-clocked certificate model, `PolyFueled` and
+  `PolySegStream` and their closure algebra, with the `dd:fuel` model card stating what the
+  calculus does and does not settle about `def:ec`.
+* `Emission.Emission` — bounded-simulation compilers over `Nat.Partrec.Code` and the clocked
+  token-emission layer they feed; `codeEvalBound` is the value bound for a fixed code.
+* `Emission.DigitArith` — bignum arithmetic on digit streams, so emission is metered in
+  token *bits* rather than in code values.
+* `Emission.CodeSource` — the naming a polynomial-time writer can emit: the postfix tag
+  stream `Code.sourceTags` / `Code.sourceNat` of a machine's syntax tree, its total
+  primitive recursive inverse `Code.ofSource`, and the length and peel-step bounds that make
+  a machine *name* writable under `def:ec` (§4.10, tex:1931-1933).
+* `Emission.RpnSentence` — sentences as Polish-notation symbol runs (one token per formula
+  symbol), so stream length tracks symbol count rather than code size.
+* `Emission.RpnSplice` — the token-metered sentence-sequence class `RpnSentenceCodes` and
+  its combinators.
+* `Emission.RpnEmission` — realizes those sequences as emitted digit streams, and states the
+  `def:lic` no-exploitation forms over them.
+* `Emission.RpnComputation` — primitive recursion for the Polish-notation contraction, which
+  the trading firm's compiler runs to decode candidate traders.
+* `Emission.WriteOut` — the write-out certificate ladder the §4 tail actually binds:
+  `BigSentenceCodes`, `BigDigits`, `DigitRatCodes`, `DigitMachineCodes`, `BigTokenStream`
+  and `BigSpliceStream`, which meter how many symbols a writer emits and bound no token's
+  value, as `def:ec` does.
+* `Emission.FreezeTransducer` — the price freeze `EF.freezeOn` on the feature syntax and the
+  bounded streaming transducer `EF.freezeTokenRunOn` that realizes it on a token word: what
+  §4.6 transports an exploiting trader with.
+
+The four `Rpn*` modules carry the token-metered sentence classes.  They are producer routes
+and strictness foils against the write-out ladder in `Emission.WriteOut`, and no statement
+binds one: the sentence slots of `def:ec` are at `MachineSentenceCodes` and the threshold
+surface at `LUV.MachineThresholdCodes(Seq)` (`Machine/SentenceMachine.lean`,
+`Machine/ThresholdMachine.lean`), reached from here by `RpnSentenceCodes.toMachine` and
+`LUV.BigThresholdCodes(Seq).toMachine`.
+
+## `Machine/` — from a fuel certificate to a machine
+
+`def:ec` is ordinary polynomial time (`EfficientlyComputable`), so a fuel certificate has
+to be *compiled* into one.  This subdirectory is that compiler together with its accounting
+and the polynomial-time word arithmetic the syntactic transports need.
+
+* `Machine.EvalnCompiler` — `Nat.Partrec.Code` into `complexitylib` register machines,
+  proved against Mathlib's clocked `evaln` rather than the unclocked `eval`.
+* `Machine.EvalnRegBound` — how large the compiled machines' registers grow and how long
+  they run.
+* `Machine.FPFold` — the reusable streaming-fold core for exhibiting a syntactic rewrite of
+  a serialized stream as a `Complexity.FP` function.
+* `Machine.TokenFold` — token-level transducers on bit words, the layer the conditioning and
+  freeze transports run on.
+* `Machine.DigitBits` — the bit rendering of a digit stream (`digitBits`, `digitsToBits`)
+  and the round trip through which `EfficientlyComputable` decodes an output word.
+* `Machine.DigitArithFP` — base-four arithmetic on digit words inside `Complexity.FP`
+  (`addW`, `subW`, `mulW`, `leW`, `predW`, `sqrtRemW`, `unpairFstW` / `unpairSndW`), each with
+  its value specification; it serves `app:ifp`.
+* `Machine.Ruler` — `UnaryRuler`, the machine reading of a fuel-metered *count* (a value
+  that reindexes a stream rather than being emitted into one), with its closure calculus:
+  constants, identity, composition, `+`, `*`, successor, a fixed threshold, `Nat.pair` and
+  its two projections, and the two prefix-scan devices `UnaryRuler.segPrefix` and
+  `UnaryRuler.segLocate` that the variable-width concatenation needs.
+* `Machine.TraderMachine` — the machine computing an `PolyFueledTrader` trader's day-`n`
+  serialization: the last link of `PolyFueledTrader.toEfficientlyComputable`.
+* `Machine.WriteOutMachine` — the machine-side realization of the write-out ladder.
+* `Machine.SentenceMachine` — the combinator suite of `MachineSentenceCodes`, mirroring
+  `BigSentenceCodes.*` with every fuel-metered `PolyFueled` parameter rendered as a unary ruler.
+  It knows nothing about `LUV`, which is what lets `Expectations` sit *downstream* of the
+  machine classes and state its `def:ece` constructors at `MachineRatCodes`.
+* `Machine.SpliceMachine` — the combinator suite of `MachineSpliceStream`, mirroring
+  `BigSpliceStream.*`, and the trader capstones `MachineSpliceStream.ec`,
+  `EfficientlyComputable.ofSingleTradeBlocksBig` and `.ofTradeBlocksBig`: the
+  exploiting-trader route stated entirely at the machine classes.
+* `Machine.ThresholdMachine` — the machine readings `LUV.MachineThresholdCodes` and
+  `LUV.MachineThresholdCodeSeq` of the two `def:ec` threshold interfaces, with their
+  `toMachine` bridges.  The one leaf of `Machine/` above `Expectations`, and the only module
+  there that may mention `LUV`.
+* `Machine.Witnesses` — one constructed, day-varying inhabitant of each machine emission
+  class, each with the lemma saying it is not a constant sequence, up to a trader whose
+  traded sentence changes every day.
+-/

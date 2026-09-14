@@ -1,1004 +1,62 @@
 import LogicalInduction.Construction.LIAComputation
-import LogicalInduction.Framework.RpnComputation
-import Mathlib.Data.Rat.Denumerable
-import LogicalInduction.Framework.WriteOut
+import LogicalInduction.Construction.Primcodable
 
 /-!
 # Concrete compiler for the bounded LIA evaluator
 
-The paper's construction section defines `MarketMaker`, `Budgeter`, `TradingFirm` and the
-recursively specified market `LIA` by ordinary mathematics, and then asserts that each is
-computable.  This file discharges those assertions concretely: every object the
-construction names gets a first-order Gödel encoding together with a `Primrec` certificate,
-ending in the `LIABoundedEvaluatorCompiler` instance that the main theorems consume.
+§5 defines `MarketMaker`, `Budgeter`, `TradingFirm` and the recursively specified market of
+`def:lia` — `liaHistory` here — by ordinary mathematics and then asserts that each is
+computable.  This
+file discharges those assertions and states §5's conclusions, `thm:lia` and `thm:li`, the
+latter in the paper's `def:belstate` / `def:belseq` form.  The codes and parser certificates
+it runs on are not built here: `Construction/Primcodable.lean` is that layer, and this file
+is the §5 compiler alone.
 
-The chain runs: encodings (propositional sentences, rationals, `EF` feature syntax, belief
-states, finite sentence sets) → the exact stack machine that evaluates rational `EF`
-features → the three trader components → the bounded LIA state-prefix evaluator.
+## The three components as first-order data
 
-The first link is the propositional sentence encoding: Foundation's decoder recurses on
-strictly smaller Gödel numbers, so its encode-after-decode normalizer is compiled by
-primitive-recursive strong recursion rather than by structural recursion on `Formula`.
+MarketMaker's bounded least-candidate search over proof-erased belief states, the Budgeter's
+atom-table world enumeration and scale factor, and the TradingFirm's cutoff through
+`EF.absBound`.  The bounded evaluators `liaPrefixAtFuel`, `liaEncodedQuoteNatAtFuel` and
+`liaEncodedEntriesAtFuel` assemble them into `liaBoundedEvaluatorCompiler`, the
+`LIABoundedEvaluatorCompiler` value the existence theorems consume.
+
+Two encodings the §5 objects need of their own are built here rather than upstream, because
+their types are declared in this directory: `Primcodable RationalBeliefState` (the market
+maker's proof-erased finite state, revalidated by the decoder so the runtime state stays
+first-order) and the exact accessors on it, and the fuel-clocked stage table
+`processStageAtFuel_prim` / `quoteAtFuel_prim` the bounded evaluator reads.
+
+## The rational `EF` stack machine
+
+`efRatCompiledEval`, its correctness `efRatCompiledEval_eq` and its certificate
+`efRatCompiledEval_prim` — the evaluator that
+`Construction/Statistics/SettlementCompiler.lean` runs against the total quote table.
+
+## Main results
+
+`LIA_is_logical_inductor` renders `thm:lia`; `exists_logical_inductor` and
+`exists_computable_beliefSequence_logical_inductor` render `thm:li`.  They are inventoried
+in `AxiomAudit.lean` and consumed by the `_unconditional` and `_closed` endpoints in
+the §4 lanes, chiefly `Construction/Paper/Market.lean`,
+`Construction/NonDogmatism/Endpoints.lean` and
+`Construction/Conditioning/Endpoints.lean`.
+Nothing under `Properties/` imports `Construction/`; the `_closed` lemmas that do live there
+(`sumEF_closed`, `PolySequence.gradualRisk_closed`, `dusSignal_closed`) are feature-closure
+lemmas, an unrelated sense of the suffix.
+
+`Nat.sqrt` is made locally irreducible around the `Primrec` proofs over the deeply nested
+`Primcodable` product types, for the reason given in `Construction/Primcodable.lean`'s
+header; the individual sites cite it.
+
+The final section is the public interface a downstream market construction re-uses; anything
+not named there is implementation detail of this compiler.
 -/
 
 namespace LogicalInduction
 
 open LO.Propositional
 
-/-! Encodable normal-form bridges. The v4.31-era `simp` no longer unfolds
-`Encodable.encode`/`Encodable.decode` through instance names listed as simp
-arguments; these `rfl` lemmas restore the concrete forms. -/
-private lemma encode_ef_eq_toNat (e : EF) : Encodable.encode e = e.toNat := rfl
-private lemma decode_ef_eq_ofNat (n : ℕ) :
-    (Encodable.decode n : Option EF) = EF.ofNat n := rfl
-private lemma encode_formula_eq_toNat (φ : LO.Propositional.Formula ℕ) :
-    Encodable.encode φ = φ.toNat := rfl
-private lemma decode_formula_eq_ofNat (n : ℕ) :
-    (Encodable.decode n : Option (LO.Propositional.Formula ℕ)) =
-      LO.Propositional.Formula.ofNat n := rfl
-
-private def formulaBinaryNorm (tag : ℕ) (prior : List ℕ) (children : ℕ) : ℕ :=
-  let left := prior.getD children.unpair.1 0
-  let right := prior.getD children.unpair.2 0
-  if left = 0 ∨ right = 0 then 0
-  else Nat.pair tag (Nat.pair (left - 1) (right - 1)) + 2
-
-private lemma formulaBinaryNorm_prim (tag : ℕ) :
-    Primrec₂ (formulaBinaryNorm tag) := by
-  let childLeft : List ℕ × ℕ → ℕ := fun p => p.1.getD p.2.unpair.1 0
-  let childRight : List ℕ × ℕ → ℕ := fun p => p.1.getD p.2.unpair.2 0
-  have hindexLeft : Primrec fun p : List ℕ × ℕ => p.2.unpair.1 :=
-    Primrec.fst.comp (Primrec.unpair.comp Primrec.snd)
-  have hindexRight : Primrec fun p : List ℕ × ℕ => p.2.unpair.2 :=
-    Primrec.snd.comp (Primrec.unpair.comp Primrec.snd)
-  have hleft : Primrec childLeft :=
-    (Primrec.list_getD 0).comp Primrec.fst hindexLeft
-  have hright : Primrec childRight :=
-    (Primrec.list_getD 0).comp Primrec.fst hindexRight
-  have hbad : PrimrecPred fun p : List ℕ × ℕ =>
-      childLeft p = 0 ∨ childRight p = 0 :=
-    (Primrec.eq.comp hleft (Primrec.const 0)).or
-      (Primrec.eq.comp hright (Primrec.const 0))
-  have hchildren : Primrec fun p : List ℕ × ℕ =>
-      Nat.pair (childLeft p - 1) (childRight p - 1) :=
-    Primrec₂.natPair.comp
-      (Primrec.nat_sub.comp hleft (Primrec.const 1))
-      (Primrec.nat_sub.comp hright (Primrec.const 1))
-  have htagged : Primrec fun p : List ℕ × ℕ =>
-      Nat.pair tag (Nat.pair (childLeft p - 1) (childRight p - 1)) :=
-    Primrec₂.natPair.comp (Primrec.const tag) hchildren
-  have hresult : Primrec fun p : List ℕ × ℕ =>
-      Nat.pair tag (Nat.pair (childLeft p - 1) (childRight p - 1)) + 2 :=
-    Primrec.nat_add.comp htagged (Primrec.const 2)
-  exact (Primrec.ite hbad (Primrec.const 0) hresult).to₂.of_eq fun prior children => by
-    simp only [formulaBinaryNorm, childLeft, childRight]
-
-private def formulaNormSucc (prior : List ℕ) (e : ℕ) : ℕ :=
-  let tag := e.unpair.1
-  let payload := e.unpair.2
-  if tag = 0 then 2
-  else if tag = 1 then Nat.pair 1 payload + 2
-  else if tag = 2 then formulaBinaryNorm 2 prior payload
-  else if tag = 3 then formulaBinaryNorm 3 prior payload
-  else if tag = 4 then formulaBinaryNorm 4 prior payload
-  else 0
-
-private lemma formulaNormSucc_prim : Primrec₂ formulaNormSucc := by
-  let tag : List ℕ × ℕ → ℕ := fun p => p.2.unpair.1
-  let payload : List ℕ × ℕ → ℕ := fun p => p.2.unpair.2
-  have htag : Primrec tag := Primrec.fst.comp (Primrec.unpair.comp Primrec.snd)
-  have hpayload : Primrec payload := Primrec.snd.comp (Primrec.unpair.comp Primrec.snd)
-  have htaggedAtom : Primrec fun p : List ℕ × ℕ => Nat.pair 1 (payload p) + 2 :=
-    Primrec.nat_add.comp
-      (Primrec₂.natPair.comp (Primrec.const 1) hpayload) (Primrec.const 2)
-  have hbinary (k : ℕ) : Primrec fun p : List ℕ × ℕ =>
-      formulaBinaryNorm k p.1 (payload p) :=
-    (formulaBinaryNorm_prim k).comp Primrec.fst hpayload
-  have htagEq (k : ℕ) : PrimrecPred fun p : List ℕ × ℕ => tag p = k :=
-    Primrec.eq.comp htag (Primrec.const k)
-  have h4 : Primrec fun p : List ℕ × ℕ =>
-      if tag p = 4 then formulaBinaryNorm 4 p.1 (payload p) else 0 :=
-    Primrec.ite (htagEq 4) (hbinary 4) (Primrec.const 0)
-  have h3 : Primrec fun p : List ℕ × ℕ =>
-      if tag p = 3 then formulaBinaryNorm 3 p.1 (payload p)
-      else if tag p = 4 then formulaBinaryNorm 4 p.1 (payload p) else 0 :=
-    Primrec.ite (htagEq 3) (hbinary 3) h4
-  have h2 : Primrec fun p : List ℕ × ℕ =>
-      if tag p = 2 then formulaBinaryNorm 2 p.1 (payload p)
-      else if tag p = 3 then formulaBinaryNorm 3 p.1 (payload p)
-      else if tag p = 4 then formulaBinaryNorm 4 p.1 (payload p) else 0 :=
-    Primrec.ite (htagEq 2) (hbinary 2) h3
-  have h1 : Primrec fun p : List ℕ × ℕ =>
-      if tag p = 1 then Nat.pair 1 (payload p) + 2
-      else if tag p = 2 then formulaBinaryNorm 2 p.1 (payload p)
-      else if tag p = 3 then formulaBinaryNorm 3 p.1 (payload p)
-      else if tag p = 4 then formulaBinaryNorm 4 p.1 (payload p) else 0 :=
-    Primrec.ite (htagEq 1) htaggedAtom h2
-  exact (Primrec.ite (htagEq 0) (Primrec.const 2) h1).to₂.of_eq fun prior e => by
-    simp only [formulaNormSucc, tag, payload]
-
-private def formulaNormList (prior : List ℕ) : ℕ :=
-  prior.length.casesOn 0 (formulaNormSucc prior)
-
-private lemma formulaNormList_prim : Primrec formulaNormList := by
-  exact (Primrec.nat_casesOn Primrec.list_length (Primrec.const 0)
-    formulaNormSucc_prim).of_eq fun prior => by
-      simp only [formulaNormList]
-
-private def sentenceDecodeNorm (n : ℕ) : ℕ :=
-  match (@LO.Propositional.Formula.ofNat ℕ inferInstance n : Option Sentence) with
-  | none => 0
-  | some phi => LO.Propositional.Formula.toNat phi + 1
-
-private lemma formulaHistory_getD {n k : ℕ} (hk : k < n) :
-    ((List.range n).map fun m =>
-      sentenceDecodeNorm m).getD k 0 = sentenceDecodeNorm k := by
-  have hzero : sentenceDecodeNorm 0 = 0 := by
-    simp [sentenceDecodeNorm, LO.Propositional.Formula.ofNat]
-  rw [← hzero, List.getD_map]
-  simp [hk]
-
-private lemma formulaBinaryNorm_history (tag payload n : ℕ)
-    (hleft : payload.unpair.1 < n) (hright : payload.unpair.2 < n) :
-    formulaBinaryNorm tag ((List.range n).map sentenceDecodeNorm) payload =
-      match (@LO.Propositional.Formula.ofNat ℕ inferInstance payload.unpair.1 : Option Sentence),
-          (@LO.Propositional.Formula.ofNat ℕ inferInstance payload.unpair.2 : Option Sentence) with
-      | some phi, some psi => Nat.pair tag (Nat.pair phi.toNat psi.toNat) + 2
-      | _, _ => 0 := by
-  unfold formulaBinaryNorm
-  rw [formulaHistory_getD hleft, formulaHistory_getD hright]
-  cases hL : (@LO.Propositional.Formula.ofNat ℕ inferInstance
-      payload.unpair.1 : Option Sentence) <;>
-    cases hR : (@LO.Propositional.Formula.ofNat ℕ inferInstance
-      payload.unpair.2 : Option Sentence) <;>
-    simp [sentenceDecodeNorm, hL, hR]
-
-private lemma formulaNormList_history (n : ℕ) :
-    formulaNormList ((List.range n).map fun k =>
-      sentenceDecodeNorm k) = sentenceDecodeNorm n := by
-  cases n with
-  | zero => simp [formulaNormList, sentenceDecodeNorm, LO.Propositional.Formula.ofNat]
-  | succ e =>
-      let tag := e.unpair.1
-      let payload := e.unpair.2
-      have hleft : payload.unpair.1 < e + 1 := by
-        dsimp [payload]
-        exact Nat.lt_succ_iff.mpr <|
-          le_trans (Nat.unpair_left_le _) (Nat.unpair_right_le _)
-      have hright : payload.unpair.2 < e + 1 := by
-        dsimp [payload]
-        exact Nat.lt_succ_iff.mpr <|
-          le_trans (Nat.unpair_right_le _) (Nat.unpair_right_le _)
-      by_cases h0 : tag = 0
-      · simp [sentenceDecodeNorm, formulaNormList, formulaNormSucc, LO.Propositional.Formula.ofNat,
-          LO.Propositional.Formula.toNat,
-          Nat.pair, tag, h0]
-      by_cases h1 : tag = 1
-      · simp [sentenceDecodeNorm, formulaNormList, formulaNormSucc, LO.Propositional.Formula.ofNat,
-          LO.Propositional.Formula.toNat,
-          Nat.pair, tag, h1]
-      by_cases h2 : tag = 2
-      · subst tag
-        have hb := formulaBinaryNorm_history 2 payload (e + 1) hleft hright
-        simp only [formulaNormList, List.length_map, List.length_range,
-          formulaNormSucc, h2, ↓reduceIte]
-        rw [hb]
-        unfold sentenceDecodeNorm
-        simp only [LO.Propositional.Formula.ofNat, h2]
-        cases (@LO.Propositional.Formula.ofNat ℕ inferInstance
-            payload.unpair.1 : Option Sentence) <;>
-          cases (@LO.Propositional.Formula.ofNat ℕ inferInstance
-            payload.unpair.2 : Option Sentence) <;>
-          simp [LO.Propositional.Formula.toNat]
-      by_cases h3 : tag = 3
-      · subst tag
-        have hb := formulaBinaryNorm_history 3 payload (e + 1) hleft hright
-        simp only [formulaNormList, List.length_map, List.length_range,
-          formulaNormSucc, h3, ↓reduceIte]
-        rw [hb]
-        unfold sentenceDecodeNorm
-        simp only [LO.Propositional.Formula.ofNat, h3]
-        cases (@LO.Propositional.Formula.ofNat ℕ inferInstance
-            payload.unpair.1 : Option Sentence) <;>
-          cases (@LO.Propositional.Formula.ofNat ℕ inferInstance
-            payload.unpair.2 : Option Sentence) <;>
-          simp [LO.Propositional.Formula.toNat]
-      by_cases h4 : tag = 4
-      · subst tag
-        have hb := formulaBinaryNorm_history 4 payload (e + 1) hleft hright
-        simp only [formulaNormList, List.length_map, List.length_range,
-          formulaNormSucc, h4, ↓reduceIte]
-        rw [hb]
-        unfold sentenceDecodeNorm
-        simp only [LO.Propositional.Formula.ofNat, h4]
-        cases (@LO.Propositional.Formula.ofNat ℕ inferInstance
-            payload.unpair.1 : Option Sentence) <;>
-          cases (@LO.Propositional.Formula.ofNat ℕ inferInstance
-            payload.unpair.2 : Option Sentence) <;>
-          simp [LO.Propositional.Formula.toNat]
-      · have htag : 5 ≤ tag := by omega
-        simp [sentenceDecodeNorm, formulaNormList, formulaNormSucc, LO.Propositional.Formula.ofNat,
-
-          tag, h0, h1, h2, h3, h4]
-
-/-- Foundation's concrete Gödel encoding of propositional sentences is primitive-recursive.
-This is an encoding theorem only; it contains no semantic or logical-inductor premise. -/
-instance sentencePrimcodable : Primcodable Sentence where
-  prim := by
-    have hstep : Primrec₂ (fun (_ : Unit) (prior : List ℕ) =>
-        some (formulaNormList prior)) :=
-      Primrec₂.option_some_iff.mpr (formulaNormList_prim.comp Primrec₂.right)
-    have hrec := Primrec.nat_strong_rec
-      (fun (_ : Unit) n => sentenceDecodeNorm n)
-      hstep (fun _ n => by simpa using congrArg some (formulaNormList_history n))
-    exact Primrec.nat_iff.mp ((hrec.comp (Primrec.const ()) Primrec.id).of_eq fun n => by
-      change sentenceDecodeNorm n = Encodable.encode
-        ((@LO.Propositional.Formula.ofNat ℕ inferInstance n) : Option Sentence)
-      cases h : (@LO.Propositional.Formula.ofNat ℕ inferInstance n : Option Sentence) <;>
-        simp [sentenceDecodeNorm, h, LO.Propositional.Formula.instEncodable, encode_formula_eq_toNat, decode_formula_eq_ofNat])
-
-/-! ## Primitive-recursive normalization of the concrete `EF` decoder -/
-
-private def intCodeNatAbs (n : ℕ) : ℕ :=
-  if n.bodd then n.div2 + 1 else n.div2
-
-private lemma intCodeNatAbs_prim : Primrec intCodeNatAbs := by
-  exact (Primrec.cond Primrec.nat_bodd
-    (Primrec.nat_add.comp Primrec.nat_div2 (Primrec.const 1))
-    Primrec.nat_div2).of_eq fun n => by
-      simp only [intCodeNatAbs]
-      cases n.bodd <;> rfl
-
-private lemma intCodeNatAbs_eq_decode (n : ℕ) :
-    intCodeNatAbs n =
-      ((@Encodable.decode ℤ Int.encodable n).getD 0).natAbs := by
-  have hof : Denumerable.ofNat ℤ n = Equiv.intEquivNat.symm n := by
-    apply Denumerable.ofNat_of_decode
-    rfl
-  simp [intCodeNatAbs, Int.encodable, hof, Equiv.intEquivNat,
-    Equiv.intEquivNatSumNat, Equiv.natSumNatEquivNat,
-    Equiv.boolProdNatEquivNat, Nat.boddDiv2_eq]
-  cases hodd : n.bodd
-  · change n.div2 = Int.natAbs (Int.ofNat n.div2)
-    rfl
-  · change n.div2 + 1 = Int.natAbs (Int.negSucc n.div2)
-    rfl
-
-/-- A bounded-common-divisor presentation of coprimality.  The `max + 1` bound also
-handles the degenerate zero cases. -/
-private def coprimeBounded (a b : ℕ) : Prop :=
-  ∀ k < max a b + 1, k ∣ a → k ∣ b → k = 1
-
-private instance coprimeBoundedDecidable : DecidableRel coprimeBounded :=
-  fun a b => by
-    dsimp [coprimeBounded]
-    infer_instance
-
-private lemma coprimeBounded_iff (a b : ℕ) : coprimeBounded a b ↔ a.Coprime b := by
-  constructor
-  · intro h
-    rw [Nat.coprime_iff_isRelPrime]
-    intro k hka hkb
-    have hnz : a ≠ 0 ∨ b ≠ 0 := by
-      by_contra hnz
-      push_neg at hnz
-      have := h 0 (by omega) (by simp [hnz.1]) (by simp [hnz.2])
-      omega
-    have hklt : k < max a b + 1 := by
-      rcases hnz with ha | hb
-      · have hka' : k ≤ a := Nat.le_of_dvd (Nat.pos_of_ne_zero ha) hka
-        omega
-      · have hkb' : k ≤ b := Nat.le_of_dvd (Nat.pos_of_ne_zero hb) hkb
-        omega
-    simp [h k hklt hka hkb]
-  · intro h k _ hka hkb
-    exact Nat.eq_one_of_dvd_coprimes h hka hkb
-
-private lemma coprimeBounded_prim : PrimrecRel coprimeBounded := by
-  have hdvd : PrimrecRel fun k a : ℕ => k ∣ a := by
-    apply PrimrecPred.of_eq
-      (Primrec.eq.comp
-        (Primrec.nat_mod.comp (Primrec.snd : Primrec fun p : ℕ × ℕ => p.2)
-          (Primrec.fst : Primrec fun p : ℕ × ℕ => p.1))
-        (Primrec.const (α := ℕ × ℕ) 0))
-    intro p
-    rcases p with ⟨k, a⟩
-    simp [Nat.dvd_iff_mod_eq_zero]
-  have hunpairLeft : Primrec fun n : ℕ => n.unpair.1 :=
-    Primrec.fst.comp Primrec.unpair
-  have hunpairRight : Primrec fun n : ℕ => n.unpair.2 :=
-    Primrec.snd.comp Primrec.unpair
-  have hdvdLeft : PrimrecRel fun k y : ℕ => k ∣ y.unpair.1 :=
-    hdvd.comp₂ Primrec₂.left (hunpairLeft.comp₂ Primrec₂.right)
-  have hdvdRight : PrimrecRel fun k y : ℕ => k ∣ y.unpair.2 :=
-    hdvd.comp₂ Primrec₂.left (hunpairRight.comp₂ Primrec₂.right)
-  have hone : PrimrecRel fun k (_ : ℕ) => k = 1 :=
-    Primrec.eq.comp₂ Primrec₂.left (Primrec₂.const 1)
-  have hbody : PrimrecRel fun k y : ℕ =>
-      k ∣ y.unpair.1 → k ∣ y.unpair.2 → k = 1 := by
-    exact ((hdvdLeft.and hdvdRight).not.or hone).of_eq fun p => by tauto
-  have hbound : Primrec fun y : ℕ => max y.unpair.1 y.unpair.2 + 1 :=
-    Primrec.nat_add.comp
-      (Primrec.nat_max.comp hunpairLeft hunpairRight) (Primrec.const 1)
-  have hall : PrimrecRel fun n y : ℕ =>
-      ∀ k < n, k ∣ y.unpair.1 → k ∣ y.unpair.2 → k = 1 := hbody.forall_lt
-  have hpair : Primrec fun p : ℕ × ℕ => Nat.pair p.1 p.2 :=
-    Primrec₂.natPair.comp Primrec.fst Primrec.snd
-  exact (hall.comp (hbound.comp hpair) hpair).of_eq fun p => by
-    simp only [Nat.unpair_pair, coprimeBounded]
-
-private lemma natDvd_prim : PrimrecRel fun k a : ℕ => k ∣ a := by
-  apply PrimrecPred.of_eq
-    (Primrec.eq.comp
-      (Primrec.nat_mod.comp (Primrec.snd : Primrec fun p : ℕ × ℕ => p.2)
-        (Primrec.fst : Primrec fun p : ℕ × ℕ => p.1))
-      (Primrec.const (α := ℕ × ℕ) 0))
-  intro p
-  rcases p with ⟨k, a⟩
-  simp [Nat.dvd_iff_mod_eq_zero]
-
-/-- Euclid's gcd, compiled as the greatest common divisor below the explicit `a+b`
-bound.  This avoids relying on the kernel implementation of Euclid's recursion. -/
-private lemma natGCD_prim : Primrec₂ Nat.gcd := by
-  let common : ℕ × ℕ → ℕ → Prop := fun p k => k ∣ p.1 ∧ k ∣ p.2
-  have hcommon : PrimrecRel common := by
-    exact (natDvd_prim.comp₂ Primrec₂.right (Primrec.fst.comp₂ Primrec₂.left)).and
-      (natDvd_prim.comp₂ Primrec₂.right (Primrec.snd.comp₂ Primrec₂.left))
-  have hbound : Primrec fun p : ℕ × ℕ => p.1 + p.2 :=
-    Primrec.nat_add.comp Primrec.fst Primrec.snd
-  have hfind : Primrec fun p : ℕ × ℕ =>
-      (p.1 + p.2).findGreatest (common p) :=
-    Primrec.nat_findGreatest hbound hcommon
-  exact hfind.to₂.of_eq fun a b => by
-    dsimp only [common]
-    by_cases hz : a + b = 0
-    · have ha : a = 0 := by omega
-      have hb : b = 0 := by omega
-      subst a
-      subst b
-      rfl
-    · have hboundGCD : Nat.gcd a b ≤ a + b := by
-        by_cases ha : a = 0
-        · subst a
-          simp
-        · exact (Nat.gcd_le_left b (Nat.pos_of_ne_zero ha)).trans (Nat.le_add_right a b)
-      have hgcdCommon : Nat.gcd a b ∣ a ∧ Nat.gcd a b ∣ b :=
-        ⟨Nat.gcd_dvd_left _ _, Nat.gcd_dvd_right _ _⟩
-      have hgcdLe : Nat.gcd a b ≤
-          (a + b).findGreatest (fun k => k ∣ a ∧ k ∣ b) :=
-        Nat.le_findGreatest hboundGCD hgcdCommon
-      have honeLe : 1 ≤ a + b := Nat.one_le_iff_ne_zero.mpr hz
-      have hfindCommon :
-          (a + b).findGreatest (fun k => k ∣ a ∧ k ∣ b) ∣ a ∧
-            (a + b).findGreatest (fun k => k ∣ a ∧ k ∣ b) ∣ b :=
-        Nat.findGreatest_spec (P := fun k => k ∣ a ∧ k ∣ b) honeLe
-          ⟨one_dvd a, one_dvd b⟩
-      have hgcdPos : 0 < Nat.gcd a b := by
-        by_cases ha : a = 0
-        · subst a
-          have hb : 0 < b := by omega
-          simpa using hb
-        · exact Nat.gcd_pos_of_pos_left b (Nat.pos_of_ne_zero ha)
-      have hfindLe : (a + b).findGreatest (fun k => k ∣ a ∧ k ∣ b) ≤
-          Nat.gcd a b :=
-        Nat.le_of_dvd hgcdPos (Nat.dvd_gcd hfindCommon.1 hfindCommon.2)
-      exact le_antisymm hfindLe hgcdLe
-
-private def ratCodeValid (n : ℕ) : Prop :=
-  0 < n.unpair.2 ∧ coprimeBounded (intCodeNatAbs n.unpair.1) n.unpair.2
-
-private instance ratCodeValidDecidable : DecidablePred ratCodeValid :=
-  fun n => by
-    dsimp [ratCodeValid]
-    infer_instance
-
-private lemma ratCodeValid_prim : PrimrecPred ratCodeValid := by
-  have hden : Primrec fun n : ℕ => n.unpair.2 :=
-    Primrec.snd.comp Primrec.unpair
-  have hnum : Primrec fun n : ℕ => intCodeNatAbs n.unpair.1 :=
-    intCodeNatAbs_prim.comp (Primrec.fst.comp Primrec.unpair)
-  have hpos : PrimrecPred fun n : ℕ => 0 < n.unpair.2 :=
-    Primrec.nat_lt.comp (Primrec.const 0) hden
-  have hcop : PrimrecPred fun n : ℕ =>
-      coprimeBounded (intCodeNatAbs n.unpair.1) n.unpair.2 :=
-    coprimeBounded_prim.comp hnum hden
-  exact (hpos.and hcop).of_eq fun n => by simp only [ratCodeValid]
-
-private def ratDecodeNorm (n : ℕ) : ℕ :=
-  if ratCodeValid n then n + 1 else 0
-
-private lemma ratDecodeNorm_prim : Primrec ratDecodeNorm := by
-  exact (Primrec.ite ratCodeValid_prim
-    (Primrec.nat_add.comp Primrec.id (Primrec.const 1))
-    (Primrec.const 0)).of_eq fun n => by simp only [ratDecodeNorm, id_eq]
-
-private lemma ratDecodeNorm_eq (n : ℕ) :
-    ratDecodeNorm n = Encodable.encode (@Encodable.decode ℚ inferInstance n) := by
-  have hvalid : ratCodeValid n ↔
-      0 < n.unpair.2 ∧
-        (Denumerable.ofNat ℤ n.unpair.1).natAbs.Coprime n.unpair.2 := by
-    simp [ratCodeValid, coprimeBounded_iff, intCodeNatAbs_eq_decode,
-      Int.encodable]
-  have hencodeInt (k : ℕ) : Equiv.intEquivNat (Denumerable.ofNat ℤ k) = k := by
-    exact @Denumerable.encode_ofNat ℤ Denumerable.int k
-  have hsymm : (Equiv.intEquivNat.symm n.unpair.1 : ℤ) =
-      Denumerable.ofNat ℤ n.unpair.1 :=
-    (Equiv.symm_apply_eq _).mpr (hencodeInt n.unpair.1).symm
-  have hstep : (Encodable.decode n.unpair.2 :
-      Option {d : ℕ // 0 < d ∧
-        (Equiv.intEquivNat.symm n.unpair.1 : ℤ).natAbs.Coprime d}) =
-      if hd : 0 < n.unpair.2 ∧
-          (Equiv.intEquivNat.symm n.unpair.1 : ℤ).natAbs.Coprime n.unpair.2 then
-        some ⟨n.unpair.2, hd⟩ else none := rfl
-  by_cases h : ratCodeValid n
-  · have hc' : 0 < n.unpair.2 ∧
-        (Equiv.intEquivNat.symm n.unpair.1 : ℤ).natAbs.Coprime n.unpair.2 := by
-      rw [hsymm]; exact hvalid.mp h
-    simp [ratDecodeNorm, h, Rat.instEncodable, Encodable.decode_ofEquiv,
-      Encodable.decode_sigma_val, hstep, hc', Encodable.encode_ofEquiv,
-      Encodable.encode_sigma_val, Encodable.Subtype.encode_eq, hencodeInt]
-    rw [dif_pos hc'.2]
-    simp [Encodable.encode_ofEquiv, Encodable.encode_sigma_val,
-      Encodable.Subtype.encode_eq, hencodeInt, Nat.pair_unpair]
-  · have hc' : ¬(0 < n.unpair.2 ∧
-        (Equiv.intEquivNat.symm n.unpair.1 : ℤ).natAbs.Coprime n.unpair.2) := by
-      rw [hsymm]; exact mt hvalid.mpr h
-    simp [ratDecodeNorm, h, Rat.instEncodable, Encodable.decode_ofEquiv,
-      Encodable.decode_sigma_val, hstep, hc']
-
-/-- Mathlib's concrete reduced-numerator/positive-denominator rational encoding is
-primitive-recursive.  Unlike the generic denumeration fallback, this is the same encoding
-used by `EF.const` and by all external rational quote codes. -/
-instance ratPrimcodable : Primcodable ℚ where
-  prim := Primrec.nat_iff.mp (ratDecodeNorm_prim.of_eq ratDecodeNorm_eq)
-
-private lemma ratNum_prim : Primrec Rat.num := by
-  apply Primrec.encode_iff.mp
-  exact (Primrec.fst.comp (Primrec.unpair.comp Primrec.encode)).of_eq fun q => by
-    simp only [encode_rat_eq, Nat.unpair_pair]
-
-private lemma ratDen_prim : Primrec Rat.den := by
-  exact (Primrec.snd.comp (Primrec.unpair.comp Primrec.encode)).of_eq fun q => by
-    simp only [encode_rat_eq, Nat.unpair_pair]
-
-private lemma intCodeNatAbs_encode (z : ℤ) :
-    intCodeNatAbs (Encodable.encode z) = z.natAbs := by
-  cases z with
-  | ofNat n => simp [intCodeNatAbs, encode_int_natCast]
-  | negSucc n =>
-      have hencode : Encodable.encode (Int.negSucc n) = 2 * n + 1 := rfl
-      rw [hencode]
-      simp [intCodeNatAbs]
-
-private lemma intNatAbs_prim : Primrec Int.natAbs :=
-  (intCodeNatAbs_prim.comp Primrec.encode).of_eq intCodeNatAbs_encode
-
-/-! The concrete integer encoding alternates nonnegative and negative values.  Working at
-the code level keeps the rational compiler independent of any opaque arithmetic oracle. -/
-
-private def intCodeNeg (n : ℕ) : ℕ :=
-  if n = 0 then 0 else bif n.bodd then n + 1 else n - 1
-
-private lemma intCodeNeg_prim : Primrec intCodeNeg := by
-  have hzero : PrimrecPred fun n : ℕ => n = 0 :=
-    Primrec.eq.comp Primrec.id (Primrec.const 0)
-  have hodd : Primrec fun n : ℕ => bif n.bodd then n + 1 else n - 1 :=
-    Primrec.cond Primrec.nat_bodd
-      (Primrec.nat_add.comp Primrec.id (Primrec.const 1))
-      (Primrec.nat_sub.comp Primrec.id (Primrec.const 1))
-  exact (Primrec.ite hzero (Primrec.const 0) hodd).of_eq fun n => by
-    simp only [intCodeNeg]
-
-private lemma intCodeNeg_encode (z : ℤ) :
-    intCodeNeg (Encodable.encode z) = Encodable.encode (-z) := by
-  cases z with
-  | ofNat n =>
-      cases n with
-      | zero =>
-          change intCodeNeg 0 = 0
-          simp [intCodeNeg]
-      | succ n =>
-          change intCodeNeg (2 * (n + 1)) = 2 * n + 1
-          simp [intCodeNeg, Nat.bodd_mul]
-          omega
-  | negSucc n =>
-      change intCodeNeg (2 * n + 1) = 2 * (n + 1)
-      simp [intCodeNeg, Nat.bodd_mul]
-      omega
-
-private lemma encodeIntNegNat {n : ℕ} (hn : 0 < n) :
-    Encodable.encode (-((n : ℤ))) = 2 * n - 1 := by
-  have h : -((n : ℤ)) = Int.negSucc (n - 1) := by omega
-  rw [h, show Encodable.encode (Int.negSucc (n - 1)) = 2 * (n - 1) + 1 from rfl]
-  omega
-
-private lemma intNeg_prim : Primrec fun z : ℤ => -z :=
-  Primrec.encode_iff.mp <|
-    (intCodeNeg_prim.comp Primrec.encode).of_eq intCodeNeg_encode
-
-/-- Encode the integer difference `positive - negative`, where both inputs are naturals. -/
-private def intCodeSubNat (positive negative : ℕ) : ℕ :=
-  if negative ≤ positive then 2 * (positive - negative)
-  else 2 * (negative - positive) - 1
-
-private lemma intCodeSubNat_prim : Primrec₂ intCodeSubNat := by
-  have hpos : Primrec fun p : ℕ × ℕ => 2 * (p.1 - p.2) :=
-    Primrec.nat_mul.comp (Primrec.const 2)
-      (Primrec.nat_sub.comp Primrec.fst Primrec.snd)
-  have hneg : Primrec fun p : ℕ × ℕ => 2 * (p.2 - p.1) - 1 :=
-    Primrec.nat_sub.comp
-      (Primrec.nat_mul.comp (Primrec.const 2)
-        (Primrec.nat_sub.comp Primrec.snd Primrec.fst))
-      (Primrec.const 1)
-  exact (Primrec.ite (Primrec.nat_le.comp Primrec.snd Primrec.fst)
-    hpos hneg).to₂.of_eq fun positive negative => by
-      simp only [intCodeSubNat]
-
-private lemma intCodeSubNat_eq (positive negative : ℕ) :
-    intCodeSubNat positive negative =
-      Encodable.encode ((positive : ℤ) - (negative : ℤ)) := by
-  by_cases h : negative ≤ positive
-  · obtain ⟨k, rfl⟩ := Nat.exists_eq_add_of_le h
-    simp [intCodeSubNat, encode_int_natCast]
-  · have hlt : positive < negative := Nat.lt_of_not_ge h
-    obtain ⟨k, hk⟩ := Nat.exists_eq_add_of_lt hlt
-    subst negative
-    rw [show (positive : ℤ) - (positive + k + 1 : ℕ) = Int.negSucc k by omega]
-    change intCodeSubNat positive (positive + k + 1) = 2 * k + 1
-    simp [intCodeSubNat]
-    omega
-
-private def intCodeAdd (a b : ℕ) : ℕ :=
-  bif a.bodd then
-    bif b.bodd then a + b + 1
-    else intCodeSubNat b.div2 (a.div2 + 1)
-  else bif b.bodd then intCodeSubNat a.div2 (b.div2 + 1)
-  else a + b
-
-private lemma intCodeAdd_prim : Primrec₂ intCodeAdd := by
-  have ha : Primrec fun p : ℕ × ℕ => p.1.bodd :=
-    Primrec.nat_bodd.comp Primrec.fst
-  have hb : Primrec fun p : ℕ × ℕ => p.2.bodd :=
-    Primrec.nat_bodd.comp Primrec.snd
-  have haMag : Primrec fun p : ℕ × ℕ => p.1.div2 + 1 :=
-    Primrec.nat_add.comp (Primrec.nat_div2.comp Primrec.fst) (Primrec.const 1)
-  have hbMag : Primrec fun p : ℕ × ℕ => p.2.div2 + 1 :=
-    Primrec.nat_add.comp (Primrec.nat_div2.comp Primrec.snd) (Primrec.const 1)
-  have hbothNeg : Primrec fun p : ℕ × ℕ => p.1 + p.2 + 1 :=
-    Primrec.nat_add.comp (Primrec.nat_add.comp Primrec.fst Primrec.snd)
-      (Primrec.const 1)
-  have hnegPos : Primrec fun p : ℕ × ℕ =>
-      intCodeSubNat p.2.div2 (p.1.div2 + 1) :=
-    intCodeSubNat_prim.comp
-      (Primrec.nat_div2.comp Primrec.snd) haMag
-  have hposNeg : Primrec fun p : ℕ × ℕ =>
-      intCodeSubNat p.1.div2 (p.2.div2 + 1) :=
-    intCodeSubNat_prim.comp
-      (Primrec.nat_div2.comp Primrec.fst) hbMag
-  have hbothPos : Primrec fun p : ℕ × ℕ => p.1 + p.2 :=
-    Primrec.nat_add.comp Primrec.fst Primrec.snd
-  exact (Primrec.cond ha (Primrec.cond hb hbothNeg hnegPos)
-    (Primrec.cond hb hposNeg hbothPos)).to₂.of_eq fun a b => by
-      simp only [intCodeAdd]
-
-private lemma intCodeAdd_encode (a b : ℤ) :
-    intCodeAdd (Encodable.encode a) (Encodable.encode b) =
-      Encodable.encode (a + b) := by
-  cases a with
-  | ofNat a =>
-      cases b with
-      | ofNat b =>
-          change intCodeAdd (2 * a) (2 * b) = 2 * (a + b)
-          simp [intCodeAdd, Nat.bodd_mul]
-          omega
-      | negSucc b =>
-          change intCodeAdd (2 * a) (2 * b + 1) =
-            Encodable.encode ((a : ℤ) - (b + 1 : ℕ))
-          simp [intCodeAdd, intCodeSubNat_eq, Nat.bodd_mul,
-            Nat.div2_bit0]
-  | negSucc a =>
-      cases b with
-      | ofNat b =>
-          have hdiv : (1 + 2 * a).div2 = a := by
-            simpa [Nat.add_comm] using Nat.div2_bit1 a
-          change intCodeAdd (2 * a + 1) (2 * b) =
-            Encodable.encode ((b : ℤ) - (a + 1 : ℕ))
-          simp [intCodeAdd, intCodeSubNat_eq, add_comm, Nat.bodd_add,
-            Nat.bodd_mul, Nat.div2_bit0, hdiv]
-      | negSucc b =>
-          change intCodeAdd (2 * a + 1) (2 * b + 1) = 2 * (a + b + 1) + 1
-          simp [intCodeAdd, Nat.bodd_mul]
-          omega
-
-private lemma intAdd_prim : Primrec₂ fun a b : ℤ => a + b := by
-  apply Primrec₂.encode_iff.mp
-  exact (intCodeAdd_prim.comp₂ (Primrec.encode.comp₂ Primrec₂.left)
-    (Primrec.encode.comp₂ Primrec₂.right)).of_eq fun a b => intCodeAdd_encode a b
-
-private def intCodeMul (a b : ℕ) : ℕ :=
-  let magnitude := intCodeNatAbs a * intCodeNatAbs b
-  if magnitude = 0 then 0
-  else if a.bodd = b.bodd then 2 * magnitude else 2 * magnitude - 1
-
-private lemma intCodeMul_prim : Primrec₂ intCodeMul := by
-  let magnitude : ℕ × ℕ → ℕ := fun p =>
-    intCodeNatAbs p.1 * intCodeNatAbs p.2
-  have hmag : Primrec magnitude :=
-    Primrec.nat_mul.comp (intCodeNatAbs_prim.comp Primrec.fst)
-      (intCodeNatAbs_prim.comp Primrec.snd)
-  have hzero : PrimrecPred fun p : ℕ × ℕ => magnitude p = 0 :=
-    Primrec.eq.comp hmag (Primrec.const 0)
-  have hsame : PrimrecPred fun p : ℕ × ℕ => p.1.bodd = p.2.bodd :=
-    Primrec.eq.comp (Primrec.nat_bodd.comp Primrec.fst)
-      (Primrec.nat_bodd.comp Primrec.snd)
-  have hpos : Primrec fun p : ℕ × ℕ => 2 * magnitude p :=
-    Primrec.nat_mul.comp (Primrec.const 2) hmag
-  have hneg : Primrec fun p : ℕ × ℕ => 2 * magnitude p - 1 :=
-    Primrec.nat_sub.comp hpos (Primrec.const 1)
-  exact (Primrec.ite hzero (Primrec.const 0)
-    (Primrec.ite hsame hpos hneg)).to₂.of_eq fun a b => by
-      simp only [intCodeMul, magnitude]
-
-private lemma intCodeMul_encode (a b : ℤ) :
-    intCodeMul (Encodable.encode a) (Encodable.encode b) =
-      Encodable.encode (a * b) := by
-  cases a with
-  | ofNat a =>
-      cases b with
-      | ofNat b =>
-          change intCodeMul (2 * a) (2 * b) = 2 * (a * b)
-          simp [intCodeMul, intCodeNatAbs, Nat.bodd_mul, Nat.div2_bit0]
-      | negSucc b =>
-          cases a with
-          | zero =>
-              change intCodeMul 0 (2 * b + 1) = Encodable.encode (0 * Int.negSucc b)
-              have hz : (0 : ℤ) * Int.negSucc b = (0 : ℤ) := by simp
-              rw [hz, show (0 : ℤ) = ((0 : ℕ) : ℤ) from rfl, encode_int_natCast]
-              simp [intCodeMul, intCodeNatAbs]
-          | succ a =>
-              change intCodeMul (2 * (a + 1)) (2 * b + 1) =
-                Encodable.encode (Int.ofNat (a + 1) * Int.negSucc b)
-              rw [show Int.ofNat (a + 1) * Int.negSucc b =
-                -(((a + 1) * (b + 1) : ℕ) : ℤ) by
-                  simp [Int.negSucc_eq]
-                  ring]
-              rw [encodeIntNegNat (Nat.mul_pos (by omega) (by omega))]
-              simp [intCodeMul, intCodeNatAbs, Nat.bodd_mul,
-                Nat.div2_bit0]
-  | negSucc a =>
-      cases b with
-      | ofNat b =>
-          cases b with
-          | zero =>
-              change intCodeMul (2 * a + 1) 0 = Encodable.encode (Int.negSucc a * 0)
-              rw [show Encodable.encode (Int.negSucc a * 0) = 0 from rfl]
-              simp [intCodeMul, intCodeNatAbs]
-          | succ b =>
-              change intCodeMul (2 * a + 1) (2 * (b + 1)) =
-                Encodable.encode (Int.negSucc a * Int.ofNat (b + 1))
-              rw [show Int.negSucc a * Int.ofNat (b + 1) =
-                -(((a + 1) * (b + 1) : ℕ) : ℤ) by
-                  simp [Int.negSucc_eq]
-                  ring]
-              rw [encodeIntNegNat (Nat.mul_pos (by omega) (by omega))]
-              simp [intCodeMul, intCodeNatAbs, Nat.bodd_mul,
-                Nat.div2_bit0]
-      | negSucc b =>
-          rw [Int.negSucc_mul_negSucc]
-          change intCodeMul (2 * a + 1) (2 * b + 1) =
-            2 * ((a + 1) * (b + 1))
-          simp [intCodeMul, intCodeNatAbs, Nat.bodd_mul]
-
-private lemma intMul_prim : Primrec₂ fun a b : ℤ => a * b := by
-  apply Primrec₂.encode_iff.mp
-  exact (intCodeMul_prim.comp₂ (Primrec.encode.comp₂ Primrec₂.left)
-    (Primrec.encode.comp₂ Primrec₂.right)).of_eq fun a b => intCodeMul_encode a b
-
-private lemma intOfNat_prim : Primrec fun n : ℕ => (n : ℤ) := by
-  apply Primrec.encode_iff.mp
-  exact (Primrec.nat_mul.comp (Primrec.const 2) Primrec.id).of_eq fun n => by
-    simp only [encode_int_natCast, id_eq]
-
-private def intCodeLE (a b : ℕ) : Prop :=
-  if a.bodd then
-    if b.bodd then b.div2 ≤ a.div2 else True
-  else if b.bodd then False else a.div2 ≤ b.div2
-
-private instance intCodeLEDecidable : DecidableRel intCodeLE :=
-  fun a b => by dsimp [intCodeLE]; infer_instance
-
-private lemma intCodeLE_prim : PrimrecRel intCodeLE := by
-  have ha : PrimrecRel fun (a : ℕ) (_ : ℕ) => a.bodd = true :=
-    Primrec.eq.comp₂ (Primrec.nat_bodd.comp₂ Primrec₂.left)
-      (Primrec₂.const true)
-  have hb : PrimrecRel fun (_ : ℕ) (b : ℕ) => b.bodd = true :=
-    Primrec.eq.comp₂ (Primrec.nat_bodd.comp₂ Primrec₂.right)
-      (Primrec₂.const true)
-  have hnegneg : PrimrecRel fun a b : ℕ => b.div2 ≤ a.div2 :=
-    Primrec.nat_le.comp₂ (Primrec.nat_div2.comp₂ Primrec₂.right)
-      (Primrec.nat_div2.comp₂ Primrec₂.left)
-  have hpospos : PrimrecRel fun a b : ℕ => a.div2 ≤ b.div2 :=
-    Primrec.nat_le.comp₂ (Primrec.nat_div2.comp₂ Primrec₂.left)
-      (Primrec.nat_div2.comp₂ Primrec₂.right)
-  have hformula : PrimrecRel fun (a b : ℕ) =>
-      (a.bodd = true ∧ (b.bodd ≠ true ∨ b.div2 ≤ a.div2)) ∨
-        (a.bodd ≠ true ∧ b.bodd ≠ true ∧ a.div2 ≤ b.div2) :=
-    (ha.and (hb.not.or hnegneg)).or (ha.not.and (hb.not.and hpospos))
-  exact hformula.of_eq fun a b => by
-    simp only [intCodeLE]
-    cases a.bodd <;> cases b.bodd <;> simp
-
-private lemma intCodeLE_encode (a b : ℤ) :
-    intCodeLE (Encodable.encode a) (Encodable.encode b) ↔ a ≤ b := by
-  cases a with
-  | ofNat a =>
-      cases b with
-      | ofNat b =>
-          change intCodeLE (2 * a) (2 * b) ↔ Int.ofNat a ≤ Int.ofNat b
-          simp [intCodeLE, Nat.bodd_mul, Nat.div2_bit0]
-      | negSucc b =>
-          change intCodeLE (2 * a) (2 * b + 1) ↔ Int.ofNat a ≤ Int.negSucc b
-          simp [intCodeLE, Nat.bodd_mul]
-          omega
-  | negSucc a =>
-      cases b with
-      | ofNat b =>
-          change intCodeLE (2 * a + 1) (2 * b) ↔ Int.negSucc a ≤ Int.ofNat b
-          simp [intCodeLE, Nat.bodd_mul]
-          omega
-      | negSucc b =>
-          change intCodeLE (2 * a + 1) (2 * b + 1) ↔
-            Int.negSucc a ≤ Int.negSucc b
-          simp [intCodeLE, Nat.bodd_mul]
-          omega
-
-private lemma intLE_prim : PrimrecRel fun a b : ℤ => a ≤ b := by
-  exact (intCodeLE_prim.comp₂ (Primrec.encode.comp₂ Primrec₂.left)
-    (Primrec.encode.comp₂ Primrec₂.right)).of_eq intCodeLE_encode
-
-private def intCodeSign (zCode : ℕ) : ℕ :=
-  if zCode = 0 then 0 else if zCode.bodd then 1 else 2
-
-private lemma intCodeSign_prim : Primrec intCodeSign := by
-  have hz : PrimrecPred fun n : ℕ => n = 0 :=
-    Primrec.eq.comp Primrec.id (Primrec.const 0)
-  have hodd : PrimrecPred fun n : ℕ => n.bodd = true :=
-    Primrec.eq.comp Primrec.nat_bodd (Primrec.const true)
-  exact (Primrec.ite hz (Primrec.const 0)
-    (Primrec.ite hodd (Primrec.const 1) (Primrec.const 2))).of_eq fun n => by
-      simp only [intCodeSign]
-
-private lemma intCodeSign_encode (z : ℤ) :
-    intCodeSign (Encodable.encode z) = Encodable.encode z.sign := by
-  cases z with
-  | ofNat n =>
-      cases n with
-      | zero =>
-          change intCodeSign 0 = 0
-          simp [intCodeSign]
-      | succ n =>
-          change intCodeSign (2 * (n + 1)) = 2
-          simp [intCodeSign, Nat.bodd_mul]
-  | negSucc n =>
-      change intCodeSign (2 * n + 1) = 1
-      simp [intCodeSign, Nat.bodd_mul]
-
-private lemma intSign_prim : Primrec Int.sign := by
-  apply Primrec.encode_iff.mp
-  exact (intCodeSign_prim.comp Primrec.encode).of_eq intCodeSign_encode
-
-private def intCodeDivNat (zCode d : ℕ) : ℕ :=
-  if d = 0 then 0
-  else if zCode.bodd then 2 * (zCode.div2 / d) + 1
-  else 2 * (zCode.div2 / d)
-
-private lemma intCodeDivNat_prim : Primrec₂ intCodeDivNat := by
-  have hd0 : PrimrecPred fun p : ℕ × ℕ => p.2 = 0 :=
-    Primrec.eq.comp Primrec.snd (Primrec.const 0)
-  have hodd : PrimrecPred fun p : ℕ × ℕ => p.1.bodd = true :=
-    Primrec.eq.comp (Primrec.nat_bodd.comp Primrec.fst) (Primrec.const true)
-  have hquot : Primrec fun p : ℕ × ℕ => p.1.div2 / p.2 :=
-    Primrec.nat_div.comp (Primrec.nat_div2.comp Primrec.fst) Primrec.snd
-  have hneg : Primrec fun p : ℕ × ℕ => 2 * (p.1.div2 / p.2) + 1 :=
-    Primrec.nat_add.comp (Primrec.nat_mul.comp (Primrec.const 2) hquot)
-      (Primrec.const 1)
-  have hpos : Primrec fun p : ℕ × ℕ => 2 * (p.1.div2 / p.2) :=
-    Primrec.nat_mul.comp (Primrec.const 2) hquot
-  exact (Primrec.ite hd0 (Primrec.const 0) (Primrec.ite hodd hneg hpos)).to₂.of_eq
-    fun zCode d => by simp only [intCodeDivNat]
-
-private lemma intCodeDivNat_encode (z : ℤ) (d : ℕ) :
-    intCodeDivNat (Encodable.encode z) d = Encodable.encode (z / (d : ℤ)) := by
-  cases z with
-  | ofNat n =>
-      cases d with
-      | zero =>
-          change intCodeDivNat (2 * n) 0 = Encodable.encode (Int.ofNat n / 0)
-          rw [show Int.ofNat n / 0 = 0 by simp,
-            show (0 : ℤ) = ((0 : ℕ) : ℤ) from rfl, encode_int_natCast]
-          simp [intCodeDivNat]
-      | succ d =>
-          change intCodeDivNat (2 * n) (d + 1) =
-            Encodable.encode (Int.ofNat (n / (d + 1)))
-          rw [show Encodable.encode (Int.ofNat (n / (d + 1))) =
-            2 * (n / (d + 1)) from rfl]
-          simp [intCodeDivNat, Nat.bodd_mul, Nat.div2_bit0]
-  | negSucc n =>
-      cases d with
-      | zero =>
-          change intCodeDivNat (2 * n + 1) 0 =
-            Encodable.encode (Int.negSucc n / 0)
-          rw [show Int.negSucc n / 0 = 0 by simp,
-            show (0 : ℤ) = ((0 : ℕ) : ℤ) from rfl, encode_int_natCast]
-          simp [intCodeDivNat]
-      | succ d =>
-          change intCodeDivNat (2 * n + 1) (d + 1) =
-            Encodable.encode (Int.negSucc (n / (d + 1)))
-          rw [show Encodable.encode (Int.negSucc (n / (d + 1))) =
-            2 * (n / (d + 1)) + 1 from rfl]
-          simp [intCodeDivNat, Nat.bodd_mul]
-
-private lemma intDivNat_prim : Primrec₂ fun z : ℤ => fun d : ℕ => z / (d : ℤ) := by
-  apply Primrec₂.encode_iff.mp
-  exact (intCodeDivNat_prim.comp₂ (Primrec.encode.comp₂ Primrec₂.left)
-    Primrec₂.right).of_eq intCodeDivNat_encode
-
-private lemma ratNumNatAbs_prim : Primrec fun q : ℚ => q.num.natAbs :=
-  intNatAbs_prim.comp ratNum_prim
-
-/-- Rational comparison is primitive recursive in the repository's canonical encoding. -/
-lemma ratLE_prim : PrimrecRel fun q r : ℚ => q ≤ r := by
-  have hleft : Primrec₂ fun q r : ℚ => q.num * (r.den : ℤ) :=
-    intMul_prim.comp₂ (ratNum_prim.comp₂ Primrec₂.left)
-      ((intOfNat_prim.comp ratDen_prim).comp₂ Primrec₂.right)
-  have hright : Primrec₂ fun q r : ℚ => r.num * (q.den : ℤ) :=
-    intMul_prim.comp₂ (ratNum_prim.comp₂ Primrec₂.right)
-      ((intOfNat_prim.comp ratDen_prim).comp₂ Primrec₂.left)
-  exact (intLE_prim.comp₂ hleft hright).of_eq fun q r => by
-    exact (Rat.le_iff q r).symm
-
-private def ratMkCode (z : ℤ) (d : ℕ) : ℕ :=
-  if d = 0 then Nat.pair 0 1
-  else
-    let g := Nat.gcd z.natAbs d
-    Nat.pair (Encodable.encode (z / (g : ℤ))) (d / g)
-
-private lemma ratMkCode_prim : Primrec₂ ratMkCode := by
-  have hd0 : PrimrecPred fun p : ℤ × ℕ => p.2 = 0 :=
-    Primrec.eq.comp Primrec.snd (Primrec.const 0)
-  let g : ℤ × ℕ → ℕ := fun p => Nat.gcd p.1.natAbs p.2
-  have hg : Primrec g :=
-    natGCD_prim.comp (intNatAbs_prim.comp Primrec.fst) Primrec.snd
-  have hnum : Primrec fun p : ℤ × ℕ => Encodable.encode (p.1 / (g p : ℤ)) :=
-    Primrec.encode.comp (intDivNat_prim.comp Primrec.fst hg)
-  have hden : Primrec fun p : ℤ × ℕ => p.2 / g p :=
-    Primrec.nat_div.comp Primrec.snd hg
-  have hpair : Primrec fun p : ℤ × ℕ =>
-      Nat.pair (Encodable.encode (p.1 / (Nat.gcd p.1.natAbs p.2 : ℤ)))
-        (p.2 / Nat.gcd p.1.natAbs p.2) :=
-    Primrec₂.natPair.comp hnum hden
-  exact (Primrec.ite hd0 (Primrec.const (Nat.pair 0 1)) hpair).to₂.of_eq
-    fun z d => by simp only [ratMkCode]
-
-private lemma ratMkCode_eq (z : ℤ) (d : ℕ) :
-    ratMkCode z d = Encodable.encode (mkRat z d) := by
-  by_cases hd : d = 0
-  · subst d
-    rw [show mkRat z 0 = (0 : ℚ) by simp [mkRat], encode_rat_eq]
-    change Nat.pair 0 1 = Nat.pair (Encodable.encode (0 : ℤ)) 1
-    rw [show Encodable.encode (0 : ℤ) = 0 from rfl]
-  · rw [encode_rat_eq, Rat.num_mkRat, Rat.den_mkRat]
-    simp [ratMkCode, hd, Nat.gcd_comm]
-
-private lemma ratMk_prim : Primrec₂ mkRat := by
-  apply Primrec₂.encode_iff.mp
-  exact ratMkCode_prim.of_eq ratMkCode_eq
-
-private lemma ratNeg_prim : Primrec fun q : ℚ => -q := by
-  apply Primrec.encode_iff.mp
-  have hpair : Primrec fun q : ℚ =>
-      Nat.pair (Encodable.encode (-q.num)) q.den :=
-    Primrec₂.natPair.comp (Primrec.encode.comp (intNeg_prim.comp ratNum_prim))
-      ratDen_prim
-  exact hpair.of_eq fun q => by
-    simp [encode_rat_eq, Rat.neg_num, Rat.neg_den]
-
-lemma ratAdd_prim : Primrec₂ fun q r : ℚ => q + r := by
-  have hqd : Primrec₂ fun q r : ℚ => q.num * (r.den : ℤ) :=
-    intMul_prim.comp₂ (ratNum_prim.comp₂ Primrec₂.left)
-      ((intOfNat_prim.comp ratDen_prim).comp₂ Primrec₂.right)
-  have hrd : Primrec₂ fun q r : ℚ => r.num * (q.den : ℤ) :=
-    intMul_prim.comp₂ (ratNum_prim.comp₂ Primrec₂.right)
-      ((intOfNat_prim.comp ratDen_prim).comp₂ Primrec₂.left)
-  have hnum : Primrec₂ fun q r : ℚ => q.num * (r.den : ℤ) + r.num * (q.den : ℤ) :=
-    intAdd_prim.comp₂ hqd hrd
-  have hden : Primrec₂ fun q r : ℚ => q.den * r.den :=
-    Primrec.nat_mul.comp₂ (ratDen_prim.comp₂ Primrec₂.left)
-      (ratDen_prim.comp₂ Primrec₂.right)
-  exact (ratMk_prim.comp₂ hnum hden).of_eq fun q r => (Rat.add_def' q r).symm
-
-lemma ratMul_prim : Primrec₂ fun q r : ℚ => q * r := by
-  have hnum : Primrec₂ fun q r : ℚ => q.num * r.num :=
-    intMul_prim.comp₂ (ratNum_prim.comp₂ Primrec₂.left)
-      (ratNum_prim.comp₂ Primrec₂.right)
-  have hden : Primrec₂ fun q r : ℚ => q.den * r.den :=
-    Primrec.nat_mul.comp₂ (ratDen_prim.comp₂ Primrec₂.left)
-      (ratDen_prim.comp₂ Primrec₂.right)
-  exact (ratMk_prim.comp₂ hnum hden).of_eq fun q r => (Rat.mul_def' q r).symm
-
-private lemma ratSub_prim : Primrec₂ fun q r : ℚ => q - r := by
-  exact (ratAdd_prim.comp₂ Primrec₂.left
-    (ratNeg_prim.comp₂ Primrec₂.right)).of_eq fun q r => by simp [sub_eq_add_neg]
-
-private lemma ratInv_prim : Primrec fun q : ℚ => q⁻¹ := by
-  have hsign : Primrec fun q : ℚ => q.num.sign := intSign_prim.comp ratNum_prim
-  have hdenInt : Primrec fun q : ℚ => (q.den : ℤ) := intOfNat_prim.comp ratDen_prim
-  have hnum : Primrec fun q : ℚ => q.num.sign * (q.den : ℤ) :=
-    intMul_prim.comp hsign hdenInt
-  have hzero : PrimrecPred fun q : ℚ => q.num = 0 :=
-    Primrec.eq.comp ratNum_prim (Primrec.const 0)
-  have hden : Primrec fun q : ℚ => if q.num = 0 then 1 else q.num.natAbs :=
-    Primrec.ite hzero (Primrec.const 1) ratNumNatAbs_prim
-  apply Primrec.encode_iff.mp
-  have hpair : Primrec fun q : ℚ => Nat.pair
-      (Encodable.encode (q.num.sign * (q.den : ℤ)))
-      (if q.num = 0 then 1 else q.num.natAbs) :=
-    Primrec₂.natPair.comp (Primrec.encode.comp hnum) hden
-  exact hpair.of_eq fun q => by
-    simp [encode_rat_eq, Rat.num_inv, Rat.den_inv]
-
-/-- Exact rational division is primitive recursive in the canonical encoding. -/
-lemma ratDiv_prim : Primrec₂ fun q r : ℚ => q / r := by
-  exact (ratMul_prim.comp₂ Primrec₂.left
-    (ratInv_prim.comp₂ Primrec₂.right)).of_eq fun q r => by simp [div_eq_mul_inv]
-
-private lemma ratPow_prim : Primrec₂ fun q : ℚ => fun n : ℕ => q ^ n := by
-  have hstep : Primrec₂ fun (p : ℚ × ℕ) (ni : ℕ × ℚ) => ni.2 * p.1 :=
-    ratMul_prim.comp₂ (Primrec.snd.comp₂ Primrec₂.right)
-      (Primrec.fst.comp₂ Primrec₂.left)
-  have hpow : Primrec fun p : ℚ × ℕ => p.1 ^ p.2 := by
-    exact (Primrec.nat_rec' Primrec.snd (Primrec.const 1) hstep).of_eq fun p => by
-      rcases p with ⟨q, n⟩
-      change Nat.rec 1 (fun _ ih => ih * q) n = q ^ n
-      induction n with
-      | zero => simp
-      | succ n ih => simp [ih, pow_succ]
-  exact hpow.to₂
-
 /-! ## Proof-erased finite rational belief states -/
-
-private lemma sentenceListNodup_prim :
-    PrimrecPred fun l : List Sentence => l.Nodup := by
-  have hfilter : Primrec₂ fun (l : List Sentence) (φ : Sentence) =>
-      l.filter (fun ψ => ψ = φ) := by
-    exact PrimrecRel.listFilter Primrec.eq
-  have hcount : Primrec₂ fun (φ : Sentence) (l : List Sentence) =>
-      (l.filter (fun ψ => ψ = φ)).length :=
-    (Primrec.list_length.comp (hfilter.comp Primrec.snd Primrec.fst)).to₂
-  have hone : PrimrecRel fun (φ : Sentence) (l : List Sentence) =>
-      (l.filter (fun ψ => ψ = φ)).length = 1 :=
-    Primrec.eq.comp₂ hcount (Primrec₂.const 1)
-  have hall : PrimrecRel fun (l₁ l₂ : List Sentence) =>
-      ∀ φ ∈ l₁, (l₂.filter (fun ψ => ψ = φ)).length = 1 :=
-    hone.forall_mem_list
-  exact (hall.comp Primrec.id Primrec.id).of_eq fun l => by
-    have heq (φ : Sentence) :
-        l.filter (fun ψ => ψ = φ) = l.filter (fun ψ => ψ == φ) := by
-      apply List.filter_congr
-      intro ψ _
-      apply Bool.eq_iff_iff.mpr
-      simp
-    constructor
-    · intro h
-      rw [List.nodup_iff_count_eq_one]
-      intro φ hφ
-      rw [List.count_eq_length_filter, ← heq φ]
-      exact h φ hφ
-    · intro h φ hφ
-      simp only [id_eq] at hφ ⊢
-      rw [heq φ]
-      simpa only [List.count_eq_length_filter] using
-        (List.nodup_iff_count_eq_one.mp h φ hφ)
 
 private lemma beliefEntryListKeys_prim :
     Primrec fun entries : List (Sentence × ℚ) => entries.map Prod.fst := by
@@ -1093,920 +151,6 @@ instance rationalBeliefStatePrimcodable : Primcodable RationalBeliefState where
   prim := Primrec.nat_iff.mp
     (beliefStateDecodeNorm_prim.of_eq beliefStateDecodeNorm_eq)
 
-private lemma sentenceDecodeNorm_prim : Primrec sentenceDecodeNorm := by
-  apply Primrec.nat_iff.mpr
-  exact (Primcodable.prim Sentence).of_eq fun n => by
-    change Encodable.encode
-        ((@LO.Propositional.Formula.ofNat ℕ inferInstance n) : Option Sentence) =
-      sentenceDecodeNorm n
-    cases h : (@LO.Propositional.Formula.ofNat ℕ inferInstance n : Option Sentence) <;>
-      simp [sentenceDecodeNorm, h, LO.Propositional.Formula.instEncodable, encode_formula_eq_toNat, decode_formula_eq_ofNat]
-
-/-- Lift one normalized child code through an `EF` unary constructor. -/
-private def efUnaryNorm (tag childNorm : ℕ) : ℕ :=
-  if childNorm = 0 then 0 else Nat.pair tag (childNorm - 1) + 1
-
-private lemma efUnaryNorm_prim (tag : ℕ) : Primrec (efUnaryNorm tag) := by
-  have hzero : PrimrecPred fun n : ℕ => n = 0 :=
-    Primrec.eq.comp Primrec.id (Primrec.const 0)
-  have hresult : Primrec fun n : ℕ => Nat.pair tag (n - 1) + 1 :=
-    Primrec.nat_add.comp
-      (Primrec₂.natPair.comp (Primrec.const tag)
-        (Primrec.nat_sub.comp Primrec.id (Primrec.const 1)))
-      (Primrec.const 1)
-  exact (Primrec.ite hzero (Primrec.const 0) hresult).of_eq fun n => by
-    simp only [efUnaryNorm]
-
-/-- Lift two normalized child codes through an `EF` binary constructor. -/
-private def efBinaryNorm (tag leftNorm rightNorm : ℕ) : ℕ :=
-  if leftNorm = 0 ∨ rightNorm = 0 then 0
-  else Nat.pair tag (Nat.pair (leftNorm - 1) (rightNorm - 1)) + 1
-
-private lemma efBinaryNorm_prim (tag : ℕ) : Primrec₂ (efBinaryNorm tag) := by
-  have hbad : PrimrecPred fun p : ℕ × ℕ => p.1 = 0 ∨ p.2 = 0 :=
-    (Primrec.eq.comp Primrec.fst (Primrec.const 0)).or
-      (Primrec.eq.comp Primrec.snd (Primrec.const 0))
-  have hchildren : Primrec fun p : ℕ × ℕ =>
-      Nat.pair (p.1 - 1) (p.2 - 1) :=
-    Primrec₂.natPair.comp
-      (Primrec.nat_sub.comp Primrec.fst (Primrec.const 1))
-      (Primrec.nat_sub.comp Primrec.snd (Primrec.const 1))
-  have hresult : Primrec fun p : ℕ × ℕ =>
-      Nat.pair tag (Nat.pair (p.1 - 1) (p.2 - 1)) + 1 :=
-    Primrec.nat_add.comp
-      (Primrec₂.natPair.comp (Primrec.const tag) hchildren)
-      (Primrec.const 1)
-  exact (Primrec.ite hbad (Primrec.const 0) hresult).to₂.of_eq fun left right => by
-    simp only [efBinaryNorm]
-
-/-- Normalize a decoded `price` node. -/
-private def efPriceNorm (sentenceNorm day : ℕ) : ℕ :=
-  if sentenceNorm = 0 then 0
-  else Nat.pair 1 (Nat.pair (sentenceNorm - 1) day) + 1
-
-private lemma efPriceNorm_prim : Primrec₂ efPriceNorm := by
-  have hbad : PrimrecPred fun p : ℕ × ℕ => p.1 = 0 :=
-    Primrec.eq.comp Primrec.fst (Primrec.const 0)
-  have hresult : Primrec fun p : ℕ × ℕ =>
-      Nat.pair 1 (Nat.pair (p.1 - 1) p.2) + 1 :=
-    Primrec.nat_add.comp
-      (Primrec₂.natPair.comp (Primrec.const 1)
-        (Primrec₂.natPair.comp
-          (Primrec.nat_sub.comp Primrec.fst (Primrec.const 1)) Primrec.snd))
-      (Primrec.const 1)
-  exact (Primrec.ite hbad (Primrec.const 0) hresult).to₂.of_eq fun sentence day => by
-    simp only [efPriceNorm]
-
-/-- Lookup the previous-fuel normalized result for `child`.  The current paired strong-
-recursion index is the length of `prior`. -/
-private def efPriorNorm (prior : List ℕ) (child : ℕ) : ℕ :=
-  prior.getD (Nat.pair child (prior.length.unpair.2 - 1)) 0
-
-private lemma efPriorNorm_prim : Primrec₂ efPriorNorm := by
-  have hfuel : Primrec fun prior : List ℕ => prior.length.unpair.2 - 1 :=
-    Primrec.nat_sub.comp
-      (Primrec.snd.comp (Primrec.unpair.comp Primrec.list_length))
-      (Primrec.const 1)
-  have hindex : Primrec₂ fun (prior : List ℕ) (child : ℕ) =>
-      Nat.pair child (prior.length.unpair.2 - 1) :=
-    Primrec₂.natPair.comp₂ Primrec₂.right (hfuel.comp Primrec₂.left)
-  exact ((Primrec.list_getD 0).comp₂ Primrec₂.left hindex).of_eq fun prior child => rfl
-
-/-- One strong-recursion step for `encode (EF.ofNatAux fuel code)`. -/
-private def efDecodeNormStep (prior : List ℕ) : ℕ :=
-  let index := prior.length
-  let code := index.unpair.1
-  let fuel := index.unpair.2
-  if fuel = 0 then 0
-  else
-    let tag := code.unpair.1
-    let payload := code.unpair.2
-    if tag = 0 then efUnaryNorm 0 (ratDecodeNorm payload)
-    else if tag = 1 then
-      efPriceNorm (sentenceDecodeNorm payload.unpair.1) payload.unpair.2
-    else if tag = 2 then
-      efBinaryNorm 2 (efPriorNorm prior payload.unpair.1)
-        (efPriorNorm prior payload.unpair.2)
-    else if tag = 3 then
-      efBinaryNorm 3 (efPriorNorm prior payload.unpair.1)
-        (efPriorNorm prior payload.unpair.2)
-    else if tag = 4 then
-      efBinaryNorm 4 (efPriorNorm prior payload.unpair.1)
-        (efPriorNorm prior payload.unpair.2)
-    else if tag = 5 then efUnaryNorm 5 (efPriorNorm prior payload)
-    else if tag = 6 then Nat.pair 6 payload + 1
-    else if tag = 7 then
-      efBinaryNorm 7 (efPriorNorm prior payload.unpair.1)
-        (efPriorNorm prior payload.unpair.2)
-    else 0
-
-private lemma efDecodeNormStep_prim : Primrec efDecodeNormStep := by
-  let code : List ℕ → ℕ := fun prior => prior.length.unpair.1
-  let fuel : List ℕ → ℕ := fun prior => prior.length.unpair.2
-  let tag : List ℕ → ℕ := fun prior => (code prior).unpair.1
-  let payload : List ℕ → ℕ := fun prior => (code prior).unpair.2
-  have hcode : Primrec code := Primrec.fst.comp (Primrec.unpair.comp Primrec.list_length)
-  have hfuel : Primrec fuel := Primrec.snd.comp (Primrec.unpair.comp Primrec.list_length)
-  have htag : Primrec tag := Primrec.fst.comp (Primrec.unpair.comp hcode)
-  have hpayload : Primrec payload := Primrec.snd.comp (Primrec.unpair.comp hcode)
-  have hpayloadLeft : Primrec fun prior : List ℕ => (payload prior).unpair.1 :=
-    Primrec.fst.comp (Primrec.unpair.comp hpayload)
-  have hpayloadRight : Primrec fun prior : List ℕ => (payload prior).unpair.2 :=
-    Primrec.snd.comp (Primrec.unpair.comp hpayload)
-  have htagEq (k : ℕ) : PrimrecPred fun prior : List ℕ => tag prior = k :=
-    Primrec.eq.comp htag (Primrec.const k)
-  have hfuelZero : PrimrecPred fun prior : List ℕ => fuel prior = 0 :=
-    Primrec.eq.comp hfuel (Primrec.const 0)
-  have hpriorLeft : Primrec fun prior : List ℕ =>
-      efPriorNorm prior (payload prior).unpair.1 :=
-    efPriorNorm_prim.comp Primrec.id hpayloadLeft
-  have hpriorRight : Primrec fun prior : List ℕ =>
-      efPriorNorm prior (payload prior).unpair.2 :=
-    efPriorNorm_prim.comp Primrec.id hpayloadRight
-  have hpriorPayload : Primrec fun prior : List ℕ => efPriorNorm prior (payload prior) :=
-    efPriorNorm_prim.comp Primrec.id hpayload
-  have hbinary (k : ℕ) : Primrec fun prior : List ℕ =>
-      efBinaryNorm k (efPriorNorm prior (payload prior).unpair.1)
-        (efPriorNorm prior (payload prior).unpair.2) :=
-    (efBinaryNorm_prim k).comp hpriorLeft hpriorRight
-  have hconst : Primrec fun prior : List ℕ => efUnaryNorm 0 (ratDecodeNorm (payload prior)) :=
-    (efUnaryNorm_prim 0).comp (ratDecodeNorm_prim.comp hpayload)
-  have hprice : Primrec fun prior : List ℕ =>
-      efPriceNorm (sentenceDecodeNorm (payload prior).unpair.1) (payload prior).unpair.2 :=
-    efPriceNorm_prim.comp (sentenceDecodeNorm_prim.comp hpayloadLeft) hpayloadRight
-  have hunary : Primrec fun prior : List ℕ =>
-      efUnaryNorm 5 (efPriorNorm prior (payload prior)) :=
-    (efUnaryNorm_prim 5).comp hpriorPayload
-  have hvar : Primrec fun prior : List ℕ => Nat.pair 6 (payload prior) + 1 :=
-    Primrec.nat_add.comp
-      (Primrec₂.natPair.comp (Primrec.const 6) hpayload) (Primrec.const 1)
-  have h7 : Primrec fun prior : List ℕ =>
-      if tag prior = 7 then
-        efBinaryNorm 7 (efPriorNorm prior (payload prior).unpair.1)
-          (efPriorNorm prior (payload prior).unpair.2)
-      else 0 := Primrec.ite (htagEq 7) (hbinary 7) (Primrec.const 0)
-  have h6 : Primrec fun prior : List ℕ =>
-      if tag prior = 6 then Nat.pair 6 (payload prior) + 1
-      else if tag prior = 7 then
-        efBinaryNorm 7 (efPriorNorm prior (payload prior).unpair.1)
-          (efPriorNorm prior (payload prior).unpair.2)
-      else 0 := Primrec.ite (htagEq 6) hvar h7
-  have h5 : Primrec fun prior : List ℕ =>
-      if tag prior = 5 then efUnaryNorm 5 (efPriorNorm prior (payload prior))
-      else if tag prior = 6 then Nat.pair 6 (payload prior) + 1
-      else if tag prior = 7 then
-        efBinaryNorm 7 (efPriorNorm prior (payload prior).unpair.1)
-          (efPriorNorm prior (payload prior).unpair.2)
-      else 0 := Primrec.ite (htagEq 5) hunary h6
-  have h4 : Primrec fun prior : List ℕ =>
-      if tag prior = 4 then
-        efBinaryNorm 4 (efPriorNorm prior (payload prior).unpair.1)
-          (efPriorNorm prior (payload prior).unpair.2)
-      else if tag prior = 5 then efUnaryNorm 5 (efPriorNorm prior (payload prior))
-      else if tag prior = 6 then Nat.pair 6 (payload prior) + 1
-      else if tag prior = 7 then
-        efBinaryNorm 7 (efPriorNorm prior (payload prior).unpair.1)
-          (efPriorNorm prior (payload prior).unpair.2)
-      else 0 := Primrec.ite (htagEq 4) (hbinary 4) h5
-  have h3 : Primrec fun prior : List ℕ =>
-      if tag prior = 3 then
-        efBinaryNorm 3 (efPriorNorm prior (payload prior).unpair.1)
-          (efPriorNorm prior (payload prior).unpair.2)
-      else if tag prior = 4 then
-        efBinaryNorm 4 (efPriorNorm prior (payload prior).unpair.1)
-          (efPriorNorm prior (payload prior).unpair.2)
-      else if tag prior = 5 then efUnaryNorm 5 (efPriorNorm prior (payload prior))
-      else if tag prior = 6 then Nat.pair 6 (payload prior) + 1
-      else if tag prior = 7 then
-        efBinaryNorm 7 (efPriorNorm prior (payload prior).unpair.1)
-          (efPriorNorm prior (payload prior).unpair.2)
-      else 0 := Primrec.ite (htagEq 3) (hbinary 3) h4
-  have h2 : Primrec fun prior : List ℕ =>
-      if tag prior = 2 then
-        efBinaryNorm 2 (efPriorNorm prior (payload prior).unpair.1)
-          (efPriorNorm prior (payload prior).unpair.2)
-      else if tag prior = 3 then
-        efBinaryNorm 3 (efPriorNorm prior (payload prior).unpair.1)
-          (efPriorNorm prior (payload prior).unpair.2)
-      else if tag prior = 4 then
-        efBinaryNorm 4 (efPriorNorm prior (payload prior).unpair.1)
-          (efPriorNorm prior (payload prior).unpair.2)
-      else if tag prior = 5 then efUnaryNorm 5 (efPriorNorm prior (payload prior))
-      else if tag prior = 6 then Nat.pair 6 (payload prior) + 1
-      else if tag prior = 7 then
-        efBinaryNorm 7 (efPriorNorm prior (payload prior).unpair.1)
-          (efPriorNorm prior (payload prior).unpair.2)
-      else 0 := Primrec.ite (htagEq 2) (hbinary 2) h3
-  have h1 : Primrec fun prior : List ℕ =>
-      if tag prior = 1 then
-        efPriceNorm (sentenceDecodeNorm (payload prior).unpair.1) (payload prior).unpair.2
-      else if tag prior = 2 then
-        efBinaryNorm 2 (efPriorNorm prior (payload prior).unpair.1)
-          (efPriorNorm prior (payload prior).unpair.2)
-      else if tag prior = 3 then
-        efBinaryNorm 3 (efPriorNorm prior (payload prior).unpair.1)
-          (efPriorNorm prior (payload prior).unpair.2)
-      else if tag prior = 4 then
-        efBinaryNorm 4 (efPriorNorm prior (payload prior).unpair.1)
-          (efPriorNorm prior (payload prior).unpair.2)
-      else if tag prior = 5 then efUnaryNorm 5 (efPriorNorm prior (payload prior))
-      else if tag prior = 6 then Nat.pair 6 (payload prior) + 1
-      else if tag prior = 7 then
-        efBinaryNorm 7 (efPriorNorm prior (payload prior).unpair.1)
-          (efPriorNorm prior (payload prior).unpair.2)
-      else 0 := Primrec.ite (htagEq 1) hprice h2
-  have h0 : Primrec fun prior : List ℕ =>
-      if tag prior = 0 then efUnaryNorm 0 (ratDecodeNorm (payload prior))
-      else if tag prior = 1 then
-        efPriceNorm (sentenceDecodeNorm (payload prior).unpair.1) (payload prior).unpair.2
-      else if tag prior = 2 then
-        efBinaryNorm 2 (efPriorNorm prior (payload prior).unpair.1)
-          (efPriorNorm prior (payload prior).unpair.2)
-      else if tag prior = 3 then
-        efBinaryNorm 3 (efPriorNorm prior (payload prior).unpair.1)
-          (efPriorNorm prior (payload prior).unpair.2)
-      else if tag prior = 4 then
-        efBinaryNorm 4 (efPriorNorm prior (payload prior).unpair.1)
-          (efPriorNorm prior (payload prior).unpair.2)
-      else if tag prior = 5 then efUnaryNorm 5 (efPriorNorm prior (payload prior))
-      else if tag prior = 6 then Nat.pair 6 (payload prior) + 1
-      else if tag prior = 7 then
-        efBinaryNorm 7 (efPriorNorm prior (payload prior).unpair.1)
-          (efPriorNorm prior (payload prior).unpair.2)
-      else 0 := Primrec.ite (htagEq 0) hconst h1
-  exact (Primrec.ite hfuelZero (Primrec.const 0) h0).of_eq fun prior => by
-    simp only [efDecodeNormStep, code, fuel, tag, payload]
-
-private def efAuxNormIndex (n : ℕ) : ℕ :=
-  Encodable.encode (EF.ofNatAux n.unpair.2 n.unpair.1)
-
-private lemma efHistory_getD {n k : ℕ} (hk : k < n) :
-    ((List.range n).map efAuxNormIndex).getD k 0 = efAuxNormIndex k := by
-  have hzero : efAuxNormIndex 0 = 0 := by
-    simp [efAuxNormIndex, EF.ofNatAux]
-  rw [← hzero, List.getD_map]
-  simp [hk]
-
-lemma efChildPair_lt (child code fuel : ℕ) (hchild : child ≤ code) :
-    Nat.pair child fuel < Nat.pair code (fuel + 1) := by
-  rcases hchild.eq_or_lt with heq | hlt
-  · subst code
-    exact Nat.pair_lt_pair_right child (by omega)
-  · exact (Nat.pair_lt_pair_left fuel hlt).trans
-      (Nat.pair_lt_pair_right code (by omega))
-
-private lemma efDecodeNormStep_history (n : ℕ) :
-    efDecodeNormStep ((List.range n).map efAuxNormIndex) = efAuxNormIndex n := by
-  rcases hpair : n.unpair with ⟨code, fuel⟩
-  have hn : Nat.pair code fuel = n := by
-    simpa [hpair] using Nat.pair_unpair n
-  subst n
-  cases fuel with
-  | zero =>
-      simp [efDecodeNormStep, efAuxNormIndex, EF.ofNatAux]
-  | succ fuel =>
-      have hprior (child : ℕ) (hchild : child ≤ code) :
-          efPriorNorm
-              ((List.range (Nat.pair code (fuel + 1))).map efAuxNormIndex) child =
-            efAuxNormIndex (Nat.pair child fuel) := by
-        unfold efPriorNorm
-        simp only [List.length_map, List.length_range, Nat.unpair_pair,
-          Nat.add_sub_cancel]
-        exact efHistory_getD (efChildPair_lt child code fuel hchild)
-      have hleft : code.unpair.2.unpair.1 ≤ code :=
-        (Nat.unpair_left_le _).trans (Nat.unpair_right_le _)
-      have hright : code.unpair.2.unpair.2 ≤ code :=
-        (Nat.unpair_right_le _).trans (Nat.unpair_right_le _)
-      have hpayload : code.unpair.2 ≤ code := Nat.unpair_right_le _
-      rcases htag : code.unpair.1 with _ | tag
-      · cases hq : (@Encodable.decode ℚ inferInstance code.unpair.2)
-        <;> simp [efDecodeNormStep, efAuxNormIndex, EF.ofNatAux, htag,
-          ratDecodeNorm_eq, hq, efUnaryNorm, EF.instEncodable, encode_ef_eq_toNat, decode_ef_eq_ofNat, EF.toNat]
-      · rcases tag with _ | tag
-        · cases hs : (@LO.Propositional.Formula.ofNat ℕ inferInstance
-              code.unpair.2.unpair.1 : Option Sentence)
-          <;> simp [efDecodeNormStep, efAuxNormIndex, EF.ofNatAux, htag,
-            sentenceDecodeNorm, hs, efPriceNorm, EF.instEncodable, encode_ef_eq_toNat, decode_ef_eq_ofNat, EF.toNat,
-            LO.Propositional.Formula.instEncodable, encode_formula_eq_toNat, decode_formula_eq_ofNat]
-        · rcases tag with _ | tag
-          · cases hL : EF.ofNatAux fuel code.unpair.2.unpair.1 <;>
-              cases hR : EF.ofNatAux fuel code.unpair.2.unpair.2 <;>
-              simp [efDecodeNormStep, efAuxNormIndex, EF.ofNatAux, htag,
-                hprior _ hleft, hprior _ hright, efBinaryNorm,
-                EF.instEncodable, encode_ef_eq_toNat, decode_ef_eq_ofNat, EF.toNat, hL, hR]
-          · rcases tag with _ | tag
-            · cases hL : EF.ofNatAux fuel code.unpair.2.unpair.1 <;>
-                cases hR : EF.ofNatAux fuel code.unpair.2.unpair.2 <;>
-                simp [efDecodeNormStep, efAuxNormIndex, EF.ofNatAux, htag,
-                  hprior _ hleft, hprior _ hright, efBinaryNorm,
-                  EF.instEncodable, encode_ef_eq_toNat, decode_ef_eq_ofNat, EF.toNat, hL, hR]
-            · rcases tag with _ | tag
-              · cases hL : EF.ofNatAux fuel code.unpair.2.unpair.1 <;>
-                  cases hR : EF.ofNatAux fuel code.unpair.2.unpair.2 <;>
-                  simp [efDecodeNormStep, efAuxNormIndex, EF.ofNatAux, htag,
-                    hprior _ hleft, hprior _ hright, efBinaryNorm,
-                    EF.instEncodable, encode_ef_eq_toNat, decode_ef_eq_ofNat, EF.toNat, hL, hR]
-              · rcases tag with _ | tag
-                · cases hA : EF.ofNatAux fuel code.unpair.2 <;>
-                    simp [efDecodeNormStep, efAuxNormIndex, EF.ofNatAux, htag,
-                      hprior _ hpayload, efUnaryNorm, EF.instEncodable, encode_ef_eq_toNat, decode_ef_eq_ofNat,
-                      EF.toNat, hA]
-                · rcases tag with _ | tag
-                  · simp [efDecodeNormStep, efAuxNormIndex, EF.ofNatAux, htag,
-                      EF.instEncodable, encode_ef_eq_toNat, decode_ef_eq_ofNat, EF.toNat]
-                  · rcases tag with _ | tag
-                    · cases hL : EF.ofNatAux fuel code.unpair.2.unpair.1 <;>
-                        cases hR : EF.ofNatAux fuel code.unpair.2.unpair.2 <;>
-                        simp [efDecodeNormStep, efAuxNormIndex, EF.ofNatAux, htag,
-                          hprior _ hleft, hprior _ hright, efBinaryNorm,
-                          EF.instEncodable, encode_ef_eq_toNat, decode_ef_eq_ofNat, EF.toNat, hL, hR]
-                    · simp [efDecodeNormStep, efAuxNormIndex, EF.ofNatAux, htag]
-
-private lemma efAuxNormIndex_prim : Primrec efAuxNormIndex := by
-  have hstep : Primrec₂ (fun (_ : Unit) (prior : List ℕ) =>
-      some (efDecodeNormStep prior)) :=
-    Primrec₂.option_some_iff.mpr (efDecodeNormStep_prim.comp Primrec₂.right)
-  have hrec := Primrec.nat_strong_rec
-    (fun (_ : Unit) n => efAuxNormIndex n)
-    hstep (fun _ n => by simpa using congrArg some (efDecodeNormStep_history n))
-  exact hrec.comp (Primrec.const ()) Primrec.id
-
-/-- The project’s concrete `EF.toNat` / `EF.ofNat` encoding is primitive-recursive.
-This instance is proved from the exact decoder, including every failure branch. -/
-instance efPrimcodable : Primcodable EF where
-  prim := by
-    have hindex : Primrec fun n : ℕ => Nat.pair n (n + 1) :=
-      Primrec₂.natPair.comp Primrec.id
-        (Primrec.nat_add.comp Primrec.id (Primrec.const 1))
-    exact Primrec.nat_iff.mp ((efAuxNormIndex_prim.comp hindex).of_eq fun n => by
-      simp [efAuxNormIndex, EF.ofNat, EF.instEncodable, encode_ef_eq_toNat, decode_ef_eq_ofNat])
-
-/-! ## Primitive-recursive strategy validation -/
-
-/-- A normalized rank result uses `0` for decoder failure and `rank + 1` for success. -/
-private def efRankBinaryNorm (left right : ℕ) : ℕ :=
-  if left = 0 ∨ right = 0 then 0 else Nat.max left right
-
-private lemma efRankBinaryNorm_prim : Primrec₂ efRankBinaryNorm := by
-  have hbad : PrimrecPred fun p : ℕ × ℕ => p.1 = 0 ∨ p.2 = 0 :=
-    (Primrec.eq.comp Primrec.fst (Primrec.const 0)).or
-      (Primrec.eq.comp Primrec.snd (Primrec.const 0))
-  exact (Primrec.ite hbad (Primrec.const 0)
-    (Primrec.nat_max.comp Primrec.fst Primrec.snd)).to₂.of_eq fun left right => by
-      simp only [efRankBinaryNorm]
-
-/-- One strong-recursion step computing `0` on decoder failure and `EF.rank + 1` on
-success.  Carrying success in the positive code prevents an invalid rank-zero child from
-being confused with a valid rank-zero child. -/
-private def efRankNormStep (prior : List ℕ) : ℕ :=
-  let index := prior.length
-  let code := index.unpair.1
-  let fuel := index.unpair.2
-  if fuel = 0 then 0
-  else
-    let tag := code.unpair.1
-    let payload := code.unpair.2
-    if tag = 0 then if ratDecodeNorm payload = 0 then 0 else 1
-    else if tag = 1 then
-      if sentenceDecodeNorm payload.unpair.1 = 0 then 0 else payload.unpair.2 + 1
-    else if tag = 2 then
-      efRankBinaryNorm (efPriorNorm prior payload.unpair.1)
-        (efPriorNorm prior payload.unpair.2)
-    else if tag = 3 then
-      efRankBinaryNorm (efPriorNorm prior payload.unpair.1)
-        (efPriorNorm prior payload.unpair.2)
-    else if tag = 4 then
-      efRankBinaryNorm (efPriorNorm prior payload.unpair.1)
-        (efPriorNorm prior payload.unpair.2)
-    else if tag = 5 then efPriorNorm prior payload
-    else if tag = 6 then 1
-    else if tag = 7 then
-      efRankBinaryNorm (efPriorNorm prior payload.unpair.1)
-        (efPriorNorm prior payload.unpair.2)
-    else 0
-
-private lemma efRankNormStep_prim : Primrec efRankNormStep := by
-  let code : List ℕ → ℕ := fun prior => prior.length.unpair.1
-  let fuel : List ℕ → ℕ := fun prior => prior.length.unpair.2
-  let tag : List ℕ → ℕ := fun prior => (code prior).unpair.1
-  let payload : List ℕ → ℕ := fun prior => (code prior).unpair.2
-  have hcode : Primrec code := Primrec.fst.comp (Primrec.unpair.comp Primrec.list_length)
-  have hfuel : Primrec fuel := Primrec.snd.comp (Primrec.unpair.comp Primrec.list_length)
-  have htag : Primrec tag := Primrec.fst.comp (Primrec.unpair.comp hcode)
-  have hpayload : Primrec payload := Primrec.snd.comp (Primrec.unpair.comp hcode)
-  have hpayloadLeft : Primrec fun prior : List ℕ => (payload prior).unpair.1 :=
-    Primrec.fst.comp (Primrec.unpair.comp hpayload)
-  have hpayloadRight : Primrec fun prior : List ℕ => (payload prior).unpair.2 :=
-    Primrec.snd.comp (Primrec.unpair.comp hpayload)
-  have htagEq (k : ℕ) : PrimrecPred fun prior : List ℕ => tag prior = k :=
-    Primrec.eq.comp htag (Primrec.const k)
-  have hfuelZero : PrimrecPred fun prior : List ℕ => fuel prior = 0 :=
-    Primrec.eq.comp hfuel (Primrec.const 0)
-  have hpriorLeft : Primrec fun prior : List ℕ =>
-      efPriorNorm prior (payload prior).unpair.1 :=
-    efPriorNorm_prim.comp Primrec.id hpayloadLeft
-  have hpriorRight : Primrec fun prior : List ℕ =>
-      efPriorNorm prior (payload prior).unpair.2 :=
-    efPriorNorm_prim.comp Primrec.id hpayloadRight
-  have hpriorPayload : Primrec fun prior : List ℕ => efPriorNorm prior (payload prior) :=
-    efPriorNorm_prim.comp Primrec.id hpayload
-  have hbinary : Primrec fun prior : List ℕ =>
-      efRankBinaryNorm (efPriorNorm prior (payload prior).unpair.1)
-        (efPriorNorm prior (payload prior).unpair.2) :=
-    efRankBinaryNorm_prim.comp hpriorLeft hpriorRight
-  have hconstBad : PrimrecPred fun prior : List ℕ => ratDecodeNorm (payload prior) = 0 :=
-    Primrec.eq.comp (ratDecodeNorm_prim.comp hpayload) (Primrec.const 0)
-  have hconst : Primrec fun prior : List ℕ =>
-      if ratDecodeNorm (payload prior) = 0 then 0 else 1 :=
-    Primrec.ite hconstBad (Primrec.const 0) (Primrec.const 1)
-  have hpriceBad : PrimrecPred fun prior : List ℕ =>
-      sentenceDecodeNorm (payload prior).unpair.1 = 0 :=
-    Primrec.eq.comp (sentenceDecodeNorm_prim.comp hpayloadLeft) (Primrec.const 0)
-  have hprice : Primrec fun prior : List ℕ =>
-      if sentenceDecodeNorm (payload prior).unpair.1 = 0 then 0
-      else (payload prior).unpair.2 + 1 :=
-    Primrec.ite hpriceBad (Primrec.const 0)
-      (Primrec.nat_add.comp hpayloadRight (Primrec.const 1))
-  have h7 : Primrec fun prior : List ℕ =>
-      if tag prior = 7 then
-        efRankBinaryNorm (efPriorNorm prior (payload prior).unpair.1)
-          (efPriorNorm prior (payload prior).unpair.2)
-      else 0 := Primrec.ite (htagEq 7) hbinary (Primrec.const 0)
-  have h6 : Primrec fun prior : List ℕ =>
-      if tag prior = 6 then 1
-      else if tag prior = 7 then
-        efRankBinaryNorm (efPriorNorm prior (payload prior).unpair.1)
-          (efPriorNorm prior (payload prior).unpair.2)
-      else 0 := Primrec.ite (htagEq 6) (Primrec.const 1) h7
-  have h5 : Primrec fun prior : List ℕ =>
-      if tag prior = 5 then efPriorNorm prior (payload prior)
-      else if tag prior = 6 then 1
-      else if tag prior = 7 then
-        efRankBinaryNorm (efPriorNorm prior (payload prior).unpair.1)
-          (efPriorNorm prior (payload prior).unpair.2)
-      else 0 := Primrec.ite (htagEq 5) hpriorPayload h6
-  have h4 : Primrec fun prior : List ℕ =>
-      if tag prior = 4 then
-        efRankBinaryNorm (efPriorNorm prior (payload prior).unpair.1)
-          (efPriorNorm prior (payload prior).unpair.2)
-      else if tag prior = 5 then efPriorNorm prior (payload prior)
-      else if tag prior = 6 then 1
-      else if tag prior = 7 then
-        efRankBinaryNorm (efPriorNorm prior (payload prior).unpair.1)
-          (efPriorNorm prior (payload prior).unpair.2)
-      else 0 := Primrec.ite (htagEq 4) hbinary h5
-  have h3 : Primrec fun prior : List ℕ =>
-      if tag prior = 3 then
-        efRankBinaryNorm (efPriorNorm prior (payload prior).unpair.1)
-          (efPriorNorm prior (payload prior).unpair.2)
-      else if tag prior = 4 then
-        efRankBinaryNorm (efPriorNorm prior (payload prior).unpair.1)
-          (efPriorNorm prior (payload prior).unpair.2)
-      else if tag prior = 5 then efPriorNorm prior (payload prior)
-      else if tag prior = 6 then 1
-      else if tag prior = 7 then
-        efRankBinaryNorm (efPriorNorm prior (payload prior).unpair.1)
-          (efPriorNorm prior (payload prior).unpair.2)
-      else 0 := Primrec.ite (htagEq 3) hbinary h4
-  have h2 : Primrec fun prior : List ℕ =>
-      if tag prior = 2 then
-        efRankBinaryNorm (efPriorNorm prior (payload prior).unpair.1)
-          (efPriorNorm prior (payload prior).unpair.2)
-      else if tag prior = 3 then
-        efRankBinaryNorm (efPriorNorm prior (payload prior).unpair.1)
-          (efPriorNorm prior (payload prior).unpair.2)
-      else if tag prior = 4 then
-        efRankBinaryNorm (efPriorNorm prior (payload prior).unpair.1)
-          (efPriorNorm prior (payload prior).unpair.2)
-      else if tag prior = 5 then efPriorNorm prior (payload prior)
-      else if tag prior = 6 then 1
-      else if tag prior = 7 then
-        efRankBinaryNorm (efPriorNorm prior (payload prior).unpair.1)
-          (efPriorNorm prior (payload prior).unpair.2)
-      else 0 := Primrec.ite (htagEq 2) hbinary h3
-  have h1 : Primrec fun prior : List ℕ =>
-      if tag prior = 1 then
-        (if sentenceDecodeNorm (payload prior).unpair.1 = 0 then 0
-         else (payload prior).unpair.2 + 1)
-      else if tag prior = 2 then
-        efRankBinaryNorm (efPriorNorm prior (payload prior).unpair.1)
-          (efPriorNorm prior (payload prior).unpair.2)
-      else if tag prior = 3 then
-        efRankBinaryNorm (efPriorNorm prior (payload prior).unpair.1)
-          (efPriorNorm prior (payload prior).unpair.2)
-      else if tag prior = 4 then
-        efRankBinaryNorm (efPriorNorm prior (payload prior).unpair.1)
-          (efPriorNorm prior (payload prior).unpair.2)
-      else if tag prior = 5 then efPriorNorm prior (payload prior)
-      else if tag prior = 6 then 1
-      else if tag prior = 7 then
-        efRankBinaryNorm (efPriorNorm prior (payload prior).unpair.1)
-          (efPriorNorm prior (payload prior).unpair.2)
-      else 0 := Primrec.ite (htagEq 1) hprice h2
-  have h0 : Primrec fun prior : List ℕ =>
-      if tag prior = 0 then
-        (if ratDecodeNorm (payload prior) = 0 then 0 else 1)
-      else if tag prior = 1 then
-        (if sentenceDecodeNorm (payload prior).unpair.1 = 0 then 0
-         else (payload prior).unpair.2 + 1)
-      else if tag prior = 2 then
-        efRankBinaryNorm (efPriorNorm prior (payload prior).unpair.1)
-          (efPriorNorm prior (payload prior).unpair.2)
-      else if tag prior = 3 then
-        efRankBinaryNorm (efPriorNorm prior (payload prior).unpair.1)
-          (efPriorNorm prior (payload prior).unpair.2)
-      else if tag prior = 4 then
-        efRankBinaryNorm (efPriorNorm prior (payload prior).unpair.1)
-          (efPriorNorm prior (payload prior).unpair.2)
-      else if tag prior = 5 then efPriorNorm prior (payload prior)
-      else if tag prior = 6 then 1
-      else if tag prior = 7 then
-        efRankBinaryNorm (efPriorNorm prior (payload prior).unpair.1)
-          (efPriorNorm prior (payload prior).unpair.2)
-      else 0 := Primrec.ite (htagEq 0) hconst h1
-  exact (Primrec.ite hfuelZero (Primrec.const 0) h0).of_eq fun prior => by
-    simp only [efRankNormStep, code, fuel, tag, payload]
-
-private def efAuxRankNormIndex (n : ℕ) : ℕ :=
-  match EF.ofNatAux n.unpair.2 n.unpair.1 with
-  | none => 0
-  | some e => e.rank + 1
-
-private lemma efRankHistory_getD {n k : ℕ} (hk : k < n) :
-    ((List.range n).map efAuxRankNormIndex).getD k 0 = efAuxRankNormIndex k := by
-  have hzero : efAuxRankNormIndex 0 = 0 := by
-    simp [efAuxRankNormIndex, EF.ofNatAux]
-  rw [← hzero, List.getD_map]
-  simp [hk]
-
-private lemma efRankNormStep_history (n : ℕ) :
-    efRankNormStep ((List.range n).map efAuxRankNormIndex) = efAuxRankNormIndex n := by
-  rcases hpair : n.unpair with ⟨code, fuel⟩
-  have hn : Nat.pair code fuel = n := by
-    simpa [hpair] using Nat.pair_unpair n
-  subst n
-  cases fuel with
-  | zero => simp [efRankNormStep, efAuxRankNormIndex, EF.ofNatAux]
-  | succ fuel =>
-      have hprior (child : ℕ) (hchild : child ≤ code) :
-          efPriorNorm
-              ((List.range (Nat.pair code (fuel + 1))).map efAuxRankNormIndex) child =
-            efAuxRankNormIndex (Nat.pair child fuel) := by
-        unfold efPriorNorm
-        simp only [List.length_map, List.length_range, Nat.unpair_pair,
-          Nat.add_sub_cancel]
-        exact efRankHistory_getD (efChildPair_lt child code fuel hchild)
-      have hleft : code.unpair.2.unpair.1 ≤ code :=
-        (Nat.unpair_left_le _).trans (Nat.unpair_right_le _)
-      have hright : code.unpair.2.unpair.2 ≤ code :=
-        (Nat.unpair_right_le _).trans (Nat.unpair_right_le _)
-      have hpayload : code.unpair.2 ≤ code := Nat.unpair_right_le _
-      rcases htag : code.unpair.1 with _ | tag
-      · cases hq : (@Encodable.decode ℚ inferInstance code.unpair.2) <;>
-          simp [efRankNormStep, efAuxRankNormIndex, EF.ofNatAux, htag,
-            ratDecodeNorm_eq, hq]
-      · rcases tag with _ | tag
-        · cases hs : (@LO.Propositional.Formula.ofNat ℕ inferInstance
-              code.unpair.2.unpair.1 : Option Sentence) <;>
-            simp [efRankNormStep, efAuxRankNormIndex, EF.ofNatAux, htag,
-              sentenceDecodeNorm, hs, LO.Propositional.Formula.instEncodable, encode_formula_eq_toNat, decode_formula_eq_ofNat]
-        · rcases tag with _ | tag
-          · cases hL : EF.ofNatAux fuel code.unpair.2.unpair.1 <;>
-              cases hR : EF.ofNatAux fuel code.unpair.2.unpair.2 <;>
-              simp [efRankNormStep, efAuxRankNormIndex, EF.ofNatAux, htag,
-                hprior _ hleft, hprior _ hright, efRankBinaryNorm, hL, hR]
-          · rcases tag with _ | tag
-            · cases hL : EF.ofNatAux fuel code.unpair.2.unpair.1 <;>
-                cases hR : EF.ofNatAux fuel code.unpair.2.unpair.2 <;>
-                simp [efRankNormStep, efAuxRankNormIndex, EF.ofNatAux, htag,
-                  hprior _ hleft, hprior _ hright, efRankBinaryNorm, hL, hR]
-            · rcases tag with _ | tag
-              · cases hL : EF.ofNatAux fuel code.unpair.2.unpair.1 <;>
-                  cases hR : EF.ofNatAux fuel code.unpair.2.unpair.2 <;>
-                  simp [efRankNormStep, efAuxRankNormIndex, EF.ofNatAux, htag,
-                    hprior _ hleft, hprior _ hright, efRankBinaryNorm, hL, hR]
-              · rcases tag with _ | tag
-                · cases hA : EF.ofNatAux fuel code.unpair.2 <;>
-                    simp [efRankNormStep, efAuxRankNormIndex, EF.ofNatAux, htag,
-                      hprior _ hpayload, hA]
-                · rcases tag with _ | tag
-                  · simp [efRankNormStep, efAuxRankNormIndex, EF.ofNatAux, htag]
-                  · rcases tag with _ | tag
-                    · cases hL : EF.ofNatAux fuel code.unpair.2.unpair.1 <;>
-                        cases hR : EF.ofNatAux fuel code.unpair.2.unpair.2 <;>
-                        simp [efRankNormStep, efAuxRankNormIndex, EF.ofNatAux, htag,
-                          hprior _ hleft, hprior _ hright, efRankBinaryNorm, hL, hR]
-                    · simp [efRankNormStep, efAuxRankNormIndex, EF.ofNatAux, htag]
-
-private lemma efAuxRankNormIndex_prim : Primrec efAuxRankNormIndex := by
-  have hstep : Primrec₂ (fun (_ : Unit) (prior : List ℕ) =>
-      some (efRankNormStep prior)) :=
-    Primrec₂.option_some_iff.mpr (efRankNormStep_prim.comp Primrec₂.right)
-  have hrec := Primrec.nat_strong_rec
-    (fun (_ : Unit) n => efAuxRankNormIndex n)
-    hstep (fun _ n => by simpa using congrArg some (efRankNormStep_history n))
-  exact hrec.comp (Primrec.const ()) Primrec.id
-
-private lemma efRank_prim : Primrec EF.rank := by
-  have hindex : Primrec fun e : EF => Nat.pair (Encodable.encode e)
-      (Encodable.encode e + 1) :=
-    Primrec₂.natPair.comp Primrec.encode
-      (Primrec.nat_add.comp Primrec.encode (Primrec.const 1))
-  exact (Primrec.pred.comp (efAuxRankNormIndex_prim.comp hindex)).of_eq fun e => by
-    simp [efAuxRankNormIndex, EF.instEncodable, encode_ef_eq_toNat, decode_ef_eq_ofNat, EF.ofNatAux_toNat]
-
-/-! ## Primitive-recursive `EF.priceQueries`
-
-`EF.priceQueries` (`Criterion.lean`) lists the `(day, sentence)` market cells a feature
-inspects.  Its primitive recursivity is the guard that keeps the total quote table `V`
-(which substitutes `0` for an unanswered query) from silently certifying a false
-settlement test: `EF.denoteRatWithAtFuel_complete` fires only once every listed query is
-answered.  Compiled by course-of-values recursion on the Gödel code, carrying the
-list-valued result directly through `Nat.strong_rec` at `σ := Option (List (ℕ × Sentence))`
-rather than through a normalized `ℕ`. -/
-
-/-- Query-list values `List (ℕ × Sentence)`, tracked as `Option` (`none` = decoder
-failure). -/
-private abbrev EFQueryList := List (ℕ × Sentence)
-
-/-- Append two query lists, propagating decoder failure. -/
-private def efQueriesAppend (left right : Option EFQueryList) : Option EFQueryList :=
-  left.bind fun a => right.map fun b => a ++ b
-
-private lemma efQueriesAppend_prim : Primrec₂ efQueriesAppend := by
-  have hg : Primrec₂ fun (z : (Option EFQueryList × Option EFQueryList) × EFQueryList)
-      (b : EFQueryList) => z.2 ++ b :=
-    Primrec.list_append.comp (Primrec.snd.comp Primrec.fst) Primrec.snd
-  have hmap : Primrec₂ fun (p : Option EFQueryList × Option EFQueryList)
-      (a : EFQueryList) => p.2.map fun b => a ++ b :=
-    (Primrec.option_map (Primrec.snd.comp Primrec.fst) hg).to₂
-  exact Primrec.option_bind Primrec.fst hmap
-
-/-- Decoded value of a child code from the recursion history, mirroring `efPriorNorm`
-but carrying the list value directly (no `Encodable` round-trip). -/
-private def efPriorQueries (prior : List (Option EFQueryList)) (child : ℕ) :
-    Option EFQueryList :=
-  prior.getD (Nat.pair child (prior.length.unpair.2 - 1)) none
-
-private lemma efPriorQueries_prim : Primrec₂ efPriorQueries := by
-  have hfuel : Primrec fun prior : List (Option EFQueryList) =>
-      prior.length.unpair.2 - 1 :=
-    Primrec.nat_sub.comp
-      (Primrec.snd.comp (Primrec.unpair.comp Primrec.list_length))
-      (Primrec.const 1)
-  have hindex : Primrec₂ fun (prior : List (Option EFQueryList)) (child : ℕ) =>
-      Nat.pair child (prior.length.unpair.2 - 1) :=
-    Primrec₂.natPair.comp₂ Primrec₂.right (hfuel.comp Primrec₂.left)
-  exact (Primrec.list_getD none).comp₂ Primrec₂.left hindex
-
-/-- One strong-recursion step for `(EF.ofNatAux fuel code).map EF.priceQueries`. -/
-private def efQueriesNormVal (prior : List (Option EFQueryList)) : Option EFQueryList :=
-  let index := prior.length
-  let code := index.unpair.1
-  let fuel := index.unpair.2
-  let tag := code.unpair.1
-  let payload := code.unpair.2
-  if fuel = 0 then none
-  else if tag = 0 then (Encodable.decode (α := ℚ) payload).map fun _ => []
-  else if tag = 1 then
-    (Encodable.decode (α := Sentence) payload.unpair.1).map
-      fun φ => [(payload.unpair.2, φ)]
-  else if tag = 2 then
-    efQueriesAppend (efPriorQueries prior payload.unpair.1)
-      (efPriorQueries prior payload.unpair.2)
-  else if tag = 3 then
-    efQueriesAppend (efPriorQueries prior payload.unpair.1)
-      (efPriorQueries prior payload.unpair.2)
-  else if tag = 4 then
-    efQueriesAppend (efPriorQueries prior payload.unpair.1)
-      (efPriorQueries prior payload.unpair.2)
-  else if tag = 5 then efPriorQueries prior payload
-  else if tag = 6 then some []
-  else if tag = 7 then
-    efQueriesAppend (efPriorQueries prior payload.unpair.1)
-      (efPriorQueries prior payload.unpair.2)
-  else none
-
-private lemma efQueriesNormVal_prim : Primrec efQueriesNormVal := by
-  let code : List (Option EFQueryList) → ℕ := fun prior => prior.length.unpair.1
-  let fuel : List (Option EFQueryList) → ℕ := fun prior => prior.length.unpair.2
-  let tag : List (Option EFQueryList) → ℕ := fun prior => (code prior).unpair.1
-  let payload : List (Option EFQueryList) → ℕ := fun prior => (code prior).unpair.2
-  have hcode : Primrec code := Primrec.fst.comp (Primrec.unpair.comp Primrec.list_length)
-  have hfuel : Primrec fuel := Primrec.snd.comp (Primrec.unpair.comp Primrec.list_length)
-  have htag : Primrec tag := Primrec.fst.comp (Primrec.unpair.comp hcode)
-  have hpayload : Primrec payload := Primrec.snd.comp (Primrec.unpair.comp hcode)
-  have hpayloadLeft : Primrec fun prior : List (Option EFQueryList) =>
-      (payload prior).unpair.1 :=
-    Primrec.fst.comp (Primrec.unpair.comp hpayload)
-  have hpayloadRight : Primrec fun prior : List (Option EFQueryList) =>
-      (payload prior).unpair.2 :=
-    Primrec.snd.comp (Primrec.unpair.comp hpayload)
-  have htagEq (k : ℕ) : PrimrecPred fun prior : List (Option EFQueryList) =>
-      tag prior = k :=
-    Primrec.eq.comp htag (Primrec.const k)
-  have hfuelZero : PrimrecPred fun prior : List (Option EFQueryList) => fuel prior = 0 :=
-    Primrec.eq.comp hfuel (Primrec.const 0)
-  have hbinary : Primrec fun prior : List (Option EFQueryList) =>
-      efQueriesAppend (efPriorQueries prior (payload prior).unpair.1)
-        (efPriorQueries prior (payload prior).unpair.2) :=
-    efQueriesAppend_prim.comp
-      (efPriorQueries_prim.comp Primrec.id hpayloadLeft)
-      (efPriorQueries_prim.comp Primrec.id hpayloadRight)
-  have hconst : Primrec fun prior : List (Option EFQueryList) =>
-      (Encodable.decode (α := ℚ) (payload prior)).map fun _ => ([] : EFQueryList) :=
-    Primrec.option_map (Primrec.decode.comp hpayload)
-      (Primrec.const ([] : EFQueryList)).to₂
-  have hprice : Primrec fun prior : List (Option EFQueryList) =>
-      (Encodable.decode (α := Sentence) (payload prior).unpair.1).map
-        fun φ => [((payload prior).unpair.2, φ)] := by
-    refine Primrec.option_map (Primrec.decode.comp hpayloadLeft) ?_
-    exact (Primrec.list_cons.comp
-      ((Primrec.snd.comp (Primrec.unpair.comp hpayload)).comp Primrec.fst |>.pair
-        Primrec.snd)
-      (Primrec.const [])).to₂
-  have hsafe : Primrec fun prior : List (Option EFQueryList) =>
-      efPriorQueries prior (payload prior) :=
-    efPriorQueries_prim.comp Primrec.id hpayload
-  exact (Primrec.ite hfuelZero (Primrec.const none)
-    (Primrec.ite (htagEq 0) hconst
-      (Primrec.ite (htagEq 1) hprice
-        (Primrec.ite (htagEq 2) hbinary
-          (Primrec.ite (htagEq 3) hbinary
-            (Primrec.ite (htagEq 4) hbinary
-              (Primrec.ite (htagEq 5) hsafe
-                (Primrec.ite (htagEq 6) (Primrec.const (some ([] : EFQueryList)))
-                  (Primrec.ite (htagEq 7) hbinary
-                    (Primrec.const none)))))))))).of_eq fun prior => rfl
-
-/-- The intended value at index `n`: decode `n` under its fuel, take price queries. -/
-private def efAuxQueriesVal (n : ℕ) : Option EFQueryList :=
-  (EF.ofNatAux n.unpair.2 n.unpair.1).map EF.priceQueries
-
-private lemma efAuxQueriesVal_zero : efAuxQueriesVal 0 = none := by
-  simp [efAuxQueriesVal, EF.ofNatAux]
-
-private lemma efQueriesHistory_getD {n k : ℕ} (hk : k < n) :
-    ((List.range n).map efAuxQueriesVal).getD k none = efAuxQueriesVal k := by
-  rw [← efAuxQueriesVal_zero, List.getD_map]
-  simp [hk]
-
-private lemma efQueriesNormVal_history (n : ℕ) :
-    efQueriesNormVal ((List.range n).map efAuxQueriesVal) = efAuxQueriesVal n := by
-  rcases hpair : n.unpair with ⟨code, fuel⟩
-  have hn : Nat.pair code fuel = n := by
-    simpa [hpair] using Nat.pair_unpair n
-  subst n
-  simp only [efAuxQueriesVal, Nat.unpair_pair]
-  cases fuel with
-  | zero => simp [efQueriesNormVal, EF.ofNatAux]
-  | succ fuel =>
-      have hprior (child : ℕ) (hchild : child ≤ code) :
-          efPriorQueries
-              ((List.range (Nat.pair code (fuel + 1))).map efAuxQueriesVal) child =
-            (EF.ofNatAux fuel child).map EF.priceQueries := by
-        unfold efPriorQueries
-        simp only [List.length_map, List.length_range, Nat.unpair_pair,
-          Nat.add_sub_cancel]
-        rw [efQueriesHistory_getD (efChildPair_lt child code fuel hchild)]
-        simp [efAuxQueriesVal, Nat.unpair_pair]
-      have hleft : code.unpair.2.unpair.1 ≤ code :=
-        (Nat.unpair_left_le _).trans (Nat.unpair_right_le _)
-      have hright : code.unpair.2.unpair.2 ≤ code :=
-        (Nat.unpair_right_le _).trans (Nat.unpair_right_le _)
-      have hpayload : code.unpair.2 ≤ code := Nat.unpair_right_le _
-      rcases htag : code.unpair.1 with _ | tag
-      · cases hq : (@Encodable.decode ℚ inferInstance code.unpair.2) <;>
-          simp [efQueriesNormVal, EF.ofNatAux, htag, hq, EF.priceQueries]
-      · rcases tag with _ | tag
-        · cases hs : (@LO.Propositional.Formula.ofNat ℕ inferInstance
-              code.unpair.2.unpair.1 : Option Sentence) <;>
-            simp [efQueriesNormVal, EF.ofNatAux, htag, hs, EF.priceQueries,
-              LO.Propositional.Formula.instEncodable, encode_formula_eq_toNat, decode_formula_eq_ofNat]
-        · rcases tag with _ | tag
-          · cases hL : EF.ofNatAux fuel code.unpair.2.unpair.1 <;>
-              cases hR : EF.ofNatAux fuel code.unpair.2.unpair.2 <;>
-              simp [efQueriesNormVal, EF.ofNatAux, htag,
-                hprior _ hleft, hprior _ hright, efQueriesAppend, EF.priceQueries, hL, hR]
-          · rcases tag with _ | tag
-            · cases hL : EF.ofNatAux fuel code.unpair.2.unpair.1 <;>
-                cases hR : EF.ofNatAux fuel code.unpair.2.unpair.2 <;>
-                simp [efQueriesNormVal, EF.ofNatAux, htag,
-                  hprior _ hleft, hprior _ hright, efQueriesAppend, EF.priceQueries, hL, hR]
-            · rcases tag with _ | tag
-              · cases hL : EF.ofNatAux fuel code.unpair.2.unpair.1 <;>
-                  cases hR : EF.ofNatAux fuel code.unpair.2.unpair.2 <;>
-                  simp [efQueriesNormVal, EF.ofNatAux, htag,
-                    hprior _ hleft, hprior _ hright, efQueriesAppend, EF.priceQueries, hL, hR]
-              · rcases tag with _ | tag
-                · cases hA : EF.ofNatAux fuel code.unpair.2 <;>
-                    simp [efQueriesNormVal, EF.ofNatAux, htag,
-                      hprior _ hpayload, EF.priceQueries, hA]
-                · rcases tag with _ | tag
-                  · simp [efQueriesNormVal, EF.ofNatAux, htag, EF.priceQueries]
-                  · rcases tag with _ | tag
-                    · cases hL : EF.ofNatAux fuel code.unpair.2.unpair.1 <;>
-                        cases hR : EF.ofNatAux fuel code.unpair.2.unpair.2 <;>
-                        simp [efQueriesNormVal, EF.ofNatAux, htag,
-                          hprior _ hleft, hprior _ hright, efQueriesAppend,
-                          EF.priceQueries, hL, hR]
-                    · simp [efQueriesNormVal, EF.ofNatAux, htag]
-
-private lemma efAuxQueriesVal_prim : Primrec efAuxQueriesVal := by
-  have hstep : Primrec₂ (fun (_ : Unit) (prior : List (Option EFQueryList)) =>
-      some (efQueriesNormVal prior)) :=
-    Primrec₂.option_some_iff.mpr (efQueriesNormVal_prim.comp Primrec₂.right)
-  have hrec := Primrec.nat_strong_rec
-    (fun (_ : Unit) n => efAuxQueriesVal n)
-    hstep (fun _ n => by simpa using congrArg some (efQueriesNormVal_history n))
-  exact hrec.comp (Primrec.const ()) Primrec.id
-
-/-- `EF.priceQueries` is primitive recursive.  The guard behind the settlement checker's
-soundness: only when every listed query is answered does the total quote table stand in
-for the real market. -/
-lemma efPriceQueries_prim : Primrec EF.priceQueries := by
-  have hindex : Primrec fun e : EF => Nat.pair (Encodable.encode e)
-      (Encodable.encode e + 1) :=
-    Primrec₂.natPair.comp Primrec.encode
-      (Primrec.nat_add.comp Primrec.encode (Primrec.const 1))
-  exact (Primrec.option_getD.comp (efAuxQueriesVal_prim.comp hindex)
-    (Primrec.const ([] : EFQueryList))).of_eq fun e => by
-      simp [efAuxQueriesVal, EF.instEncodable, encode_ef_eq_toNat, decode_ef_eq_ofNat, EF.ofNatAux_toNat]
-
-private def strategyOfTrades? (n : ℕ) (trades : List (EF × Sentence)) :
-    Option (Strategy n) :=
-  if h : ∀ p ∈ trades, p.1.rank ≤ n then some ⟨trades, h⟩ else none
-
-private lemma strategyOfTrades?_self {n : ℕ} (T : Strategy n) :
-    strategyOfTrades? n T.trades = some T := by
-  simp only [strategyOfTrades?, dif_pos T.rank_le]
-
-/-- A strategy is encoded by exactly its finite trade list; its day-rank proof is erased
-and revalidated by the decoder. -/
-instance strategyEncodable (n : ℕ) : Encodable (Strategy n) :=
-  Encodable.ofLeftInjection Strategy.trades (strategyOfTrades? n)
-    strategyOfTrades?_self
-
-private lemma strategyTradesValid_prim (n : ℕ) :
-    PrimrecPred fun trades : List (EF × Sentence) =>
-      ∀ p ∈ trades, p.1.rank ≤ n := by
-  have hp : PrimrecPred fun p : EF × Sentence => p.1.rank ≤ n :=
-    Primrec.nat_le.comp (efRank_prim.comp Primrec.fst) (Primrec.const n)
-  exact hp.forall_mem_list
-
-private def strategyTradesNorm (n : ℕ) (trades : List (EF × Sentence)) : ℕ :=
-  if ∀ p ∈ trades, p.1.rank ≤ n then Encodable.encode trades + 1 else 0
-
-private lemma strategyTradesNorm_prim (n : ℕ) :
-    Primrec (strategyTradesNorm n) := by
-  exact (Primrec.ite (strategyTradesValid_prim n)
-    (Primrec.nat_add.comp Primrec.encode (Primrec.const 1))
-    (Primrec.const 0)).of_eq fun trades => by simp only [strategyTradesNorm]
-
-private lemma strategyTradesNorm_eq (n : ℕ) (trades : List (EF × Sentence)) :
-    strategyTradesNorm n trades = Encodable.encode (strategyOfTrades? n trades) := by
-  by_cases h : ∀ p ∈ trades, p.1.rank ≤ n
-  · let T : Strategy n := ⟨trades, h⟩
-    have hof : strategyOfTrades? n trades = some T := by
-      simpa [T] using strategyOfTrades?_self T
-    rw [strategyTradesNorm, if_pos h, hof]
-    rfl
-  · have hof : strategyOfTrades? n trades = none := by
-      rw [strategyOfTrades?, dif_neg h]
-    rw [strategyTradesNorm, if_neg h, hof]
-    rfl
-
-private def strategyDecodeNorm (n code : ℕ) : ℕ :=
-  match Encodable.decode (α := List (EF × Sentence)) code with
-  | none => 0
-  | some trades => strategyTradesNorm n trades
-
-private lemma strategyDecodeNorm_prim (n : ℕ) :
-    Primrec (strategyDecodeNorm n) := by
-  exact (Primrec.option_casesOn
-    (Primrec.decode : Primrec fun code : ℕ =>
-      Encodable.decode (α := List (EF × Sentence)) code)
-    (Primrec.const 0)
-    ((strategyTradesNorm_prim n).comp₂ Primrec₂.right)).of_eq fun code => by
-      cases h : Encodable.decode (α := List (EF × Sentence)) code <;>
-        simp [strategyDecodeNorm, h]
-
-private lemma strategyDecodeNorm_eq (n code : ℕ) :
-    strategyDecodeNorm n code =
-      Encodable.encode (@Encodable.decode (Strategy n) (strategyEncodable n) code) := by
-  change strategyDecodeNorm n code = Encodable.encode
-    ((Encodable.decode (α := List (EF × Sentence)) code).bind
-      (strategyOfTrades? n))
-  cases h : Encodable.decode (α := List (EF × Sentence)) code with
-  | none => simp [strategyDecodeNorm, h]
-  | some trades => simp [strategyDecodeNorm, h, strategyTradesNorm_eq]
-
-/-- Every day-indexed strategy type has the exact proof-erased primitive-recursive
-encoding required by the bounded LIA evaluator. -/
-instance strategyPrimcodable (n : ℕ) : Primcodable (Strategy n) where
-  prim := Primrec.nat_iff.mp
-    ((strategyDecodeNorm_prim n).of_eq (strategyDecodeNorm_eq n))
-
 /-! ## Exact finite-state accessors -/
 
 /-- Association-list quotation is primitive recursive.  `List.lookup` has exactly the
@@ -2062,170 +206,6 @@ proof-erased belief-state representation, hence primitive recursive. -/
 private lemma marketMakerCandidate_prim : Primrec marketMakerCandidate := by
   exact (Primrec.decode : Primrec fun k : ℕ =>
     Encodable.decode (α := RationalBeliefState) k).of_eq fun k => by rfl
-
-/-! ## Exact finite-sentence-set encoding -/
-
-/-- Comparison of sentence Gödel codes is primitive recursive. -/
-lemma sentenceCodeLE_prim :
-    PrimrecRel fun φ ψ : Sentence => Encodable.encode φ ≤ Encodable.encode ψ :=
-  Primrec.nat_le.comp₂
-    (Primrec.encode.comp₂ Primrec₂.left)
-    (Primrec.encode.comp₂ Primrec₂.right)
-
-/-- Insertion into the code-sorted sentence list is primitive recursive. -/
-lemma sentenceOrderedInsert_prim :
-    Primrec₂ (List.orderedInsert
-      (fun φ ψ : Sentence => Encodable.encode φ ≤ Encodable.encode ψ)) := by
-  let r : Sentence → Sentence → Prop := fun φ ψ =>
-    Encodable.encode φ ≤ Encodable.encode ψ
-  let base : Sentence × List Sentence → List Sentence := fun p => [p.1]
-  let step : (Sentence × List Sentence) →
-      (Sentence × List Sentence × List Sentence) → List Sentence :=
-    fun p q => if r p.1 q.1 then p.1 :: q.1 :: q.2.1 else q.1 :: q.2.2
-  have hbase : Primrec base :=
-    (Primrec.list_cons.comp Primrec.fst (Primrec.const [])).of_eq fun p => by
-      simp [base]
-  have hpred : PrimrecPred fun x :
-      (Sentence × List Sentence) ×
-        (Sentence × List Sentence × List Sentence) =>
-      r x.1.1 x.2.1 :=
-    sentenceCodeLE_prim.comp
-      (Primrec.fst.comp Primrec.fst)
-      (Primrec.fst.comp Primrec.snd)
-  have hthen : Primrec fun x :
-      (Sentence × List Sentence) ×
-        (Sentence × List Sentence × List Sentence) =>
-      x.1.1 :: x.2.1 :: x.2.2.1 :=
-    Primrec.list_cons.comp
-      (Primrec.fst.comp Primrec.fst)
-      (Primrec.list_cons.comp
-        (Primrec.fst.comp Primrec.snd)
-        (Primrec.fst.comp (Primrec.snd.comp Primrec.snd)))
-  have helse : Primrec fun x :
-      (Sentence × List Sentence) ×
-        (Sentence × List Sentence × List Sentence) =>
-      x.2.1 :: x.2.2.2 :=
-    Primrec.list_cons.comp
-      (Primrec.fst.comp Primrec.snd)
-      (Primrec.snd.comp (Primrec.snd.comp Primrec.snd))
-  have hstep : Primrec₂ step :=
-    (Primrec.ite hpred hthen helse).to₂.of_eq fun p q => by
-      simp only [step]
-  exact (Primrec.list_rec Primrec.snd hbase hstep).to₂.of_eq fun φ l => by
-    change List.recOn l [φ]
-      (fun ψ tail ih => if Encodable.encode φ ≤ Encodable.encode ψ then
-        φ :: ψ :: tail else ψ :: ih) =
-      List.orderedInsert
-        (fun φ ψ : Sentence => Encodable.encode φ ≤ Encodable.encode ψ) φ l
-    induction l with
-    | nil => rfl
-    | cons ψ l ih => simp [List.orderedInsert, ih]
-
-/-- The canonical insertion sort used below is primitive recursive. -/
-lemma sentenceInsertionSort_prim :
-    Primrec (List.insertionSort
-      (fun φ ψ : Sentence => Encodable.encode φ ≤ Encodable.encode ψ)) := by
-  exact (Primrec.list_foldr Primrec.id (Primrec.const [])
-    (sentenceOrderedInsert_prim.comp₂
-      (Primrec.fst.comp₂ Primrec₂.right)
-      (Primrec.snd.comp₂ Primrec₂.right))).of_eq fun l => by
-        rfl
-
-private def sentenceFinsetDecodeNorm (n : ℕ) : ℕ :=
-  match Encodable.decode (α := List Sentence) n with
-  | none => 0
-  | some l =>
-      if l.Nodup then
-        Encodable.encode (l.insertionSort
-          (fun φ ψ : Sentence => Encodable.encode φ ≤ Encodable.encode ψ)) + 1
-      else 0
-
-private lemma sentenceFinsetDecodeNorm_prim :
-    Primrec sentenceFinsetDecodeNorm := by
-  have hsorted : Primrec fun l : List Sentence => Encodable.encode
-      (l.insertionSort
-        (fun φ ψ : Sentence => Encodable.encode φ ≤ Encodable.encode ψ)) + 1 :=
-    Primrec.nat_add.comp
-      (Primrec.encode.comp sentenceInsertionSort_prim)
-      (Primrec.const 1)
-  have hvalid : Primrec fun l : List Sentence =>
-      if l.Nodup then
-        Encodable.encode (l.insertionSort
-          (fun φ ψ : Sentence => Encodable.encode φ ≤ Encodable.encode ψ)) + 1
-      else 0 :=
-    Primrec.ite sentenceListNodup_prim hsorted (Primrec.const 0)
-  exact (Primrec.option_casesOn
-    (Primrec.decode : Primrec fun n : ℕ =>
-      Encodable.decode (α := List Sentence) n)
-    (Primrec.const 0)
-    (hvalid.comp₂ Primrec₂.right)).of_eq fun n => by
-      cases h : Encodable.decode (α := List Sentence) n <;>
-        simp [sentenceFinsetDecodeNorm, h]
-
-private lemma sentenceMultisetDecode_eq (n : ℕ) :
-    @Encodable.decode (Multiset Sentence) Multiset.encodable n =
-      (Encodable.decode (α := List Sentence) n).map
-        (fun l => (l : Multiset Sentence)) := by
-  unfold Multiset.encodable
-  unfold decodeMultiset
-  cases h : Encodable.decode (α := List Sentence) n <;> simp [h]
-
-private lemma sentenceFinsetEncode_eq (s : Finset Sentence) :
-    @Encodable.encode (Finset Sentence) Finset.encodable s =
-      encodeMultiset s.1 := by
-  rfl
-
-private lemma sentenceFinsetDecodeNorm_eq (n : ℕ) :
-    sentenceFinsetDecodeNorm n =
-      @Encodable.encode (Option (Finset Sentence)) Option.encodable
-        (@Encodable.decode (Finset Sentence) Finset.encodable n) := by
-  simp only [Finset.encodable, Encodable.decode_ofEquiv]
-  change sentenceFinsetDecodeNorm n = Encodable.encode
-    (Option.map
-      (fun x : {s : Multiset Sentence // s.Nodup} =>
-        ({ val := x.1, nodup := x.2 } : Finset Sentence))
-      (@Encodable.decode {s : Multiset Sentence // s.Nodup}
-        (@Subtype.encodable (Multiset Sentence) Multiset.Nodup
-          Multiset.encodable
-          (fun s => @Multiset.nodupDecidable Sentence
-            (Encodable.decidableEqOfEncodable Sentence) s)) n))
-  change sentenceFinsetDecodeNorm n = Encodable.encode
-    (Option.map
-      (fun x : {s : Multiset Sentence // s.Nodup} =>
-        ({ val := x.1, nodup := x.2 } : Finset Sentence))
-      ((@Encodable.decode (Multiset Sentence) Multiset.encodable n).bind
-        fun a => @dite _ a.Nodup
-          (@Multiset.nodupDecidable Sentence
-            (Encodable.decidableEqOfEncodable Sentence) a)
-          (fun h => some ⟨a, h⟩) (fun _ => none)))
-  rw [sentenceMultisetDecode_eq]
-  cases h : Encodable.decode (α := List Sentence) n with
-  | none => simp [sentenceFinsetDecodeNorm, h]
-  | some l =>
-      by_cases hn : l.Nodup
-      · simp [sentenceFinsetDecodeNorm, h, hn]
-        rw [sentenceFinsetEncode_eq]
-        unfold encodeMultiset
-        let r : Sentence → Sentence → Prop := fun φ ψ =>
-          Encodable.encode φ ≤ Encodable.encode ψ
-        letI : IsTrans Sentence r :=
-          ⟨fun _ _ _ hab hbc => hab.trans hbc⟩
-        letI : Std.Antisymm r :=
-          ⟨fun _ _ hab hba => Encodable.encode_injective (le_antisymm hab hba)⟩
-        letI : Std.Total r :=
-          ⟨fun φ ψ => le_total (Encodable.encode φ) (Encodable.encode ψ)⟩
-        change Encodable.encode (l.insertionSort r) =
-          Encodable.encode (Multiset.sort (l : Multiset Sentence) r)
-        rw [Multiset.coe_sort, List.mergeSort_eq_insertionSort]
-      · simp [sentenceFinsetDecodeNorm, h, hn]
-
-/-- The stock `Finset Sentence` representation is primitive recursive.  The proof uses
-insertion sort only as an executable presentation of Mathlib's definitionally chosen merge
-sort; `List.mergeSort_eq_insertionSort` proves the encodings coincide exactly. -/
-instance sentenceFinsetPrimcodable : Primcodable (Finset Sentence) where
-  __ := Finset.encodable
-  prim := Primrec.nat_iff.mp
-    (sentenceFinsetDecodeNorm_prim.of_eq sentenceFinsetDecodeNorm_eq)
 
 /-- A fixed deductive-process program, run for a supplied clock, is primitive recursive in
 the clock and requested day, including exact decoding of its finite sentence set. -/
@@ -2303,1685 +283,6 @@ private lemma decodedStageTable_prim : Primrec₂ decodedStageTable := by
   exact (Primrec.list_getD (∅ : Finset Sentence)).of_eq fun stages n => by
     rfl
 
-/-! ## Uniform trader-program emulator -/
-
-/-! The streaming strategy decoder constructs `EF` syntax directly.  Exposing these small
-constructor facts separately keeps the parser proof about its control flow rather than the
-details of the exact `EF.toNat` representation. -/
-
-private lemma efConst_prim : Primrec EF.const := by
-  apply Primrec.encode_iff.mp
-  exact (Primrec₂.natPair.comp (Primrec.const 0) Primrec.encode).of_eq fun q => by
-    rfl
-
-private lemma efPrice_prim : Primrec₂ EF.price := by
-  apply Primrec₂.encode_iff.mp
-  exact ((Primrec₂.natPair.comp (Primrec.const 1)
-    (Primrec₂.natPair.comp (Primrec.encode.comp Primrec.fst) Primrec.snd)).to₂).of_eq
-      fun φ n => by rfl
-
-private lemma efAdd_prim : Primrec₂ EF.add := by
-  apply Primrec₂.encode_iff.mp
-  exact ((Primrec₂.natPair.comp (Primrec.const 2)
-    (Primrec₂.natPair.comp (Primrec.encode.comp Primrec.fst)
-      (Primrec.encode.comp Primrec.snd))).to₂).of_eq fun a b => by rfl
-
-private lemma efMul_prim : Primrec₂ EF.mul := by
-  apply Primrec₂.encode_iff.mp
-  exact ((Primrec₂.natPair.comp (Primrec.const 3)
-    (Primrec₂.natPair.comp (Primrec.encode.comp Primrec.fst)
-      (Primrec.encode.comp Primrec.snd))).to₂).of_eq fun a b => by rfl
-
-private lemma efMax_prim : Primrec₂ EF.max := by
-  apply Primrec₂.encode_iff.mp
-  exact ((Primrec₂.natPair.comp (Primrec.const 4)
-    (Primrec₂.natPair.comp (Primrec.encode.comp Primrec.fst)
-      (Primrec.encode.comp Primrec.snd))).to₂).of_eq fun a b => by rfl
-
-private lemma efSafeRecip_prim : Primrec EF.safeRecip := by
-  apply Primrec.encode_iff.mp
-  exact (Primrec₂.natPair.comp (Primrec.const 5) Primrec.encode).of_eq fun a => by
-    rfl
-
-private lemma efVar_prim : Primrec EF.var := by
-  apply Primrec.encode_iff.mp
-  exact (Primrec₂.natPair.comp (Primrec.const 6) Primrec.id).of_eq fun i => by
-    rfl
-
-private lemma efLet_prim : Primrec₂ EF.letE := by
-  apply Primrec₂.encode_iff.mp
-  exact ((Primrec₂.natPair.comp (Primrec.const 7)
-    (Primrec₂.natPair.comp (Primrec.encode.comp Primrec.fst)
-      (Primrec.encode.comp Primrec.snd))).to₂).of_eq fun x body => by rfl
-
-private def efStreamBinary (op : EF → EF → EF)
-    (data : List EF × List (EF × Sentence)) : Option EF.StreamState :=
-  match data.1 with
-  | b :: a :: rest => some ((0, none), (op a b :: rest, data.2))
-  | _ => none
-
-private lemma efStreamBinary_prim (op : EF → EF → EF) (hop : Primrec₂ op) :
-    Primrec (efStreamBinary op) := by
-  let S := List EF × List (EF × Sentence)
-  let Y := S × (EF × List EF)
-  have hy2 : Primrec fun y : Y => y.2 := Primrec.snd
-  have htail : Primrec fun y : Y => y.2.2 := Primrec.snd.comp hy2
-  have hresult : Primrec₂ fun (y : Y) (ar : EF × List EF) =>
-      some (((0, none), (op ar.1 y.2.1 :: ar.2, y.1.2)) : EF.StreamState) := by
-    have hop' : Primrec fun z : Y × (EF × List EF) => op z.2.1 z.1.2.1 :=
-      hop.comp
-        (Primrec.fst.comp Primrec.snd)
-        (Primrec.fst.comp (Primrec.snd.comp Primrec.fst))
-    have hrest : Primrec fun z : Y × (EF × List EF) => z.2.2 :=
-      Primrec.snd.comp Primrec.snd
-    have hstack : Primrec fun z : Y × (EF × List EF) =>
-        op z.2.1 z.1.2.1 :: z.2.2 :=
-      Primrec.list_cons.comp hop' hrest
-    have htrades : Primrec fun z : Y × (EF × List EF) => z.1.1.2 :=
-      Primrec.snd.comp (Primrec.fst.comp Primrec.fst)
-    exact Primrec₂.option_some_iff.mpr
-      ((Primrec.const (0, (none : Option Sentence))).pair (hstack.pair htrades)).to₂
-  have hsecond : Primrec fun y : Y =>
-      match y.2.2 with
-      | [] => (none : Option EF.StreamState)
-      | a :: rest => some ((0, none), (op a y.2.1 :: rest, y.1.2)) :=
-    (Primrec.list_casesOn htail (Primrec.const (none : Option EF.StreamState))
-      hresult).of_eq fun y => by cases y.2.2 <;> rfl
-  have hfirst : Primrec₂ fun (data : S) (br : EF × List EF) =>
-      match br.2 with
-      | [] => (none : Option EF.StreamState)
-      | a :: rest => some ((0, none), (op a br.1 :: rest, data.2)) :=
-    hsecond.to₂
-  exact (Primrec.list_casesOn Primrec.fst
-    (Primrec.const (none : Option EF.StreamState)) hfirst).of_eq
-    fun data => by
-      rcases data with ⟨stack, trades⟩
-      cases stack with
-      | nil => rfl
-      | cons b tail =>
-          cases tail with
-          | nil => rfl
-          | cons a rest => rfl
-
-private def efStreamUnary (op : EF → EF)
-    (data : List EF × List (EF × Sentence)) : Option EF.StreamState :=
-  match data.1 with
-  | a :: rest => some ((0, none), (op a :: rest, data.2))
-  | [] => none
-
-private lemma efStreamUnary_prim (op : EF → EF) (hop : Primrec op) :
-    Primrec (efStreamUnary op) := by
-  let S := List EF × List (EF × Sentence)
-  have hresult : Primrec₂ fun (data : S) (ar : EF × List EF) =>
-      some (((0, none), (op ar.1 :: ar.2, data.2)) : EF.StreamState) := by
-    have hop' : Primrec fun z : S × (EF × List EF) => op z.2.1 :=
-      hop.comp (Primrec.fst.comp Primrec.snd)
-    have hrest : Primrec fun z : S × (EF × List EF) => z.2.2 :=
-      Primrec.snd.comp Primrec.snd
-    have hstack : Primrec fun z : S × (EF × List EF) => op z.2.1 :: z.2.2 :=
-      Primrec.list_cons.comp hop' hrest
-    have htrades : Primrec fun z : S × (EF × List EF) => z.1.2 :=
-      Primrec.snd.comp Primrec.fst
-    exact Primrec₂.option_some_iff.mpr
-      ((Primrec.const (0, (none : Option Sentence))).pair (hstack.pair htrades)).to₂
-  exact (Primrec.list_casesOn Primrec.fst
-    (Primrec.const (none : Option EF.StreamState)) hresult).of_eq fun data => by
-      rcases data with ⟨stack, trades⟩
-      cases stack <;> rfl
-
-private def efStreamMode (mode : ℕ)
-    (data : List EF × List (EF × Sentence)) : Option EF.StreamState :=
-  some ((mode, none), data)
-
-private lemma efStreamMode_prim (mode : ℕ) : Primrec (efStreamMode mode) := by
-  exact Primrec.option_some_iff.mpr
-    ((Primrec.const (mode, (none : Option Sentence))).pair Primrec.id)
-
-private def efStreamSentence
-    (data : List EF × List (EF × Sentence)) (token : ℕ) :
-    Option EF.StreamState :=
-  (Encodable.decode (α := Sentence) token).map fun φ => ((2, some φ), data)
-
-private lemma efStreamSentence_prim : Primrec₂ efStreamSentence := by
-  let S := List EF × List (EF × Sentence)
-  let P := S × ℕ
-  have hdecode : Primrec fun p : P => Encodable.decode (α := Sentence) p.2 :=
-    Primrec.decode.comp Primrec.snd
-  have hmap : Primrec₂ fun (p : P) (φ : Sentence) =>
-      (((2, some φ), p.1) : EF.StreamState) := by
-    have hpending : Primrec fun z : P × Sentence => some z.2 :=
-      Primrec.option_some.comp Primrec.snd
-    have hcontrol : Primrec fun z : P × Sentence => (2, some z.2) :=
-      (Primrec.const 2).pair hpending
-    have hdata : Primrec fun z : P × Sentence => z.1.1 :=
-      Primrec.fst.comp Primrec.fst
-    exact (hcontrol.pair hdata).to₂
-  exact (Primrec.option_map hdecode hmap).to₂
-
-private def efStreamConst
-    (data : List EF × List (EF × Sentence)) (token : ℕ) :
-    Option EF.StreamState :=
-  (Encodable.decode (α := ℚ) token).map fun q =>
-    ((0, none), (EF.const q :: data.1, data.2))
-
-private lemma efStreamConst_prim : Primrec₂ efStreamConst := by
-  let S := List EF × List (EF × Sentence)
-  let P := S × ℕ
-  have hdecode : Primrec fun p : P => Encodable.decode (α := ℚ) p.2 :=
-    Primrec.decode.comp Primrec.snd
-  have hmap : Primrec₂ fun (p : P) (q : ℚ) =>
-      (((0, none), (EF.const q :: p.1.1, p.1.2)) : EF.StreamState) := by
-    have hfeature : Primrec fun z : P × ℚ => EF.const z.2 :=
-      efConst_prim.comp Primrec.snd
-    have hstack : Primrec fun z : P × ℚ => EF.const z.2 :: z.1.1.1 :=
-      Primrec.list_cons.comp hfeature
-        (Primrec.fst.comp (Primrec.fst.comp Primrec.fst))
-    have htrades : Primrec fun z : P × ℚ => z.1.1.2 :=
-      Primrec.snd.comp (Primrec.fst.comp Primrec.fst)
-    exact ((Primrec.const (0, (none : Option Sentence))).pair
-      (hstack.pair htrades)).to₂
-  exact (Primrec.option_map hdecode hmap).to₂
-
-private def efStreamVar
-    (data : List EF × List (EF × Sentence)) (token : ℕ) :
-    Option EF.StreamState :=
-  some ((0, none), (EF.var token :: data.1, data.2))
-
-private lemma efStreamVar_prim : Primrec₂ efStreamVar := by
-  let S := List EF × List (EF × Sentence)
-  let P := S × ℕ
-  have hfeature : Primrec fun p : P => EF.var p.2 := efVar_prim.comp Primrec.snd
-  have hstack : Primrec fun p : P => EF.var p.2 :: p.1.1 :=
-    Primrec.list_cons.comp hfeature (Primrec.fst.comp Primrec.fst)
-  have htrades : Primrec fun p : P => p.1.2 :=
-    Primrec.snd.comp Primrec.fst
-  exact (Primrec.option_some_iff.mpr
-    ((Primrec.const (0, (none : Option Sentence))).pair
-      (hstack.pair htrades))).to₂
-
-private def efStreamPrice
-    (input : (Option Sentence × (List EF × List (EF × Sentence))) × ℕ) :
-    Option EF.StreamState :=
-  input.1.1.map fun φ =>
-    ((0, none), (EF.price φ input.2 :: input.1.2.1, input.1.2.2))
-
-private lemma efStreamPrice_prim : Primrec efStreamPrice := by
-  let S := List EF × List (EF × Sentence)
-  let P := (Option Sentence × S) × ℕ
-  have hpending : Primrec fun p : P => p.1.1 :=
-    Primrec.fst.comp Primrec.fst
-  have hmap : Primrec₂ fun (p : P) (φ : Sentence) =>
-      (((0, none), (EF.price φ p.2 :: p.1.2.1, p.1.2.2)) : EF.StreamState) := by
-    have hfeature : Primrec fun z : P × Sentence => EF.price z.2 z.1.2 :=
-      efPrice_prim.comp Primrec.snd (Primrec.snd.comp Primrec.fst)
-    have hstack : Primrec fun z : P × Sentence =>
-        EF.price z.2 z.1.2 :: z.1.1.2.1 :=
-      Primrec.list_cons.comp hfeature
-        (Primrec.fst.comp (Primrec.snd.comp (Primrec.fst.comp Primrec.fst)))
-    have htrades : Primrec fun z : P × Sentence => z.1.1.2.2 :=
-      Primrec.snd.comp (Primrec.snd.comp (Primrec.fst.comp Primrec.fst))
-    exact ((Primrec.const (0, (none : Option Sentence))).pair
-      (hstack.pair htrades)).to₂
-  exact Primrec.option_map hpending hmap
-
-private def efStreamTrade
-    (input : (List EF × List (EF × Sentence)) × ℕ) :
-    Option EF.StreamState :=
-  match input.1.1 with
-  | e :: rest => (Encodable.decode (α := Sentence) input.2).map fun φ =>
-      ((0, none), (rest, input.1.2 ++ [(e, φ)]))
-  | [] => none
-
-private lemma efStreamTrade_prim : Primrec efStreamTrade := by
-  let S := List EF × List (EF × Sentence)
-  let P := S × ℕ
-  let Y := P × (EF × List EF)
-  have hdecode : Primrec fun y : Y => Encodable.decode (α := Sentence) y.1.2 :=
-    Primrec.decode.comp (Primrec.snd.comp Primrec.fst)
-  have hmap : Primrec₂ fun (y : Y) (φ : Sentence) =>
-      (((0, none), (y.2.2, y.1.1.2 ++ [(y.2.1, φ)])) : EF.StreamState) := by
-    have hrest : Primrec fun z : Y × Sentence => z.1.2.2 :=
-      Primrec.snd.comp (Primrec.snd.comp Primrec.fst)
-    have htrade : Primrec fun z : Y × Sentence => (z.1.2.1, z.2) :=
-      (Primrec.fst.comp (Primrec.snd.comp Primrec.fst)).pair Primrec.snd
-    have htrades : Primrec fun z : Y × Sentence => z.1.1.1.2 :=
-      Primrec.snd.comp (Primrec.fst.comp (Primrec.fst.comp Primrec.fst))
-    have hout : Primrec fun z : Y × Sentence =>
-        z.1.1.1.2 ++ [(z.1.2.1, z.2)] :=
-      Primrec.list_concat.comp htrades htrade
-    exact ((Primrec.const (0, (none : Option Sentence))).pair
-      (hrest.pair hout)).to₂
-  have hcons : Primrec₂ fun (p : P) (er : EF × List EF) =>
-      (Encodable.decode (α := Sentence) p.2).map fun φ =>
-        (((0, none), (er.2, p.1.2 ++ [(er.1, φ)])) : EF.StreamState) :=
-    (Primrec.option_map hdecode hmap).to₂
-  exact (Primrec.list_casesOn (Primrec.fst.comp Primrec.fst)
-    (Primrec.const (none : Option EF.StreamState)) hcons).of_eq fun input => by
-      rcases input with ⟨⟨stack, trades⟩, token⟩
-      cases stack <;> rfl
-
-private lemma efStreamStepState_prim : Primrec fun
-    input : EF.StreamState × ℕ => EF.streamStep (some input.1) input.2 := by
-  let S := List EF × List (EF × Sentence)
-  let P := EF.StreamState × ℕ
-  have hmode : Primrec fun p : P => p.1.1.1 :=
-    Primrec.fst.comp (Primrec.fst.comp Primrec.fst)
-  have hpending : Primrec fun p : P => p.1.1.2 :=
-    Primrec.snd.comp (Primrec.fst.comp Primrec.fst)
-  have hdata : Primrec fun p : P => p.1.2 :=
-    Primrec.snd.comp Primrec.fst
-  have htoken : Primrec fun p : P => p.2 := Primrec.snd
-  have hmodeEq (k : ℕ) : PrimrecPred fun p : P => p.1.1.1 = k :=
-    Primrec.eq.comp hmode (Primrec.const k)
-  have htokenEq (k : ℕ) : PrimrecPred fun p : P => p.2 = k :=
-    Primrec.eq.comp htoken (Primrec.const k)
-  have hsetMode (k : ℕ) : Primrec fun p : P => efStreamMode k p.1.2 :=
-    (efStreamMode_prim k).comp hdata
-  have hbinary (op : EF → EF → EF) (hop : Primrec₂ op) :
-      Primrec fun p : P => efStreamBinary op p.1.2 :=
-    (efStreamBinary_prim op hop).comp hdata
-  have hunary (op : EF → EF) (hop : Primrec op) :
-      Primrec fun p : P => efStreamUnary op p.1.2 :=
-    (efStreamUnary_prim op hop).comp hdata
-  have h8 : Primrec fun p : P =>
-      if p.2 = 8 then efStreamBinary EF.letE p.1.2 else none :=
-    Primrec.ite (htokenEq 8) (hbinary EF.letE efLet_prim)
-      (Primrec.const (none : Option EF.StreamState))
-  have h7 : Primrec fun p : P =>
-      if p.2 = 7 then efStreamMode 5 p.1.2
-      else if p.2 = 8 then efStreamBinary EF.letE p.1.2 else none :=
-    Primrec.ite (htokenEq 7) (hsetMode 5) h8
-  have h6 : Primrec fun p : P =>
-      if p.2 = 6 then efStreamMode 4 p.1.2
-      else if p.2 = 7 then efStreamMode 5 p.1.2
-      else if p.2 = 8 then efStreamBinary EF.letE p.1.2 else none :=
-    Primrec.ite (htokenEq 6) (hsetMode 4) h7
-  have h5 : Primrec fun p : P =>
-      if p.2 = 5 then efStreamUnary EF.safeRecip p.1.2
-      else if p.2 = 6 then efStreamMode 4 p.1.2
-      else if p.2 = 7 then efStreamMode 5 p.1.2
-      else if p.2 = 8 then efStreamBinary EF.letE p.1.2 else none :=
-    Primrec.ite (htokenEq 5) (hunary EF.safeRecip efSafeRecip_prim) h6
-  have h4 : Primrec fun p : P =>
-      if p.2 = 4 then efStreamBinary EF.max p.1.2
-      else if p.2 = 5 then efStreamUnary EF.safeRecip p.1.2
-      else if p.2 = 6 then efStreamMode 4 p.1.2
-      else if p.2 = 7 then efStreamMode 5 p.1.2
-      else if p.2 = 8 then efStreamBinary EF.letE p.1.2 else none :=
-    Primrec.ite (htokenEq 4) (hbinary EF.max efMax_prim) h5
-  have h3 : Primrec fun p : P =>
-      if p.2 = 3 then efStreamBinary EF.mul p.1.2
-      else if p.2 = 4 then efStreamBinary EF.max p.1.2
-      else if p.2 = 5 then efStreamUnary EF.safeRecip p.1.2
-      else if p.2 = 6 then efStreamMode 4 p.1.2
-      else if p.2 = 7 then efStreamMode 5 p.1.2
-      else if p.2 = 8 then efStreamBinary EF.letE p.1.2 else none :=
-    Primrec.ite (htokenEq 3) (hbinary EF.mul efMul_prim) h4
-  have h2 : Primrec fun p : P =>
-      if p.2 = 2 then efStreamBinary EF.add p.1.2
-      else if p.2 = 3 then efStreamBinary EF.mul p.1.2
-      else if p.2 = 4 then efStreamBinary EF.max p.1.2
-      else if p.2 = 5 then efStreamUnary EF.safeRecip p.1.2
-      else if p.2 = 6 then efStreamMode 4 p.1.2
-      else if p.2 = 7 then efStreamMode 5 p.1.2
-      else if p.2 = 8 then efStreamBinary EF.letE p.1.2 else none :=
-    Primrec.ite (htokenEq 2) (hbinary EF.add efAdd_prim) h3
-  have h1 : Primrec fun p : P =>
-      if p.2 = 1 then efStreamMode 3 p.1.2
-      else if p.2 = 2 then efStreamBinary EF.add p.1.2
-      else if p.2 = 3 then efStreamBinary EF.mul p.1.2
-      else if p.2 = 4 then efStreamBinary EF.max p.1.2
-      else if p.2 = 5 then efStreamUnary EF.safeRecip p.1.2
-      else if p.2 = 6 then efStreamMode 4 p.1.2
-      else if p.2 = 7 then efStreamMode 5 p.1.2
-      else if p.2 = 8 then efStreamBinary EF.letE p.1.2 else none :=
-    Primrec.ite (htokenEq 1) (hsetMode 3) h2
-  have hready : Primrec fun p : P =>
-      if p.2 = 0 then efStreamMode 1 p.1.2
-      else if p.2 = 1 then efStreamMode 3 p.1.2
-      else if p.2 = 2 then efStreamBinary EF.add p.1.2
-      else if p.2 = 3 then efStreamBinary EF.mul p.1.2
-      else if p.2 = 4 then efStreamBinary EF.max p.1.2
-      else if p.2 = 5 then efStreamUnary EF.safeRecip p.1.2
-      else if p.2 = 6 then efStreamMode 4 p.1.2
-      else if p.2 = 7 then efStreamMode 5 p.1.2
-      else if p.2 = 8 then efStreamBinary EF.letE p.1.2 else none :=
-    Primrec.ite (htokenEq 0) (hsetMode 1) h1
-  have hpriceInput : Primrec fun p : P => ((p.1.1.2, p.1.2), p.2) :=
-    (hpending.pair hdata).pair htoken
-  have htradeInput : Primrec fun p : P => (p.1.2, p.2) := hdata.pair htoken
-  have hmode5 : Primrec fun p : P =>
-      if p.1.1.1 = 5 then efStreamVar p.1.2 p.2 else none :=
-    Primrec.ite (hmodeEq 5) (efStreamVar_prim.comp hdata htoken)
-      (Primrec.const (none : Option EF.StreamState))
-  have hmode4 : Primrec fun p : P =>
-      if p.1.1.1 = 4 then efStreamTrade (p.1.2, p.2)
-      else if p.1.1.1 = 5 then efStreamVar p.1.2 p.2 else none :=
-    Primrec.ite (hmodeEq 4) (efStreamTrade_prim.comp htradeInput) hmode5
-  have hmode3 : Primrec fun p : P =>
-      if p.1.1.1 = 3 then efStreamConst p.1.2 p.2
-      else if p.1.1.1 = 4 then efStreamTrade (p.1.2, p.2)
-      else if p.1.1.1 = 5 then efStreamVar p.1.2 p.2 else none :=
-    Primrec.ite (hmodeEq 3) (efStreamConst_prim.comp hdata htoken) hmode4
-  have hmode2 : Primrec fun p : P =>
-      if p.1.1.1 = 2 then efStreamPrice ((p.1.1.2, p.1.2), p.2)
-      else if p.1.1.1 = 3 then efStreamConst p.1.2 p.2
-      else if p.1.1.1 = 4 then efStreamTrade (p.1.2, p.2)
-      else if p.1.1.1 = 5 then efStreamVar p.1.2 p.2 else none :=
-    Primrec.ite (hmodeEq 2) (efStreamPrice_prim.comp hpriceInput) hmode3
-  have hmode1 : Primrec fun p : P =>
-      if p.1.1.1 = 1 then efStreamSentence p.1.2 p.2
-      else if p.1.1.1 = 2 then efStreamPrice ((p.1.1.2, p.1.2), p.2)
-      else if p.1.1.1 = 3 then efStreamConst p.1.2 p.2
-      else if p.1.1.1 = 4 then efStreamTrade (p.1.2, p.2)
-      else if p.1.1.1 = 5 then efStreamVar p.1.2 p.2 else none :=
-    Primrec.ite (hmodeEq 1) (efStreamSentence_prim.comp hdata htoken) hmode2
-  exact (Primrec.ite (hmodeEq 0) hready hmode1).of_eq fun input => by
-    rcases input with ⟨⟨⟨mode, pending⟩, ⟨efst, trades⟩⟩, token⟩
-    simp only [EF.streamStep, efStreamMode, efStreamBinary, efStreamUnary,
-      efStreamSentence, efStreamPrice, efStreamConst, efStreamTrade, efStreamVar]
-    by_cases h0 : mode = 0
-    · subst mode
-      norm_num
-      rfl
-    by_cases h1 : mode = 1
-    · subst mode
-      norm_num
-    by_cases h2 : mode = 2
-    · subst mode
-      norm_num
-    by_cases h3 : mode = 3
-    · subst mode
-      norm_num
-    by_cases h4 : mode = 4
-    · subst mode
-      norm_num
-      cases efst with
-      | nil => rfl
-      | cons e rest =>
-          cases Encodable.decode (α := Sentence) token <;> rfl
-    by_cases h5 : mode = 5
-    · subst mode
-      norm_num
-    simp [h0, h1, h2, h3, h4, h5]
-
-private lemma efStreamStep_prim : Primrec₂ EF.streamStep := by
-  let P := Option EF.StreamState × ℕ
-  have hsome : Primrec₂ fun (p : P) (state : EF.StreamState) =>
-      EF.streamStep (some state) p.2 := by
-    have hinput : Primrec fun z : P × EF.StreamState => (z.2, z.1.2) :=
-      Primrec.snd.pair (Primrec.snd.comp Primrec.fst)
-    exact (efStreamStepState_prim.comp hinput).to₂
-  exact ((Primrec.option_casesOn Primrec.fst
-    (Primrec.const (none : Option EF.StreamState)) hsome).to₂).of_eq fun state token => by
-      cases state <;> rfl
-
-private lemma efStreamReadFrom_prim : Primrec₂ EF.streamReadFrom := by
-  let P := List ℕ × Option EF.StreamState
-  have hstep : Primrec₂ fun (_p : P) (st : Option EF.StreamState × ℕ) =>
-      EF.streamStep st.1 st.2 := by
-    have hstate : Primrec fun z : P × (Option EF.StreamState × ℕ) => z.2.1 :=
-      Primrec.fst.comp Primrec.snd
-    have htoken : Primrec fun z : P × (Option EF.StreamState × ℕ) => z.2.2 :=
-      Primrec.snd.comp Primrec.snd
-    exact (efStreamStep_prim.comp hstate htoken).to₂
-  exact ((Primrec.list_foldl Primrec.fst Primrec.snd hstep).to₂).of_eq
-    fun tokens state => by rfl
-
-private def efStreamFinish (state : Option EF.StreamState) :
-    Option (List (EF × Sentence)) :=
-  match state with
-  | some ((0, none), ([], trades)) => some trades
-  | _ => none
-
-private lemma efStreamFinish_prim : Primrec efStreamFinish := by
-  have hsome : Primrec₂ fun (_state : Option EF.StreamState) (s : EF.StreamState) =>
-      if s.1.1 = 0 then
-        match s.1.2 with
-        | none =>
-            match s.2.1 with
-            | [] => some s.2.2
-            | _ => none
-        | some _ => none
-      else none := by
-    let P := Option EF.StreamState × EF.StreamState
-    have hmode : Primrec fun p : P => p.2.1.1 :=
-      Primrec.fst.comp (Primrec.fst.comp Primrec.snd)
-    have hmodeZero : PrimrecPred fun p : P => p.2.1.1 = 0 :=
-      Primrec.eq.comp hmode (Primrec.const 0)
-    have hstack : Primrec fun p : P => p.2.2.1 :=
-      Primrec.fst.comp (Primrec.snd.comp Primrec.snd)
-    have htrades : Primrec fun p : P => p.2.2.2 :=
-      Primrec.snd.comp (Primrec.snd.comp Primrec.snd)
-    have hstackFinish : Primrec fun p : P =>
-        match p.2.2.1 with
-        | [] => some p.2.2.2
-        | _ => none :=
-      (Primrec.list_casesOn hstack
-        (Primrec.option_some.comp htrades)
-        (Primrec₂.const (none : Option (List (EF × Sentence))))).of_eq fun p => by
-          cases p.2.2.1 <;> rfl
-    have hpending : Primrec fun p : P => p.2.1.2 :=
-      Primrec.snd.comp (Primrec.fst.comp Primrec.snd)
-    have hpendingFinish : Primrec fun p : P =>
-        match p.2.1.2 with
-        | none =>
-            match p.2.2.1 with
-            | [] => some p.2.2.2
-            | _ => none
-        | some _ => none :=
-      (Primrec.option_casesOn hpending hstackFinish
-        (Primrec₂.const (none : Option (List (EF × Sentence))))).of_eq fun p => by
-          cases p.2.1.2 <;> rfl
-    exact (Primrec.ite hmodeZero hpendingFinish
-      (Primrec.const (none : Option (List (EF × Sentence))))).to₂
-  exact (Primrec.option_casesOn Primrec.id
-    (Primrec.const (none : Option (List (EF × Sentence)))) hsome).of_eq fun state => by
-      cases state with
-      | none => rfl
-      | some s =>
-          rcases s with ⟨⟨mode, pending⟩, ⟨stack, trades⟩⟩
-          by_cases hm : mode = 0
-          · subst mode
-            cases pending <;> cases stack <;> rfl
-          · cases mode with
-            | zero => exact (hm rfl).elim
-            | succ mode => rfl
-
-lemma deserializeTrades_prim : Primrec deserializeTrades := by
-  have hread : Primrec fun tokens : List ℕ =>
-      EF.streamReadFrom tokens (some EF.streamInitial) :=
-    efStreamReadFrom_prim.comp Primrec.id (Primrec.const (some EF.streamInitial))
-  exact (efStreamFinish_prim.comp hread).of_eq fun tokens => by
-    unfold deserializeTrades efStreamFinish
-    cases EF.streamReadFrom tokens (some EF.streamInitial) with
-    | none => rfl
-    | some state =>
-        rcases state with ⟨⟨mode, pending⟩, ⟨stack, trades⟩⟩
-        cases mode <;> cases pending <;> cases stack <;> rfl
-
-private lemma strategyTradesValid_primDigit :
-    PrimrecRel fun (trades : List (EF × Sentence)) n =>
-      ∀ p ∈ trades, p.1.rank ≤ n := by
-  have hp : PrimrecRel fun (p : EF × Sentence) n => p.1.rank ≤ n :=
-    Primrec.nat_le.comp₂
-      ((efRank_prim.comp Primrec.fst).comp₂ Primrec₂.left)
-      Primrec₂.right
-  exact hp.forall_mem_list
-
-private lemma strategyOfTokensTrades_prim : Primrec₂ fun n tokens =>
-    (strategyOfTokens n tokens).trades := by
-  let P := ℕ × List ℕ
-  have hdecode : Primrec fun p : P => deserializeTrades p.2 :=
-    deserializeTrades_prim.comp Primrec.snd
-  have hsome : Primrec₂ fun (p : P) (trades : List (EF × Sentence)) =>
-      if ∀ trade ∈ trades, trade.1.rank ≤ p.1 then trades else [] := by
-    have hvalid : PrimrecPred fun z : P × List (EF × Sentence) =>
-        ∀ trade ∈ z.2, trade.1.rank ≤ z.1.1 :=
-      PrimrecRel.comp strategyTradesValid_primDigit Primrec.snd
-        (Primrec.fst.comp Primrec.fst)
-    exact (Primrec.ite hvalid Primrec.snd (Primrec.const [])).to₂
-  exact ((Primrec.option_casesOn hdecode (Primrec.const []) hsome).to₂).of_eq
-    fun n tokens => by
-      simp only []
-      unfold strategyOfTokens
-      split
-      · simp_all
-      · split <;> simp_all
-
-
-section RpnDecodePrimrec
-
-open Nat.Partrec (Code)
-open Nat.Partrec.Code
-
--- `Nat.sqrt` is locally irreducible here: `Primrec` elaboration over these deeply nested
--- product types otherwise unfolds its well-founded definition during `whnf` and loops.
-attribute [local irreducible] Nat.sqrt
-
-/-! ## Primitive recursion of the decode
-
-The trading firm's compiler runs the token-metered decode.  With the concrete
-`Primcodable Sentence` instance in scope, each strong-recursion step is a composition of
-standard `Primrec` combinators. -/
-
-private abbrev PCtx :=
-  (List (Option (ℕ × List ℕ)) × ℕ) × (ℕ × List ℕ)
-
-private lemma structuredNatG_prim : Primrec structuredNatG := by
-  have hfuel : Primrec fun prev : List (Option (ℕ × List ℕ)) =>
-      prev.length.unpair.1 :=
-    Primrec.fst.comp (Primrec.unpair.comp Primrec.list_length)
-  have hts0 : Primrec fun p : List (Option (ℕ × List ℕ)) × ℕ =>
-      Denumerable.ofNat (List ℕ) p.1.length.unpair.2 :=
-    (Primrec.ofNat (List ℕ)).comp
-      (Primrec.snd.comp (Primrec.unpair.comp (Primrec.list_length.comp Primrec.fst)))
-  let Ctx := (List (Option (ℕ × List ℕ)) × ℕ) × (ℕ × List ℕ)
-  have hprev : Primrec fun x : Ctx => x.1.1 := Primrec.fst.comp Primrec.fst
-  have hfuel' : Primrec fun x : Ctx => x.1.2 := Primrec.snd.comp Primrec.fst
-  have ht : Primrec fun x : Ctx => x.2.1 := Primrec.fst.comp Primrec.snd
-  have hrest : Primrec fun x : Ctx => x.2.2 := Primrec.snd.comp Primrec.snd
-  have hlook : Primrec fun x : Ctx =>
-      ((x.1.1[Nat.pair x.1.2 (Encodable.encode x.2.2)]?).getD none) :=
-    Primrec.option_getD.comp
-      (Primrec.list_getElem?.comp hprev
-        (Primrec₂.natPair.comp hfuel' (Primrec.encode.comp hrest)))
-      (Primrec.const none)
-  have hzero : Primrec fun x : Ctx => (some (0, x.2.2) : Option (ℕ × List ℕ)) :=
-    Primrec.option_some.comp ((Primrec.const 0).pair hrest)
-  have heven : Primrec fun x : Ctx =>
-      ((x.1.1[Nat.pair x.1.2 (Encodable.encode x.2.2)]?).getD none).map
-        fun p => (2 * p.1, p.2) := by
-    exact Primrec.option_map hlook
-      ((Primrec.nat_mul.comp (Primrec.const 2) (Primrec.fst.comp Primrec.snd)).pair
-        (Primrec.snd.comp Primrec.snd)).to₂
-  have hodd : Primrec fun x : Ctx =>
-      ((x.1.1[Nat.pair x.1.2 (Encodable.encode x.2.2)]?).getD none).map
-        fun p => (2 * p.1 + 1, p.2) := by
-    exact Primrec.option_map hlook
-      ((Primrec.succ.comp
-        (Primrec.nat_mul.comp (Primrec.const 2) (Primrec.fst.comp Primrec.snd))).pair
-        (Primrec.snd.comp Primrec.snd)).to₂
-  have heqt : ∀ k : ℕ, PrimrecPred fun x : Ctx => x.2.1 = k := fun k =>
-    PrimrecRel.comp Primrec.eq ht (Primrec.const k)
-  have hbody : Primrec fun x : Ctx =>
-      if x.2.1 = 0 then some (0, x.2.2)
-      else if x.2.1 = 1 then
-        ((x.1.1[Nat.pair x.1.2 (Encodable.encode x.2.2)]?).getD none).map
-          fun p => (2 * p.1, p.2)
-      else if x.2.1 = 2 then
-        ((x.1.1[Nat.pair x.1.2 (Encodable.encode x.2.2)]?).getD none).map
-          fun p => (2 * p.1 + 1, p.2)
-      else none := by
-    exact Primrec.ite (heqt 0) hzero <|
-      Primrec.ite (heqt 1) heven <| Primrec.ite (heqt 2) hodd (Primrec.const none)
-  have hinner : Primrec fun p : List (Option (ℕ × List ℕ)) × ℕ =>
-      match Denumerable.ofNat (List ℕ) p.1.length.unpair.2 with
-      | [] => (none : Option (ℕ × List ℕ))
-      | t :: rest =>
-          if t = 0 then some (0, rest)
-          else if t = 1 then
-            ((p.1[Nat.pair p.2 (Encodable.encode rest)]?).getD none).map
-              fun (q : ℕ × List ℕ) => (2 * q.1, q.2)
-          else if t = 2 then
-            ((p.1[Nat.pair p.2 (Encodable.encode rest)]?).getD none).map
-              fun (q : ℕ × List ℕ) => (2 * q.1 + 1, q.2)
-          else none :=
-    (Primrec.list_casesOn hts0 (Primrec.const none) hbody.to₂).of_eq fun p => by
-      rcases Denumerable.ofNat (List ℕ) p.1.length.unpair.2 with _ | ⟨t, rest⟩ <;> rfl
-  refine (Primrec.option_some.comp
-    (Primrec.nat_casesOn hfuel (Primrec.const none) hinner.to₂)).of_eq fun prev => ?_
-  rw [structuredNatG]
-  rcases hf : prev.length.unpair.1 with _ | fuel
-  · simp [structuredNatGCore, hf]
-  rcases hs : Denumerable.ofNat (List ℕ) prev.length.unpair.2 with _ | ⟨t, rest⟩
-  · simp [structuredNatGCore, hf, hs]
-  simp [structuredNatGCore, hf, hs]
-
-private lemma parseStructuredNat_prim : Primrec₂ parseStructuredNat := by
-  have hF : Primrec₂ (fun (_ : Unit) => structuredNatF) :=
-    Primrec.nat_strong_rec _ (structuredNatG_prim.comp Primrec.snd).to₂
-      fun _ n => structuredNatG_spec n
-  have hF1 : Primrec structuredNatF := hF.comp (Primrec.const ()) Primrec.id
-  have h2 : Primrec fun p : ℕ × List ℕ =>
-      structuredNatF (Nat.pair p.1 (Encodable.encode p.2)) :=
-    hF1.comp (Primrec₂.natPair.comp Primrec.fst (Primrec.encode.comp Primrec.snd))
-  exact h2.to₂.of_eq fun fuel ts => by
-    rw [structuredNatF, Nat.unpair_pair, Denumerable.ofNat_encode]
-
-private lemma structuredTermG_prim : Primrec structuredTermG := by
-  have hfuel : Primrec fun prev : List (Option (ℕ × List ℕ)) =>
-      prev.length.unpair.1 :=
-    Primrec.fst.comp (Primrec.unpair.comp Primrec.list_length)
-  have hts0 : Primrec fun p : List (Option (ℕ × List ℕ)) × ℕ =>
-      Denumerable.ofNat (List ℕ) p.1.length.unpair.2 :=
-    (Primrec.ofNat (List ℕ)).comp
-      (Primrec.snd.comp (Primrec.unpair.comp (Primrec.list_length.comp Primrec.fst)))
-  have hprev : Primrec fun x : PCtx => x.1.1 := Primrec.fst.comp Primrec.fst
-  have hfuel' : Primrec fun x : PCtx => x.1.2 := Primrec.snd.comp Primrec.fst
-  have ht : Primrec fun x : PCtx => x.2.1 := Primrec.fst.comp Primrec.snd
-  have hrest : Primrec fun x : PCtx => x.2.2 := Primrec.snd.comp Primrec.snd
-  have hnat : Primrec fun x : PCtx => parseStructuredNat x.1.2 x.2.2 :=
-    parseStructuredNat_prim.comp hfuel' hrest
-  have hvar (kind : ℕ) : Primrec fun x : PCtx =>
-      (parseStructuredNat x.1.2 x.2.2).map fun p =>
-        (Nat.pair kind p.1 + 1, p.2) := by
-    refine Primrec.option_map hnat ?_
-    exact (Primrec.succ.comp (Primrec₂.natPair.comp (Primrec.const kind)
-      (Primrec.fst.comp Primrec.snd))).pair (Primrec.snd.comp Primrec.snd)
-  have hconst (symbol : ℕ) : Primrec fun x : PCtx =>
-      (some (arithmeticFuncCode 0 symbol 0, x.2.2) : Option (ℕ × List ℕ)) :=
-    Primrec.option_some.comp ((Primrec.const _).pair hrest)
-  have hlook1 : Primrec fun x : PCtx =>
-      ((x.1.1[Nat.pair x.1.2 (Encodable.encode x.2.2)]?).getD none) :=
-    Primrec.option_getD.comp
-      (Primrec.list_getElem?.comp hprev
-        (Primrec₂.natPair.comp hfuel' (Primrec.encode.comp hrest)))
-      (Primrec.const none)
-  have hlook2 : Primrec fun y : PCtx × (ℕ × List ℕ) =>
-      ((y.1.1.1[Nat.pair y.1.1.2 (Encodable.encode y.2.2)]?).getD none) :=
-    Primrec.option_getD.comp
-      (Primrec.list_getElem?.comp (hprev.comp Primrec.fst)
-        (Primrec₂.natPair.comp (hfuel'.comp Primrec.fst)
-          (Primrec.encode.comp (Primrec.snd.comp Primrec.snd))))
-      (Primrec.const none)
-  have hout : Primrec fun z : (PCtx × (ℕ × List ℕ)) × (ℕ × List ℕ) =>
-      (arithmeticFuncCode 2 (if z.1.1.2.1 = 7 then 0 else 1)
-        (arithmeticVec2Code z.1.2.1 z.2.1), z.2.2) := by
-    have hsymbol : Primrec fun z : (PCtx × (ℕ × List ℕ)) × (ℕ × List ℕ) =>
-        if z.1.1.2.1 = 7 then 0 else 1 :=
-      Primrec.ite
-        (PrimrecRel.comp Primrec.eq
-          (ht.comp (Primrec.fst.comp Primrec.fst)) (Primrec.const 7))
-        (Primrec.const 0) (Primrec.const 1)
-    have hvec : Primrec fun z : (PCtx × (ℕ × List ℕ)) × (ℕ × List ℕ) =>
-        arithmeticVec2Code z.1.2.1 z.2.1 := by
-      simp only [arithmeticVec2Code]
-      exact Primrec.succ.comp (Primrec₂.natPair.comp
-        (Primrec.fst.comp (Primrec.snd.comp Primrec.fst))
-        (Primrec.succ.comp (Primrec₂.natPair.comp
-          (Primrec.fst.comp Primrec.snd) (Primrec.const 0))))
-    have hcode : Primrec fun z : (PCtx × (ℕ × List ℕ)) × (ℕ × List ℕ) =>
-        arithmeticFuncCode 2 (if z.1.1.2.1 = 7 then 0 else 1)
-          (arithmeticVec2Code z.1.2.1 z.2.1) := by
-      simp only [arithmeticFuncCode]
-      exact Primrec.succ.comp (Primrec₂.natPair.comp (Primrec.const 2)
-        (Primrec₂.natPair.comp (Primrec.const 2)
-          (Primrec₂.natPair.comp hsymbol hvec)))
-    exact hcode.pair (Primrec.snd.comp Primrec.snd)
-  have hbin : Primrec fun x : PCtx =>
-      ((x.1.1[Nat.pair x.1.2 (Encodable.encode x.2.2)]?).getD none).bind fun p =>
-        ((x.1.1[Nat.pair x.1.2 (Encodable.encode p.2)]?).getD none).map fun q =>
-          (arithmeticFuncCode 2 (if x.2.1 = 7 then 0 else 1)
-            (arithmeticVec2Code p.1 q.1), q.2) :=
-    Primrec.option_bind hlook1 (Primrec.option_map hlook2 hout.to₂).to₂
-  have heqt : ∀ k : ℕ, PrimrecPred fun x : PCtx => x.2.1 = k := fun k =>
-    PrimrecRel.comp Primrec.eq ht (Primrec.const k)
-  have hbody : Primrec fun x : PCtx =>
-      if x.2.1 = 3 then
-        (parseStructuredNat x.1.2 x.2.2).map fun p => (Nat.pair 0 p.1 + 1, p.2)
-      else if x.2.1 = 4 then
-        (parseStructuredNat x.1.2 x.2.2).map fun p => (Nat.pair 1 p.1 + 1, p.2)
-      else if x.2.1 = 5 then some (arithmeticFuncCode 0 0 0, x.2.2)
-      else if x.2.1 = 6 then some (arithmeticFuncCode 0 1 0, x.2.2)
-      else if x.2.1 = 7 ∨ x.2.1 = 8 then
-        ((x.1.1[Nat.pair x.1.2 (Encodable.encode x.2.2)]?).getD none).bind fun p =>
-          ((x.1.1[Nat.pair x.1.2 (Encodable.encode p.2)]?).getD none).map fun q =>
-            (arithmeticFuncCode 2 (if x.2.1 = 7 then 0 else 1)
-              (arithmeticVec2Code p.1 q.1), q.2)
-      else none := by
-    exact Primrec.ite (heqt 3) (hvar 0) <| Primrec.ite (heqt 4) (hvar 1) <|
-      Primrec.ite (heqt 5) (hconst 0) <| Primrec.ite (heqt 6) (hconst 1) <|
-        Primrec.ite ((heqt 7).or (heqt 8)) hbin (Primrec.const none)
-  have hinner : Primrec fun p : List (Option (ℕ × List ℕ)) × ℕ =>
-      match Denumerable.ofNat (List ℕ) p.1.length.unpair.2 with
-      | [] => (none : Option (ℕ × List ℕ))
-      | t :: rest =>
-          if t = 3 then
-            (parseStructuredNat p.2 rest).map fun (q : ℕ × List ℕ) =>
-              (Nat.pair 0 q.1 + 1, q.2)
-          else if t = 4 then
-            (parseStructuredNat p.2 rest).map fun (q : ℕ × List ℕ) =>
-              (Nat.pair 1 q.1 + 1, q.2)
-          else if t = 5 then some (arithmeticFuncCode 0 0 0, rest)
-          else if t = 6 then some (arithmeticFuncCode 0 1 0, rest)
-          else if t = 7 ∨ t = 8 then
-            ((p.1[Nat.pair p.2 (Encodable.encode rest)]?).getD none).bind
-                fun (q : ℕ × List ℕ) =>
-              ((p.1[Nat.pair p.2 (Encodable.encode q.2)]?).getD none).map
-                fun (r : ℕ × List ℕ) =>
-                (arithmeticFuncCode 2 (if t = 7 then 0 else 1)
-                  (arithmeticVec2Code q.1 r.1), r.2)
-          else none :=
-    (Primrec.list_casesOn hts0 (Primrec.const none) hbody.to₂).of_eq fun p => by
-      rcases Denumerable.ofNat (List ℕ) p.1.length.unpair.2 with _ | ⟨t, rest⟩ <;> rfl
-  refine (Primrec.option_some.comp
-    (Primrec.nat_casesOn hfuel (Primrec.const none) hinner.to₂)).of_eq fun prev => ?_
-  rw [structuredTermG]
-  rcases hf : prev.length.unpair.1 with _ | fuel
-  · simp [structuredTermGCore, hf]
-  rcases hs : Denumerable.ofNat (List ℕ) prev.length.unpair.2 with _ | ⟨t, rest⟩
-  · simp [structuredTermGCore, hf, hs]
-  simp [structuredTermGCore, hf, hs]
-
-private lemma parseStructuredArithmeticTerm_prim :
-    Primrec₂ fun fuel ts => parseStructuredArithmeticTerm fuel 0 ts := by
-  have hF : Primrec₂ (fun (_ : Unit) => structuredTermF) :=
-    Primrec.nat_strong_rec _ (structuredTermG_prim.comp Primrec.snd).to₂
-      fun _ n => structuredTermG_spec n
-  have hF1 : Primrec structuredTermF := hF.comp (Primrec.const ()) Primrec.id
-  have h2 : Primrec fun p : ℕ × List ℕ =>
-      structuredTermF (Nat.pair p.1 (Encodable.encode p.2)) :=
-    hF1.comp (Primrec₂.natPair.comp Primrec.fst (Primrec.encode.comp Primrec.snd))
-  exact h2.to₂.of_eq fun fuel ts => by
-    rw [structuredTermF, Nat.unpair_pair, Denumerable.ofNat_encode]
-
-/-- Memoized mirror of `negFormulaCode`: the recursive calls are replaced by lookups at
-strictly smaller indices, so the whole map is a single strong recursion. -/
-private def negFormulaGCore (n : ℕ) (look : ℕ → ℕ) : ℕ :=
-  match n with
-  | 0 => 0
-  | e + 1 =>
-      if e.unpair.1 = 0 then Nat.pair 1 e.unpair.2 + 1
-      else if e.unpair.1 = 1 then Nat.pair 0 e.unpair.2 + 1
-      else if e.unpair.1 = 2 then Nat.pair 3 0 + 1
-      else if e.unpair.1 = 3 then Nat.pair 2 0 + 1
-      else if e.unpair.1 = 4 then
-        Nat.pair 5 (Nat.pair (look e.unpair.2.unpair.1) (look e.unpair.2.unpair.2)) + 1
-      else if e.unpair.1 = 5 then
-        Nat.pair 4 (Nat.pair (look e.unpair.2.unpair.1) (look e.unpair.2.unpair.2)) + 1
-      else if e.unpair.1 = 6 then Nat.pair 7 (look e.unpair.2) + 1
-      else if e.unpair.1 = 7 then Nat.pair 6 (look e.unpair.2) + 1
-      else 0
-
-private lemma negFormulaGCore_spec (n : ℕ) (look : ℕ → ℕ)
-    (hlook : ∀ i, i < n → look i = negFormulaCode i) :
-    negFormulaGCore n look = negFormulaCode n := by
-  rcases n with _ | e
-  · rw [negFormulaCode]
-    rfl
-  have hc : e.unpair.2 ≤ e := Nat.unpair_right_le e
-  have h1 : e.unpair.2.unpair.1 < e + 1 :=
-    Nat.lt_succ_of_le (le_trans (Nat.unpair_left_le _) hc)
-  have h2 : e.unpair.2.unpair.2 < e + 1 :=
-    Nat.lt_succ_of_le (le_trans (Nat.unpair_right_le _) hc)
-  have h3 : e.unpair.2 < e + 1 := Nat.lt_succ_of_le hc
-  rw [negFormulaGCore, negFormulaCode]
-  simp only [hlook _ h1, hlook _ h2, hlook _ h3]
-
-private def negFormulaG (prev : List ℕ) : Option ℕ :=
-  some (negFormulaGCore prev.length fun i => (prev[i]?).getD 0)
-
-private lemma negFormulaG_spec (n : ℕ) :
-    negFormulaG ((List.range n).map negFormulaCode) = some (negFormulaCode n) := by
-  rw [negFormulaG,
-    show ((List.range n).map negFormulaCode).length = n from by simp]
-  congr 1
-  refine negFormulaGCore_spec n _ fun i hi => ?_
-  have hib : i < ((List.range n).map negFormulaCode).length := by simpa using hi
-  rw [List.getElem?_eq_getElem hib, Option.getD_some, List.getElem_map,
-    List.getElem_range]
-
-private lemma negFormulaG_prim : Primrec negFormulaG := by
-  have hlen : Primrec fun prev : List ℕ => prev.length := Primrec.list_length
-  have ha : Primrec fun x : List ℕ × ℕ => x.2.unpair.1 :=
-    Primrec.fst.comp (Primrec.unpair.comp Primrec.snd)
-  have hc : Primrec fun x : List ℕ × ℕ => x.2.unpair.2 :=
-    Primrec.snd.comp (Primrec.unpair.comp Primrec.snd)
-  have hlookOf : ∀ {i : List ℕ × ℕ → ℕ}, Primrec i →
-      Primrec fun x : List ℕ × ℕ => ((x.1[i x]?).getD 0) := fun hi =>
-    Primrec.option_getD.comp
-      (Primrec.list_getElem?.comp Primrec.fst hi) (Primrec.const 0)
-  have hl1 := hlookOf (Primrec.fst.comp (Primrec.unpair.comp hc))
-  have hl2 := hlookOf (Primrec.snd.comp (Primrec.unpair.comp hc))
-  have hl3 := hlookOf hc
-  have heqa : ∀ k : ℕ, PrimrecPred fun x : List ℕ × ℕ => x.2.unpair.1 = k := fun k =>
-    PrimrecRel.comp Primrec.eq ha (Primrec.const k)
-  have hswap (tag : ℕ) : Primrec fun x : List ℕ × ℕ =>
-      Nat.pair tag x.2.unpair.2 + 1 :=
-    Primrec.succ.comp (Primrec₂.natPair.comp (Primrec.const tag) hc)
-  have hbin (tag : ℕ) : Primrec fun x : List ℕ × ℕ =>
-      Nat.pair tag (Nat.pair ((x.1[x.2.unpair.2.unpair.1]?).getD 0)
-        ((x.1[x.2.unpair.2.unpair.2]?).getD 0)) + 1 :=
-    Primrec.succ.comp (Primrec₂.natPair.comp (Primrec.const tag)
-      (Primrec₂.natPair.comp hl1 hl2))
-  have hq (tag : ℕ) : Primrec fun x : List ℕ × ℕ =>
-      Nat.pair tag ((x.1[x.2.unpair.2]?).getD 0) + 1 :=
-    Primrec.succ.comp (Primrec₂.natPair.comp (Primrec.const tag) hl3)
-  have hbody : Primrec fun x : List ℕ × ℕ =>
-      if x.2.unpair.1 = 0 then Nat.pair 1 x.2.unpair.2 + 1
-      else if x.2.unpair.1 = 1 then Nat.pair 0 x.2.unpair.2 + 1
-      else if x.2.unpair.1 = 2 then Nat.pair 3 0 + 1
-      else if x.2.unpair.1 = 3 then Nat.pair 2 0 + 1
-      else if x.2.unpair.1 = 4 then
-        Nat.pair 5 (Nat.pair ((x.1[x.2.unpair.2.unpair.1]?).getD 0)
-          ((x.1[x.2.unpair.2.unpair.2]?).getD 0)) + 1
-      else if x.2.unpair.1 = 5 then
-        Nat.pair 4 (Nat.pair ((x.1[x.2.unpair.2.unpair.1]?).getD 0)
-          ((x.1[x.2.unpair.2.unpair.2]?).getD 0)) + 1
-      else if x.2.unpair.1 = 6 then Nat.pair 7 ((x.1[x.2.unpair.2]?).getD 0) + 1
-      else if x.2.unpair.1 = 7 then Nat.pair 6 ((x.1[x.2.unpair.2]?).getD 0) + 1
-      else 0 := by
-    exact Primrec.ite (heqa 0) (hswap 1) <| Primrec.ite (heqa 1) (hswap 0) <|
-      Primrec.ite (heqa 2) (Primrec.const _) <|
-        Primrec.ite (heqa 3) (Primrec.const _) <|
-          Primrec.ite (heqa 4) (hbin 5) <| Primrec.ite (heqa 5) (hbin 4) <|
-            Primrec.ite (heqa 6) (hq 7) <|
-              Primrec.ite (heqa 7) (hq 6) (Primrec.const 0)
-  refine (Primrec.option_some.comp
-    (Primrec.nat_casesOn hlen (Primrec.const 0) hbody.to₂)).of_eq fun prev => ?_
-  rw [negFormulaG]
-  rcases hn : prev.length with _ | e
-  · simp [negFormulaGCore]
-  simp [negFormulaGCore, hn]
-
-/-- Tag-swapping De Morgan negation on formula codes is primitive recursive.  Exported
-alongside `parseStructuredArithmeticFormula_prim`, and for the same reason: together they
-are the decoding half of the source-text naming of formulas (`negSourceFormulaCode`,
-`Construction/Witnesses/SourceNumbering.lean`). -/
-lemma negFormulaCode_prim : Primrec negFormulaCode := by
-  have hF : Primrec₂ (fun (_ : Unit) => negFormulaCode) :=
-    Primrec.nat_strong_rec _ (negFormulaG_prim.comp Primrec.snd).to₂
-      fun _ n => negFormulaG_spec n
-  exact hF.comp (Primrec.const ()) Primrec.id
-
-private lemma structuredFormulaG_prim : Primrec structuredFormulaG := by
-  have hfuel : Primrec fun prev : List (Option (ℕ × List ℕ)) =>
-      prev.length.unpair.1 :=
-    Primrec.fst.comp (Primrec.unpair.comp Primrec.list_length)
-  have hts0 : Primrec fun p : List (Option (ℕ × List ℕ)) × ℕ =>
-      Denumerable.ofNat (List ℕ) p.1.length.unpair.2 :=
-    (Primrec.ofNat (List ℕ)).comp
-      (Primrec.snd.comp (Primrec.unpair.comp (Primrec.list_length.comp Primrec.fst)))
-  have hprev : Primrec fun x : PCtx => x.1.1 := Primrec.fst.comp Primrec.fst
-  have hfuel' : Primrec fun x : PCtx => x.1.2 := Primrec.snd.comp Primrec.fst
-  have ht : Primrec fun x : PCtx => x.2.1 := Primrec.fst.comp Primrec.snd
-  have hrest : Primrec fun x : PCtx => x.2.2 := Primrec.snd.comp Primrec.snd
-  have hconst (tag : ℕ) : Primrec fun x : PCtx =>
-      (some (Nat.pair tag 0 + 1, x.2.2) : Option (ℕ × List ℕ)) :=
-    Primrec.option_some.comp
-      ((Primrec.succ.comp (Primrec₂.natPair.comp (Primrec.const tag)
-        (Primrec.const 0))).pair hrest)
-  have hterm1 : Primrec fun x : PCtx =>
-      parseStructuredArithmeticTerm x.1.2 0 x.2.2 :=
-    parseStructuredArithmeticTerm_prim.comp hfuel' hrest
-  have hterm2 : Primrec fun y : PCtx × (ℕ × List ℕ) =>
-      parseStructuredArithmeticTerm y.1.1.2 0 y.2.2 :=
-    parseStructuredArithmeticTerm_prim.comp (hfuel'.comp Primrec.fst)
-      (Primrec.snd.comp Primrec.snd)
-  have hrelOut : Primrec fun z : (PCtx × (ℕ × List ℕ)) × (ℕ × List ℕ) =>
-      (arithmeticRelCode (z.1.1.2.1 = 12 ∨ z.1.1.2.1 = 14)
-        (if z.1.1.2.1 = 11 ∨ z.1.1.2.1 = 12 then 0 else 1)
-        z.1.2.1 z.2.1, z.2.2) := by
-    have htag : Primrec fun z : (PCtx × (ℕ × List ℕ)) × (ℕ × List ℕ) =>
-        z.1.1.2.1 := ht.comp (Primrec.fst.comp Primrec.fst)
-    have heqt : ∀ k : ℕ, PrimrecPred fun z :
-        (PCtx × (ℕ × List ℕ)) × (ℕ × List ℕ) => z.1.1.2.1 = k := fun k =>
-      PrimrecRel.comp Primrec.eq htag (Primrec.const k)
-    have hnegative : Primrec fun z : (PCtx × (ℕ × List ℕ)) × (ℕ × List ℕ) =>
-        if decide (z.1.1.2.1 = 12 ∨ z.1.1.2.1 = 14) then 1 else 0 :=
-      (Primrec.ite ((heqt 12).or (heqt 14)) (Primrec.const 1)
-        (Primrec.const 0)).of_eq fun z => by simp
-    have hsymbol : Primrec fun z : (PCtx × (ℕ × List ℕ)) × (ℕ × List ℕ) =>
-        if z.1.1.2.1 = 11 ∨ z.1.1.2.1 = 12 then 0 else 1 :=
-      Primrec.ite ((heqt 11).or (heqt 12)) (Primrec.const 0) (Primrec.const 1)
-    have hvec : Primrec fun z : (PCtx × (ℕ × List ℕ)) × (ℕ × List ℕ) =>
-        arithmeticVec2Code z.1.2.1 z.2.1 := by
-      simp only [arithmeticVec2Code]
-      exact Primrec.succ.comp (Primrec₂.natPair.comp
-        (Primrec.fst.comp (Primrec.snd.comp Primrec.fst))
-        (Primrec.succ.comp (Primrec₂.natPair.comp
-          (Primrec.fst.comp Primrec.snd) (Primrec.const 0))))
-    have hcode : Primrec fun z : (PCtx × (ℕ × List ℕ)) × (ℕ × List ℕ) =>
-        arithmeticRelCode (z.1.1.2.1 = 12 ∨ z.1.1.2.1 = 14)
-          (if z.1.1.2.1 = 11 ∨ z.1.1.2.1 = 12 then 0 else 1)
-          z.1.2.1 z.2.1 := by
-      simp only [arithmeticRelCode]
-      exact Primrec.succ.comp (Primrec₂.natPair.comp hnegative
-        (Primrec₂.natPair.comp (Primrec.const 2)
-          (Primrec₂.natPair.comp hsymbol hvec)))
-    exact hcode.pair (Primrec.snd.comp Primrec.snd)
-  have hrel : Primrec fun x : PCtx =>
-      (parseStructuredArithmeticTerm x.1.2 0 x.2.2).bind fun p =>
-        (parseStructuredArithmeticTerm x.1.2 0 p.2).map fun q =>
-          (arithmeticRelCode (x.2.1 = 12 ∨ x.2.1 = 14)
-            (if x.2.1 = 11 ∨ x.2.1 = 12 then 0 else 1) p.1 q.1, q.2) :=
-    Primrec.option_bind hterm1 (Primrec.option_map hterm2 hrelOut.to₂).to₂
-  have hlook1 : Primrec fun x : PCtx =>
-      ((x.1.1[Nat.pair x.1.2 (Encodable.encode x.2.2)]?).getD none) :=
-    Primrec.option_getD.comp
-      (Primrec.list_getElem?.comp hprev
-        (Primrec₂.natPair.comp hfuel' (Primrec.encode.comp hrest)))
-      (Primrec.const none)
-  have hlook2 : Primrec fun y : PCtx × (ℕ × List ℕ) =>
-      ((y.1.1.1[Nat.pair y.1.1.2 (Encodable.encode y.2.2)]?).getD none) :=
-    Primrec.option_getD.comp
-      (Primrec.list_getElem?.comp (hprev.comp Primrec.fst)
-        (Primrec₂.natPair.comp (hfuel'.comp Primrec.fst)
-          (Primrec.encode.comp (Primrec.snd.comp Primrec.snd))))
-      (Primrec.const none)
-  have hbinOut : Primrec fun z : (PCtx × (ℕ × List ℕ)) × (ℕ × List ℕ) =>
-      (Nat.pair (if z.1.1.2.1 = 15 then 4 else 5)
-        (Nat.pair z.1.2.1 z.2.1) + 1, z.2.2) := by
-    have htag : Primrec fun z : (PCtx × (ℕ × List ℕ)) × (ℕ × List ℕ) =>
-        z.1.1.2.1 := ht.comp (Primrec.fst.comp Primrec.fst)
-    have hkind : Primrec fun z : (PCtx × (ℕ × List ℕ)) × (ℕ × List ℕ) =>
-        if z.1.1.2.1 = 15 then 4 else 5 :=
-      Primrec.ite (PrimrecRel.comp Primrec.eq htag (Primrec.const 15))
-        (Primrec.const 4) (Primrec.const 5)
-    have hpq : Primrec fun z : (PCtx × (ℕ × List ℕ)) × (ℕ × List ℕ) =>
-        Nat.pair z.1.2.1 z.2.1 :=
-      Primrec₂.natPair.comp (Primrec.fst.comp (Primrec.snd.comp Primrec.fst))
-        (Primrec.fst.comp Primrec.snd)
-    exact (Primrec.succ.comp (Primrec₂.natPair.comp hkind hpq)).pair
-      (Primrec.snd.comp Primrec.snd)
-  have hbin : Primrec fun x : PCtx =>
-      ((x.1.1[Nat.pair x.1.2 (Encodable.encode x.2.2)]?).getD none).bind fun p =>
-        ((x.1.1[Nat.pair x.1.2 (Encodable.encode p.2)]?).getD none).map fun q =>
-          (Nat.pair (if x.2.1 = 15 then 4 else 5) (Nat.pair p.1 q.1) + 1, q.2) :=
-    Primrec.option_bind hlook1 (Primrec.option_map hlook2 hbinOut.to₂).to₂
-  have hquantOut : Primrec fun y : PCtx × (ℕ × List ℕ) =>
-      (Nat.pair (if y.1.2.1 = 17 then 6 else 7) y.2.1 + 1, y.2.2) := by
-    have hkind : Primrec fun y : PCtx × (ℕ × List ℕ) =>
-        if y.1.2.1 = 17 then 6 else 7 :=
-      Primrec.ite (PrimrecRel.comp Primrec.eq (ht.comp Primrec.fst) (Primrec.const 17))
-        (Primrec.const 6) (Primrec.const 7)
-    exact (Primrec.succ.comp (Primrec₂.natPair.comp hkind
-      (Primrec.fst.comp Primrec.snd))).pair (Primrec.snd.comp Primrec.snd)
-  have hquant : Primrec fun x : PCtx =>
-      ((x.1.1[Nat.pair x.1.2 (Encodable.encode x.2.2)]?).getD none).map fun p =>
-        (Nat.pair (if x.2.1 = 17 then 6 else 7) p.1 + 1, p.2) :=
-    Primrec.option_map hlook1 hquantOut.to₂
-  have hnegOut : Primrec fun y : PCtx × (ℕ × List ℕ) =>
-      (negFormulaCode y.2.1, y.2.2) :=
-    (negFormulaCode_prim.comp (Primrec.fst.comp Primrec.snd)).pair
-      (Primrec.snd.comp Primrec.snd)
-  have hneg : Primrec fun x : PCtx =>
-      ((x.1.1[Nat.pair x.1.2 (Encodable.encode x.2.2)]?).getD none).map fun p =>
-        (negFormulaCode p.1, p.2) :=
-    Primrec.option_map hlook1 hnegOut.to₂
-  have hnegP : Primrec fun z : (PCtx × (ℕ × List ℕ)) × (ℕ × List ℕ) =>
-      negFormulaCode z.1.2.1 :=
-    negFormulaCode_prim.comp (Primrec.fst.comp (Primrec.snd.comp Primrec.fst))
-  have hnegQ : Primrec fun z : (PCtx × (ℕ × List ℕ)) × (ℕ × List ℕ) =>
-      negFormulaCode z.2.1 :=
-    negFormulaCode_prim.comp (Primrec.fst.comp Primrec.snd)
-  have hPfst : Primrec fun z : (PCtx × (ℕ × List ℕ)) × (ℕ × List ℕ) =>
-      z.1.2.1 := Primrec.fst.comp (Primrec.snd.comp Primrec.fst)
-  have hQfst : Primrec fun z : (PCtx × (ℕ × List ℕ)) × (ℕ × List ℕ) =>
-      z.2.1 := Primrec.fst.comp Primrec.snd
-  have himpCode : Primrec fun z : (PCtx × (ℕ × List ℕ)) × (ℕ × List ℕ) =>
-      Nat.pair 5 (Nat.pair (negFormulaCode z.1.2.1) z.2.1) + 1 :=
-    Primrec.succ.comp (Primrec₂.natPair.comp (Primrec.const 5)
-      (Primrec₂.natPair.comp hnegP hQfst))
-  have hconvCode : Primrec fun z : (PCtx × (ℕ × List ℕ)) × (ℕ × List ℕ) =>
-      Nat.pair 5 (Nat.pair (negFormulaCode z.2.1) z.1.2.1) + 1 :=
-    Primrec.succ.comp (Primrec₂.natPair.comp (Primrec.const 5)
-      (Primrec₂.natPair.comp hnegQ hPfst))
-  have himpOut : Primrec fun z : (PCtx × (ℕ × List ℕ)) × (ℕ × List ℕ) =>
-      (Nat.pair 5 (Nat.pair (negFormulaCode z.1.2.1) z.2.1) + 1, z.2.2) :=
-    himpCode.pair (Primrec.snd.comp Primrec.snd)
-  have himp : Primrec fun x : PCtx =>
-      ((x.1.1[Nat.pair x.1.2 (Encodable.encode x.2.2)]?).getD none).bind fun p =>
-        ((x.1.1[Nat.pair x.1.2 (Encodable.encode p.2)]?).getD none).map fun q =>
-          (Nat.pair 5 (Nat.pair (negFormulaCode p.1) q.1) + 1, q.2) :=
-    Primrec.option_bind hlook1 (Primrec.option_map hlook2 himpOut.to₂).to₂
-  have hiffOut : Primrec fun z : (PCtx × (ℕ × List ℕ)) × (ℕ × List ℕ) =>
-      (Nat.pair 4
-        (Nat.pair (Nat.pair 5 (Nat.pair (negFormulaCode z.1.2.1) z.2.1) + 1)
-          (Nat.pair 5 (Nat.pair (negFormulaCode z.2.1) z.1.2.1) + 1)) + 1, z.2.2) :=
-    (Primrec.succ.comp (Primrec₂.natPair.comp (Primrec.const 4)
-      (Primrec₂.natPair.comp himpCode hconvCode))).pair
-      (Primrec.snd.comp Primrec.snd)
-  have hiff : Primrec fun x : PCtx =>
-      ((x.1.1[Nat.pair x.1.2 (Encodable.encode x.2.2)]?).getD none).bind fun p =>
-        ((x.1.1[Nat.pair x.1.2 (Encodable.encode p.2)]?).getD none).map fun q =>
-          (Nat.pair 4
-            (Nat.pair (Nat.pair 5 (Nat.pair (negFormulaCode p.1) q.1) + 1)
-              (Nat.pair 5 (Nat.pair (negFormulaCode q.1) p.1) + 1)) + 1, q.2) :=
-    Primrec.option_bind hlook1 (Primrec.option_map hlook2 hiffOut.to₂).to₂
-  have heqt : ∀ k : ℕ, PrimrecPred fun x : PCtx => x.2.1 = k := fun k =>
-    PrimrecRel.comp Primrec.eq ht (Primrec.const k)
-  have hbody : Primrec fun x : PCtx =>
-      if x.2.1 = 9 then some (Nat.pair 2 0 + 1, x.2.2)
-      else if x.2.1 = 10 then some (Nat.pair 3 0 + 1, x.2.2)
-      else if x.2.1 = 11 ∨ x.2.1 = 12 ∨ x.2.1 = 13 ∨ x.2.1 = 14 then
-        (parseStructuredArithmeticTerm x.1.2 0 x.2.2).bind fun p =>
-          (parseStructuredArithmeticTerm x.1.2 0 p.2).map fun q =>
-            (arithmeticRelCode (x.2.1 = 12 ∨ x.2.1 = 14)
-              (if x.2.1 = 11 ∨ x.2.1 = 12 then 0 else 1) p.1 q.1, q.2)
-      else if x.2.1 = 15 ∨ x.2.1 = 16 then
-        ((x.1.1[Nat.pair x.1.2 (Encodable.encode x.2.2)]?).getD none).bind fun p =>
-          ((x.1.1[Nat.pair x.1.2 (Encodable.encode p.2)]?).getD none).map fun q =>
-            (Nat.pair (if x.2.1 = 15 then 4 else 5) (Nat.pair p.1 q.1) + 1, q.2)
-      else if x.2.1 = 17 ∨ x.2.1 = 18 then
-        ((x.1.1[Nat.pair x.1.2 (Encodable.encode x.2.2)]?).getD none).map fun p =>
-          (Nat.pair (if x.2.1 = 17 then 6 else 7) p.1 + 1, p.2)
-      else if x.2.1 = 20 then
-        ((x.1.1[Nat.pair x.1.2 (Encodable.encode x.2.2)]?).getD none).map fun p =>
-          (negFormulaCode p.1, p.2)
-      else if x.2.1 = 21 then
-        ((x.1.1[Nat.pair x.1.2 (Encodable.encode x.2.2)]?).getD none).bind fun p =>
-          ((x.1.1[Nat.pair x.1.2 (Encodable.encode p.2)]?).getD none).map fun q =>
-            (Nat.pair 5 (Nat.pair (negFormulaCode p.1) q.1) + 1, q.2)
-      else if x.2.1 = 22 then
-        ((x.1.1[Nat.pair x.1.2 (Encodable.encode x.2.2)]?).getD none).bind fun p =>
-          ((x.1.1[Nat.pair x.1.2 (Encodable.encode p.2)]?).getD none).map fun q =>
-            (Nat.pair 4
-              (Nat.pair (Nat.pair 5 (Nat.pair (negFormulaCode p.1) q.1) + 1)
-                (Nat.pair 5 (Nat.pair (negFormulaCode q.1) p.1) + 1)) + 1, q.2)
-      else none := by
-    exact Primrec.ite (heqt 9) (hconst 2) <| Primrec.ite (heqt 10) (hconst 3) <|
-      Primrec.ite ((heqt 11).or ((heqt 12).or ((heqt 13).or (heqt 14)))) hrel <|
-        Primrec.ite ((heqt 15).or (heqt 16)) hbin <|
-          Primrec.ite ((heqt 17).or (heqt 18)) hquant <|
-            Primrec.ite (heqt 20) hneg <| Primrec.ite (heqt 21) himp <|
-              Primrec.ite (heqt 22) hiff (Primrec.const none)
-  have hinner : Primrec fun p : List (Option (ℕ × List ℕ)) × ℕ =>
-      match Denumerable.ofNat (List ℕ) p.1.length.unpair.2 with
-      | [] => (none : Option (ℕ × List ℕ))
-      | t :: rest =>
-          if t = 9 then some (Nat.pair 2 0 + 1, rest)
-          else if t = 10 then some (Nat.pair 3 0 + 1, rest)
-          else if t = 11 ∨ t = 12 ∨ t = 13 ∨ t = 14 then
-            (parseStructuredArithmeticTerm p.2 0 rest).bind fun q =>
-              (parseStructuredArithmeticTerm p.2 0 q.2).map fun (r : ℕ × List ℕ) =>
-                (arithmeticRelCode (t = 12 ∨ t = 14)
-                  (if t = 11 ∨ t = 12 then 0 else 1) q.1 r.1, r.2)
-          else if t = 15 ∨ t = 16 then
-            ((p.1[Nat.pair p.2 (Encodable.encode rest)]?).getD none).bind fun q =>
-              ((p.1[Nat.pair p.2 (Encodable.encode q.2)]?).getD none).map
-                fun (r : ℕ × List ℕ) =>
-                (Nat.pair (if t = 15 then 4 else 5) (Nat.pair q.1 r.1) + 1, r.2)
-          else if t = 17 ∨ t = 18 then
-            ((p.1[Nat.pair p.2 (Encodable.encode rest)]?).getD none).map
-              fun (q : ℕ × List ℕ) =>
-              (Nat.pair (if t = 17 then 6 else 7) q.1 + 1, q.2)
-          else if t = 20 then
-            ((p.1[Nat.pair p.2 (Encodable.encode rest)]?).getD none).map
-              fun (q : ℕ × List ℕ) => (negFormulaCode q.1, q.2)
-          else if t = 21 then
-            ((p.1[Nat.pair p.2 (Encodable.encode rest)]?).getD none).bind fun q =>
-              ((p.1[Nat.pair p.2 (Encodable.encode q.2)]?).getD none).map
-                fun (r : ℕ × List ℕ) =>
-                (Nat.pair 5 (Nat.pair (negFormulaCode q.1) r.1) + 1, r.2)
-          else if t = 22 then
-            ((p.1[Nat.pair p.2 (Encodable.encode rest)]?).getD none).bind fun q =>
-              ((p.1[Nat.pair p.2 (Encodable.encode q.2)]?).getD none).map
-                fun (r : ℕ × List ℕ) =>
-                (Nat.pair 4
-                  (Nat.pair (Nat.pair 5 (Nat.pair (negFormulaCode q.1) r.1) + 1)
-                    (Nat.pair 5 (Nat.pair (negFormulaCode r.1) q.1) + 1)) + 1, r.2)
-          else none :=
-    (Primrec.list_casesOn hts0 (Primrec.const none) hbody.to₂).of_eq fun p => by
-      rcases Denumerable.ofNat (List ℕ) p.1.length.unpair.2 with _ | ⟨t, rest⟩ <;> rfl
-  refine (Primrec.option_some.comp
-    (Primrec.nat_casesOn hfuel (Primrec.const none) hinner.to₂)).of_eq fun prev => ?_
-  rw [structuredFormulaG]
-  rcases hf : prev.length.unpair.1 with _ | fuel
-  · simp [structuredFormulaGCore, hf]
-  rcases hs : Denumerable.ofNat (List ℕ) prev.length.unpair.2 with _ | ⟨t, rest⟩
-  · simp [structuredFormulaGCore, hf, hs]
-  simp [structuredFormulaGCore, hf, hs]
-
-/-- The structured arithmetic formula grammar is primitive recursive.  Exported (rather
-than private, like its siblings in this section) because it is also the decoding half of
-the source-text naming of formulas: `negSourceFormulaCode`
-(`Construction/Witnesses/SourceNumbering.lean`) recovers a formula's Godel code from the
-numeral naming its written run, and needs exactly this certificate. -/
-lemma parseStructuredArithmeticFormula_prim :
-    Primrec₂ fun fuel ts => parseStructuredArithmeticFormula fuel 0 ts := by
-  have hF : Primrec₂ (fun (_ : Unit) => structuredFormulaF) :=
-    Primrec.nat_strong_rec _ (structuredFormulaG_prim.comp Primrec.snd).to₂
-      fun _ n => structuredFormulaG_spec n
-  have hF1 : Primrec structuredFormulaF := hF.comp (Primrec.const ()) Primrec.id
-  have h2 : Primrec fun p : ℕ × List ℕ =>
-      structuredFormulaF (Nat.pair p.1 (Encodable.encode p.2)) :=
-    hF1.comp (Primrec₂.natPair.comp Primrec.fst (Primrec.encode.comp Primrec.snd))
-  exact h2.to₂.of_eq fun fuel ts => by
-    rw [structuredFormulaF, Nat.unpair_pair, Denumerable.ofNat_encode]
-
-private lemma readStructuredLength_prim : Primrec readStructuredLength := by
-  have hstep : Primrec fun x : List ℕ × (ℕ × List ℕ × Option (ℕ × List ℕ)) =>
-      if x.2.1 = 0 then some (0, x.2.2.1)
-      else if x.2.1 = 1 then x.2.2.2.map fun p => (p.1 + 1, p.2)
-      else none := by
-    have ht : Primrec fun x : List ℕ × (ℕ × List ℕ × Option (ℕ × List ℕ)) =>
-        x.2.1 := Primrec.fst.comp Primrec.snd
-    have hrest : Primrec fun x : List ℕ × (ℕ × List ℕ × Option (ℕ × List ℕ)) =>
-        x.2.2.1 := Primrec.fst.comp (Primrec.snd.comp Primrec.snd)
-    have hzero : Primrec fun x : List ℕ × (ℕ × List ℕ × Option (ℕ × List ℕ)) =>
-        (some (0, x.2.2.1) : Option (ℕ × List ℕ)) :=
-      Primrec.option_some.comp ((Primrec.const 0).pair hrest)
-    have hih : Primrec fun x : List ℕ × (ℕ × List ℕ × Option (ℕ × List ℕ)) =>
-        x.2.2.2 := Primrec.snd.comp (Primrec.snd.comp Primrec.snd)
-    have hsucc : Primrec fun x : List ℕ × (ℕ × List ℕ × Option (ℕ × List ℕ)) =>
-        x.2.2.2.map fun p => (p.1 + 1, p.2) := by
-      refine Primrec.option_map hih ?_
-      exact (Primrec.succ.comp (Primrec.fst.comp Primrec.snd)).pair
-        (Primrec.snd.comp Primrec.snd)
-    have heqt : ∀ k : ℕ, PrimrecPred fun x :
-        List ℕ × (ℕ × List ℕ × Option (ℕ × List ℕ)) => x.2.1 = k := fun k =>
-      PrimrecRel.comp Primrec.eq ht (Primrec.const k)
-    exact Primrec.ite (heqt 0) hzero <|
-      Primrec.ite (heqt 1) hsucc (Primrec.const none)
-  exact (Primrec.list_rec Primrec.id (Primrec.const none) hstep.to₂).of_eq fun ts => by
-    induction ts with
-    | nil => rfl
-    | cons t rest ih =>
-        simp only [id_eq, Prod.fst, Prod.snd] at ih ⊢
-        rw [ih]
-        rcases t with _ | t
-        · rfl
-        rcases t with _ | t
-        · rfl
-        simp [readStructuredLength]
-
-private abbrev StructuredPrimeHeadCtx := List ℕ × (ℕ × List ℕ)
-private abbrev StructuredPrimeLenCtx := StructuredPrimeHeadCtx × (ℕ × List ℕ)
-
-private lemma parseStructuredPaperPrimeC_prim : Primrec parseStructuredPaperPrimeC := by
-  have hpol : Primrec fun y : StructuredPrimeHeadCtx => y.2.1 :=
-    Primrec.fst.comp Primrec.snd
-  have hframed : Primrec fun y : StructuredPrimeHeadCtx => y.2.2 :=
-    Primrec.snd.comp Primrec.snd
-  have hlen : Primrec fun y : StructuredPrimeHeadCtx => readStructuredLength y.2.2 :=
-    readStructuredLength_prim.comp hframed
-  have hn : Primrec fun z : StructuredPrimeLenCtx => z.2.1 :=
-    Primrec.fst.comp Primrec.snd
-  have hpayload : Primrec fun z : StructuredPrimeLenCtx => z.2.2 :=
-    Primrec.snd.comp Primrec.snd
-  have htake : Primrec fun z : StructuredPrimeLenCtx => z.2.2.take z.2.1 :=
-    Primrec.list_take.comp hn hpayload
-  have hdrop : Primrec fun z : StructuredPrimeLenCtx => z.2.2.drop (z.2.1 + 1) :=
-    Primrec.list_drop.comp (Primrec.succ.comp hn) hpayload
-  have hformula : Primrec fun z : StructuredPrimeLenCtx =>
-      parseStructuredArithmeticFormula z.2.1 0 (z.2.2.take z.2.1) :=
-    parseStructuredArithmeticFormula_prim.comp hn htake
-  have hresult : Primrec fun w : StructuredPrimeLenCtx × (ℕ × List ℕ) =>
-      if w.2.2 = [] ∧ List.getD w.1.2.2 w.1.2.1 0 = 19 then
-        some (Nat.pair 1 (Nat.pair 5 (Nat.pair w.1.1.2.1 w.2.1)) + 1,
-          w.1.2.2.drop (w.1.2.1 + 1))
-      else none := by
-    have hrest : Primrec fun w : StructuredPrimeLenCtx × (ℕ × List ℕ) => w.2.2 :=
-      Primrec.snd.comp Primrec.snd
-    have hempty : PrimrecPred fun w : StructuredPrimeLenCtx × (ℕ × List ℕ) =>
-        w.2.2 = [] := by
-      exact (PrimrecRel.comp Primrec.eq (Primrec.list_length.comp hrest)
-        (Primrec.const 0)).of_eq fun w => by simp
-    have hget : Primrec fun w : StructuredPrimeLenCtx × (ℕ × List ℕ) =>
-        List.getD w.1.2.2 w.1.2.1 0 :=
-      (Primrec.list_getD 0).comp (hpayload.comp Primrec.fst) (hn.comp Primrec.fst)
-    have hterm : PrimrecPred fun w : StructuredPrimeLenCtx × (ℕ × List ℕ) =>
-        List.getD w.1.2.2 w.1.2.1 0 = 19 :=
-      PrimrecRel.comp Primrec.eq hget (Primrec.const 19)
-    have hpol' : Primrec fun w : StructuredPrimeLenCtx × (ℕ × List ℕ) =>
-        w.1.1.2.1 := hpol.comp (Primrec.fst.comp Primrec.fst)
-    have hcode : Primrec fun w : StructuredPrimeLenCtx × (ℕ × List ℕ) => w.2.1 :=
-      Primrec.fst.comp Primrec.snd
-    have houtCode : Primrec fun w : StructuredPrimeLenCtx × (ℕ × List ℕ) =>
-        Nat.pair 1 (Nat.pair 5 (Nat.pair w.1.1.2.1 w.2.1)) + 1 :=
-      Primrec.succ.comp (Primrec₂.natPair.comp (Primrec.const 1)
-        (Primrec₂.natPair.comp (Primrec.const 5)
-          (Primrec₂.natPair.comp hpol' hcode)))
-    have houtRest : Primrec fun w : StructuredPrimeLenCtx × (ℕ × List ℕ) =>
-        w.1.2.2.drop (w.1.2.1 + 1) :=
-      hdrop.comp Primrec.fst
-    exact Primrec.ite (hempty.and hterm)
-      (Primrec.option_some.comp (houtCode.pair houtRest)) (Primrec.const none)
-  have hparsed : Primrec fun z : StructuredPrimeLenCtx =>
-      (parseStructuredArithmeticFormula z.2.1 0 (z.2.2.take z.2.1)).bind fun p =>
-        if p.2 = [] ∧ List.getD z.2.2 z.2.1 0 = 19 then
-          some (Nat.pair 1 (Nat.pair 5 (Nat.pair z.1.2.1 p.1)) + 1,
-            z.2.2.drop (z.2.1 + 1))
-        else none :=
-    Primrec.option_bind hformula hresult.to₂
-  have hwithin : PrimrecPred fun z : StructuredPrimeLenCtx =>
-      z.2.1 ≤ z.2.2.length :=
-    Primrec.nat_le.comp hn (Primrec.list_length.comp hpayload)
-  have hafterLength : Primrec fun z : StructuredPrimeLenCtx =>
-      if z.2.1 ≤ z.2.2.length then
-        (parseStructuredArithmeticFormula z.2.1 0 (z.2.2.take z.2.1)).bind fun p =>
-          if p.2 = [] ∧ List.getD z.2.2 z.2.1 0 = 19 then
-            some (Nat.pair 1 (Nat.pair 5 (Nat.pair z.1.2.1 p.1)) + 1,
-              z.2.2.drop (z.2.1 + 1))
-          else none
-      else none :=
-    Primrec.ite hwithin hparsed (Primrec.const none)
-  have hlengthBody : Primrec fun y : StructuredPrimeHeadCtx =>
-      (readStructuredLength y.2.2).bind fun p =>
-        if p.1 ≤ p.2.length then
-          (parseStructuredArithmeticFormula p.1 0 (p.2.take p.1)).bind fun q =>
-            if q.2 = [] ∧ List.getD p.2 p.1 0 = 19 then
-              some (Nat.pair 1 (Nat.pair 5 (Nat.pair y.2.1 q.1)) + 1,
-                p.2.drop (p.1 + 1))
-            else none
-        else none :=
-    Primrec.option_bind hlen hafterLength.to₂
-  have hpolarity : PrimrecPred fun y : StructuredPrimeHeadCtx => y.2.1 ≤ 1 :=
-    Primrec.nat_le.comp hpol (Primrec.const 1)
-  have hcons : Primrec fun y : StructuredPrimeHeadCtx =>
-      if y.2.1 ≤ 1 then
-        (readStructuredLength y.2.2).bind fun p =>
-          if p.1 ≤ p.2.length then
-            (parseStructuredArithmeticFormula p.1 0 (p.2.take p.1)).bind fun q =>
-              if q.2 = [] ∧ List.getD p.2 p.1 0 = 19 then
-                some (Nat.pair 1 (Nat.pair 5 (Nat.pair y.2.1 q.1)) + 1,
-                  p.2.drop (p.1 + 1))
-              else none
-          else none
-      else none :=
-    Primrec.ite hpolarity hlengthBody (Primrec.const none)
-  exact (Primrec.list_casesOn Primrec.id (Primrec.const none) hcons.to₂).of_eq fun ts => by
-    rcases ts with _ | ⟨polarity, framed⟩
-    · rfl
-    simp only [id_eq, List.casesOn, parseStructuredPaperPrimeC]
-    by_cases hpol : polarity ≤ 1
-    · simp only [hpol, if_true]
-      rcases hl : readStructuredLength framed with _ | p
-      · simp [hl]
-      simp only [hl, Option.bind_some]
-      by_cases hlen : p.1 ≤ p.2.length
-      · simp only [hlen, if_true]
-        rcases hf : parseStructuredArithmeticFormula p.1 0 (p.2.take p.1) with
-          _ | ⟨code, rest⟩
-        · simp [hf]
-        rcases rest with _ | ⟨r, rest⟩ <;> simp [hf]
-      · simp [hlen]
-    · simp [hpol]
-
-private lemma parseG_prim : Primrec parseG := by
-  have hfuel : Primrec fun prev : List (Option (ℕ × List ℕ)) =>
-      prev.length.unpair.1 :=
-    Primrec.fst.comp (Primrec.unpair.comp Primrec.list_length)
-  have hts0 : Primrec fun p : List (Option (ℕ × List ℕ)) × ℕ =>
-      Denumerable.ofNat (List ℕ) p.1.length.unpair.2 :=
-    (Primrec.ofNat (List ℕ)).comp
-      (Primrec.snd.comp (Primrec.unpair.comp (Primrec.list_length.comp Primrec.fst)))
-  have hprev : Primrec fun x : PCtx => x.1.1 := Primrec.fst.comp Primrec.fst
-  have hfuel' : Primrec fun x : PCtx => x.1.2 := Primrec.snd.comp Primrec.fst
-  have ht : Primrec fun x : PCtx => x.2.1 := Primrec.fst.comp Primrec.snd
-  have hrest : Primrec fun x : PCtx => x.2.2 := Primrec.snd.comp Primrec.snd
-  have hbr0 : Primrec fun x : PCtx =>
-      (some (Nat.pair 0 0 + 1, x.2.2) : Option (ℕ × List ℕ)) :=
-    Primrec.option_some.comp ((Primrec.const (Nat.pair 0 0 + 1)).pair hrest)
-  have hesc : Primrec fun x : PCtx =>
-      match x.2.2 with
-      | 0 :: payload => parseStructuredPaperPrimeC payload
-      | c :: tail =>
-          if Encodable.encode (Encodable.decode (α := Sentence) c) = 0 then none
-          else some (Encodable.encode (Encodable.decode (α := Sentence) c) - 1, tail)
-      | [] => none := by
-    have hc : Primrec fun y : PCtx × (ℕ × List ℕ) => y.2.1 :=
-      Primrec.fst.comp Primrec.snd
-    have htail : Primrec fun y : PCtx × (ℕ × List ℕ) => y.2.2 :=
-      Primrec.snd.comp Primrec.snd
-    have he : Primrec fun y : PCtx × (ℕ × List ℕ) =>
-        Encodable.encode (Encodable.decode (α := Sentence) y.2.1) :=
-      (Primrec.encdec.comp hc).of_eq fun y => rfl
-    have hstructured : Primrec fun y : PCtx × (ℕ × List ℕ) =>
-        parseStructuredPaperPrimeC y.2.2 :=
-      parseStructuredPaperPrimeC_prim.comp htail
-    have hlegacy : Primrec fun y : PCtx × (ℕ × List ℕ) =>
-        if Encodable.encode (Encodable.decode (α := Sentence) y.2.1) = 0 then none
-        else some (Encodable.encode (Encodable.decode (α := Sentence) y.2.1) - 1,
-          y.2.2) :=
-      Primrec.ite (PrimrecRel.comp Primrec.eq he (Primrec.const 0))
-        (Primrec.const none)
-        (Primrec.option_some.comp ((Primrec.pred.comp he).pair htail))
-    have hcons : Primrec fun y : PCtx × (ℕ × List ℕ) =>
-        if y.2.1 = 0 then parseStructuredPaperPrimeC y.2.2
-        else if Encodable.encode (Encodable.decode (α := Sentence) y.2.1) = 0 then none
-        else some (Encodable.encode (Encodable.decode (α := Sentence) y.2.1) - 1,
-          y.2.2) :=
-      Primrec.ite (PrimrecRel.comp Primrec.eq hc (Primrec.const 0))
-        hstructured hlegacy
-    exact (Primrec.list_casesOn hrest (Primrec.const none) hcons.to₂).of_eq fun x => by
-      rcases x.2.2 with _ | ⟨c, tail⟩
-      · rfl
-      rcases c with _ | c
-      · rfl
-      simp
-  have hlook1 : Primrec fun x : PCtx =>
-      ((x.1.1[Nat.pair x.1.2 (Encodable.encode x.2.2)]?).getD none) :=
-    Primrec.option_getD.comp
-      (Primrec.list_getElem?.comp hprev
-        (Primrec₂.natPair.comp hfuel' (Primrec.encode.comp hrest)))
-      (Primrec.const none)
-  have hlook2 : Primrec fun y : PCtx × (ℕ × List ℕ) =>
-      ((y.1.1.1[Nat.pair y.1.1.2 (Encodable.encode y.2.2)]?).getD none) :=
-    Primrec.option_getD.comp
-      (Primrec.list_getElem?.comp (hprev.comp Primrec.fst)
-        (Primrec₂.natPair.comp (hfuel'.comp Primrec.fst)
-          (Primrec.encode.comp (Primrec.snd.comp Primrec.snd))))
-      (Primrec.const none)
-  have hout : Primrec fun z : (PCtx × (ℕ × List ℕ)) × (ℕ × List ℕ) =>
-      (some (Nat.pair z.1.1.2.1 (Nat.pair z.1.2.1 z.2.1) + 1, z.2.2) :
-        Option (ℕ × List ℕ)) :=
-    Primrec.option_some.comp
-      ((Primrec.succ.comp (Primrec₂.natPair.comp
-          (ht.comp (Primrec.fst.comp Primrec.fst))
-          (Primrec₂.natPair.comp
-            (Primrec.fst.comp (Primrec.snd.comp Primrec.fst))
-            (Primrec.fst.comp Primrec.snd)))).pair
-        (Primrec.snd.comp Primrec.snd))
-  have hbin : Primrec fun x : PCtx =>
-      ((x.1.1[Nat.pair x.1.2 (Encodable.encode x.2.2)]?).getD none).bind fun p =>
-        ((x.1.1[Nat.pair x.1.2 (Encodable.encode p.2)]?).getD none).bind fun q =>
-          some (Nat.pair x.2.1 (Nat.pair p.1 q.1) + 1, q.2) :=
-    Primrec.option_bind hlook1 (Primrec.option_bind hlook2 hout.to₂).to₂
-  have hatom : Primrec fun x : PCtx =>
-      (some (Nat.pair 1 (x.2.1 - 5) + 1, x.2.2) : Option (ℕ × List ℕ)) :=
-    Primrec.option_some.comp
-      ((Primrec.succ.comp (Primrec₂.natPair.comp (Primrec.const 1)
-        (Primrec.nat_sub.comp ht (Primrec.const 5)))).pair hrest)
-  have heqt : ∀ k : ℕ, PrimrecPred fun x : PCtx => x.2.1 = k := fun k =>
-    PrimrecRel.comp Primrec.eq ht (Primrec.const k)
-  have hbody : Primrec fun x : PCtx =>
-      if x.2.1 = 0 then some (Nat.pair 0 0 + 1, x.2.2)
-      else if x.2.1 = 1 then
-        match x.2.2 with
-        | 0 :: payload => parseStructuredPaperPrimeC payload
-        | c :: tail =>
-            if Encodable.encode (Encodable.decode (α := Sentence) c) = 0 then none
-            else some (Encodable.encode (Encodable.decode (α := Sentence) c) - 1, tail)
-        | [] => none
-      else if x.2.1 = 2 ∨ x.2.1 = 3 ∨ x.2.1 = 4 then
-        ((x.1.1[Nat.pair x.1.2 (Encodable.encode x.2.2)]?).getD none).bind fun p =>
-          ((x.1.1[Nat.pair x.1.2 (Encodable.encode p.2)]?).getD none).bind fun q =>
-            some (Nat.pair x.2.1 (Nat.pair p.1 q.1) + 1, q.2)
-      else some (Nat.pair 1 (x.2.1 - 5) + 1, x.2.2) := by
-    refine Primrec.ite (heqt 0) hbr0 ?_
-    refine Primrec.ite (heqt 1) hesc ?_
-    exact Primrec.ite ((heqt 2).or ((heqt 3).or (heqt 4))) hbin hatom
-  have hinner : Primrec fun p : List (Option (ℕ × List ℕ)) × ℕ =>
-      match Denumerable.ofNat (List ℕ) p.1.length.unpair.2 with
-      | [] => (none : Option (ℕ × List ℕ))
-      | t :: rest =>
-          if t = 0 then some (Nat.pair 0 0 + 1, rest)
-          else if t = 1 then
-            match rest with
-            | 0 :: payload => parseStructuredPaperPrimeC payload
-            | c :: tail =>
-                if Encodable.encode (Encodable.decode (α := Sentence) c) = 0 then none
-                else some
-                  (Encodable.encode (Encodable.decode (α := Sentence) c) - 1, tail)
-            | [] => none
-          else if t = 2 ∨ t = 3 ∨ t = 4 then
-            ((p.1[Nat.pair p.2 (Encodable.encode rest)]?).getD none).bind
-              fun q1 =>
-                ((p.1[Nat.pair p.2 (Encodable.encode q1.2)]?).getD none).bind
-                  fun q2 =>
-                    some (Nat.pair t (Nat.pair q1.1 q2.1) + 1, q2.2)
-          else some (Nat.pair 1 (t - 5) + 1, rest) :=
-    (Primrec.list_casesOn hts0 (Primrec.const none) hbody.to₂).of_eq fun p => by
-      rcases Denumerable.ofNat (List ℕ) p.1.length.unpair.2 with _ | ⟨t, rest⟩ <;>
-        rfl
-  refine (Primrec.option_some.comp
-    (Primrec.nat_casesOn hfuel (Primrec.const none) hinner.to₂)).of_eq
-    fun prev => ?_
-  rw [parseG, parseGCore]
-  cases hf : prev.length.unpair.1 with
-  | zero => rfl
-  | succ fuel' =>
-      cases hts : Denumerable.ofNat (List ℕ) prev.length.unpair.2 with
-      | nil => simp [hts]
-      | cons t rest =>
-          simp only [hts]
-          rfl
-
-/-- The symbol-block parser is primitive recursive. -/
-lemma parseRpnC_prim : Primrec₂ parseRpnC := by
-  have hF : Primrec₂ (fun (_ : Unit) => parseF) :=
-    Primrec.nat_strong_rec _ (parseG_prim.comp Primrec.snd).to₂
-      fun _ n => parseG_spec n
-  have hF1 : Primrec parseF := hF.comp (Primrec.const ()) Primrec.id
-  have h2 : Primrec fun p : ℕ × List ℕ =>
-      parseF (Nat.pair p.1 (Encodable.encode p.2)) :=
-    hF1.comp (Primrec₂.natPair.comp Primrec.fst (Primrec.encode.comp Primrec.snd))
-  exact h2.to₂.of_eq fun fuel ts => by
-    rw [parseF, Nat.unpair_pair, Denumerable.ofNat_encode]
-
-private abbrev UCtx := (List (List ℕ) × ℕ) × (ℕ × List ℕ)
-
-private lemma unG_prim : Primrec unG := by
-  have hfuel : Primrec fun prev : List (List ℕ) => prev.length.unpair.1 :=
-    Primrec.fst.comp (Primrec.unpair.comp Primrec.list_length)
-  have hts0 : Primrec fun p : List (List ℕ) × ℕ =>
-      Denumerable.ofNat (List ℕ) p.1.length.unpair.2 :=
-    (Primrec.ofNat (List ℕ)).comp
-      (Primrec.snd.comp (Primrec.unpair.comp (Primrec.list_length.comp Primrec.fst)))
-  have hprev : Primrec fun x : UCtx => x.1.1 := Primrec.fst.comp Primrec.fst
-  have hfuel' : Primrec fun x : UCtx => x.1.2 := Primrec.snd.comp Primrec.fst
-  have ht : Primrec fun x : UCtx => x.2.1 := Primrec.fst.comp Primrec.snd
-  have hrest : Primrec fun x : UCtx => x.2.2 := Primrec.snd.comp Primrec.snd
-  have hlook : ∀ {γ : Type} [Primcodable γ]
-      {fp : γ → List (List ℕ)} {ff : γ → ℕ} {fr : γ → List ℕ},
-      Primrec fp → Primrec ff → Primrec fr →
-      Primrec fun y : γ => ((fp y)[Nat.pair (ff y) (Encodable.encode (fr y))]?).getD
-        ([] : List ℕ) := by
-    intro γ _ fp ff fr hp hf hr
-    exact Primrec.option_getD.comp
-      (Primrec.list_getElem?.comp hp
-        (Primrec₂.natPair.comp hf (Primrec.encode.comp hr)))
-      (Primrec.const [])
-  have hparse : Primrec fun x : UCtx => parseRpnC x.2.2.length x.2.2 :=
-    parseRpnC_prim.comp (Primrec.list_length.comp hrest) hrest
-  -- price branch
-  have hbr0inner : Primrec fun y : UCtx × (ℕ × List ℕ) =>
-      match y.2.2 with
-      | [] => [0, y.2.1]
-      | d :: r2 =>
-          0 :: y.2.1 :: d ::
-            ((y.1.1.1[Nat.pair y.1.1.2 (Encodable.encode r2)]?).getD []) := by
-    have hnil : Primrec fun y : UCtx × (ℕ × List ℕ) => [0, y.2.1] :=
-      Primrec.list_cons.comp (Primrec.const 0)
-        (Primrec.list_cons.comp (Primrec.fst.comp Primrec.snd)
-          (Primrec.const []))
-    have hcons : Primrec fun z : (UCtx × (ℕ × List ℕ)) × (ℕ × List ℕ) =>
-        0 :: z.1.2.1 :: z.2.1 ::
-          ((z.1.1.1.1[Nat.pair z.1.1.1.2 (Encodable.encode z.2.2)]?).getD []) :=
-      Primrec.list_cons.comp (Primrec.const 0)
-        (Primrec.list_cons.comp
-          (Primrec.fst.comp (Primrec.snd.comp Primrec.fst))
-          (Primrec.list_cons.comp (Primrec.fst.comp Primrec.snd)
-            (hlook (Primrec.fst.comp (Primrec.fst.comp
-                (Primrec.fst.comp Primrec.fst)))
-              (Primrec.snd.comp (Primrec.fst.comp
-                (Primrec.fst.comp Primrec.fst)))
-              (Primrec.snd.comp Primrec.snd))))
-    exact (Primrec.list_casesOn (Primrec.snd.comp Primrec.snd) hnil
-      hcons.to₂).of_eq fun y => by rcases y.2.2 with _ | ⟨d, r2⟩ <;> rfl
-  have hbr0 : Primrec fun x : UCtx =>
-      match parseRpnC x.2.2.length x.2.2 with
-      | none => [0, 0]
-      | some (e, r1) =>
-          match r1 with
-          | [] => [0, e]
-          | d :: r2 =>
-              0 :: e :: d ::
-                ((x.1.1[Nat.pair x.1.2 (Encodable.encode r2)]?).getD []) :=
-    (Primrec.option_casesOn hparse (Primrec.const [0, 0]) hbr0inner.to₂).of_eq
-      fun x => by
-        rcases parseRpnC x.2.2.length x.2.2 with _ | ⟨e, r1⟩
-        · rfl
-        rcases r1 with _ | ⟨d, r2⟩ <;> rfl
-  -- trade branch
-  have hbr6inner : Primrec fun y : UCtx × (ℕ × List ℕ) =>
-      6 :: y.2.1 ::
-        ((y.1.1.1[Nat.pair y.1.1.2 (Encodable.encode y.2.2)]?).getD []) :=
-    Primrec.list_cons.comp (Primrec.const 6)
-      (Primrec.list_cons.comp (Primrec.fst.comp Primrec.snd)
-        (hlook (Primrec.fst.comp (Primrec.fst.comp Primrec.fst))
-          (Primrec.snd.comp (Primrec.fst.comp Primrec.fst))
-          (Primrec.snd.comp Primrec.snd)))
-  have hbr6 : Primrec fun x : UCtx =>
-      match parseRpnC x.2.2.length x.2.2 with
-      | none => [6, 0]
-      | some (e, r1) =>
-          6 :: e :: ((x.1.1[Nat.pair x.1.2 (Encodable.encode r1)]?).getD []) :=
-    (Primrec.option_casesOn hparse (Primrec.const [6, 0]) hbr6inner.to₂).of_eq
-      fun x => by rcases parseRpnC x.2.2.length x.2.2 with _ | ⟨e, r1⟩ <;> rfl
-  -- opaque payload branches
-  have hpayinner : ∀ tag : ℕ, Primrec fun z : UCtx × (ℕ × List ℕ) =>
-      tag :: z.2.1 ::
-        ((z.1.1.1[Nat.pair z.1.1.2 (Encodable.encode z.2.2)]?).getD []) := by
-    intro tag
-    exact Primrec.list_cons.comp (Primrec.const tag)
-      (Primrec.list_cons.comp (Primrec.fst.comp Primrec.snd)
-        (hlook (Primrec.fst.comp (Primrec.fst.comp Primrec.fst))
-          (Primrec.snd.comp (Primrec.fst.comp Primrec.fst))
-          (Primrec.snd.comp Primrec.snd)))
-  have hpay : ∀ tag : ℕ, Primrec fun x : UCtx =>
-      match x.2.2 with
-      | [] => [tag]
-      | c :: r =>
-          tag :: c :: ((x.1.1[Nat.pair x.1.2 (Encodable.encode r)]?).getD []) := by
-    intro tag
-    exact (Primrec.list_casesOn hrest (Primrec.const [tag])
-      (hpayinner tag).to₂).of_eq fun x => by
-        rcases x.2.2 with _ | ⟨c, r⟩ <;> rfl
-  -- copy branch
-  have hcopy : Primrec fun x : UCtx =>
-      x.2.1 :: ((x.1.1[Nat.pair x.1.2 (Encodable.encode x.2.2)]?).getD []) :=
-    Primrec.list_cons.comp ht (hlook hprev hfuel' hrest)
-  have heqt : ∀ k : ℕ, PrimrecPred fun x : UCtx => x.2.1 = k := fun k =>
-    PrimrecRel.comp Primrec.eq ht (Primrec.const k)
-  have hbody : Primrec fun x : UCtx =>
-      if x.2.1 = 0 then
-        match parseRpnC x.2.2.length x.2.2 with
-        | none => [0, 0]
-        | some (e, r1) =>
-            match r1 with
-            | [] => [0, e]
-            | d :: r2 =>
-                0 :: e :: d ::
-                  ((x.1.1[Nat.pair x.1.2 (Encodable.encode r2)]?).getD [])
-      else if x.2.1 = 6 then
-        match parseRpnC x.2.2.length x.2.2 with
-        | none => [6, 0]
-        | some (e, r1) =>
-            6 :: e :: ((x.1.1[Nat.pair x.1.2 (Encodable.encode r1)]?).getD [])
-      else if x.2.1 = 1 then
-        match x.2.2 with
-        | [] => [1]
-        | c :: r =>
-            1 :: c :: ((x.1.1[Nat.pair x.1.2 (Encodable.encode r)]?).getD [])
-      else if x.2.1 = 7 then
-        match x.2.2 with
-        | [] => [7]
-        | c :: r =>
-            7 :: c :: ((x.1.1[Nat.pair x.1.2 (Encodable.encode r)]?).getD [])
-      else x.2.1 :: ((x.1.1[Nat.pair x.1.2 (Encodable.encode x.2.2)]?).getD []) := by
-    refine Primrec.ite (heqt 0) hbr0 ?_
-    refine Primrec.ite (heqt 6) hbr6 ?_
-    refine Primrec.ite (heqt 1) (hpay 1) ?_
-    exact Primrec.ite (heqt 7) (hpay 7) hcopy
-  have hinner : Primrec fun p : List (List ℕ) × ℕ =>
-      match Denumerable.ofNat (List ℕ) p.1.length.unpair.2 with
-      | [] => ([] : List ℕ)
-      | t :: rest =>
-          if t = 0 then
-            match parseRpnC rest.length rest with
-            | none => [0, 0]
-            | some (e, r1) =>
-                match r1 with
-                | [] => [0, e]
-                | d :: r2 =>
-                    0 :: e :: d ::
-                      ((p.1[Nat.pair p.2 (Encodable.encode r2)]?).getD [])
-          else if t = 6 then
-            match parseRpnC rest.length rest with
-            | none => [6, 0]
-            | some (e, r1) =>
-                6 :: e :: ((p.1[Nat.pair p.2 (Encodable.encode r1)]?).getD [])
-          else if t = 1 then
-            match rest with
-            | [] => [1]
-            | c :: r =>
-                1 :: c :: ((p.1[Nat.pair p.2 (Encodable.encode r)]?).getD [])
-          else if t = 7 then
-            match rest with
-            | [] => [7]
-            | c :: r =>
-                7 :: c :: ((p.1[Nat.pair p.2 (Encodable.encode r)]?).getD [])
-          else t :: ((p.1[Nat.pair p.2 (Encodable.encode rest)]?).getD []) :=
-    (Primrec.list_casesOn hts0 (Primrec.const []) hbody.to₂).of_eq fun p => by
-      rcases Denumerable.ofNat (List ℕ) p.1.length.unpair.2 with _ | ⟨t, rest⟩ <;>
-        rfl
-  refine (Primrec.option_some.comp
-    (Primrec.nat_casesOn hfuel
-      ((Primrec.list_casesOn
-        ((Primrec.ofNat (List ℕ)).comp
-          (Primrec.snd.comp (Primrec.unpair.comp Primrec.list_length)))
-        (Primrec.const []) (Primrec.const []).to₂).of_eq fun prev => by
-          rcases Denumerable.ofNat (List ℕ) prev.length.unpair.2 with
-            _ | ⟨t, rest⟩ <;> rfl)
-      hinner.to₂)).of_eq fun prev => ?_
-  rw [unG, unGCore]
-  cases hf : prev.length.unpair.1 with
-  | zero =>
-      cases hts : Denumerable.ofNat (List ℕ) prev.length.unpair.2 with
-      | nil => simp [hts]
-      | cons t rest => simp [hts]
-  | succ fuel' =>
-      cases hts : Denumerable.ofNat (List ℕ) prev.length.unpair.2 with
-      | nil => simp [hts]
-      | cons t rest =>
-          simp only [hts]
-          rfl
-
-/-- The stream contraction is primitive recursive. -/
-lemma unRpn_prim : Primrec unRpn := by
-  have hF : Primrec₂ (fun (_ : Unit) => unF) :=
-    Primrec.nat_strong_rec _ (unG_prim.comp Primrec.snd).to₂
-      fun _ n => unG_spec n
-  have hF1 : Primrec unF := hF.comp (Primrec.const ()) Primrec.id
-  have h2 : Primrec fun ts : List ℕ =>
-      unF (Nat.pair ts.length (Encodable.encode ts)) :=
-    hF1.comp (Primrec₂.natPair.comp Primrec.list_length Primrec.encode)
-  exact h2.of_eq fun ts => by
-    rw [unF, Nat.unpair_pair, Denumerable.ofNat_encode, ← unRpn_eq_unRpnTokensC]
-
-/-- A token-metered sentence sequence (`def:ec`) has primitive-recursive whole-value
-codes: its block stream is primitive recursive (`PolySegStream.primrec`) and the block
-parser decodes each segment.  Note the codes are **not** polynomially fueled — a deep
-sentence's pair code is value-exponential in its symbol count — so this is exactly the
-recursive-naming residue available at arithmetic quotation boundaries. -/
-lemma RpnSentenceCodes.primrec {φ : ℕ → Sentence} (h : RpnSentenceCodes φ) :
-    Primrec fun n => Encodable.encode (φ n) := by
-  obtain ⟨s, hs, hp⟩ := h
-  have hsp : Primrec s := hs.primrec
-  have hparse : Primrec fun n => parseRpnC (s n).length (s n) :=
-    parseRpnC_prim.comp (Primrec.list_length.comp hsp) hsp
-  have hmap : Primrec fun n =>
-      (parseRpnC (s n).length (s n)).map Prod.fst :=
-    Primrec.option_map hparse (Primrec.fst.comp Primrec.snd).to₂
-  refine ((Primrec.option_getD.comp hmap (Primrec.const 0)).of_eq fun n => ?_)
-  rw [parseRpnC_eq, hp n]
-  rfl
-
-/-- The whole-value naming program extracted from a token-metered sentence sequence.
-Used where a *value* code is genuinely required (market quote tables keyed by sentence
-code), as opposed to token-metered emission. -/
-lemma RpnSentenceCodes.exists_code {φ : ℕ → Sentence} (h : RpnSentenceCodes φ) :
-    ∃ c : Nat.Partrec.Code, ∀ n, Encodable.encode (φ n) ∈ c.eval n := by
-  obtain ⟨c, hc⟩ := Nat.Partrec.Code.exists_code.mp
-    (Nat.Partrec.of_primrec (Primrec.nat_iff.mp h.primrec))
-  exact ⟨c, fun n => by rw [hc]; exact Part.mem_some _⟩
-
-/-- The write-out mirror of `RpnSentenceCodes.primrec`: a written-out sentence stream is
-primitive recursive, via `BigTokenStream.primrec`.  Primitive recursion carries no time
-budget, so reassembling an exponentially-named code here is legitimate — this is the route
-by which a market quote table keyed by sentence code accepts write-out data. -/
-lemma BigSentenceCodes.primrec {φ : ℕ → Sentence} (h : BigSentenceCodes φ) :
-    Primrec fun n => Encodable.encode (φ n) := by
-  obtain ⟨s, hs, hp⟩ := h
-  have hsp : Primrec s := hs.primrec
-  have hparse : Primrec fun n => parseRpnC (s n).length (s n) :=
-    parseRpnC_prim.comp (Primrec.list_length.comp hsp) hsp
-  have hmap : Primrec fun n =>
-      (parseRpnC (s n).length (s n)).map Prod.fst :=
-    Primrec.option_map hparse (Primrec.fst.comp Primrec.snd).to₂
-  refine ((Primrec.option_getD.comp hmap (Primrec.const 0)).of_eq fun n => ?_)
-  rw [parseRpnC_eq, hp n]
-  rfl
-
-/-- The whole-value naming program extracted from a written-out sentence sequence. -/
-lemma BigSentenceCodes.exists_code {φ : ℕ → Sentence} (h : BigSentenceCodes φ) :
-    ∃ c : Nat.Partrec.Code, ∀ n, Encodable.encode (φ n) ∈ c.eval n := by
-  obtain ⟨c, hc⟩ := Nat.Partrec.Code.exists_code.mp
-    (Nat.Partrec.of_primrec (Primrec.nat_iff.mp h.primrec))
-  exact ⟨c, fun n => by rw [hc]; exact Part.mem_some _⟩
-
-#print axioms parseRpnC_prim
-#print axioms unRpn_prim
-#print axioms RpnSentenceCodes.primrec
-#print axioms RpnSentenceCodes.exists_code
-#print axioms BigSentenceCodes.primrec
-#print axioms BigSentenceCodes.exists_code
-
-end RpnDecodePrimrec
 
 /-- The canonical enumeration's day strategies are primitive recursive.
 
@@ -4076,62 +377,6 @@ private lemma tradingFirmWeight_prim : Primrec₂ tradingFirmWeight := by
   exact (ratDiv_prim.comp (Primrec.const 1) hpow).to₂.of_eq fun j b => by
     rfl
 
-/-- Remove duplicate sentences while preserving the last occurrence of each sentence. -/
-def sentenceDedup (l : List Sentence) : List Sentence :=
-  l.foldr (fun φ acc => if φ ∈ acc then acc else φ :: acc) []
-
-@[simp] lemma sentenceDedup_nil : sentenceDedup [] = [] := by rfl
-
-@[simp] lemma sentenceDedup_cons (a : Sentence) (l : List Sentence) :
-    sentenceDedup (a :: l) =
-      if a ∈ sentenceDedup l then sentenceDedup l else a :: sentenceDedup l := by
-  rfl
-
-@[simp] lemma mem_sentenceDedup : ∀ (l : List Sentence) (φ : Sentence),
-    φ ∈ sentenceDedup l ↔ φ ∈ l := by
-  intro l
-  induction l with
-  | nil => intro φ; simp
-  | cons a l ih =>
-      intro φ
-      by_cases h : a ∈ sentenceDedup l
-      · have hal : a ∈ l := (ih a).mp h
-        rw [sentenceDedup_cons, if_pos h, ih φ]
-        simp only [List.mem_cons]
-        constructor
-        · exact Or.inr
-        · rintro (rfl | hφ)
-          · exact hal
-          · exact hφ
-      · have hal : a ∉ l := fun hal => h ((ih a).mpr hal)
-        simp [sentenceDedup_cons, h, ih φ]
-
-lemma sentenceDedup_nodup (l : List Sentence) :
-    (sentenceDedup l).Nodup := by
-  induction l with
-  | nil => simp
-  | cons a l ih =>
-      by_cases h : a ∈ sentenceDedup l
-      · simpa [sentenceDedup_cons, h] using ih
-      · simp [sentenceDedup_cons, h, ih]
-
-lemma sentenceDedup_prim : Primrec sentenceDedup := by
-  have hmem : PrimrecRel fun (tail : List Sentence) (φ : Sentence) => φ ∈ tail :=
-    (Primrec.eq.exists_mem_list).of_eq fun tail φ => by
-      simp
-  have hstep : Primrec₂ fun (_ : List Sentence)
-      (p : Sentence × List Sentence) =>
-      if p.1 ∈ p.2 then p.2 else p.1 :: p.2 :=
-    Primrec.ite
-      (hmem.comp (Primrec.snd.comp Primrec.snd)
-        (Primrec.fst.comp Primrec.snd))
-      (Primrec.snd.comp Primrec.snd)
-      (Primrec.list_cons.comp
-        (Primrec.fst.comp Primrec.snd)
-        (Primrec.snd.comp Primrec.snd)) |>.to₂
-  exact (Primrec.list_foldr Primrec.id (Primrec.const []) hstep).of_eq fun l => by
-    rfl
-
 private lemma tradeListSupportSentenceList_prim :
     Primrec fun trades : List (EF × Sentence) =>
       supportSentenceList (tradeListSupport trades) := by
@@ -4141,8 +386,8 @@ private lemma tradeListSupportSentenceList_prim :
       trades.map Prod.snd :=
     Primrec.list_map Primrec.id (Primrec.snd.comp₂ Primrec₂.right)
   have hcanonical : Primrec fun trades : List (EF × Sentence) =>
-      (sentenceDedup (trades.map Prod.snd)).insertionSort r :=
-    sentenceInsertionSort_prim.comp (sentenceDedup_prim.comp hsentences)
+      (List.dedup (trades.map Prod.snd)).insertionSort r :=
+    sentenceInsertionSort_prim.comp (dedup_prim.comp hsentences)
   exact hcanonical.of_eq fun trades => by
     letI : IsTrans Sentence r :=
       ⟨fun _ _ _ hab hbc => hab.trans hbc⟩
@@ -4150,10 +395,10 @@ private lemma tradeListSupportSentenceList_prim :
       ⟨fun _ _ hab hba => Encodable.encode_injective (le_antisymm hab hba)⟩
     letI : Std.Total r :=
       ⟨fun φ ψ => le_total (Encodable.encode φ) (Encodable.encode ψ)⟩
-    let l := (sentenceDedup (trades.map Prod.snd)).insertionSort r
+    let l := (List.dedup (trades.map Prod.snd)).insertionSort r
     have hnodup : l.Nodup :=
       (List.perm_insertionSort r _).nodup_iff.mpr
-        (sentenceDedup_nodup (trades.map Prod.snd))
+        (List.nodup_dedup (trades.map Prod.snd))
     have hsorted : l.Pairwise r := List.pairwise_insertionSort r _
     have htoFinset : l.toFinset = tradeListSupport trades := by
       ext φ
@@ -4187,6 +432,8 @@ private lemma supportSentenceList_prim : Primrec supportSentenceList := by
     fun S => by
       rw [sentenceFinsetEncode_eq_supportSentenceList]
 
+/-- Membership in a finite sentence set is primitive recursive, through the set's
+canonical sentence list. -/
 lemma sentenceMemSupport_prim :
     PrimrecRel fun (S : Finset Sentence) (φ : Sentence) => φ ∈ S := by
   have hmem : PrimrecRel fun (l : List Sentence) (φ : Sentence) => φ ∈ l :=
@@ -4407,6 +654,124 @@ private lemma iterate_add_forward {α : Type*} (f : α → α) (m n : ℕ) (x : 
     f^[m + n] x = f^[n] (f^[m] x) := by
   rw [Nat.add_comm, Function.iterate_add_apply]
 
+/-- **Stack-machine correctness, once.**
+
+Both evaluators below — the exact rational one and the absolute-bound one — are the same
+continuation machine over the same command list and the same instruction count; they differ
+only in what a value *is*, which opcode each connective pops on, and how a leaf is read.
+This lemma carries the induction for all of them: running exactly `efRatMachineSteps e`
+instructions evaluates one feature to `den e rho` and leaves the surrounding
+continuation/value stack untouched.
+
+The `Push` hypotheses say what one instruction does to an evaluation command, the `Pop`
+hypotheses what the opcode does to the two values below it, and `hletDen` is the
+denotation's own binding law.  The opcodes are parameters because the bound machine merges
+`max` into `add` — the bound of a maximum is the sum of the bounds. -/
+private lemma efMachine_correct (f : EFRatMachineState → EFRatMachineState)
+    (den : EF → List ℚ → ℚ) (tAdd tMul tMax tRec : ℕ)
+    (hprice : ∀ (φ : Sentence) (day : ℕ) (rho : List ℚ) (cs : List EFRatCommand)
+      (vs : List ℚ), f (efRatEvalCommand (EF.price φ day) rho :: cs, vs) =
+        (cs, den (EF.price φ day) rho :: vs))
+    (hconst : ∀ (q : ℚ) (rho : List ℚ) (cs : List EFRatCommand) (vs : List ℚ),
+      f (efRatEvalCommand (EF.const q) rho :: cs, vs) = (cs, den (EF.const q) rho :: vs))
+    (hvar : ∀ (i : ℕ) (rho : List ℚ) (cs : List EFRatCommand) (vs : List ℚ),
+      f (efRatEvalCommand (EF.var i) rho :: cs, vs) = (cs, den (EF.var i) rho :: vs))
+    (haddPush : ∀ (a b : EF) (rho : List ℚ) (cs : List EFRatCommand) (vs : List ℚ),
+      f (efRatEvalCommand (EF.add a b) rho :: cs, vs) =
+        (efRatEvalCommand a rho :: efRatEvalCommand b rho :: efRatOpCommand tAdd :: cs, vs))
+    (haddPop : ∀ (a b : EF) (rho : List ℚ) (cs : List EFRatCommand) (vs : List ℚ),
+      f (efRatOpCommand tAdd :: cs, den b rho :: den a rho :: vs) =
+        (cs, den (EF.add a b) rho :: vs))
+    (hmulPush : ∀ (a b : EF) (rho : List ℚ) (cs : List EFRatCommand) (vs : List ℚ),
+      f (efRatEvalCommand (EF.mul a b) rho :: cs, vs) =
+        (efRatEvalCommand a rho :: efRatEvalCommand b rho :: efRatOpCommand tMul :: cs, vs))
+    (hmulPop : ∀ (a b : EF) (rho : List ℚ) (cs : List EFRatCommand) (vs : List ℚ),
+      f (efRatOpCommand tMul :: cs, den b rho :: den a rho :: vs) =
+        (cs, den (EF.mul a b) rho :: vs))
+    (hmaxPush : ∀ (a b : EF) (rho : List ℚ) (cs : List EFRatCommand) (vs : List ℚ),
+      f (efRatEvalCommand (EF.max a b) rho :: cs, vs) =
+        (efRatEvalCommand a rho :: efRatEvalCommand b rho :: efRatOpCommand tMax :: cs, vs))
+    (hmaxPop : ∀ (a b : EF) (rho : List ℚ) (cs : List EFRatCommand) (vs : List ℚ),
+      f (efRatOpCommand tMax :: cs, den b rho :: den a rho :: vs) =
+        (cs, den (EF.max a b) rho :: vs))
+    (hrecPush : ∀ (a : EF) (rho : List ℚ) (cs : List EFRatCommand) (vs : List ℚ),
+      f (efRatEvalCommand (EF.safeRecip a) rho :: cs, vs) =
+        (efRatEvalCommand a rho :: efRatOpCommand tRec :: cs, vs))
+    (hrecPop : ∀ (a : EF) (rho : List ℚ) (cs : List EFRatCommand) (vs : List ℚ),
+      f (efRatOpCommand tRec :: cs, den a rho :: vs) =
+        (cs, den (EF.safeRecip a) rho :: vs))
+    (hletPush : ∀ (x body : EF) (rho : List ℚ) (cs : List EFRatCommand) (vs : List ℚ),
+      f (efRatEvalCommand (EF.letE x body) rho :: cs, vs) =
+        (efRatEvalCommand x rho :: efRatLetBodyCommand body.toNat rho :: cs, vs))
+    (hletBody : ∀ (body : EF) (rho : List ℚ) (q : ℚ) (cs : List EFRatCommand)
+      (vs : List ℚ), f (efRatLetBodyCommand body.toNat rho :: cs, q :: vs) =
+        (efRatEvalCommand body (q :: rho) :: cs, vs))
+    (hletDen : ∀ (x body : EF) (rho : List ℚ),
+      den (EF.letE x body) rho = den body (den x rho :: rho)) :
+    ∀ (e : EF) (rho : List ℚ) (cs : List EFRatCommand) (vs : List ℚ),
+      f^[efRatMachineSteps e] (efRatEvalCommand e rho :: cs, vs) = (cs, den e rho :: vs) := by
+  intro e
+  induction e with
+  | price φ day =>
+      intro rho cs vs
+      simpa only [efRatMachineSteps, Function.iterate_one] using hprice φ day rho cs vs
+  | const q =>
+      intro rho cs vs
+      simpa only [efRatMachineSteps, Function.iterate_one] using hconst q rho cs vs
+  | var i =>
+      intro rho cs vs
+      simpa only [efRatMachineSteps, Function.iterate_one] using hvar i rho cs vs
+  | add a b iha ihb =>
+      intro rho cs vs
+      rw [show efRatMachineSteps (EF.add a b) =
+          1 + (efRatMachineSteps a + (efRatMachineSteps b + 1)) by
+        simp only [efRatMachineSteps]; omega]
+      rw [iterate_add_forward f 1, Function.iterate_one, haddPush,
+        iterate_add_forward f (efRatMachineSteps a),
+        iha rho (efRatEvalCommand b rho :: efRatOpCommand tAdd :: cs) vs,
+        iterate_add_forward f (efRatMachineSteps b),
+        ihb rho (efRatOpCommand tAdd :: cs) (den a rho :: vs),
+        Function.iterate_one, haddPop]
+  | mul a b iha ihb =>
+      intro rho cs vs
+      rw [show efRatMachineSteps (EF.mul a b) =
+          1 + (efRatMachineSteps a + (efRatMachineSteps b + 1)) by
+        simp only [efRatMachineSteps]; omega]
+      rw [iterate_add_forward f 1, Function.iterate_one, hmulPush,
+        iterate_add_forward f (efRatMachineSteps a),
+        iha rho (efRatEvalCommand b rho :: efRatOpCommand tMul :: cs) vs,
+        iterate_add_forward f (efRatMachineSteps b),
+        ihb rho (efRatOpCommand tMul :: cs) (den a rho :: vs),
+        Function.iterate_one, hmulPop]
+  | max a b iha ihb =>
+      intro rho cs vs
+      rw [show efRatMachineSteps (EF.max a b) =
+          1 + (efRatMachineSteps a + (efRatMachineSteps b + 1)) by
+        simp only [efRatMachineSteps]; omega]
+      rw [iterate_add_forward f 1, Function.iterate_one, hmaxPush,
+        iterate_add_forward f (efRatMachineSteps a),
+        iha rho (efRatEvalCommand b rho :: efRatOpCommand tMax :: cs) vs,
+        iterate_add_forward f (efRatMachineSteps b),
+        ihb rho (efRatOpCommand tMax :: cs) (den a rho :: vs),
+        Function.iterate_one, hmaxPop]
+  | safeRecip a iha =>
+      intro rho cs vs
+      rw [show efRatMachineSteps (EF.safeRecip a) = 1 + (efRatMachineSteps a + 1) by
+        simp only [efRatMachineSteps]; omega]
+      rw [iterate_add_forward f 1, Function.iterate_one, hrecPush,
+        iterate_add_forward f (efRatMachineSteps a),
+        iha rho (efRatOpCommand tRec :: cs) vs, Function.iterate_one, hrecPop]
+  | letE x body ihx ihbody =>
+      intro rho cs vs
+      rw [show efRatMachineSteps (EF.letE x body) =
+          1 + (efRatMachineSteps x + (1 + efRatMachineSteps body)) by
+        simp only [efRatMachineSteps]; omega]
+      rw [iterate_add_forward f 1, Function.iterate_one, hletPush,
+        iterate_add_forward f (efRatMachineSteps x),
+        ihx rho (efRatLetBodyCommand body.toNat rho :: cs) vs,
+        iterate_add_forward f 1, Function.iterate_one, hletBody,
+        ihbody (den x rho :: rho) cs vs, hletDen]
+
 /-- Running exactly the structural instruction count evaluates one feature and preserves
 the surrounding continuation/value stack. -/
 private lemma efRatMachine_correct {C : Type*} (V : C → ℕ → Sentence → ℚ)
@@ -4414,166 +779,41 @@ private lemma efRatMachine_correct {C : Type*} (V : C → ℕ → Sentence → �
     (values : List ℚ) :
     (efRatMachineStep V ctx)^[efRatMachineSteps e]
         (efRatEvalCommand e rho :: commands, values) =
-      (commands, e.denoteRatWith rho (V ctx) :: values) := by
-  induction e generalizing rho commands values with
-  | price φ day =>
-      simp [efRatMachineSteps, efRatEvalCommand, efRatRawEvalCommand,
-        efRatMachineStep, EF.toNat, EF.denoteRatWith, Encodable.encodek]
-  | const q =>
-      simp [efRatMachineSteps, efRatEvalCommand, efRatRawEvalCommand,
-        efRatMachineStep, EF.toNat, EF.denoteRatWith, Encodable.encodek]
-  | var i =>
-      simp [efRatMachineSteps, efRatEvalCommand, efRatRawEvalCommand,
-        efRatMachineStep, EF.toNat, EF.denoteRatWith]
-  | add a b iha ihb =>
-      let f := efRatMachineStep V ctx
-      rw [show efRatMachineSteps (EF.add a b) =
-          1 + efRatMachineSteps a + efRatMachineSteps b + 1 by
-        simp only [efRatMachineSteps]
-        omega]
-      rw [show 1 + efRatMachineSteps a + efRatMachineSteps b + 1 =
-          1 + (efRatMachineSteps a + efRatMachineSteps b + 1) by omega]
-      rw [iterate_add_forward f 1]
-      simp only [Function.iterate_one]
-      change f^[efRatMachineSteps a + efRatMachineSteps b + 1]
-          (f (efRatEvalCommand (EF.add a b) rho :: commands, values)) = _
-      simp only [f, efRatEvalCommand, efRatRawEvalCommand, efRatMachineStep,
-        EF.toNat, Nat.unpair_pair]
-      rw [show efRatMachineSteps a + efRatMachineSteps b + 1 =
-          efRatMachineSteps a + (efRatMachineSteps b + 1) by omega]
-      rw [iterate_add_forward f (efRatMachineSteps a)]
-      rw [show f^[efRatMachineSteps a]
-          ((0, a.toNat, rho) :: (0, b.toNat, rho) :: efRatOpCommand 1 :: commands, values) =
-          ((0, b.toNat, rho) :: efRatOpCommand 1 :: commands,
-            a.denoteRatWith rho (V ctx) :: values) by
-        simpa only [f, efRatEvalCommand, efRatRawEvalCommand] using
-          iha rho (efRatEvalCommand b rho :: efRatOpCommand 1 :: commands) values]
-      rw [iterate_add_forward f (efRatMachineSteps b) 1]
-      rw [show f^[efRatMachineSteps b]
-          ((0, b.toNat, rho) :: efRatOpCommand 1 :: commands,
-            a.denoteRatWith rho (V ctx) :: values) =
-          (efRatOpCommand 1 :: commands,
-            b.denoteRatWith rho (V ctx) :: a.denoteRatWith rho (V ctx) :: values) by
-        simpa only [f, efRatEvalCommand, efRatRawEvalCommand] using
-          ihb rho (efRatOpCommand 1 :: commands) (a.denoteRatWith rho (V ctx) :: values)]
-      simp [f, efRatMachineStep, efRatOpCommand, EF.denoteRatWith]
-  | mul a b iha ihb =>
-      let f := efRatMachineStep V ctx
-      rw [show efRatMachineSteps (EF.mul a b) =
-          1 + efRatMachineSteps a + efRatMachineSteps b + 1 by
-        simp only [efRatMachineSteps]
-        omega]
-      rw [show 1 + efRatMachineSteps a + efRatMachineSteps b + 1 =
-          1 + (efRatMachineSteps a + efRatMachineSteps b + 1) by omega]
-      rw [iterate_add_forward f 1]
-      simp only [Function.iterate_one]
-      change f^[efRatMachineSteps a + efRatMachineSteps b + 1]
-          (f (efRatEvalCommand (EF.mul a b) rho :: commands, values)) = _
-      simp only [f, efRatEvalCommand, efRatRawEvalCommand, efRatMachineStep,
-        EF.toNat, Nat.unpair_pair]
-      rw [show efRatMachineSteps a + efRatMachineSteps b + 1 =
-          efRatMachineSteps a + (efRatMachineSteps b + 1) by omega]
-      rw [iterate_add_forward f (efRatMachineSteps a)]
-      rw [show f^[efRatMachineSteps a]
-          ((0, a.toNat, rho) :: (0, b.toNat, rho) :: efRatOpCommand 2 :: commands, values) =
-          ((0, b.toNat, rho) :: efRatOpCommand 2 :: commands,
-            a.denoteRatWith rho (V ctx) :: values) by
-        simpa only [f, efRatEvalCommand, efRatRawEvalCommand] using
-          iha rho (efRatEvalCommand b rho :: efRatOpCommand 2 :: commands) values]
-      rw [iterate_add_forward f (efRatMachineSteps b) 1]
-      rw [show f^[efRatMachineSteps b]
-          ((0, b.toNat, rho) :: efRatOpCommand 2 :: commands,
-            a.denoteRatWith rho (V ctx) :: values) =
-          (efRatOpCommand 2 :: commands,
-            b.denoteRatWith rho (V ctx) :: a.denoteRatWith rho (V ctx) :: values) by
-        simpa only [f, efRatEvalCommand, efRatRawEvalCommand] using
-          ihb rho (efRatOpCommand 2 :: commands) (a.denoteRatWith rho (V ctx) :: values)]
-      simp [f, efRatMachineStep, efRatOpCommand, EF.denoteRatWith]
-  | max a b iha ihb =>
-      let f := efRatMachineStep V ctx
-      rw [show efRatMachineSteps (EF.max a b) =
-          1 + efRatMachineSteps a + efRatMachineSteps b + 1 by
-        simp only [efRatMachineSteps]
-        omega]
-      rw [show 1 + efRatMachineSteps a + efRatMachineSteps b + 1 =
-          1 + (efRatMachineSteps a + efRatMachineSteps b + 1) by omega]
-      rw [iterate_add_forward f 1]
-      simp only [Function.iterate_one]
-      change f^[efRatMachineSteps a + efRatMachineSteps b + 1]
-          (f (efRatEvalCommand (EF.max a b) rho :: commands, values)) = _
-      simp only [f, efRatEvalCommand, efRatRawEvalCommand, efRatMachineStep,
-        EF.toNat, Nat.unpair_pair]
-      rw [show efRatMachineSteps a + efRatMachineSteps b + 1 =
-          efRatMachineSteps a + (efRatMachineSteps b + 1) by omega]
-      rw [iterate_add_forward f (efRatMachineSteps a)]
-      rw [show f^[efRatMachineSteps a]
-          ((0, a.toNat, rho) :: (0, b.toNat, rho) :: efRatOpCommand 3 :: commands, values) =
-          ((0, b.toNat, rho) :: efRatOpCommand 3 :: commands,
-            a.denoteRatWith rho (V ctx) :: values) by
-        simpa only [f, efRatEvalCommand, efRatRawEvalCommand] using
-          iha rho (efRatEvalCommand b rho :: efRatOpCommand 3 :: commands) values]
-      rw [iterate_add_forward f (efRatMachineSteps b) 1]
-      rw [show f^[efRatMachineSteps b]
-          ((0, b.toNat, rho) :: efRatOpCommand 3 :: commands,
-            a.denoteRatWith rho (V ctx) :: values) =
-          (efRatOpCommand 3 :: commands,
-            b.denoteRatWith rho (V ctx) :: a.denoteRatWith rho (V ctx) :: values) by
-        simpa only [f, efRatEvalCommand, efRatRawEvalCommand] using
-          ihb rho (efRatOpCommand 3 :: commands) (a.denoteRatWith rho (V ctx) :: values)]
-      simp [f, efRatMachineStep, efRatOpCommand, EF.denoteRatWith]
-  | safeRecip a iha =>
-      let f := efRatMachineStep V ctx
-      rw [show efRatMachineSteps (EF.safeRecip a) =
-          1 + efRatMachineSteps a + 1 by
-        simp only [efRatMachineSteps]
-        omega]
-      rw [show 1 + efRatMachineSteps a + 1 =
-          1 + (efRatMachineSteps a + 1) by omega]
-      rw [iterate_add_forward f 1]
-      simp only [Function.iterate_one]
-      change f^[efRatMachineSteps a + 1]
-          (f (efRatEvalCommand (EF.safeRecip a) rho :: commands, values)) = _
-      simp only [f, efRatEvalCommand, efRatRawEvalCommand, efRatMachineStep,
-        EF.toNat, Nat.unpair_pair]
-      rw [iterate_add_forward f (efRatMachineSteps a) 1]
-      rw [show f^[efRatMachineSteps a]
-          ((0, a.toNat, rho) :: efRatOpCommand 4 :: commands, values) =
-          (efRatOpCommand 4 :: commands, a.denoteRatWith rho (V ctx) :: values) by
-        simpa only [f, efRatEvalCommand, efRatRawEvalCommand] using
-          iha rho (efRatOpCommand 4 :: commands) values]
-      simp [f, efRatMachineStep, efRatOpCommand, EF.denoteRatWith]
-  | letE x body ihx ihbody =>
-      let f := efRatMachineStep V ctx
-      rw [show efRatMachineSteps (EF.letE x body) =
-          1 + efRatMachineSteps x + 1 + efRatMachineSteps body by
-        simp [efRatMachineSteps]; omega]
-      rw [show 1 + efRatMachineSteps x + 1 + efRatMachineSteps body =
-          1 + (efRatMachineSteps x + 1 + efRatMachineSteps body) by omega]
-      rw [iterate_add_forward f 1]
-      simp only [Function.iterate_one]
-      change f^[efRatMachineSteps x + 1 + efRatMachineSteps body]
-          (f (efRatEvalCommand (EF.letE x body) rho :: commands, values)) = _
-      simp only [f, efRatEvalCommand, efRatRawEvalCommand, efRatMachineStep,
-        EF.toNat, Nat.unpair_pair]
-      rw [show efRatMachineSteps x + 1 + efRatMachineSteps body =
-          efRatMachineSteps x + (1 + efRatMachineSteps body) by omega]
-      rw [iterate_add_forward f (efRatMachineSteps x)]
-      rw [show f^[efRatMachineSteps x]
-          ((0, x.toNat, rho) :: efRatLetBodyCommand body.toNat rho :: commands, values) =
-          (efRatLetBodyCommand body.toNat rho :: commands,
-            x.denoteRatWith rho (V ctx) :: values) by
-        simpa only [f, efRatEvalCommand, efRatRawEvalCommand] using
-          ihx rho (efRatLetBodyCommand body.toNat rho :: commands) values]
-      rw [iterate_add_forward f 1 (efRatMachineSteps body)]
-      simp only [Function.iterate_one]
-      simp only [f, efRatMachineStep, efRatLetBodyCommand]
-      rw [show (efRatMachineStep V ctx)^[efRatMachineSteps body]
-          (efRatRawEvalCommand body.toNat (x.denoteRatWith rho (V ctx) :: rho) ::
-            commands, values) =
-          (commands, body.denoteRatWith (x.denoteRatWith rho (V ctx) :: rho) (V ctx) :: values) by
-        simpa only [efRatEvalCommand] using
-          ihbody (x.denoteRatWith rho (V ctx) :: rho) commands values]
-      rfl
+      (commands, e.denoteRatWith rho (V ctx) :: values) :=
+  efMachine_correct (efRatMachineStep V ctx) (fun e rho => e.denoteRatWith rho (V ctx))
+    1 2 3 4
+    (fun φ day rho cs vs => by
+      simp [efRatEvalCommand, efRatRawEvalCommand, efRatMachineStep, EF.toNat,
+        EF.denoteRatWith, Encodable.encodek])
+    (fun q rho cs vs => by
+      simp [efRatEvalCommand, efRatRawEvalCommand, efRatMachineStep, EF.toNat,
+        EF.denoteRatWith, Encodable.encodek])
+    (fun i rho cs vs => by
+      simp [efRatEvalCommand, efRatRawEvalCommand, efRatMachineStep, EF.toNat,
+        EF.denoteRatWith])
+    (fun a b rho cs vs => by
+      simp [efRatEvalCommand, efRatRawEvalCommand, efRatMachineStep, EF.toNat])
+    (fun a b rho cs vs => by
+      simp [efRatMachineStep, efRatOpCommand, EF.denoteRatWith])
+    (fun a b rho cs vs => by
+      simp [efRatEvalCommand, efRatRawEvalCommand, efRatMachineStep, EF.toNat])
+    (fun a b rho cs vs => by
+      simp [efRatMachineStep, efRatOpCommand, EF.denoteRatWith])
+    (fun a b rho cs vs => by
+      simp [efRatEvalCommand, efRatRawEvalCommand, efRatMachineStep, EF.toNat])
+    (fun a b rho cs vs => by
+      simp [efRatMachineStep, efRatOpCommand, EF.denoteRatWith])
+    (fun a rho cs vs => by
+      simp [efRatEvalCommand, efRatRawEvalCommand, efRatMachineStep, EF.toNat])
+    (fun a rho cs vs => by
+      simp [efRatMachineStep, efRatOpCommand, EF.denoteRatWith])
+    (fun x body rho cs vs => by
+      simp [efRatEvalCommand, efRatRawEvalCommand, efRatMachineStep, EF.toNat,
+        efRatLetBodyCommand])
+    (fun body rho q cs vs => by
+      simp [efRatMachineStep, efRatLetBodyCommand, efRatEvalCommand, efRatRawEvalCommand])
+    (fun x body rho => rfl)
+    e rho commands values
 
 /-! ## Primitive-recursive compilation of the evaluator transition -/
 
@@ -4675,11 +915,6 @@ private lemma efRatLetValueStep_prim :
     rcases p with ⟨⟨payload, rho⟩, commands, values⟩
     cases values <;> rfl
 
-/-- Rational maximum is primitive recursive in the canonical encoding. -/
-lemma ratMax_prim : Primrec₂ fun q r : ℚ => max q r := by
-  exact (Primrec.ite ratLE_prim Primrec₂.right Primrec₂.left).to₂.of_eq fun q r => by
-    simp [max_def]
-
 private lemma efRatSafeRecip_prim : Primrec fun q : ℚ => (max 1 q)⁻¹ := by
   have hmax : Primrec fun q : ℚ => max 1 q :=
     ratMax_prim.comp (Primrec.const 1) Primrec.id
@@ -4731,7 +966,6 @@ private lemma efRatRawStep_prim {C : Type*} [Primcodable C]
     (hV : Primrec fun p : C × (ℕ × Sentence) => V p.1 p.2.1 p.2.2) :
     Primrec (efRatRawStep V) := by
   let P := EFRatRawInput C
-  have hctx : Primrec fun p : P => p.1 := Primrec.fst
   have hcode : Primrec fun p : P => p.2.1 :=
     Primrec.fst.comp Primrec.snd
   have hrho : Primrec fun p : P => p.2.2.1 :=
@@ -4748,8 +982,6 @@ private lemma efRatRawStep_prim {C : Type*} [Primcodable C]
     Primrec.fst.comp (Primrec.unpair.comp hpayload)
   have hpayloadRight : Primrec fun p : P => p.2.1.unpair.2.unpair.2 :=
     Primrec.snd.comp (Primrec.unpair.comp hpayload)
-  have hstate : Primrec fun p : P => (p.2.2.2.1, p.2.2.2.2) :=
-    hcommands.pair hvalues
   have hrawLeft : Primrec fun p : P =>
       efRatRawEvalCommand p.2.1.unpair.2.unpair.1 p.2.2.1 :=
     (Primrec.const 0).pair (hpayloadLeft.pair hrho)
@@ -5047,17 +1279,25 @@ private lemma efRatMachine_fuel_correct {C : Type*}
   rw [efRatMachine_correct V ctx e [] [] []]
   exact Function.iterate_fixed (efRatMachine_terminal V ctx [e.denoteRat (V ctx)]) extra
 
+/-- Evaluate an expressible feature to an exact rational by running the stack machine of
+the section above for `efRatMachineFuel e` steps against the context's quote table `V`.
+`efRatCompiledEval_eq` identifies it with `EF.denoteRat` and `efRatCompiledEval_prim`
+certifies it primitive recursive; `Construction/Statistics/SettlementCompiler.lean` runs
+it against the *total* quote table, where `EF.denoteRatWithAtFuel_complete` supplies the guard
+that every listed price query was answered (`dd:dsl`). -/
 def efRatCompiledEval {C : Type*} (V : C → ℕ → Sentence → ℚ)
     (ctx : C) (e : EF) : ℚ :=
   (((efRatMachineStep V ctx)^[efRatMachineFuel e]
       ([efRatEvalCommand e []], [])).2).getD 0 0
 
+/-- The compiled evaluator agrees with `EF.denoteRat` on the context's quote table. -/
 lemma efRatCompiledEval_eq {C : Type*}
     (V : C → ℕ → Sentence → ℚ) (ctx : C) (e : EF) :
     efRatCompiledEval V ctx e = e.denoteRat (V ctx) := by
   rw [efRatCompiledEval, efRatMachine_fuel_correct]
   rfl
 
+/-- The compiled evaluator is primitive recursive whenever the quote table is. -/
 lemma efRatCompiledEval_prim {C : Type*} [Primcodable C]
     (V : C → ℕ → Sentence → ℚ)
     (hV : Primrec fun p : C × (ℕ × Sentence) => V p.1 p.2.1 p.2.2) :
@@ -5093,6 +1333,12 @@ lemma efRatCompiledEval_prim {C : Type*} [Primcodable C]
     Primrec.snd.comp hrun
   exact (Primrec.list_getD 0).comp hresultValues (Primrec.const 0)
 
+/-! ## MarketMaker: the bounded candidate search
+
+The MarketMaker prices a day by searching for the least candidate belief state that all
+of the day's accepted trades value non-positively.  The search runs over proof-erased
+rational belief states, so every state it inspects is ordinary first-order data. -/
+
 private abbrev CandidateQuoteContext :=
   (List RationalBeliefState × ℕ) × RationalBeliefState
 
@@ -5113,21 +1359,7 @@ private lemma candidateQuote_prim :
   exact (candidateRationalHistoryQuote_prim.comp hpack).of_eq fun p => by
     rfl
 
-private def candidateCompiledEFValue (ctx : CandidateQuoteContext) (e : EF) : ℚ :=
-  efRatCompiledEval candidateQuote ctx e
-
-private lemma candidateCompiledEFValue_eq (ctx : CandidateQuoteContext) (e : EF) :
-    candidateCompiledEFValue ctx e =
-      e.denoteRat (candidateRationalHistory ctx.1.1 ctx.1.2 ctx.2) := by
-  exact efRatCompiledEval_eq candidateQuote ctx e
-
-private lemma candidateCompiledEFValue_prim :
-    Primrec fun p : CandidateQuoteContext × EF =>
-      candidateCompiledEFValue p.1 p.2 :=
-  efRatCompiledEval_prim candidateQuote candidateQuote_prim
-
--- `Nat.sqrt` is locally irreducible here: `Primrec` elaboration over these deeply nested
--- product types otherwise unfolds its well-founded definition during `whnf` and loops.
+-- `Nat.sqrt` irreducible: see the module header.
 attribute [local irreducible] Nat.sqrt in
 /-- A generic exact compiler for rational market value.  The context supplies both the
 history quotation and the finite world's payout; the trade list itself remains ordinary
@@ -5206,8 +1438,7 @@ private def marketMakerWorldValue (p : MarketMakerWorldInput) : ℚ :=
     (candidateRationalHistory p.1.1.2 p.1.1.1.2 p.1.2)
     (tradeListSupportBitWorldRatFromList p.1.1.1.1 p.2)
 
--- `Nat.sqrt` is locally irreducible here: `Primrec` elaboration over these deeply nested
--- product types otherwise unfolds its well-founded definition during `whnf` and loops.
+-- `Nat.sqrt` irreducible: see the module header.
 attribute [local irreducible] Nat.sqrt in
 private lemma marketMakerWorldValue_prim :
     Primrec marketMakerWorldValue := by
@@ -5312,8 +1543,7 @@ private instance marketMakerCandidateAcceptsDataDecidable
       p.1.1.2 p.1.2 p.2)
     (marketMakerCandidateAcceptsData_iff p).symm
 
--- `Nat.sqrt` is locally irreducible here: `Primrec` elaboration over these deeply nested
--- product types otherwise unfolds its well-founded definition during `whnf` and loops.
+-- `Nat.sqrt` irreducible: see the module header.
 attribute [local irreducible] Nat.sqrt in
 private lemma marketMakerCandidateAcceptsData_prim :
     PrimrecPred marketMakerCandidateAcceptsData := by
@@ -5383,8 +1613,7 @@ private lemma marketMakerSearchIndexData_eq
               h ((marketMakerCandidateAcceptsData_iff (ctx, fuel)).mpr hs)
             simp [h, h']
 
--- `Nat.sqrt` is locally irreducible here: `Primrec` elaboration over these deeply nested
--- product types otherwise unfolds its well-founded definition during `whnf` and loops.
+-- `Nat.sqrt` irreducible: see the module header.
 attribute [local irreducible] Nat.sqrt in
 private lemma marketMakerSearchStepData_prim :
     Primrec₂ marketMakerSearchStepData := by
@@ -5519,25 +1748,12 @@ private lemma formulaAtomOccurrencesSucc_prim :
       (some [payload p] : Option (List ℕ)) :=
     Primrec.option_some.comp
       (Primrec.list_cons.comp hpayload (Primrec.const []))
-  have h4 : Primrec fun p : List (Option (List ℕ)) × ℕ =>
-      if tag p = 4 then formulaAtomOccurrencesBinary p.1 (payload p) else none :=
-    Primrec.ite (htagEq 4) hbinary (Primrec.const none)
-  have h3 : Primrec fun p : List (Option (List ℕ)) × ℕ =>
-      if tag p = 3 then formulaAtomOccurrencesBinary p.1 (payload p)
-      else if tag p = 4 then formulaAtomOccurrencesBinary p.1 (payload p) else none :=
-    Primrec.ite (htagEq 3) hbinary h4
-  have h2 : Primrec fun p : List (Option (List ℕ)) × ℕ =>
-      if tag p = 2 then formulaAtomOccurrencesBinary p.1 (payload p)
-      else if tag p = 3 then formulaAtomOccurrencesBinary p.1 (payload p)
-      else if tag p = 4 then formulaAtomOccurrencesBinary p.1 (payload p) else none :=
-    Primrec.ite (htagEq 2) hbinary h3
-  have h1 : Primrec fun p : List (Option (List ℕ)) × ℕ =>
-      if tag p = 1 then some [payload p]
-      else if tag p = 2 then formulaAtomOccurrencesBinary p.1 (payload p)
-      else if tag p = 3 then formulaAtomOccurrencesBinary p.1 (payload p)
-      else if tag p = 4 then formulaAtomOccurrencesBinary p.1 (payload p) else none :=
-    Primrec.ite (htagEq 1) hatom h2
-  exact (Primrec.ite (htagEq 0) (Primrec.const (some [])) h1).to₂.of_eq
+  exact (Primrec.ite (htagEq 0) (Primrec.const (some []))
+    (Primrec.ite (htagEq 1) hatom
+      (Primrec.ite (htagEq 2) hbinary
+        (Primrec.ite (htagEq 3) hbinary
+          (Primrec.ite (htagEq 4) hbinary
+            (Primrec.const none)))))).to₂.of_eq
     fun prior e => by simp only [formulaAtomOccurrencesSucc, tag, payload]
 
 private def formulaAtomOccurrencesStep
@@ -5653,6 +1869,7 @@ private lemma formulaAtomOccurrencesDecoded_prim :
       simpa using congrArg some (formulaAtomOccurrencesStep_history n))
   exact hrec.comp (Primrec.const ()) Primrec.id
 
+/-- The atom occurrence list of a sentence is primitive recursive. -/
 lemma sentenceAtomOccurrences_prim :
     Primrec sentenceAtomOccurrences := by
   have hdecoded : Primrec fun φ : Sentence =>
@@ -5667,6 +1884,7 @@ lemma sentenceAtomOccurrences_prim :
     simp [formulaAtomOccurrencesDecoded,
       LO.Propositional.Formula.ofNat_toNat]
 
+/-- The occurrence list carries exactly the sentence's atoms. -/
 @[simp] lemma mem_sentenceAtomOccurrences :
     ∀ (φ : Sentence) (a : ℕ),
       a ∈ sentenceAtomOccurrences φ ↔ a ∈ φ.atoms := by
@@ -5690,113 +1908,18 @@ The operational Budgeter only needs a sorted, duplicate-free list of the atoms i
 finite universe.  Keeping that presentation as ordinary data avoids asking the runtime
 compiler to inspect the quotient representation of `Finset`. -/
 
-private def natDedup (l : List ℕ) : List ℕ :=
-  l.foldr (fun a acc => if a ∈ acc then acc else a :: acc) []
-
-@[simp] private lemma natDedup_nil : natDedup [] = [] := by rfl
-
-@[simp] private lemma natDedup_cons (a : ℕ) (l : List ℕ) :
-    natDedup (a :: l) =
-      if a ∈ natDedup l then natDedup l else a :: natDedup l := by
-  rfl
-
-@[simp] private lemma mem_natDedup : ∀ (l : List ℕ) (a : ℕ),
-    a ∈ natDedup l ↔ a ∈ l := by
-  intro l
-  induction l with
-  | nil => intro a; simp
-  | cons b l ih =>
-      intro a
-      by_cases h : b ∈ natDedup l
-      · have hbl : b ∈ l := (ih b).mp h
-        rw [natDedup_cons, if_pos h, ih a]
-        simp only [List.mem_cons]
-        constructor
-        · exact fun ha => Or.inr ha
-        · rintro (hab | ha)
-          · simpa [hab] using hbl
-          · exact ha
-      · have hbl : b ∉ l := fun hbl => h ((ih b).mpr hbl)
-        simp [natDedup_cons, h, ih]
-
-private lemma natDedup_nodup (l : List ℕ) : (natDedup l).Nodup := by
-  induction l with
-  | nil => simp
-  | cons a l ih =>
-      by_cases h : a ∈ natDedup l
-      · simpa [natDedup_cons, h] using ih
-      · simp [natDedup_cons, h, ih]
-
-private lemma natDedup_prim : Primrec natDedup := by
-  have hmem : PrimrecRel fun (tail : List ℕ) (a : ℕ) => a ∈ tail :=
-    (Primrec.eq.exists_mem_list).of_eq fun tail a => by simp
-  have hstep : Primrec₂ fun (_ : List ℕ) (p : ℕ × List ℕ) =>
-      if p.1 ∈ p.2 then p.2 else p.1 :: p.2 :=
-    Primrec.ite
-      (hmem.comp (Primrec.snd.comp Primrec.snd)
-        (Primrec.fst.comp Primrec.snd))
-      (Primrec.snd.comp Primrec.snd)
-      (Primrec.list_cons.comp
-        (Primrec.fst.comp Primrec.snd)
-        (Primrec.snd.comp Primrec.snd)) |>.to₂
-  exact (Primrec.list_foldr Primrec.id (Primrec.const []) hstep).of_eq fun l => by
-    rfl
-
-private lemma natOrderedInsert_prim :
-    Primrec₂ (List.orderedInsert (fun a b : ℕ => a ≤ b)) := by
-  let base : ℕ × List ℕ → List ℕ := fun p => [p.1]
-  let step : (ℕ × List ℕ) → (ℕ × List ℕ × List ℕ) → List ℕ :=
-    fun p q => if p.1 ≤ q.1 then p.1 :: q.1 :: q.2.1 else q.1 :: q.2.2
-  have hbase : Primrec base :=
-    (Primrec.list_cons.comp Primrec.fst (Primrec.const [])).of_eq fun p => by
-      simp [base]
-  have hpred : PrimrecPred fun x :
-      (ℕ × List ℕ) × (ℕ × List ℕ × List ℕ) => x.1.1 ≤ x.2.1 :=
-    Primrec.nat_le.comp
-      (Primrec.fst.comp Primrec.fst)
-      (Primrec.fst.comp Primrec.snd)
-  have hthen : Primrec fun x :
-      (ℕ × List ℕ) × (ℕ × List ℕ × List ℕ) =>
-        x.1.1 :: x.2.1 :: x.2.2.1 :=
-    Primrec.list_cons.comp
-      (Primrec.fst.comp Primrec.fst)
-      (Primrec.list_cons.comp
-        (Primrec.fst.comp Primrec.snd)
-        (Primrec.fst.comp (Primrec.snd.comp Primrec.snd)))
-  have helse : Primrec fun x :
-      (ℕ × List ℕ) × (ℕ × List ℕ × List ℕ) => x.2.1 :: x.2.2.2 :=
-    Primrec.list_cons.comp
-      (Primrec.fst.comp Primrec.snd)
-      (Primrec.snd.comp (Primrec.snd.comp Primrec.snd))
-  have hstep : Primrec₂ step :=
-    (Primrec.ite hpred hthen helse).to₂.of_eq fun p q => by simp [step]
-  exact (Primrec.list_rec Primrec.snd hbase hstep).to₂.of_eq fun a l => by
-    change List.recOn l [a]
-      (fun b tail ih => if a ≤ b then a :: b :: tail else b :: ih) =
-        List.orderedInsert (fun a b : ℕ => a ≤ b) a l
-    induction l with
-    | nil => rfl
-    | cons b l ih => simp [List.orderedInsert, ih]
-
-private lemma natInsertionSort_prim :
-    Primrec (List.insertionSort (fun a b : ℕ => a ≤ b)) := by
-  exact (Primrec.list_foldr Primrec.id (Primrec.const [])
-    (natOrderedInsert_prim.comp₂
-      (Primrec.fst.comp₂ Primrec₂.right)
-      (Primrec.snd.comp₂ Primrec₂.right))).of_eq fun l => by rfl
-
 private def canonicalNatList (l : List ℕ) : List ℕ :=
-  (natDedup l).insertionSort (fun a b => a ≤ b)
+  (List.dedup l).insertionSort (fun a b => a ≤ b)
 
 private lemma canonicalNatList_prim : Primrec canonicalNatList :=
-  natInsertionSort_prim.comp natDedup_prim
+  (insertionSort_prim (fun a b : ℕ => a ≤ b) Primrec.nat_le).comp dedup_prim
 
 private lemma canonicalNatList_eq_sort (l : List ℕ) :
     canonicalNatList l = l.toFinset.sort (fun a b => a ≤ b) := by
   let r : ℕ → ℕ → Prop := fun a b => a ≤ b
   let canonical := canonicalNatList l
   have hnodup : canonical.Nodup :=
-    (List.perm_insertionSort r _).nodup_iff.mpr (natDedup_nodup l)
+    (List.perm_insertionSort r _).nodup_iff.mpr (List.nodup_dedup l)
   have hsorted : canonical.Pairwise r := List.pairwise_insertionSort r _
   have htoFinset : canonical.toFinset = l.toFinset := by
     ext a
@@ -6250,8 +2373,7 @@ private def firmDayMarketValueData
   tradeListMarketValueRat ((firmRawTrader j).strat i).trades i
     (budgetWorldHistory ctx) (budgetWorldPayout ctx)
 
--- `Nat.sqrt` is locally irreducible here: `Primrec` elaboration over these deeply nested
--- product types otherwise unfolds its well-founded definition during `whnf` and loops.
+-- `Nat.sqrt` irreducible: see the module header.
 attribute [local irreducible] Nat.sqrt in
 private lemma firmDayMarketValueData_prim : Primrec fun p :
     (BudgetWorldContext × ℕ) × ℕ =>
@@ -6271,8 +2393,7 @@ private def firmRawPriorWorthData
     (ctx : BudgetWorldContext) (j n : ℕ) : ℚ :=
   ((List.range n).map fun i => firmDayMarketValueData ctx j i).sum
 
--- `Nat.sqrt` is locally irreducible here: `Primrec` elaboration over these deeply nested
--- product types otherwise unfolds its well-founded definition during `whnf` and loops.
+-- `Nat.sqrt` irreducible: see the module header.
 attribute [local irreducible] Nat.sqrt in
 private lemma firmRawPriorWorthData_prim : Primrec fun p :
     (BudgetWorldContext × ℕ) × ℕ =>
@@ -6308,12 +2429,6 @@ private lemma firmRawPriorWorthData_eq
       rw [List.sum_range_succ, Finset.sum_range_succ, ih]
       rfl
 
-private lemma natCastRat_prim : Primrec fun n : ℕ => (n : ℚ) := by
-  exact (ratMk_prim.comp (intOfNat_prim.comp Primrec.id)
-    (Primrec.const 1)).of_eq fun n => by
-      rw [Rat.mkRat_eq_divInt]
-      simp
-
 private abbrev BudgetCoreInput :=
   (((List (Finset Sentence) × List RationalBeliefState) × ℕ) × ℕ) × ℕ
 
@@ -6338,8 +2453,7 @@ private def budgetWorthBreachedData
     (ctx : BudgetWorldContext) (j b m : ℕ) : Bool :=
   decide (firmRawPriorWorthData ctx j (m + 1) ≤ -(b : ℚ))
 
--- `Nat.sqrt` is locally irreducible here: `Primrec` elaboration over these deeply nested
--- product types otherwise unfolds its well-founded definition during `whnf` and loops.
+-- `Nat.sqrt` irreducible: see the module header.
 attribute [local irreducible] Nat.sqrt in
 private lemma budgetWorthBreachedData_prim : Primrec fun p :
     ((BudgetWorldContext × ℕ) × ℕ) × ℕ =>
@@ -6358,7 +2472,7 @@ private lemma budgetWorthBreachedData_prim : Primrec fun p :
       ((hctx.pair hj).pair (Primrec.nat_add.comp hm (Primrec.const 1)))
   have hnegBudget : Primrec fun p : ((BudgetWorldContext × ℕ) × ℕ) × ℕ =>
       -((p.1.2 : ℕ) : ℚ) :=
-    ratNeg_prim.comp (natCastRat_prim.comp hb)
+    ratNeg_prim.comp (ratNatCast_prim.comp hb)
   exact ((ratLE_prim.comp hworth hnegBudget).decide).of_eq fun p => by
     rfl
 
@@ -6374,10 +2488,8 @@ private def firmBudgetBreachAtDayData
 -- defeq against the composed Boolean; without the overrides that check unfolds the
 -- rational `decide` and `budgetAtomList` leaves eagerly and exhausts the heartbeat budget.
 section
--- Scoped so the reducibility overrides do not leak to later declarations.  The blowup is
--- in `Nat.sqrt` (tens of thousands of unfoldings, reached via `Nat.unpair`) while `isDefEq`
--- reconciles the `Primcodable` instance of this deeply nested product type — not in the
--- budget arithmetic.  Making `Nat.sqrt` and the budget leaves irreducible lets the
+-- Scoped so the reducibility overrides do not leak to later declarations.
+-- `Nat.sqrt` irreducible: see the module header.  The budget leaves are blocked so the
 -- instances and leaves match structurally instead of by reduction.
 attribute [local irreducible] Nat.sqrt budgetConsistentAtDayData budgetWorthBreachedData
   budgetAtomList firmRawPriorWorthData decodedStageTable tableConsistentFromAtomList
@@ -6433,10 +2545,6 @@ end
 The firm cutoff uses `EF.absBound`, whose operations differ slightly from ordinary
 rational denotation.  We reuse the verified rational machine's command format and
 continuation discipline, changing only constants, prices, `max`, and `safeRecip`. -/
-
-private lemma ratAbs_prim : Primrec fun q : ℚ => |q| := by
-  exact (ratMax_prim.comp Primrec.id (ratNeg_prim.comp Primrec.id)).of_eq
-    fun q => by simp [abs_eq_max_neg]
 
 private def efBoundRawStep
     (p : ℕ × (List ℚ × EFRatMachineState)) : EFRatMachineState :=
@@ -6638,204 +2746,42 @@ private lemma efBoundMachine_correct (e : EF) (rho : List ℚ)
     (commands : List EFRatCommand) (values : List ℚ) :
     efBoundMachineStep^[efRatMachineSteps e]
         (efRatEvalCommand e rho :: commands, values) =
-      (commands, e.absBoundWith (rho.getD · 0) :: values) := by
-  induction e generalizing rho commands values with
-  | price φ day =>
-      simp [efRatMachineSteps, efRatEvalCommand, efRatRawEvalCommand,
-        efBoundMachineStep, efBoundCommandStep, efBoundRawStep,
-        EF.toNat, EF.absBoundWith]
-  | const q =>
-      simp [efRatMachineSteps, efRatEvalCommand, efRatRawEvalCommand,
-        efBoundMachineStep, efBoundCommandStep, efBoundRawStep,
-        EF.toNat, EF.absBoundWith, Encodable.encodek]
-  | var i =>
-      simp [efRatMachineSteps, efRatEvalCommand, efRatRawEvalCommand,
-        efBoundMachineStep, efBoundCommandStep, efBoundRawStep,
-        efRatRawStep, EF.toNat, EF.absBoundWith]
-  | add a b iha ihb =>
-      let f := efBoundMachineStep
-      rw [show efRatMachineSteps (EF.add a b) =
-          1 + efRatMachineSteps a + efRatMachineSteps b + 1 by
-        simp only [efRatMachineSteps]
-        omega]
-      rw [show 1 + efRatMachineSteps a + efRatMachineSteps b + 1 =
-          1 + (efRatMachineSteps a + efRatMachineSteps b + 1) by omega]
-      rw [iterate_add_forward f 1]
-      simp only [Function.iterate_one]
-      change f^[efRatMachineSteps a + efRatMachineSteps b + 1]
-          (f (efRatEvalCommand (EF.add a b) rho :: commands, values)) = _
-      rw [show f (efRatEvalCommand (EF.add a b) rho :: commands, values) =
-          (efRatEvalCommand a rho :: efRatEvalCommand b rho ::
-            efRatOpCommand 1 :: commands, values) by
-        exact efBoundMachineStep_add a b rho commands values]
-      rw [show efRatMachineSteps a + efRatMachineSteps b + 1 =
-          efRatMachineSteps a + (efRatMachineSteps b + 1) by omega]
-      rw [iterate_add_forward f (efRatMachineSteps a)]
-      rw [show f^[efRatMachineSteps a]
-          (efRatEvalCommand a rho :: efRatEvalCommand b rho ::
-            efRatOpCommand 1 :: commands, values) =
-          (efRatEvalCommand b rho :: efRatOpCommand 1 :: commands,
-            a.absBoundWith (rho.getD · 0) :: values) by
-        simpa only [f, efRatEvalCommand, efRatRawEvalCommand] using
-          iha rho (efRatEvalCommand b rho :: efRatOpCommand 1 :: commands) values]
-      rw [iterate_add_forward f (efRatMachineSteps b) 1]
-      rw [show f^[efRatMachineSteps b]
-          (efRatEvalCommand b rho :: efRatOpCommand 1 :: commands,
-            a.absBoundWith (rho.getD · 0) :: values) =
-          (efRatOpCommand 1 :: commands,
-            b.absBoundWith (rho.getD · 0) ::
-              a.absBoundWith (rho.getD · 0) :: values) by
-        simpa only [f, efRatEvalCommand, efRatRawEvalCommand] using
-          ihb rho (efRatOpCommand 1 :: commands)
-            (a.absBoundWith (rho.getD · 0) :: values)]
-      simp [f, efBoundMachineStep, efBoundCommandStep, efRatCommandStep,
-        efRatOpCommand, efRatBinaryValueStep, EF.absBoundWith]
-  | mul a b iha ihb =>
-      let f := efBoundMachineStep
-      rw [show efRatMachineSteps (EF.mul a b) =
-          1 + efRatMachineSteps a + efRatMachineSteps b + 1 by
-        simp only [efRatMachineSteps]
-        omega]
-      rw [show 1 + efRatMachineSteps a + efRatMachineSteps b + 1 =
-          1 + (efRatMachineSteps a + efRatMachineSteps b + 1) by omega]
-      rw [iterate_add_forward f 1]
-      simp only [Function.iterate_one]
-      change f^[efRatMachineSteps a + efRatMachineSteps b + 1]
-          (f (efRatEvalCommand (EF.mul a b) rho :: commands, values)) = _
-      rw [show f (efRatEvalCommand (EF.mul a b) rho :: commands, values) =
-          (efRatEvalCommand a rho :: efRatEvalCommand b rho ::
-            efRatOpCommand 2 :: commands, values) by
-        exact efBoundMachineStep_mul a b rho commands values]
-      rw [show efRatMachineSteps a + efRatMachineSteps b + 1 =
-          efRatMachineSteps a + (efRatMachineSteps b + 1) by omega]
-      rw [iterate_add_forward f (efRatMachineSteps a)]
-      rw [show f^[efRatMachineSteps a]
-          (efRatEvalCommand a rho :: efRatEvalCommand b rho ::
-            efRatOpCommand 2 :: commands, values) =
-          (efRatEvalCommand b rho :: efRatOpCommand 2 :: commands,
-            a.absBoundWith (rho.getD · 0) :: values) by
-        simpa only [f, efRatEvalCommand, efRatRawEvalCommand] using
-          iha rho (efRatEvalCommand b rho :: efRatOpCommand 2 :: commands) values]
-      rw [iterate_add_forward f (efRatMachineSteps b) 1]
-      rw [show f^[efRatMachineSteps b]
-          (efRatEvalCommand b rho :: efRatOpCommand 2 :: commands,
-            a.absBoundWith (rho.getD · 0) :: values) =
-          (efRatOpCommand 2 :: commands,
-            b.absBoundWith (rho.getD · 0) ::
-              a.absBoundWith (rho.getD · 0) :: values) by
-        simpa only [f, efRatEvalCommand, efRatRawEvalCommand] using
-          ihb rho (efRatOpCommand 2 :: commands)
-            (a.absBoundWith (rho.getD · 0) :: values)]
-      simp [f, efBoundMachineStep, efBoundCommandStep, efRatCommandStep,
-        efRatOpCommand, efRatBinaryValueStep, EF.absBoundWith]
-  | max a b iha ihb =>
-      let f := efBoundMachineStep
-      rw [show efRatMachineSteps (EF.max a b) =
-          1 + efRatMachineSteps a + efRatMachineSteps b + 1 by
-        simp only [efRatMachineSteps]
-        omega]
-      rw [show 1 + efRatMachineSteps a + efRatMachineSteps b + 1 =
-          1 + (efRatMachineSteps a + efRatMachineSteps b + 1) by omega]
-      rw [iterate_add_forward f 1]
-      simp only [Function.iterate_one]
-      change f^[efRatMachineSteps a + efRatMachineSteps b + 1]
-          (f (efRatEvalCommand (EF.max a b) rho :: commands, values)) = _
-      rw [show f (efRatEvalCommand (EF.max a b) rho :: commands, values) =
-          (efRatEvalCommand a rho :: efRatEvalCommand b rho ::
-            efRatOpCommand 1 :: commands, values) by
-        exact efBoundMachineStep_max a b rho commands values]
-      rw [show efRatMachineSteps a + efRatMachineSteps b + 1 =
-          efRatMachineSteps a + (efRatMachineSteps b + 1) by omega]
-      rw [iterate_add_forward f (efRatMachineSteps a)]
-      rw [show f^[efRatMachineSteps a]
-          (efRatEvalCommand a rho :: efRatEvalCommand b rho ::
-            efRatOpCommand 1 :: commands, values) =
-          (efRatEvalCommand b rho :: efRatOpCommand 1 :: commands,
-            a.absBoundWith (rho.getD · 0) :: values) by
-        simpa only [f, efRatEvalCommand, efRatRawEvalCommand] using
-          iha rho (efRatEvalCommand b rho :: efRatOpCommand 1 :: commands) values]
-      rw [iterate_add_forward f (efRatMachineSteps b) 1]
-      rw [show f^[efRatMachineSteps b]
-          (efRatEvalCommand b rho :: efRatOpCommand 1 :: commands,
-            a.absBoundWith (rho.getD · 0) :: values) =
-          (efRatOpCommand 1 :: commands,
-            b.absBoundWith (rho.getD · 0) ::
-              a.absBoundWith (rho.getD · 0) :: values) by
-        simpa only [f, efRatEvalCommand, efRatRawEvalCommand] using
-          ihb rho (efRatOpCommand 1 :: commands)
-            (a.absBoundWith (rho.getD · 0) :: values)]
-      simp [f, efBoundMachineStep, efBoundCommandStep, efRatCommandStep,
-        efRatOpCommand, efRatBinaryValueStep, EF.absBoundWith]
-  | safeRecip a iha =>
-      let f := efBoundMachineStep
-      rw [show efRatMachineSteps (EF.safeRecip a) =
-          1 + efRatMachineSteps a + 1 by
-        simp only [efRatMachineSteps]
-        omega]
-      rw [show 1 + efRatMachineSteps a + 1 =
-          1 + (efRatMachineSteps a + 1) by omega]
-      rw [iterate_add_forward f 1]
-      simp only [Function.iterate_one]
-      change f^[efRatMachineSteps a + 1]
-          (f (efRatEvalCommand (EF.safeRecip a) rho :: commands, values)) = _
-      rw [show f (efRatEvalCommand (EF.safeRecip a) rho :: commands, values) =
-          (efRatEvalCommand a rho :: efRatOpCommand 4 :: commands, values) by
-        exact efBoundMachineStep_safeRecip a rho commands values]
-      rw [iterate_add_forward f (efRatMachineSteps a) 1]
-      rw [show f^[efRatMachineSteps a]
-          (efRatEvalCommand a rho :: efRatOpCommand 4 :: commands, values) =
-          (efRatOpCommand 4 :: commands,
-            a.absBoundWith (rho.getD · 0) :: values) by
-        simpa only [f, efRatEvalCommand, efRatRawEvalCommand] using
-          iha rho (efRatOpCommand 4 :: commands) values]
-      simp [f, efBoundMachineStep, efBoundCommandStep,
-        efRatOpCommand, efRatUnaryValueStep, EF.absBoundWith]
-  | letE x body ihx ihbody =>
-      let f := efBoundMachineStep
-      rw [show efRatMachineSteps (EF.letE x body) =
-          1 + efRatMachineSteps x + 1 + efRatMachineSteps body by
-        simp [efRatMachineSteps]
-        omega]
-      rw [show 1 + efRatMachineSteps x + 1 + efRatMachineSteps body =
-          1 + (efRatMachineSteps x + 1 + efRatMachineSteps body) by omega]
-      rw [iterate_add_forward f 1]
-      simp only [Function.iterate_one]
-      change f^[efRatMachineSteps x + 1 + efRatMachineSteps body]
-          (f (efRatEvalCommand (EF.letE x body) rho :: commands, values)) = _
-      rw [show f (efRatEvalCommand (EF.letE x body) rho :: commands, values) =
-          (efRatEvalCommand x rho :: efRatLetBodyCommand body.toNat rho :: commands,
-            values) by
-        exact efBoundMachineStep_letE x body rho commands values]
-      rw [show efRatMachineSteps x + 1 + efRatMachineSteps body =
-          efRatMachineSteps x + (1 + efRatMachineSteps body) by omega]
-      rw [iterate_add_forward f (efRatMachineSteps x)]
-      rw [show f^[efRatMachineSteps x]
-          (efRatEvalCommand x rho :: efRatLetBodyCommand body.toNat rho :: commands,
-            values) =
-          (efRatLetBodyCommand body.toNat rho :: commands,
-            x.absBoundWith (rho.getD · 0) :: values) by
-        simpa only [f, efRatEvalCommand, efRatRawEvalCommand] using
-          ihx rho (efRatLetBodyCommand body.toNat rho :: commands) values]
-      rw [iterate_add_forward f 1 (efRatMachineSteps body)]
-      simp only [Function.iterate_one]
-      rw [show f
-          (efRatLetBodyCommand body.toNat rho :: commands,
-            x.absBoundWith (rho.getD · 0) :: values) =
-          (efRatRawEvalCommand body.toNat
-            (x.absBoundWith (rho.getD · 0) :: rho) :: commands, values) by
-        exact efBoundMachineStep_letBody body.toNat rho
-          (x.absBoundWith (rho.getD · 0)) commands values]
-      rw [show efBoundMachineStep^[efRatMachineSteps body]
-          (efRatRawEvalCommand body.toNat
-              (x.absBoundWith (rho.getD · 0) :: rho) :: commands, values) =
-          (commands, body.absBoundWith
-            ((x.absBoundWith (rho.getD · 0) :: rho).getD · 0) :: values) by
-        simpa only [efRatEvalCommand] using
-          ihbody (x.absBoundWith (rho.getD · 0) :: rho) commands values]
-      congr 2
+      (commands, e.absBoundWith (rho.getD · 0) :: values) :=
+  efMachine_correct efBoundMachineStep (fun e rho => e.absBoundWith (rho.getD · 0))
+    1 2 1 4
+    (fun φ day rho cs vs => by
+      simp [efRatEvalCommand, efRatRawEvalCommand, efBoundMachineStep, efBoundCommandStep,
+        efBoundRawStep, EF.toNat, EF.absBoundWith])
+    (fun q rho cs vs => by
+      simp [efRatEvalCommand, efRatRawEvalCommand, efBoundMachineStep, efBoundCommandStep,
+        efBoundRawStep, EF.toNat, EF.absBoundWith, Encodable.encodek])
+    (fun i rho cs vs => by
+      simp [efRatEvalCommand, efRatRawEvalCommand, efBoundMachineStep, efBoundCommandStep,
+        efBoundRawStep, efRatRawStep, EF.toNat, EF.absBoundWith])
+    (fun a b rho cs vs => efBoundMachineStep_add a b rho cs vs)
+    (fun a b rho cs vs => by
+      simp [efBoundMachineStep, efBoundCommandStep, efRatCommandStep, efRatOpCommand,
+        efRatBinaryValueStep, EF.absBoundWith])
+    (fun a b rho cs vs => efBoundMachineStep_mul a b rho cs vs)
+    (fun a b rho cs vs => by
+      simp [efBoundMachineStep, efBoundCommandStep, efRatCommandStep, efRatOpCommand,
+        efRatBinaryValueStep, EF.absBoundWith])
+    (fun a b rho cs vs => efBoundMachineStep_max a b rho cs vs)
+    (fun a b rho cs vs => by
+      simp [efBoundMachineStep, efBoundCommandStep, efRatCommandStep, efRatOpCommand,
+        efRatBinaryValueStep, EF.absBoundWith])
+    (fun a rho cs vs => efBoundMachineStep_safeRecip a rho cs vs)
+    (fun a rho cs vs => by
+      simp [efBoundMachineStep, efBoundCommandStep, efRatOpCommand, efRatUnaryValueStep,
+        EF.absBoundWith])
+    (fun x body rho cs vs => efBoundMachineStep_letE x body rho cs vs)
+    (fun body rho q cs vs => efBoundMachineStep_letBody body.toNat rho q cs vs)
+    (fun x body rho => by
+      rw [EF.absBoundWith]
       apply congrArg body.absBoundWith
       funext i
-      cases i <;> rfl
+      cases i <;> rfl)
+    e rho commands values
 
 private lemma efBoundMachine_terminal (values : List ℚ) :
     efBoundMachineStep ([], values) = ([], values) := rfl
@@ -7018,7 +2964,6 @@ private lemma tradingFirmCutoffTradeLists_prim :
     rw [ratNatCeilData_eq]
     simpa using tradingFirmTotalBound_nonneg n
 
-
 private def firmBudgetAssignmentBreachesData
     (core : BudgetCoreInput) (xs : List Bool) : Bool :=
   (List.range core.2).any fun m => firmBudgetBreachAtDayData core xs m
@@ -7092,9 +3037,11 @@ private lemma priorBudgetBreachData_prim : Primrec priorBudgetBreachData := by
         | cons xs xss ih => simp [ih]
       exact hAny assignments
 
-/-! The Budgeter's scale factor is the minimum over finitely many worlds of a per-world
-value feature.  That feature is built here as a standalone proof-erased syntax constructor,
-so the bridge back to `Strategy.tradeListWorldValueFeature` stays exact and reusable. -/
+/-! ## The Budgeter's scale factor
+
+The scale factor is the minimum over finitely many worlds of a per-world value feature.
+That feature is built here as a standalone proof-erased syntax constructor, so the bridge
+back to `Strategy.tradeListWorldValueFeature` stays exact and reusable. -/
 
 private def tradeListWorldValueFeatureData
     (atoms : List ℕ) (xs : List Bool) (trades : List (EF × Sentence))
@@ -7105,9 +3052,8 @@ private def tradeListWorldValueFeatureData
       (.mul (.const (-1)) (.price p.2 n))))
 
 section
--- `Nat.sqrt` is locally irreducible here: `Primrec` elaboration over these deeply nested
--- product types otherwise unfolds its well-founded definition during `whnf` and loops.  The
--- other names are blocked so the defeq bridges match structurally instead of by reduction.
+-- `Nat.sqrt` irreducible: see the module header.  The other names are blocked so the
+-- defeq bridges match structurally instead of by reduction.
 attribute [local irreducible] Nat.sqrt sentenceBoolFromAtomList
   tradeListWorldValueFeatureData
 
@@ -7182,9 +3128,8 @@ private def budgetWorldScaleData
     (EF.neg (tradeListWorldValueFeatureData atoms xs trades core.2)))
 
 section
--- `Nat.sqrt` is locally irreducible here: `Primrec` elaboration over these deeply nested
--- product types otherwise unfolds its well-founded definition during `whnf` and loops.  The
--- other names are blocked so the defeq bridges match structurally instead of by reduction.
+-- `Nat.sqrt` irreducible: see the module header.  The other names are blocked so the
+-- defeq bridges match structurally instead of by reduction.
 attribute [local irreducible] Nat.sqrt budgetWorldScaleData budgetAtomList
   firmRawPriorWorthData tradeListWorldValueFeatureData
 
@@ -7226,7 +3171,7 @@ private lemma budgetWorldScaleData_prim : Primrec fun p :
         (p.1.1.1.1.2,
           budgetAtomList p.1.1.1.1.1 p.1.1.1.2 p.1.2, p.2)
         p.1.1.1.2 p.1.2)⁻¹ :=
-    ratInv_prim.comp (ratAdd_prim.comp (natCastRat_prim.comp hb) hworth)
+    ratInv_prim.comp (ratAdd_prim.comp (ratNatCast_prim.comp hb) hworth)
   have hvalue : Primrec fun p : P =>
       tradeListWorldValueFeatureData
         (budgetAtomList p.1.1.1.1.1 p.1.1.1.2 p.1.2) p.2
@@ -7276,9 +3221,8 @@ private def budgetScaleFeatureData (core : BudgetCoreInput) : EF :=
   EF.listMin (budgetScaleFeaturesData core)
 
 section
--- `Nat.sqrt` is locally irreducible here: `Primrec` elaboration over these deeply nested
--- product types otherwise unfolds its well-founded definition during `whnf` and loops.  The
--- other names are blocked so the defeq bridges match structurally instead of by reduction.
+-- `Nat.sqrt` irreducible: see the module header.  The other names are blocked so the
+-- defeq bridges match structurally instead of by reduction.
 attribute [local irreducible] Nat.sqrt budgetScaleFeaturesData
   budgetScaleFeatureData budgetConsistentAtDayData budgetWorldScaleData
   budgetAtomList decodedStageTable tableConsistentFromAtomList
@@ -7450,11 +3394,12 @@ private lemma budgetScaleFeatureData_eq
             (rationalHistory past) (finiteAtomTableFromList A xs) n)) ih
 
 section
--- `Nat.sqrt` is locally irreducible here: `Primrec` elaboration over these deeply nested
--- product types otherwise unfolds its well-founded definition during `whnf` and loops.  The
--- other names are blocked so the defeq bridges match structurally instead of by reduction.
+-- `Nat.sqrt` irreducible: see the module header.  The other names are blocked so the
+-- defeq bridges match structurally instead of by reduction.
 attribute [local irreducible] Nat.sqrt priorBudgetBreachData
   budgetScaleFeatureData
+
+/-! ## Assembling the Trading Firm's day trade list -/
 
 private lemma budgeterTradesFromStageTradeLists_prim : Primrec fun core :
     BudgetCoreInput =>
@@ -7499,9 +3444,8 @@ private abbrev TradingFirmComponentInput :=
   ((List (Finset Sentence) × List RationalBeliefState) × ℕ) × ℕ
 
 section
--- `Nat.sqrt` is locally irreducible here: `Primrec` elaboration over these deeply nested
--- product types otherwise unfolds its well-founded definition during `whnf` and loops.  The
--- other names are blocked so the defeq bridges match structurally instead of by reduction.
+-- `Nat.sqrt` irreducible: see the module header.  The other names are blocked so the
+-- defeq bridges match structurally instead of by reduction.
 attribute [local irreducible] Nat.sqrt tradingFirmCutoffTradeLists
   budgeterTradesFromStageTradeLists
 
@@ -7585,9 +3529,8 @@ private abbrev TradingFirmInput :=
   (List (Finset Sentence) × List RationalBeliefState) × ℕ
 
 section
--- `Nat.sqrt` is locally irreducible here: `Primrec` elaboration over these deeply nested
--- product types otherwise unfolds its well-founded definition during `whnf` and loops.  The
--- other name is blocked so the defeq bridge matches structurally instead of by reduction.
+-- `Nat.sqrt` irreducible: see the module header.  The other name is blocked so the
+-- defeq bridge matches structurally instead of by reduction.
 attribute [local irreducible] Nat.sqrt
   tradingFirmComponentTradesFromStageTradeLists
 
@@ -7615,6 +3558,12 @@ private lemma tradingFirmTradesFromStageTradeLists_prim :
 
 end
 
+/-! ## The bounded LIA state-prefix evaluator
+
+The day error schedule, the stage-prefix decoder and the three components combine into the
+fuel-bounded evaluators of the LIA state prefix, its encoded quote table and its encoded
+belief-state entries. -/
+
 private lemma marketMakerError_prim : Primrec marketMakerError := by
   have hexponent : Primrec fun n : ℕ => n + 1 :=
     Primrec.nat_add.comp Primrec.id (Primrec.const 1)
@@ -7624,9 +3573,8 @@ private lemma marketMakerError_prim : Primrec marketMakerError := by
     rfl
 
 section
--- `Nat.sqrt` is locally irreducible here: `Primrec` elaboration over these deeply nested
--- product types otherwise unfolds its well-founded definition during `whnf` and loops.  The
--- other names are blocked so the defeq bridges match structurally instead of by reduction.
+-- `Nat.sqrt` irreducible: see the module header.  The other names are blocked so the
+-- defeq bridges match structurally instead of by reduction.
 attribute [local irreducible] Nat.sqrt liaPrefixFromTradeListsAtFuel
   tradingFirmTradesFromStageTradeLists marketMakerSearchUpToTradeList
 
@@ -7744,9 +3692,8 @@ private lemma liaPrefixAtFuel_prim {DP : DeductiveProcess}
     rfl
 
 section
--- `Nat.sqrt` is locally irreducible here: `Primrec` elaboration over these deeply nested
--- product types otherwise unfolds its well-founded definition during `whnf` and loops.  The
--- other name is blocked so the defeq bridge matches structurally instead of by reduction.
+-- `Nat.sqrt` irreducible: see the module header.  The other name is blocked so the
+-- defeq bridge matches structurally instead of by reduction.
 attribute [local irreducible] Nat.sqrt liaEncodedQuoteAtFuel
 
 /-- The bounded exact rational quote evaluator is primitive recursive in its common
@@ -7809,9 +3756,8 @@ private lemma liaEncodedQuoteAtFuel_prim {DP : DeductiveProcess}
 end
 
 section
--- `Nat.sqrt` is locally irreducible here: `Primrec` elaboration over these deeply nested
--- product types otherwise unfolds its well-founded definition during `whnf` and loops.  The
--- other name is blocked so the defeq bridge matches structurally instead of by reduction.
+-- `Nat.sqrt` irreducible: see the module header.  The other name is blocked so the
+-- defeq bridge matches structurally instead of by reduction.
 attribute [local irreducible] Nat.sqrt liaEncodedQuoteNatAtFuel
 
 /-- The natural-coded bounded evaluator is primitive recursive in the paired
@@ -7839,7 +3785,6 @@ private lemma liaEncodedQuoteNatAtFuel_prim {DP : DeductiveProcess}
 
 end
 
-
 /-- Concrete computability certificate for the sole bounded-evaluator boundary in the
 core LIA construction. -/
 lemma liaEncodedQuoteNatAtFuel_computable {DP : DeductiveProcess}
@@ -7848,9 +3793,8 @@ lemma liaEncodedQuoteNatAtFuel_computable {DP : DeductiveProcess}
   (liaEncodedQuoteNatAtFuel_prim process).to_comp
 
 section
--- `Nat.sqrt` is locally irreducible here: `Primrec` elaboration over these deeply nested
--- product types otherwise unfolds its well-founded definition during `whnf` and loops.  The
--- other name is blocked so the defeq bridge matches structurally instead of by reduction.
+-- `Nat.sqrt` irreducible: see the module header.  The other name is blocked so the
+-- defeq bridge matches structurally instead of by reduction.
 attribute [local irreducible] Nat.sqrt liaEncodedEntriesAtFuel
 
 /-- The bounded belief-state evaluator is primitive recursive in its day input and its
@@ -7925,6 +3869,8 @@ lemma exists_liaEntries_code {DP : DeductiveProcess}
   rw [hcode]
   simp
 
+/-! ## `thm:lia` and `thm:li`: the existence theorems -/
+
 /-- The concrete bounded evaluator compiler assembled from the primitive-recursive
 first-order implementation above. -/
 def liaBoundedEvaluatorCompiler {DP : DeductiveProcess}
@@ -7933,56 +3879,49 @@ def liaBoundedEvaluatorCompiler {DP : DeductiveProcess}
   computable := liaEncodedQuoteNatAtFuel_computable process
 
 /-- `thm:lia`: the recursively constructed rational LIA market is a logical inductor
-over every computable deductive process, **at the paper's own quantifier** — no trader in
-ordinary machine polynomial time exploits it.
-Paper node: `thm:lia` -/
-theorem LIA_isMachineLogicalInductor (DP : DeductiveProcess)
-    (hDP : ComputableDeductiveProcess DP) :
-    IsMachineLogicalInductor (liaHistory DP) DP := by
-  obtain ⟨process⟩ := hDP.nonemptyComputation
-  exact lia_isMachineLogicalInductor_of_compiler process
-    (liaBoundedEvaluatorCompiler process)
+over every computable deductive process — no efficiently computable trader (`def:ec`,
+ordinary polynomial time) exploits it.
 
-/-- `thm:lia` at the fuel-class compatibility predicate, by the bridge. This is the form the
-property tail consumes.
+`ComputableDeductiveProcess` is the paper's own condition on `def:dedproc`, which
+`DeductiveProcess` (`Framework/Criterion.lean`) carries as a separate predicate rather than
+as a field, so the hypothesis is not a hypothesis beyond the paper.  The two theorems
+below take it for the same reason.
 Paper node: `thm:lia` -/
 theorem LIA_is_logical_inductor (DP : DeductiveProcess)
     (hDP : ComputableDeductiveProcess DP) :
-    IsLogicalInductor (liaHistory DP) DP :=
-  @IsMachineLogicalInductor.toIsLogicalInductor _ _ (LIA_isMachineLogicalInductor DP hDP)
+    IsLogicalInductor (liaHistory DP) DP := by
+  obtain ⟨process⟩ := hDP.nonemptyComputation
+  exact lia_isLogicalInductor_of_compiler process
+    (liaBoundedEvaluatorCompiler process)
 
-/-- `thm:li` at the paper's own quantifier: every computable deductive process admits a
-market no machine-polynomial-time trader exploits.
-Paper node: `thm:li` -/
-theorem exists_machine_logical_inductor (DP : DeductiveProcess)
-    (hDP : ComputableDeductiveProcess DP) :
-    ∃ P : History, IsMachineLogicalInductor P DP :=
-  ⟨liaHistory DP, LIA_isMachineLogicalInductor DP hDP⟩
+/-- `thm:li`: every computable deductive process admits a market no efficiently computable
+trader exploits.
 
-/-- `thm:li`: every computable deductive process admits a logical inductor.
+This is the bare-market projection; the paper's own computable-belief-sequence form
+(`def:belseq`) is `exists_computable_beliefSequence_logical_inductor` below.
 Paper node: `thm:li` -/
 theorem exists_logical_inductor (DP : DeductiveProcess)
     (hDP : ComputableDeductiveProcess DP) :
     ∃ P : History, IsLogicalInductor P DP :=
   ⟨liaHistory DP, LIA_is_logical_inductor DP hDP⟩
 
-/-- **`thm:li`, full belief-sequence form.**  The paper's main theorem concludes existence of a
-*computable belief sequence* (`def:belseq`) of finite-support `[0,1]`-rational belief states
-(`def:belstate`) whose induced pricing satisfies the criterion.  The witness is the recursive
-rational belief sequence `liaStates DP : ℕ → RationalBeliefState`, and
+/-- **`thm:li`, full belief-sequence form.**  The paper's main theorem concludes existence
+of a *computable belief sequence* (`def:belseq`) of finite-support `[0,1]`-rational belief
+states (`def:belstate`) whose induced pricing satisfies the criterion.  The witness is the
+recursive rational belief sequence `liaStates DP : ℕ → RationalBeliefState`, and
 
-* `IsMachineLogicalInductor (fun n => (𝔹 n).toValuation) DP` — the induced real pricing is a
-  logical inductor **at the paper's own quantifier**: no trader in ordinary machine
-  polynomial time exploits it.  The fuel-class reading follows by
-  `IsMachineLogicalInductor.toIsLogicalInductor`.  This class bundles the paper's
-  *computable exact-rational market* certificate
-  (`marketComputable : ComputableMarket` — one fixed program computes the rational quote table),
-  the computable deductive process, and the no-exploitation criterion;
-* **one program emits the belief states themselves**: a single `Nat.Partrec.Code` that on input
-  `n` outputs the code of the day-`n` finite association list `(𝔹 n).entries`.  This is the
-  conjunct that makes `𝔹` a *computable belief sequence* in the paper's sense; it is strictly
-  stronger than the quote-table computability carried by `marketComputable`, since a uniformly
-  computable finite-support quote table need not have a computable support listing;
+* `IsLogicalInductor (fun n => (𝔹 n).toValuation) DP` — the induced real pricing is a
+  logical inductor **at the paper's own quantifier**: no trader in ordinary polynomial time
+  exploits it.  This class bundles the paper's
+  *computable exact-rational market* certificate (`marketComputable : ComputableMarket` —
+  one fixed program computes the rational quote table), the computable deductive process,
+  and the no-exploitation criterion;
+* **one program emits the belief states themselves**: a single `Nat.Partrec.Code` that on
+  input `n` outputs the code of the day-`n` finite association list `(𝔹 n).entries`.  This
+  is the conjunct that makes `𝔹` a *computable belief sequence* in the paper's sense; it is
+  strictly stronger than the quote-table computability carried by `marketComputable`, since
+  a uniformly computable finite-support quote table need not have a computable support
+  listing;
 * each day's belief state has **finite support** — only the finitely many sentences in
   `(𝔹 n).support` are priced nonzero;
 * each priced value is an **exact rational in `[0,1]`**; and
@@ -7991,22 +3930,22 @@ rational belief sequence `liaStates DP : ℕ → RationalBeliefState`, and
 `exists_logical_inductor` above is the projection to the bare existence statement.
 
 Proof kind `C` (composition).  Provenance: the criterion conjunct is
-`LIA_isMachineLogicalInductor` (a); the emission conjunct is `exists_liaEntries_code` (a) — minimization of the primitive
-recursive bounded evaluator `liaEncodedEntriesAtFuel` over its fuel clock, pinned to the
-semantic states by `liaEncodedEntriesAtFuel_sound`; the support/range/cast conjuncts are
-`RationalBeliefState` facts (a).
+`LIA_is_logical_inductor` (a); the emission conjunct is `exists_liaEntries_code` (a) —
+minimization of the primitive recursive bounded evaluator `liaEncodedEntriesAtFuel` over
+its fuel clock, pinned to the semantic states by `liaEncodedEntriesAtFuel_sound`; the
+support/range/cast conjuncts are `RationalBeliefState` facts (a).
 Paper node: `thm:li` -/
 theorem exists_computable_beliefSequence_logical_inductor (DP : DeductiveProcess)
     (hDP : ComputableDeductiveProcess DP) :
     ∃ 𝔹 : ℕ → RationalBeliefState,
-      IsMachineLogicalInductor (fun n => (𝔹 n).toValuation) DP ∧
+      IsLogicalInductor (fun n => (𝔹 n).toValuation) DP ∧
         (∃ code : Nat.Partrec.Code, ∀ n : ℕ,
           Encodable.encode (𝔹 n).entries ∈ code.eval n) ∧
         (∀ n φ, φ ∉ (𝔹 n).support → (𝔹 n).quote φ = 0) ∧
         (∀ n φ, 0 ≤ (𝔹 n).quote φ ∧ (𝔹 n).quote φ ≤ 1) ∧
         (∀ n φ, (𝔹 n).toValuation φ = ((𝔹 n).quote φ : ℝ)) := by
   obtain ⟨process⟩ := hDP.nonemptyComputation
-  exact ⟨liaStates DP, LIA_isMachineLogicalInductor DP hDP,
+  exact ⟨liaStates DP, LIA_is_logical_inductor DP hDP,
     exists_liaEntries_code process,
     fun n φ h => (liaStates DP n).quote_eq_zero_of_not_mem h,
     fun n φ => (liaStates DP n).quote_mem_Icc φ,
@@ -8014,90 +3953,28 @@ theorem exists_computable_beliefSequence_logical_inductor (DP : DeductiveProcess
 
 /-! ## Public computability interface for downstream market constructions
 
-Everything above is `private` because it is implementation detail of *this* file's
-compiler.  That is the right default, but it has a cost: a construction that prices the
-Trading Firm **together with a further trader** — a privileged enforcement trader, say —
-runs the same erased recurrence with one extra trade list in the day's aggregate, and needs
-exactly the same first-order ingredients to show its own bounded evaluator computable.
-With those ingredients sealed, such a construction has to re-derive this file.
+A construction that builds a *region of credences* from the deductive stage has to decide,
+as a primitive recursive function of finite data, which Boolean assignments to the atoms
+occurring in a stage satisfy that stage.  This section is that decision, stated against the
+public `Sentence.atoms` / `sentenceBool` / `tableConsistent` vocabulary rather than against
+the erased atom-list forms the Budgeter's compiler works in, so that a caller need not
+rebuild the strong-recursion tower over the formula encoding.  Its consumer is
+`Construction/Paper/FiniteEntailment.lean`.
 
-This section re-exports the ingredients and nothing else.  Each declaration is a public
-name for an existing private lemma; no proof, definition or statement above is changed, so
-nothing that currently builds can break.  What is deliberately *not* exported is the
-recurrence itself: a downstream construction states and proves its own, which is where its
-own soundness obligation belongs.
+`_prim` is this file's uniform suffix for a computability certificate.
 
-Provided here: the expressible-feature constructors and `EF.absBound`; the two erased steps
-of the day recurrence (the firm's trade list, and the MarketMaker search over a raw trade
-list); the day error schedule; the deductive-stage prefix decoder; and the belief state's
-exact rational quote.
+What the interface deliberately withholds is the recurrence itself: a downstream
+construction states and proves its own, which is where its own soundness obligation
+belongs.
 -/
 
-/-- `EF.const` is primitive recursive. -/
-lemma efConst_primrec : Primrec EF.const := efConst_prim
+/-! ### The vocabulary
 
-/-- `EF.price` is primitive recursive in the sentence and the day. -/
-lemma efPrice_primrec : Primrec₂ EF.price := efPrice_prim
+`sentenceBool` and `tableConsistent` come from `Budgeter`, `supportSentenceList` from
+`MarketMaker`.  The two definitions below name the erased forms; the computability facts
+are the erased lemmas at those names. -/
 
-/-- `EF.add` is primitive recursive in both arguments. -/
-lemma efAdd_primrec : Primrec₂ EF.add := efAdd_prim
-
-/-- `EF.mul` is primitive recursive in both arguments. -/
-lemma efMul_primrec : Primrec₂ EF.mul := efMul_prim
-
-/-- `EF.max` is primitive recursive in both arguments. -/
-lemma efMax_primrec : Primrec₂ EF.max := efMax_prim
-
-/-- `EF.absBound` is primitive recursive.  A downstream trader that sizes its position
-against the ordinary aggregate's syntactic bound needs this. -/
-lemma efAbsBound_primrec : Primrec EF.absBound := efAbsBound_prim
-
-/-- The day error schedule is primitive recursive. -/
-lemma marketMakerError_primrec : Primrec marketMakerError := marketMakerError_prim
-
-/-- A belief state's exact rational quote is primitive recursive. -/
-lemma rationalBeliefStateQuote_primrec : Primrec₂ RationalBeliefState.quote :=
-  rationalBeliefStateQuote_prim
-
-/-- The bounded deductive-stage prefix decoder is primitive recursive. -/
-lemma processStagePrefixAtFuel_primrec {DP : DeductiveProcess}
-    (process : DeductiveProcessComputation DP) :
-    Primrec₂ fun fuel n => processStagePrefixAtFuel process fuel n :=
-  processStagePrefixAtFuel_prim process
-
-/-- The Trading Firm's day-`n` trade list is primitive recursive in the decoded stage
-prefix, the prior belief states and the day. -/
-lemma tradingFirmTradesFromStageTradeLists_primrec :
-    Primrec fun p : (List (Finset Sentence) × List RationalBeliefState) × ℕ =>
-      tradingFirmTradesFromStageTradeLists
-        (decodedStageTable p.1.1) (rationalHistory p.1.2) p.2 :=
-  tradingFirmTradesFromStageTradeLists_prim
-
-/-- The bounded MarketMaker search over a raw trade list is primitive recursive in the
-trade list, the day, the prior states, the tolerance and the fuel. -/
-lemma marketMakerSearchUpToTradeList_primrec :
-    Primrec fun p : (((List (EF × Sentence) × ℕ) × List RationalBeliefState) × ℚ) × ℕ =>
-      marketMakerSearchUpToTradeList p.1.1.1.1 p.1.1.1.2 p.1.1.2 p.1.2 p.2 :=
-  marketMakerSearchUpToTradeList_prim
-
-
-/-! ### Finite propositional evaluation on an atom list
-
-A downstream development that builds a *region of credences* from the deductive stage has
-to decide, as a primitive recursive function of finite data, which Boolean assignments to
-the atoms occurring in a stage satisfy that stage.  Every ingredient is already proved
-above, in the erased atom-list forms the budgeter's own compiler runs on; what is missing
-is only that they are stated against the public `Sentence.atoms` / `sentenceBool` /
-`tableConsistent` vocabulary, so that a caller does not have to rebuild the
-strong-recursion tower over the formula encoding.
-
-Nothing new is proved here.  `tableConsistent` is public (`Budgeter`), `sentenceBool` and
-`Sentence.atoms` are public (`Budgeter`), and `supportSentenceList` is public
-(`MarketMaker`); the two definitions below are aliases for the erased forms, and the two
-computability facts are the corresponding private lemmas re-exported. -/
-
-/-- **The canonical sentence list of a finite sentence set is primitive recursive.**
-`supportSentenceList` is already public (`MarketMaker`); only its computability was not. -/
+/-- **The canonical sentence list of a finite sentence set is primitive recursive.** -/
 lemma supportSentenceList_primrec : Primrec supportSentenceList :=
   supportSentenceList_prim
 
@@ -8106,6 +3983,7 @@ a computability statement can mention it. -/
 def sentenceListAtoms (sentences : List Sentence) : List ℕ :=
   sentenceListAtomOccurrences sentences
 
+/-- Membership in the atom list is occurrence in one of the listed sentences. -/
 @[simp] lemma mem_sentenceListAtoms (sentences : List Sentence) (a : ℕ) :
     a ∈ sentenceListAtoms sentences ↔ ∃ φ ∈ sentences, a ∈ φ.atoms :=
   mem_sentenceListAtomOccurrences sentences a
@@ -8159,20 +4037,5 @@ lemma tableConsistent_atomTableFromList_primrec :
       tableConsistent (atomTableFromList p.1.1 p.1.2) p.2 :=
   tableConsistentFromAtomList_prim.of_eq fun p =>
     tableConsistent_atomTableFromList_eq p.1.1 p.1.2 p.2
-
-#print axioms supportSentenceList_primrec
-#print axioms sentenceListAtoms_primrec
-#print axioms sentenceBool_atomTableFromList_primrec
-#print axioms allBoolLists_primrec
-#print axioms tableConsistent_atomTableFromList_primrec
-#print axioms efAbsBound_primrec
-#print axioms tradingFirmTradesFromStageTradeLists_primrec
-#print axioms marketMakerSearchUpToTradeList_primrec
-#print axioms processStagePrefixAtFuel_primrec
-
-#print axioms liaEncodedQuoteNatAtFuel_computable
-#print axioms LIA_is_logical_inductor
-#print axioms exists_logical_inductor
-#print axioms exists_computable_beliefSequence_logical_inductor
 
 end LogicalInduction

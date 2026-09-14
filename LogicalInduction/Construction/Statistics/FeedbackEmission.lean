@@ -1,0 +1,750 @@
+import LogicalInduction.Construction.Statistics.SettlementClock
+import LogicalInduction.Properties.ExpectationProperties
+import LogicalInduction.Framework.Emission.WriteOut
+
+/-!
+# Concrete feedback-trader emission for `thm:wubaff` and `thm:wubexp`
+
+The feedback trader of the paper's unbiasedness-from-feedback argument is indexed by a
+deferral function (`def:deferralfunc`), whose graph is decided in time polynomial in its
+*output* and not in its input (tex:1244).  This file turns that bounded schedule into the
+literal coefficient and sentence streams of `AffineCombination.feedbackTrader`.
+
+**The schedule.**  On day `n` the deferral graph is scanned only over the candidate values
+`m ≤ n` the day's budget can reach; `scheduledValue` and `scheduledMatch`
+(`Properties/SelfTrust.lean`, where they sit beside `DeferralFunction` because
+`Construction/Quotation/` consumes them too) return `0` before the deferral has been located
+and the true value once it has (`scheduledMatch_eq_one_iff`, `scheduledValue_eq`).
+`scheduledDeferral`, the day-indexed form of that lookup, is here.
+
+**Bounded-schedule features.**  `scheduledReturnFeature`, `scheduledFactorFeature`,
+`scheduledWealthFeature` and `scheduledBetaFeature` are the bounded-schedule forms of the
+four feedback features.  Each is proved equal to its ideal counterpart once the runtime day
+has reached the relevant deferral value, and each carries a `BigSpliceStream` emission
+certificate.
+
+**Trade blocks and the flattening.**  `scheduledTermCount` gives a component's width on a
+day — an opening match takes priority, and strict increase of the deferral function rules
+out an overlap — with `scheduledTermCoefficient` and `scheduledTermSentence` its entries;
+`scheduledTradeBlock_eq` proves the block is literally the round-trip trade syntax,
+including the nested closing coefficient `AffineCombination.neg` generates.
+`scheduledTradeCount`, `scheduledTradeMember` and `scheduledTradeOffset` are the prefix-scan
+fields that reconstruct the variable-width blocks as one day-indexed stream
+(`scheduledTradeFields_eq_blocks`, `scheduledTradeFields_eq_trader`).
+
+**The inhabitants.**  `feedbackTraderEmission`, `feedbackTraderEmissionFamily` — one
+construction for every rational Kelly fraction — and `feedbackTraderEmissionSigns`, the only
+inhabitants of `AffineCombination.FeedbackTraderEmissionSigns`.
+
+**Consumers with the boundary discharged.**  `lic_wubaff_ofFeedbackTruth` and
+`boundedCombination_wubaff_ofFeedbackTruth` (`thm:wubaff`), and `luv_wubexp_ofFeedbackTruth`
+(`thm:wubexp`), each stated over an arbitrary market with `[IsLogicalInductor P DP]`.  The
+market and convergence arguments they invoke live in `Properties/Pseudorandomness.lean` and
+`Properties/ExpectationProperties.lean`.
+
+-/
+
+namespace LogicalInduction
+namespace FeedbackEmission
+
+open AffineCombination
+
+/-! ## Reading the bounded deferral schedule
+
+`scheduledValue` and `scheduledMatch`, the schedule itself, are stated in
+`Properties/SelfTrust.lean` beside `DeferralFunction`, because `Construction/Quotation/`
+consumes them too.  What is here is the day-indexed form the feedback features read off it. -/
+
+/-- Day-indexed notation for the day-bounded deferral lookup. -/
+def scheduledDeferral (f : DeferralFunction) (n k : ℕ) : ℕ :=
+  scheduledValue f (Nat.pair n k)
+
+/-- Day-indexed form of `scheduledValue_eq`. -/
+lemma scheduledDeferral_eq (f : DeferralFunction) {n k : ℕ} (hkn : f k ≤ n) :
+    scheduledDeferral f n k = f k :=
+  scheduledValue_eq f hkn
+
+/-! ## Bounded-schedule features and their ideal counterparts -/
+
+/-- Bounded-schedule version of one feedback return feature. -/
+def scheduledReturnFeature (As : ℕ → AffineCombination)
+    (f : DeferralFunction) (z : ℕ) : EF :=
+  let n := z.unpair.1
+  let k := z.unpair.2
+  EF.add
+    ((As (scheduledDeferral f n k)).priceFeature
+      (scheduledDeferral f n (k + 1)))
+    (EF.mul (EF.const (-1))
+      ((As (scheduledDeferral f n k)).priceFeature
+        (scheduledDeferral f n k)))
+
+/-- Bounded-schedule version of one multiplicative Kelly factor. -/
+def scheduledFactorFeature (As : ℕ → AffineCombination) (W : ℕ → EF)
+    (f : DeferralFunction) (δ : ℚ) (z : ℕ) : EF :=
+  let n := z.unpair.1
+  let k := z.unpair.2
+  EF.add (EF.const 1)
+    (EF.mul
+      (EF.mul (EF.const δ) (W (scheduledDeferral f n k)))
+      (scheduledReturnFeature As f z))
+
+/-- Bounded-schedule wealth syntax before component `k` on runtime day `n`. -/
+def scheduledWealthFeature (As : ℕ → AffineCombination) (W : ℕ → EF)
+    (f : DeferralFunction) (δ : ℚ) (z : ℕ) : EF :=
+  ROIBudget.prodFeatures ((List.range z.unpair.2).map (fun j ↦
+    scheduledFactorFeature As W f δ (Nat.pair z.unpair.1 j)))
+
+/-- Bounded-schedule shares for component `k` on runtime day `n`. -/
+def scheduledBetaFeature (As : ℕ → AffineCombination) (W : ℕ → EF)
+    (f : DeferralFunction) (δ : ℚ) (z : ℕ) : EF :=
+  EF.mul
+    (EF.mul (EF.const δ) (scheduledWealthFeature As W f δ z))
+    (W (scheduledDeferral f z.unpair.1 z.unpair.2))
+
+/-- Once the runtime day has reached both deferral values in play, the bounded-schedule
+return feature *is* the ideal feedback return feature. -/
+lemma scheduledReturnFeature_eq
+    (As : ℕ → AffineCombination) (f : DeferralFunction)
+    {n k : ℕ} (hcur : f k ≤ n) (hnext : f (k + 1) ≤ n) :
+    scheduledReturnFeature As f (Nat.pair n k) =
+      feedbackReturnFeature As f k := by
+  simp [scheduledReturnFeature, feedbackReturnFeature,
+    scheduledDeferral_eq f hcur, scheduledDeferral_eq f hnext]
+
+/-- Once the runtime day has reached both deferral values in play, the bounded-schedule
+Kelly factor *is* the ideal feedback factor. -/
+lemma scheduledFactorFeature_eq
+    (As : ℕ → AffineCombination) (W : ℕ → EF)
+    (f : DeferralFunction)
+    (δ : ℚ) {n k : ℕ} (hcur : f k ≤ n) (hnext : f (k + 1) ≤ n) :
+    scheduledFactorFeature As W f δ (Nat.pair n k) =
+      feedbackFactorFeature As W f δ k := by
+  simp [scheduledFactorFeature, feedbackFactorFeature,
+    scheduledReturnFeature_eq As f hcur hnext,
+    scheduledDeferral_eq f hcur]
+
+/-- Once the runtime day has reached the component's deferral value, the bounded-schedule
+wealth feature *is* the ideal feedback wealth feature; strict increase carries the bound to
+every earlier component in the product. -/
+lemma scheduledWealthFeature_eq
+    {As : ℕ → AffineCombination} {W : ℕ → EF}
+    {f : DeferralFunction} (hstrict : StrictlyIncreasingDeferral f)
+    (δ : ℚ) {n k : ℕ} (hk : f k ≤ n) :
+    scheduledWealthFeature As W f δ (Nat.pair n k) =
+      feedbackWealthFeature As W f δ k := by
+  simp only [scheduledWealthFeature, feedbackWealthFeature, Nat.unpair_pair]
+  apply congrArg ROIBudget.prodFeatures
+  apply List.map_congr_left
+  intro j hj
+  simp only [List.mem_range] at hj
+  apply scheduledFactorFeature_eq As W f δ
+  · exact (hstrict.monotone (by omega)).trans hk
+  · exact (hstrict.monotone (by omega)).trans hk
+
+/-- Once the runtime day has reached the component's deferral value, the bounded-schedule
+share feature *is* the ideal feedback share feature. -/
+lemma scheduledBetaFeature_eq
+    {As : ℕ → AffineCombination} {W : ℕ → EF}
+    {f : DeferralFunction} (hstrict : StrictlyIncreasingDeferral f)
+    (δ : ℚ) {n k : ℕ} (hk : f k ≤ n) :
+    scheduledBetaFeature As W f δ (Nat.pair n k) =
+      feedbackBetaFeature As W f δ k := by
+  simp [scheduledBetaFeature, feedbackBetaFeature,
+    scheduledWealthFeature_eq hstrict δ hk,
+    scheduledDeferral_eq f hk]
+
+/-! ## Polynomial syntax streams for the scheduled features -/
+
+lemma unaryRuler_scheduledDeferral (f : DeferralFunction) :
+    UnaryRuler (fun z ↦ scheduledDeferral f z.unpair.1 z.unpair.2) :=
+  (unaryRuler_scheduledValue f).of_eq (fun z => by simp [scheduledDeferral])
+
+lemma machineSpliceStream_scheduledReturnFeature
+    {As : ℕ → AffineCombination} (hpoly : PolySequence As)
+    (f : DeferralFunction) :
+    MachineSpliceStream (fun z ↦ (scheduledReturnFeature As f z).serialize) := by
+  have hcur : UnaryRuler (fun z ↦ scheduledDeferral f z.unpair.1 z.unpair.2) :=
+    unaryRuler_scheduledDeferral f
+  have hnextInput : UnaryRuler (fun z : ℕ ↦ Nat.pair z.unpair.1 (z.unpair.2 + 1)) :=
+    UnaryRuler.unpairFst.pair UnaryRuler.unpairSnd.succ
+  have hnext : UnaryRuler (fun z ↦ scheduledDeferral f z.unpair.1 (z.unpair.2 + 1)) :=
+    (hcur.comp hnextInput).of_eq (fun z => by simp [scheduledDeferral])
+  have hfuture := hpoly.priceFeature_polySeg.comp
+    (f := fun z : ℕ => Nat.pair (scheduledDeferral f z.unpair.1 z.unpair.2)
+      (scheduledDeferral f z.unpair.1 (z.unpair.2 + 1)))
+    (hcur.pair hnext)
+  have hpresent := hpoly.priceFeature_polySeg.comp
+    (f := fun z : ℕ => Nat.pair (scheduledDeferral f z.unpair.1 z.unpair.2)
+      (scheduledDeferral f z.unpair.1 z.unpair.2))
+    (hcur.pair hcur)
+  have hneg : MachineSpliceStream (fun _ : ℕ ↦ (EF.const (-1)).serialize) :=
+    MachineSpliceStream.serialize_const (-1)
+  simpa [scheduledReturnFeature] using
+    MachineSpliceStream.serialize_add hfuture
+      (MachineSpliceStream.serialize_mul hneg hpresent)
+
+lemma machineSpliceStream_scheduledFactorFeature
+    {As : ℕ → AffineCombination} (hpoly : PolySequence As)
+    {W : ℕ → EF} (hW : PGenerableWeighting W)
+    (f : DeferralFunction) (δ : ℚ) :
+    MachineSpliceStream (fun z ↦
+      (scheduledFactorFeature As W f δ z).serialize) := by
+  have hweight := hW.polySeg.comp
+    (f := fun z : ℕ => scheduledDeferral f z.unpair.1 z.unpair.2)
+    (unaryRuler_scheduledDeferral f)
+  have hone : MachineSpliceStream (fun _ : ℕ ↦ (EF.const 1).serialize) :=
+    MachineSpliceStream.serialize_const 1
+  have hdelta : MachineSpliceStream (fun _ : ℕ ↦ (EF.const δ).serialize) :=
+    MachineSpliceStream.serialize_const δ
+  have hreturn := machineSpliceStream_scheduledReturnFeature hpoly f
+  simpa [scheduledFactorFeature] using MachineSpliceStream.serialize_add hone
+    (MachineSpliceStream.serialize_mul
+      (MachineSpliceStream.serialize_mul hdelta hweight) hreturn)
+
+lemma machineSpliceStream_scheduledWealthFeature
+    {As : ℕ → AffineCombination} (hpoly : PolySequence As)
+    {W : ℕ → EF} (hW : PGenerableWeighting W)
+    (f : DeferralFunction) (δ : ℚ) :
+    MachineSpliceStream (fun z ↦
+      (scheduledWealthFeature As W f δ z).serialize) := by
+  have hfactor := machineSpliceStream_scheduledFactorFeature hpoly hW f δ
+  have hcanonical : UnaryRuler (fun q : ℕ ↦
+      Nat.pair q.unpair.1.unpair.1 q.unpair.2) :=
+    (UnaryRuler.unpairFst.comp UnaryRuler.unpairFst).pair UnaryRuler.unpairSnd
+  have hrightR : UnaryRuler (fun z : ℕ => z.unpair.2) := UnaryRuler.unpairSnd
+  have hblocks := MachineSpliceStream.concatVar
+    (hfactor.comp (f := fun q : ℕ => Nat.pair q.unpair.1.unpair.1 q.unpair.2)
+      hcanonical)
+    (cnt := fun z : ℕ => z.unpair.2) hrightR
+  have hone : MachineSpliceStream (fun _ : ℕ ↦ (EF.const 1).serialize) :=
+    MachineSpliceStream.serialize_const 1
+  have htags := MachineSpliceStream.repeatTag 3 (by norm_num)
+    (cnt := fun z : ℕ => z.unpair.2) hrightR
+  refine MachineSpliceStream.of_eq ((hblocks.append hone).append htags) ?_
+  intro z
+  unfold scheduledWealthFeature
+  rw [ROIBudget.serialize_prodFeatures]
+  simp only [List.flatMap_map, List.length_map,
+    List.length_range, Nat.unpair_pair, List.append_assoc]
+
+lemma machineSpliceStream_scheduledBetaFeature
+    {As : ℕ → AffineCombination} (hpoly : PolySequence As)
+    {W : ℕ → EF} (hW : PGenerableWeighting W)
+    (f : DeferralFunction) (δ : ℚ) :
+    MachineSpliceStream (fun z ↦
+      (scheduledBetaFeature As W f δ z).serialize) := by
+  have hdelta : MachineSpliceStream (fun _ : ℕ ↦ (EF.const δ).serialize) :=
+    MachineSpliceStream.serialize_const δ
+  have hwealth := machineSpliceStream_scheduledWealthFeature hpoly hW f δ
+  have hweight := hW.polySeg.comp
+    (f := fun z : ℕ => scheduledDeferral f z.unpair.1 z.unpair.2)
+    (unaryRuler_scheduledDeferral f)
+  simpa [scheduledBetaFeature] using MachineSpliceStream.serialize_mul
+    (MachineSpliceStream.serialize_mul hdelta hwealth) hweight
+
+/-! ## Conditional affine-term blocks and their flattened index -/
+
+/-- Number of affine terms emitted by component `k` on day `n`.  An opening match takes
+priority; strict increase of the deferral function rules out an overlap between the opening
+and closing cases. -/
+def scheduledTermCount {As : ℕ → AffineCombination} (hpoly : PolySequence As)
+    (f : DeferralFunction) (z : ℕ) : ℕ :=
+  let n := z.unpair.1
+  let k := z.unpair.2
+  let count := hpoly.termCount (scheduledDeferral f n k)
+  if scheduledMatch f z = 1 then count
+  else if scheduledMatch f (Nat.pair n (k + 1)) = 1 then count
+  else 0
+
+lemma unaryRuler_scheduledTermCount
+    {As : ℕ → AffineCombination} (hpoly : PolySequence As)
+    (f : DeferralFunction) :
+    UnaryRuler (scheduledTermCount hpoly f) := by
+  have hmatch := unaryRuler_scheduledMatch f
+  have hbase := hpoly.termCount_poly.comp (unaryRuler_scheduledDeferral f)
+  have hnextInput : UnaryRuler (fun z : ℕ ↦ Nat.pair z.unpair.1 (z.unpair.2 + 1)) :=
+    UnaryRuler.unpairFst.pair UnaryRuler.unpairSnd.succ
+  have hclose := hmatch.comp hnextInput
+  have hcloseCount := hclose.ifZero (UnaryRuler.const 0) hbase
+  refine UnaryRuler.of_eq (hmatch.ifZero hcloseCount hbase) (fun z => ?_)
+  rcases scheduledMatch_zero_or_one f z with hopen | hopen
+  · rcases scheduledMatch_zero_or_one f
+        (Nat.pair z.unpair.1 (z.unpair.2 + 1)) with hclose | hclose
+    · simp [scheduledTermCount, hopen, hclose]
+    · simp [scheduledTermCount, hopen, hclose]
+  · simp [scheduledTermCount, hopen]
+
+/-- Coefficient at `q = ⟨⟨n,k⟩,j⟩` inside a nonempty scheduled component block.
+The closing syntax deliberately retains the literal nested multiplication from
+`AffineCombination.neg`. -/
+def scheduledTermCoefficient
+    {As : ℕ → AffineCombination} (hpoly : PolySequence As)
+    (W : ℕ → EF) (f : DeferralFunction) (δ : ℚ)
+    (q : ℕ) : EF :=
+  let z := q.unpair.1
+  let n := z.unpair.1
+  let k := z.unpair.2
+  let j := q.unpair.2
+  let base := EF.mul (scheduledBetaFeature As W f δ z)
+    (hpoly.coefficient (Nat.pair (scheduledDeferral f n k) j))
+  if scheduledMatch f z = 1 then base
+  else EF.mul (EF.const (-1)) base
+
+/-- Sentence at `q = ⟨⟨n,k⟩,j⟩` inside a scheduled component block: the `j`-th sentence of
+the affine combination the bounded schedule looks up for component `k` on day `n`. -/
+def scheduledTermSentence
+    {As : ℕ → AffineCombination} (hpoly : PolySequence As)
+    (f : DeferralFunction) (q : ℕ) : Sentence :=
+  let z := q.unpair.1
+  hpoly.sentence (Nat.pair
+    (scheduledDeferral f z.unpair.1 z.unpair.2) q.unpair.2)
+
+lemma machineSpliceStream_scheduledTermCoefficient
+    {As : ℕ → AffineCombination} (hpoly : PolySequence As)
+    {W : ℕ → EF} (hW : PGenerableWeighting W)
+    (f : DeferralFunction) (δ : ℚ) :
+    MachineSpliceStream (fun q ↦
+      (scheduledTermCoefficient hpoly W f δ q).serialize) := by
+  have hmatch := unaryRuler_scheduledMatch f
+  have hblockValue := (unaryRuler_scheduledDeferral f).comp UnaryRuler.unpairFst
+  have hcanonical := hblockValue.pair UnaryRuler.unpairSnd
+  have hcoefficient := hpoly.coefficient_poly.comp
+    (f := fun q : ℕ => Nat.pair
+      (scheduledDeferral f q.unpair.1.unpair.1 q.unpair.1.unpair.2) q.unpair.2)
+    hcanonical
+  have hbeta := (machineSpliceStream_scheduledBetaFeature hpoly hW f δ).comp
+    (f := fun q : ℕ => q.unpair.1) (UnaryRuler.unpairFst)
+  have hbase := MachineSpliceStream.serialize_mul hbeta hcoefficient
+  have hneg : MachineSpliceStream (fun _ : ℕ ↦ (EF.const (-1)).serialize) :=
+    MachineSpliceStream.serialize_const (-1)
+  have hclosing := MachineSpliceStream.serialize_mul hneg hbase
+  refine MachineSpliceStream.of_eq
+    (MachineSpliceStream.ifZero hclosing hbase
+      (t := fun q : ℕ => scheduledMatch f q.unpair.1)
+      (hmatch.comp UnaryRuler.unpairFst)) ?_
+  intro q
+  rcases scheduledMatch_zero_or_one f q.unpair.1 with hopen | hopen
+  · simp [scheduledTermCoefficient, hopen]
+  · simp [scheduledTermCoefficient, hopen]
+
+lemma machineSentenceCodes_scheduledTermSentence
+    {As : ℕ → AffineCombination} (hpoly : PolySequence As)
+    (f : DeferralFunction) :
+    MachineSentenceCodes (scheduledTermSentence hpoly f) := by
+  have hcanonical :=
+    ((unaryRuler_scheduledDeferral f).comp UnaryRuler.unpairFst).pair UnaryRuler.unpairSnd
+  exact (hpoly.sentence_poly.comp
+    (f := fun q : ℕ => Nat.pair
+      (scheduledDeferral f q.unpair.1.unpair.1 q.unpair.1.unpair.2) q.unpair.2)
+    hcanonical).of_eq (fun q => by
+    simp [scheduledTermSentence])
+
+/-- Literal conditional trade block for component `k` on day `n`. -/
+def scheduledTradeBlock
+    {As : ℕ → AffineCombination} (hpoly : PolySequence As)
+    (W : ℕ → EF) (f : DeferralFunction) (δ : ℚ)
+    (z : ℕ) : List (EF × Sentence) :=
+  (List.range (scheduledTermCount hpoly f z)).map (fun j ↦
+    (scheduledTermCoefficient hpoly W f δ (Nat.pair z j),
+      scheduledTermSentence hpoly f (Nat.pair z j)))
+
+@[simp] lemma scheduledTradeBlock_length
+    {As : ℕ → AffineCombination} (hpoly : PolySequence As)
+    (W : ℕ → EF) (f : DeferralFunction) (δ : ℚ)
+    (z : ℕ) :
+    (scheduledTradeBlock hpoly W f δ z).length =
+      scheduledTermCount hpoly f z := by
+  simp [scheduledTradeBlock]
+
+/-- A scheduled component block is literally the round-trip trade syntax on every day,
+including the nested closing coefficient generated by `AffineCombination.neg`. -/
+lemma scheduledTradeBlock_eq
+    {As : ℕ → AffineCombination} (hpoly : PolySequence As)
+    {W : ℕ → EF}
+    {f : DeferralFunction} (hstrict : StrictlyIncreasingDeferral f)
+    (δ : ℚ) (n k : ℕ) :
+    scheduledTradeBlock hpoly W f δ (Nat.pair n k) =
+      feedbackRoundTripTrades As W f δ k n := by
+  by_cases hopen : n = f k
+  · subst n
+    have hopenFlag : scheduledMatch f (Nat.pair (f k) k) = 1 :=
+      (scheduledMatch_eq_one_iff f (f k) k).2 rfl
+    have hk : f k ≤ f k := le_rfl
+    simp [scheduledTradeBlock, scheduledTermCount, scheduledTermCoefficient,
+      scheduledTermSentence, feedbackRoundTripTrades, feedbackPosition, AffineCombination.scale,
+      hopenFlag, scheduledDeferral_eq f hk,
+      scheduledBetaFeature_eq hstrict δ hk, hpoly.terms_eq,
+      List.map_map, Function.comp_def]
+  · by_cases hclose : n = f (k + 1)
+    · subst n
+      have hne : f (k + 1) ≠ f k := ne_of_gt (hstrict (Nat.lt_succ_self k))
+      have hopenFlag : scheduledMatch f (Nat.pair (f (k + 1)) k) = 0 :=
+        (scheduledMatch_eq_zero_iff f (f (k + 1)) k).2 hne.symm
+      have hcloseFlag : scheduledMatch f
+          (Nat.pair (f (k + 1)) (k + 1)) = 1 :=
+        (scheduledMatch_eq_one_iff f (f (k + 1)) (k + 1)).2 rfl
+      have hk : f k ≤ f (k + 1) := (hstrict (Nat.lt_succ_self k)).le
+      simp [scheduledTradeBlock, scheduledTermCount, scheduledTermCoefficient,
+        scheduledTermSentence, feedbackRoundTripTrades, feedbackPosition,
+        AffineCombination.neg, AffineCombination.scale, hne, hopenFlag, hcloseFlag,
+        scheduledDeferral_eq f hk,
+        scheduledBetaFeature_eq hstrict δ hk, hpoly.terms_eq,
+        List.map_map, Function.comp_def]
+    · have hopenFlag : scheduledMatch f (Nat.pair n k) = 0 :=
+        (scheduledMatch_eq_zero_iff f n k).2 (fun h => hopen h.symm)
+      have hcloseFlag : scheduledMatch f (Nat.pair n (k + 1)) = 0 :=
+        (scheduledMatch_eq_zero_iff f n (k + 1)).2 (fun h => hclose h.symm)
+      simp [scheduledTradeBlock, scheduledTermCount, feedbackRoundTripTrades,
+        hopen, hclose, hopenFlag, hcloseFlag]
+
+/-- Total width of all component blocks potentially active on day `n`. -/
+def scheduledTradeCount
+    {As : ℕ → AffineCombination} (hpoly : PolySequence As)
+    (f : DeferralFunction) (n : ℕ) : ℕ :=
+  segPrefix (scheduledTermCount hpoly f) n (n + 1)
+
+/-- Component block containing flattened day-term `j`. -/
+def scheduledTradeMember
+    {As : ℕ → AffineCombination} (hpoly : PolySequence As)
+    (f : DeferralFunction) (n j : ℕ) : ℕ :=
+  segLocate (scheduledTermCount hpoly f) n j (n + 1)
+
+/-- Offset of flattened day-term `j` inside its component block. -/
+def scheduledTradeOffset
+    {As : ℕ → AffineCombination} (hpoly : PolySequence As)
+    (f : DeferralFunction) (n j : ℕ) : ℕ :=
+  j - segPrefix (scheduledTermCount hpoly f) n
+    (scheduledTradeMember hpoly f n j)
+
+/-- A flattened day-term lands in one of the day's own component blocks. -/
+lemma scheduledTradeMember_lt
+    {As : ℕ → AffineCombination} (hpoly : PolySequence As)
+    (f : DeferralFunction) {n j : ℕ}
+    (hj : j < scheduledTradeCount hpoly f n) :
+    scheduledTradeMember hpoly f n j < n + 1 := by
+  let lenFn := scheduledTermCount hpoly f
+  let k := segLocate lenFn n j (n + 1)
+  have hkle : k ≤ n + 1 := segLocate_le lenFn n j (n + 1)
+  have hkstart : segPrefix lenFn n k ≤ j := (segLocate_spec lenFn n j (n + 1)).1
+  have hj' : j < segPrefix lenFn n (n + 1) := by
+    simpa [scheduledTradeCount, lenFn] using hj
+  have hkne : k ≠ n + 1 := by
+    intro heq
+    rw [heq] at hkstart
+    exact (not_le_of_gt hj') hkstart
+  change k < n + 1
+  omega
+
+/-- A flattened day-term's offset lies inside the width of the block it lands in. -/
+lemma scheduledTradeOffset_lt
+    {As : ℕ → AffineCombination} (hpoly : PolySequence As)
+    (f : DeferralFunction) {n j : ℕ}
+    (hj : j < scheduledTradeCount hpoly f n) :
+    scheduledTradeOffset hpoly f n j <
+      scheduledTermCount hpoly f
+        (Nat.pair n (scheduledTradeMember hpoly f n j)) := by
+  let lenFn := scheduledTermCount hpoly f
+  let k := segLocate lenFn n j (n + 1)
+  have hklt : k < n + 1 := by
+    simpa [scheduledTradeMember, lenFn] using
+      scheduledTradeMember_lt hpoly f hj
+  have hmax := (segLocate_spec lenFn n j (n + 1)).2
+  have hstart : segPrefix lenFn n k ≤ j :=
+    (segLocate_spec lenFn n j (n + 1)).1
+  have hnext : j < segPrefix lenFn n (k + 1) := by
+    by_contra hnot
+    have hle : segPrefix lenFn n (k + 1) ≤ j := le_of_not_gt hnot
+    have := hmax (k + 1) (by omega) hle
+    omega
+  rw [segPrefix_succ] at hnext
+  have hoff : j - segPrefix lenFn n k < lenFn (Nat.pair n k) := by omega
+  simpa [scheduledTradeOffset, scheduledTradeMember, lenFn, k] using hoff
+
+lemma unaryRuler_scheduledTradeCount
+    {As : ℕ → AffineCombination} (hpoly : PolySequence As)
+    (f : DeferralFunction) :
+    UnaryRuler (scheduledTradeCount hpoly f) :=
+  ((UnaryRuler.segPrefix (unaryRuler_scheduledTermCount hpoly f)).comp
+    (UnaryRuler.id.pair UnaryRuler.id.succ)).of_eq
+    (fun n => by simp [scheduledTradeCount])
+
+lemma unaryRuler_scheduledTradeMember
+    {As : ℕ → AffineCombination} (hpoly : PolySequence As)
+    (f : DeferralFunction) :
+    UnaryRuler (fun z ↦
+      scheduledTradeMember hpoly f z.unpair.1 z.unpair.2) :=
+  ((UnaryRuler.segLocate (unaryRuler_scheduledTermCount hpoly f)).comp
+    (UnaryRuler.id.pair UnaryRuler.unpairFst.succ)).of_eq
+    (fun z => by simp [scheduledTradeMember])
+
+lemma unaryRuler_scheduledTradeOffset
+    {As : ℕ → AffineCombination} (hpoly : PolySequence As)
+    (f : DeferralFunction) :
+    UnaryRuler (fun z ↦
+      scheduledTradeOffset hpoly f z.unpair.1 z.unpair.2) := by
+  have hp := (UnaryRuler.segPrefix (unaryRuler_scheduledTermCount hpoly f)).comp
+    (UnaryRuler.unpairFst.pair (unaryRuler_scheduledTradeMember hpoly f))
+  exact (UnaryRuler.unpairSnd.sub hp).of_eq (fun z => by simp [scheduledTradeOffset])
+
+/-- Coefficient of the *flattened* day-term `⟨n,j⟩`, reached by resolving `j` into its
+component block and offset through the prefix scan.  It is the `coefficient` field of
+`FeedbackTraderEmission`. -/
+def scheduledTradeCoefficient
+    {As : ℕ → AffineCombination} (hpoly : PolySequence As)
+    (W : ℕ → EF) (f : DeferralFunction) (δ : ℚ)
+    (z : ℕ) : EF :=
+  scheduledTermCoefficient hpoly W f δ (Nat.pair
+    (Nat.pair z.unpair.1
+      (scheduledTradeMember hpoly f z.unpair.1 z.unpair.2))
+    (scheduledTradeOffset hpoly f z.unpair.1 z.unpair.2))
+
+/-- Sentence of the *flattened* day-term `⟨n,j⟩`, reached the same way as its coefficient.
+It is the `sentence` field of `FeedbackTraderEmission`. -/
+def scheduledTradeSentence
+    {As : ℕ → AffineCombination} (hpoly : PolySequence As)
+    (f : DeferralFunction) (z : ℕ) : Sentence :=
+  scheduledTermSentence hpoly f (Nat.pair
+    (Nat.pair z.unpair.1
+      (scheduledTradeMember hpoly f z.unpair.1 z.unpair.2))
+    (scheduledTradeOffset hpoly f z.unpair.1 z.unpair.2))
+
+lemma machineSpliceStream_scheduledTradeCoefficient
+    {As : ℕ → AffineCombination} (hpoly : PolySequence As)
+    {W : ℕ → EF} (hW : PGenerableWeighting W)
+    (f : DeferralFunction) (δ : ℚ) :
+    MachineSpliceStream (fun z ↦
+      (scheduledTradeCoefficient hpoly W f δ z).serialize) := by
+  have hmember := unaryRuler_scheduledTradeMember hpoly f
+  have hoffset := unaryRuler_scheduledTradeOffset hpoly f
+  have hcanonical := (UnaryRuler.unpairFst.pair hmember).pair hoffset
+  simpa [scheduledTradeCoefficient] using
+    (machineSpliceStream_scheduledTermCoefficient hpoly hW f δ).comp
+      (f := fun z : ℕ => Nat.pair
+        (Nat.pair z.unpair.1
+          (scheduledTradeMember hpoly f z.unpair.1 z.unpair.2))
+        (scheduledTradeOffset hpoly f z.unpair.1 z.unpair.2))
+      hcanonical
+
+lemma machineSentenceCodes_scheduledTradeSentence
+    {As : ℕ → AffineCombination} (hpoly : PolySequence As)
+    (f : DeferralFunction) :
+    MachineSentenceCodes (scheduledTradeSentence hpoly f) := by
+  have hmember := unaryRuler_scheduledTradeMember hpoly f
+  have hoffset := unaryRuler_scheduledTradeOffset hpoly f
+  have hcanonical := (UnaryRuler.unpairFst.pair hmember).pair hoffset
+  exact ((machineSentenceCodes_scheduledTermSentence hpoly f).comp
+    (f := fun z : ℕ => Nat.pair
+      (Nat.pair z.unpair.1
+        (scheduledTradeMember hpoly f z.unpair.1 z.unpair.2))
+      (scheduledTradeOffset hpoly f z.unpair.1 z.unpair.2))
+    hcanonical).of_eq
+    (fun z => by simp [scheduledTradeSentence])
+
+/-- The prefix-scan fields reconstruct the variable-width component-block flattening. -/
+lemma scheduledTradeFields_eq_blocks
+    {As : ℕ → AffineCombination} (hpoly : PolySequence As)
+    (W : ℕ → EF) (f : DeferralFunction) (δ : ℚ) (n : ℕ) :
+    (List.range (scheduledTradeCount hpoly f n)).map (fun j ↦
+      (scheduledTradeCoefficient hpoly W f δ (Nat.pair n j),
+        scheduledTradeSentence hpoly f (Nat.pair n j))) =
+      (List.range (n + 1)).flatMap (fun k ↦
+        scheduledTradeBlock hpoly W f δ (Nat.pair n k)) := by
+  let lenFn := scheduledTermCount hpoly f
+  let seg : ℕ → List (EF × Sentence) :=
+    scheduledTradeBlock hpoly W f δ
+  have hlen : ∀ k, (seg (Nat.pair n k)).length = lenFn (Nat.pair n k) := by
+    intro k
+    simp [seg, lenFn]
+  have hlength :
+      ((List.range (n + 1)).flatMap (fun k ↦ seg (Nat.pair n k))).length =
+        scheduledTradeCount hpoly f n := by
+    simpa [scheduledTradeCount, lenFn] using
+      length_flatMap_eq_segPrefix seg lenFn n hlen (n + 1)
+  apply List.ext_get
+  · simpa only [List.length_map, List.length_range] using hlength.symm
+  · intro j hjleft hjright
+    have hj : j < scheduledTradeCount hpoly f n := by simpa using hjleft
+    let k := scheduledTradeMember hpoly f n j
+    let r := scheduledTradeOffset hpoly f n j
+    have hklt : k < n + 1 := by
+      simpa [k] using scheduledTradeMember_lt hpoly f hj
+    have hrlt : r < lenFn (Nat.pair n k) := by
+      simpa [r, k, lenFn] using scheduledTradeOffset_lt hpoly f hj
+    have hlo : segPrefix lenFn n k ≤ j := by
+      simpa [k, scheduledTradeMember] using
+        (segLocate_spec lenFn n j (n + 1)).1
+    have hhi : j < segPrefix lenFn n (k + 1) := by
+      by_contra hnot
+      have hle := le_of_not_gt hnot
+      have hmax := (segLocate_spec lenFn n j (n + 1)).2
+      have hk := hmax (k + 1) (by omega) hle
+      have hkid : k = segLocate lenFn n j (n + 1) := by
+        simp [k, scheduledTradeMember, lenFn]
+      omega
+    let d : EF × Sentence := (EF.const 0, hpoly.sentence 0)
+    have hget := getD_flatMap_of_prefix
+      seg lenFn d n (n + 1) j k hlen hklt hlo hhi
+    have hright :
+        ((List.range (n + 1)).flatMap (fun q ↦ seg (Nat.pair n q))).getD j d =
+          (seg (Nat.pair n k)).getD r d := by
+      simpa [r, scheduledTradeOffset, k, lenFn] using hget
+    have hgetD := List.getD_eq_get
+      (l := (List.range (n + 1)).flatMap (fun q ↦ seg (Nat.pair n q)))
+      (d := d) ⟨j, hjright⟩
+    rw [← hgetD, hright]
+    rw [show (seg (Nat.pair n k)).getD r d =
+        (scheduledTermCoefficient hpoly W f δ (Nat.pair (Nat.pair n k) r),
+          scheduledTermSentence hpoly f (Nat.pair (Nat.pair n k) r)) by
+      simp only [seg, scheduledTradeBlock]
+      rw [List.getD_eq_getElem]
+      · rw [List.getElem_map, List.getElem_range]
+      · simpa [lenFn] using hrlt]
+    rw [List.get_eq_getElem]
+    rw [List.getElem_map, List.getElem_range]
+    simp only [scheduledTradeCoefficient, scheduledTradeSentence, Nat.unpair_pair]
+    rfl
+
+/-- **The emission contract.**  The flattened coefficient/sentence fields reproduce the
+feedback trader's own day-`n` trade list exactly.  This is what
+`FeedbackTraderEmission.trades_eq` consumes. -/
+lemma scheduledTradeFields_eq_trader
+    {As : ℕ → AffineCombination} (hpoly : PolySequence As)
+    {W : ℕ → EF} (hW : PGenerableWeighting W)
+    {f : DeferralFunction} (hstrict : StrictlyIncreasingDeferral f)
+    (δ : ℚ) (n : ℕ) :
+    ((feedbackTrader hpoly hW hstrict δ).strat n).trades =
+      (List.range (scheduledTradeCount hpoly f n)).map (fun j ↦
+        (scheduledTradeCoefficient hpoly W f δ (Nat.pair n j),
+          scheduledTradeSentence hpoly f (Nat.pair n j))) := by
+  rw [feedbackTrader_trades hpoly hW hstrict δ n, feedbackTraderTrades,
+    scheduledTradeFields_eq_blocks]
+  apply List.flatMap_congr
+  intro k hk
+  exact (scheduledTradeBlock_eq hpoly hstrict δ n k).symm
+
+/-! ## The emission inhabitants -/
+
+/-- Concrete bounded-dovetail inhabitant of the feedback trader's syntax boundary. -/
+noncomputable def feedbackTraderEmission
+    {As : ℕ → AffineCombination} (hpoly : PolySequence As)
+    {W : ℕ → EF} (hW : PGenerableWeighting W)
+    {f : DeferralFunction} (hstrict : StrictlyIncreasingDeferral f) (δ : ℚ) :
+    FeedbackTraderEmission hpoly hW hstrict δ :=
+  { tradeCount := scheduledTradeCount hpoly f
+    coefficient := scheduledTradeCoefficient hpoly W f δ
+    sentence := scheduledTradeSentence hpoly f
+    tradeCount_poly := unaryRuler_scheduledTradeCount hpoly f
+    coefficient_poly := machineSpliceStream_scheduledTradeCoefficient hpoly hW f δ
+    sentence_poly := machineSentenceCodes_scheduledTradeSentence hpoly f
+    trades_eq := scheduledTradeFields_eq_trader hpoly hW hstrict δ }
+
+/-- One uniform construction supplies every rational Kelly fraction requested by the
+feedback argument. -/
+noncomputable def feedbackTraderEmissionFamily
+    {As : ℕ → AffineCombination} (hpoly : PolySequence As)
+    {W : ℕ → EF} (hW : PGenerableWeighting W)
+    {f : DeferralFunction} (hstrict : StrictlyIncreasingDeferral f) :
+    FeedbackTraderEmissionFamily hpoly hW hstrict where
+  emit δ _ _ := feedbackTraderEmission hpoly hW hstrict δ
+
+/-- The construction is stable under the polynomial affine negation compiler, so both sign
+orientations are concrete.
+Paper node: `thm:wubaff` -/
+noncomputable def feedbackTraderEmissionSigns
+    {As : ℕ → AffineCombination} (hpoly : PolySequence As)
+    {W : ℕ → EF} (hW : PGenerableWeighting W)
+    {f : DeferralFunction} (hstrict : StrictlyIncreasingDeferral f) :
+    FeedbackTraderEmissionSigns hpoly hW hstrict where
+  positive := feedbackTraderEmissionFamily hpoly hW hstrict
+  negative := feedbackTraderEmissionFamily hpoly.neg hW hstrict
+
+/-! ## Consumers with the emission boundary discharged -/
+
+/-- **Affine Unbiasedness from Feedback.**  The paper's claim: for a bounded affine
+combination sequence determined via the theory, a strictly increasing deferral function
+along which the truth values are computable, and a p-generable divergent weighting supported
+on the deferral image, the weighted bias of the prices against the truth values tends to
+zero.
+
+Beyond the paper: the truth values enter through a `FeedbackTruthSequence` bridge rather
+than through a computability hypothesis on `thmval`, and the syntax boundary of the feedback
+trader is discharged here by `feedbackTraderEmissionSigns` rather than assumed.
+Paper node: `thm:wubaff` -/
+theorem lic_wubaff_ofFeedbackTruth
+    {As : ℕ → AffineCombination} (hpoly : PolySequence As)
+    {W : ℕ → EF} (hW : PGenerableWeighting W)
+    {P : History} {DP : DeductiveProcess} [IsLogicalInductor P DP]
+    {truth : ℕ → ℝ} {f : DeferralFunction}
+    (hstrict : StrictlyIncreasingDeferral f)
+    (hsupport : WeightingSupportedOnDeferralImage W P f)
+    (bridge : FeedbackTruthSequence As truth P DP f)
+    (hWdiv : DivergentWeighting W P)
+    (hmag : ∀ i, (As i).magnitude P ≤ 1)
+    (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
+    weightedBias (fun i ↦ (W i).denote P)
+      (fun i ↦ (As i).price P i) truth ≈ₙ (fun _ ↦ 0) :=
+  AffineCombination.lic_wubaff hpoly hW hstrict hsupport
+    (feedbackTraderEmissionSigns hpoly hW hstrict) bridge hWdiv hmag hworld
+
+/-- **Affine Unbiasedness from Feedback, over a bounded combination sequence.**  The same
+paper claim as `lic_wubaff_ofFeedbackTruth`, taken at the paper's own `BCS` hypothesis: the
+magnitude bound comes from the sequence's own bound rather than being assumed.
+
+Beyond the paper: the `FeedbackTruthSequence` bridge is taken over the unit-normalized
+family `(As n).scale (.const h.unitNormalization.scale)` and its rescaled truth values,
+which is the form in which the magnitude bound of `thm:wubaff` is available; the syntax
+boundary is discharged by `feedbackTraderEmissionSigns`.
+Paper node: `thm:wubaff` -/
+theorem boundedCombination_wubaff_ofFeedbackTruth
+    {As : ℕ → AffineCombination} {P : History} {DP : DeductiveProcess}
+    [IsLogicalInductor P DP]
+    (h : BoundedCombinationSequence As P)
+    {W : ℕ → EF} (hW : PGenerableWeighting W)
+    {truth : ℕ → ℝ} (hdet : DeterminedViaTheory As P DP truth)
+    {f : DeferralFunction} (hstrict : StrictlyIncreasingDeferral f)
+    (hsupport : WeightingSupportedOnDeferralImage W P f)
+    (bridge : FeedbackTruthSequence
+      (fun n ↦ (As n).scale (.const h.unitNormalization.scale))
+      (fun n ↦ (h.unitNormalization.scale : ℝ) * truth n) P DP f)
+    (hWdiv : DivergentWeighting W P)
+    (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
+    weightedBias (fun i ↦ (W i).denote P)
+      (fun i ↦ (As i).price P i) truth ≈ₙ (fun _ ↦ 0) :=
+  h.wubaff hW hdet hstrict hsupport
+    (feedbackTraderEmissionSigns
+      (h.poly.scaleRat h.unitNormalization.scale) hW hstrict)
+    bridge hWdiv hworld
+
+/-- **Expectation Unbiasedness from Feedback.**  The paper's claim: for a bounded LUV
+combination sequence determined via the theory, a strictly increasing deferral function, and
+a p-generable divergent weighting, the weighted bias of the expectations against the truth
+values tends to zero.
+
+Beyond the paper: the `FeedbackTruthSequence` bridge is taken over the normalized diagonal
+threshold mesh `LUVCombination.normalizedMesh As b` and its mesh truth values rather than
+over the LUV family itself — the mesh is what turns the expectation statement into the
+affine one — and the weighting is required to be supported on the deferral image.  The
+syntax boundary is discharged by `feedbackTraderEmissionSigns`.
+Paper node: `thm:wubexp` -/
+theorem luv_wubexp_ofFeedbackTruth
+    {As : ℕ → LUVCombination} {P : History} {DP : DeductiveProcess}
+    [IsLogicalInductor P DP]
+    (h : LUVCombination.BoundedSequence As P)
+    (hvalued : LUVCombination.WorldValued As DP)
+    {truth : ℕ → ℝ} (hdet : LUVCombination.DeterminedViaTheory As P DP truth)
+    (b : ℚ) (hshare : ∀ n, (As n).shareNorm P ≤ (b : ℝ))
+    {W : ℕ → EF} (hW : PGenerableWeighting W)
+    (hWdiv : DivergentWeighting W P)
+    {f : DeferralFunction} (hstrict : StrictlyIncreasingDeferral f)
+    (hsupport : WeightingSupportedOnDeferralImage W P f)
+    (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
+    (bridge : FeedbackTruthSequence
+      (LUVCombination.normalizedMesh As b)
+      (LUVCombination.normalizedMeshTruth As P DP hworld b) P DP f) :
+    weightedBias (fun i ↦ (W i).denote P)
+      (fun i ↦ (As i).expect P i) truth ≈ₙ (fun _ ↦ 0) :=
+  h.wubexp hvalued hdet b hshare hW hWdiv hstrict hsupport hworld
+    (feedbackTraderEmissionSigns (h.normalizedMesh_poly b) hW hstrict) bridge
+
+end FeedbackEmission
+end LogicalInduction

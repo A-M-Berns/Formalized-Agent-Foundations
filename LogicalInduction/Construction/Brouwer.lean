@@ -1,34 +1,46 @@
-/-
-# Brouwer fixed-point theorem (`lem:fpl` dependency)
-
-Mathlib has no Brouwer or Kakutani fixed-point theorem, so this file proves Brouwer from
-scratch: Sperner's lemma over the Freudenthal/Kuhn triangulation of the standard simplex
-(`BrouwerProof.Sperner`), lifted to an arbitrary nonempty compact convex
-`K ⊆ EuclideanSpace ℝ (Fin d)` (`BrouwerProof`), concluding in
-`LogicalInduction.brouwer_fixed_point` — the exact statement the market maker's
-price-adjustment fixed point consumes.
-
-Provenance: autoformalized by Harmonic's Aristotle (runs 1d7dc5e0 / c712e6d9), built
-there against Lean v4.28.0 + Mathlib v4.28.0, re-validated against this project's
-toolchain (v4.28.0-rc1, Mathlib master @ 58d8468). `#print axioms brouwer_fixed_point`
-must show only `propext`, `Classical.choice`, `Quot.sound` — checked at the bottom of
-this file. Only the final theorem is part of the trust surface; the internal
-`BrouwerProof.*` machinery is proof plumbing.
-
-Imports trimmed from Aristotle's original `import Mathlib` umbrella to the minimal set
-below (found by `linter.minImports`); the build stays green on that set.
--/
 import Mathlib.Tactic.Cases
 import Mathlib.Analysis.InnerProductSpace.PiL2
 import Mathlib.Data.Int.Star
-import Mathlib.Data.Real.CompleteField
-import Mathlib.Data.Real.StarOrdered
+import Mathlib.Algebra.Order.Archimedean.Real.Hom
+import Mathlib.Algebra.Order.Star.Real
 import Mathlib.Algebra.Order.Ring.Star
 import Mathlib.Topology.Algebra.Module.Cardinality
 
--- The Sperner interior below is machine-generated (see the provenance note above); we do
--- not hand-edit generated proof bodies, so the unused-simp-arg/variable linters are
--- silenced rather than chased.
+/-!
+# Brouwer's fixed-point theorem
+
+Mathlib has neither a Brouwer nor a Kakutani fixed-point theorem, so this module proves
+Brouwer from scratch. It renders no node of the paper: it supplies the fixed-point input
+that the market maker's price-adjustment argument (`lem:fpl`, carried by
+`fixed_point_lemma` in `Construction/MarketMaker.lean`) consumes.
+
+The route is Sperner's lemma over the Freudenthal/Kuhn triangulation of the standard
+simplex, followed by a transfer of the resulting fixed-point property to an arbitrary
+nonempty compact convex `K ⊆ EuclideanSpace ℝ (Fin d)`.
+
+`BrouwerProof.Sperner` carries the combinatorics. It defines the Freudenthal cells
+(`cellVert`, `IsLat`, `ValidCell`, `IsFull`, `cellFin`), the door/pivot involution whose
+parity argument is the heart of the lemma (`halfDoors`, `pivot`, `boundaryDoors`), and the
+dimension induction that reduces the count in dimension `n+1` to the count in dimension `n`
+(`faceLabel`, `liftPerm`, `liftBase`, `liftCell`). Its main results are `sperner` — a valid
+fully labeled cell exists — and `simplex_brouwer`, Brouwer for `stdSimplex ℝ (Fin n)`.
+
+`BrouwerProof` carries the transfer layer: the fixed-point property of a subspace
+(`HasFPP`) with its congruence and retraction lemmas, the concrete simplices `euclSimplex`
+and `cornerSimplex`, and `convexCompact_hasFPP`.
+
+`brouwer_fixed_point` is the module's only intended export — the `BrouwerProof` and
+`BrouwerProof.Sperner` namespaces are public but are proof plumbing — and its sole consumer
+is `fixed_point_lemma_bounded` in `Construction/MarketMaker.lean`.
+Axiom cleanliness is gated transitively, through `AxiomAudit.lean`'s
+`lia_no_efficient_trader_exploits`, whose dependency chain runs through that consumer.
+
+The Sperner interior is machine-generated and its proof bodies are not hand-edited. That is
+why the unused-simp-arg and unused-variable linters are silenced here, and why the generated
+bodies are not reflowed to the repository's 100-column line width.
+-/
+
+-- Generated proof bodies are not hand-edited; these two linters are silenced for the file.
 set_option linter.unusedSimpArgs false
 set_option linter.unusedVariables false
 
@@ -43,9 +55,7 @@ namespace BrouwerProof.Sperner
 open Set Function Finset
 open scoped Classical
 
-
-/-!
-# Sperner's lemma and Brouwer for the standard simplex
+/-! ## Freudenthal/Kuhn cells and their labelings
 
 We work with the standard `n`-simplex with `n+1` barycentric coordinates indexed by
 `Fin (n+1)`.  The `m`-fold subdivision has lattice points `p : Fin (n+1) → ℤ` with
@@ -61,6 +71,9 @@ def cellVert {n : ℕ} (P : Fin (n+1) → ℤ) (σ : Equiv.Perm (Fin n))
   P j + ∑ l : Fin n, (if (l.castSucc : Fin (n+1)) < k then
       ((if (σ l).castSucc = j then (1:ℤ) else 0) - (if (σ l).succ = j then 1 else 0)) else 0)
 
+/--
+The base vertex (`k = 0`) of a cell is its base point.
+-/
 lemma cellVert_zero {n : ℕ} (P : Fin (n+1) → ℤ) (σ : Equiv.Perm (Fin n)) :
     cellVert P σ 0 = P := by
   exact funext fun x => by unfold cellVert; aesop;
@@ -84,7 +97,7 @@ noncomputable def cellFin (n : ℕ) (m : ℤ) :
   ((Fintype.piFinset (fun _ : Fin (n+1) => Finset.Icc (0:ℤ) m)) ×ˢ Finset.univ).filter
     (fun pσ => ValidCell m pσ.1 pσ.2)
 
-/-
+/--
 Every valid cell lies in `cellFin`.
 -/
 lemma mem_cellFin {n : ℕ} {m : ℤ} {P : Fin (n+1) → ℤ} {σ : Equiv.Perm (Fin n)}
@@ -94,7 +107,9 @@ lemma mem_cellFin {n : ℕ} {m : ℤ} {P : Fin (n+1) → ℤ} {σ : Equiv.Perm (
   simp_all +decide [ IsLat, cellVert ];
   exact fun i => this.2 ▸ Finset.single_le_sum ( fun a _ => this.1 a ) ( Finset.mem_univ i )
 
-/-
+/-! ## Half-doors and the pivot involution -/
+
+/--
 **Cell-side door count.** For a labeling `g` of the `n+1` vertices by `n+1` labels,
 the number of vertices whose removal leaves exactly the labels `≠ last` (each once) is
 odd iff `g` is surjective (i.e. the cell is fully labeled).
@@ -175,17 +190,18 @@ noncomputable def halfDoors (n : ℕ) (m : ℤ) (l : (Fin (n+1) → ℤ) → Fin
     (Finset.univ.erase x.2).image (fun k => l (cellVert x.1.1 x.1.2 k))
       = Finset.univ.erase (Fin.last n))
 
-/-
+/--
 **Cell-side count.** The number of half-doors has the same parity as the number of
 fully-labeled valid cells.
 -/
 lemma halfDoors_card_modEq {n : ℕ} {m : ℤ}
     (l : (Fin (n+1) → ℤ) → Fin (n+1)) :
-    (halfDoors n m l).card ≡ ((cellFin n m).filter (fun pσ => IsFull l pσ.1 pσ.2)).card [MOD 2] := by
+    (halfDoors n m l).card ≡
+      ((cellFin n m).filter (fun pσ => IsFull l pσ.1 pσ.2)).card [MOD 2] := by
   -- For a cell `pσ = (P,σ)`, let `D pσ := (univ.filter (fun k0 => (univ.erase k0).image (fun k => l (cellVert P σ k)) = univ.erase (Fin.last n)))`, the door-index set. Because `halfDoors` is the filter of the product `cellFin ×ˢ univ` by a predicate depending on `(cell, k0)`, its cardinality is the sum over cells in `cellFin` of `(D pσ).card`:
   have h_card : (halfDoors n m l).card = ∑ pσ ∈ cellFin n m, (Finset.univ.filter (fun k0 => (Finset.univ.erase k0).image (fun k => l (cellVert pσ.1 pσ.2 k)) = Finset.univ.erase (Fin.last n))).card := by
     rw [ halfDoors, Finset.card_filter ];
-    erw [ Finset.sum_product ] ; aesop;
+    rw [ Finset.sum_product ] ; aesop;
   -- By `doorIdx_card_odd_iff`, `(D pσ).card % 2 = 1` iff `IsFull l P σ`, else `0`.
   have h_parity : ∀ pσ ∈ cellFin n m, (Finset.univ.filter (fun k0 => (Finset.univ.erase k0).image (fun k => l (cellVert pσ.1 pσ.2 k)) = Finset.univ.erase (Fin.last n))).card % 2 = if IsFull l pσ.1 pσ.2 then 1 else 0 := by
     intro pσ hpσ
@@ -195,7 +211,7 @@ lemma halfDoors_card_modEq {n : ℕ} {m : ℤ}
     grind;
   rw [ h_card, Nat.ModEq, Finset.sum_nat_mod, Finset.sum_congr rfl h_parity ] ; aesop
 
-/-
+/--
 Parity from an involution: a self-inverse map on a finset has cardinality congruent
 mod 2 to the number of its fixed points.
 -/
@@ -215,7 +231,7 @@ lemma card_modEq_card_fixed {α : Type*} [DecidableEq α] (s : Finset α) (τ : 
     · grind;
   rw [ Nat.ModEq ] ; rw [ show #s = # ( Finset.filter ( fun a => τ a ≠ a ) s ) + # ( Finset.filter ( fun a => τ a = a ) s ) by rw [ Finset.card_filter, Finset.card_filter ] ; rw [ ← Finset.sum_add_distrib ] ; rw [ Finset.card_eq_sum_ones ] ; congr ; ext x ; aesop ] ; simp_all +decide [ Nat.even_iff.mp h_even_T, Nat.add_mod ] ;
 
-/-
+/--
 Base case of Sperner's parity: in dimension `0` there is exactly one valid cell and it
 is fully labeled.
 -/
@@ -239,7 +255,7 @@ noncomputable def faceLabel {n : ℕ} (l : (Fin (n+2) → ℤ) → Fin (n+2)) :
     (Fin (n+1) → ℤ) → Fin (n+1) :=
   fun q => if h : l (Fin.snoc q 0) = Fin.last (n+1) then 0 else (l (Fin.snoc q 0)).castPred h
 
-/-
+/--
 The induced face labeling is admissible.
 -/
 lemma faceLabel_admissible {n : ℕ} {m : ℤ}
@@ -266,7 +282,7 @@ def pivot {n : ℕ} (P : Fin (n+2) → ℤ) (σ : Equiv.Perm (Fin (n+1))) (k0 : 
   else
     ((P, (Equiv.swap (⟨k0.val-1, by omega⟩ : Fin (n+1)) (⟨k0.val, Fin.val_lt_last hl⟩ : Fin (n+1))).trans σ), k0)
 
-/-
+/--
 The pivot is an involution.
 -/
 lemma pivot_pivot {n : ℕ} (P : Fin (n+2) → ℤ) (σ : Equiv.Perm (Fin (n+1))) (k0 : Fin (n+2)) :
@@ -282,7 +298,7 @@ lemma pivot_pivot {n : ℕ} (P : Fin (n+2) → ℤ) (σ : Equiv.Perm (Fin (n+1))
     · ext x; simp +decide [ finRotate ] ;
   · grind +locals
 
-/-
+/--
 Swapping two edges `a, b` of `σ` that are both before or both after `k` leaves vertex
 `k` unchanged.
 -/
@@ -293,7 +309,7 @@ lemma cellVert_swap_eq {n : ℕ} (P : Fin (n+2) → ℤ) (σ : Equiv.Perm (Fin (
   rw [ ← Equiv.sum_comp ( Equiv.swap a b ) ] ; simp +decide [ h ] ;
   refine' Finset.sum_congr rfl fun x hx => _ ; by_cases hx' : x = a <;> by_cases hx'' : x = b <;> simp_all +decide [ Equiv.swap_apply_def ] ;
 
-/-
+/--
 Vertex correspondence for the `k0 = 0` pivot: the partner's vertex `k.castSucc` equals
 the original vertex `k.succ`.
 -/
@@ -304,8 +320,8 @@ lemma cellVert_pivot_zero {n : ℕ} (P : Fin (n+2) → ℤ) (σ : Equiv.Perm (Fi
   unfold cellVert; simp +decide [ Finset.sum_ite ] ;
   rw [ show ( Finset.filter ( fun x => x ≤ k ) Finset.univ : Finset ( Fin ( n + 1 ) ) ) = Finset.image ( fun x : Fin ( n + 1 ) => x + 1 ) ( Finset.filter ( fun x => x < k ) Finset.univ ) ∪ { 0 } from ?_, Finset.card_filter, Finset.card_filter, Finset.card_filter, Finset.card_filter ];
   · rw [ Finset.sum_union, Finset.sum_union ] <;> norm_num;
-    · rw [ Finset.preimage ] ; simp +decide [ Finset.filter_singleton ] ; ring;
-      split_ifs <;> simp_all +decide [ Finset.filter_image ] ; ring;
+    · rw [ Finset.preimage ] ; simp +decide [ Finset.filter_singleton ] ; ring_nf;
+      split_ifs <;> simp_all +decide [ Finset.filter_image ] ; ring_nf;
       · grind;
       · rw [ show ( Finset.filter ( fun x => x + -1 < k ) Finset.univ : Finset ( Fin ( n + 1 ) ) ) = Finset.image ( fun x : Fin ( n + 1 ) => x + 1 ) ( Finset.filter ( fun x => x < k ) Finset.univ ) from ?_, Finset.card_filter, Finset.card_filter, Finset.card_filter, Finset.card_filter ];
         · rw [ Finset.sum_image, Finset.sum_image ] <;> norm_num ; ring;
@@ -323,7 +339,7 @@ lemma cellVert_pivot_zero {n : ℕ} (P : Fin (n+2) → ℤ) (σ : Equiv.Perm (Fi
     norm_num [ ( by ring : x + 1 + n = n + 1 + x ), Nat.mod_eq_of_lt hx ];
     rw [ Nat.mod_eq_of_lt ( by linarith ) ] ; exact ⟨ fun h => Nat.lt_of_succ_le h, fun h => Nat.succ_le_of_lt h ⟩ ;
 
-/-
+/--
 Vertex correspondence for the `k0 = last` pivot: the partner's vertex `k.succ` equals
 the original vertex `k.castSucc`.
 -/
@@ -332,7 +348,7 @@ lemma cellVert_pivot_last {n : ℕ} (P : Fin (n+2) → ℤ) (σ : Equiv.Perm (Fi
     cellVert (fun i => P i - edgeVec (σ (Fin.last n)) i) ((finRotate (n+1)).symm.trans σ) k.succ
       = cellVert P σ k.castSucc := by
   ext j; simp [cellVert, edgeVec];
-  rw [ Finset.sum_eq_add_sum_sdiff_singleton_of_mem ( Finset.mem_univ 0 ) ] ; simp +decide [ Finset.sum_ite ] ; ring;
+  rw [ Finset.sum_eq_add_sum_sdiff_singleton_of_mem ( Finset.mem_univ 0 ) ] ; simp +decide [ Finset.sum_ite ] ; ring_nf;
   rw [ show ( Finset.filter ( fun x => x ≤ k ) ( Finset.univ \ { 0 } ) : Finset ( Fin ( n + 1 ) ) ) = Finset.image ( fun x : Fin ( n + 1 ) => x + 1 ) ( Finset.filter ( fun x => x < k ) Finset.univ ) from ?_, Finset.card_filter, Finset.card_filter ];
   · rw [ Finset.sum_image, Finset.sum_image ] <;> norm_num [ Fin.ext_iff ];
     rw [ show ( -1 : Fin ( n + 1 ) ) = Fin.last n from by { exact Fin.ext ( by norm_num ) } ] ; ring;
@@ -342,7 +358,7 @@ lemma cellVert_pivot_last {n : ℕ} (P : Fin (n+2) → ℤ) (σ : Equiv.Perm (Fi
     · norm_num [ ( by ring : x + 1 + n = n + 1 + x ), Nat.mod_eq_of_lt hx ];
       rw [ Nat.mod_eq_of_lt ( by linarith ) ] ; exact ⟨ fun h => Nat.lt_of_succ_le h, fun h => Nat.succ_le_of_lt h ⟩ ;
 
-/-
+/--
 The pivot preserves the facet (the set of vertices other than the omitted one).
 -/
 lemma pivot_facet {n : ℕ} (P : Fin (n+2) → ℤ) (σ : Equiv.Perm (Fin (n+1))) (k0 : Fin (n+2)) :
@@ -364,9 +380,7 @@ lemma pivot_facet {n : ℕ} (P : Fin (n+2) → ℤ) (σ : Equiv.Perm (Fin (n+1))
     apply cellVert_swap_eq;
     rw [ Fin.lt_def, Fin.lt_def ] at * ; norm_num at * ; omega
 
-/-
-The pivot strictly changes the half-door.
--/
+/-- The pivot strictly changes the half-door. -/
 lemma pivot_ne {n : ℕ} (P : Fin (n+2) → ℤ) (σ : Equiv.Perm (Fin (n+1))) (k0 : Fin (n+2)) :
     pivot P σ k0 ≠ ((P, σ), k0) := by
   by_contra h;
@@ -381,7 +395,7 @@ noncomputable def boundaryDoors (n : ℕ) (m : ℤ) (l : (Fin (n+2) → ℤ) →
   (halfDoors (n+1) m l).filter
     (fun x => ¬ ValidCell m (pivot x.1.1 x.1.2 x.2).1.1 (pivot x.1.1 x.1.2 x.2).1.2)
 
-/-
+/--
 The pivot involution pairs up interior half-doors, so the number of half-doors has the
 same parity as the number of boundary half-doors.
 -/
@@ -406,7 +420,7 @@ lemma halfDoors_card_modEq_boundary {n : ℕ} {m : ℤ}
     unfold τ; split_ifs <;> simp_all +decide [ pivot_pivot ] ;
     exact False.elim <| ‹¬ValidCell m x.1.1 x.1.2› <| by unfold cellFin at hx; aesop;
 
-/-
+/--
 The last coordinate of a vertex: it drops by `1` once the edge pointing at the last
 vertex (`σ.symm (Fin.last n)`) has been crossed.
 -/
@@ -419,6 +433,8 @@ lemma cellVert_last_coord {n : ℕ} (P : Fin (n+2) → ℤ) (σ : Equiv.Perm (Fi
   · split_ifs <;> ring;
   · grind +suggestions
 
+/-! ## The face lift and the dimension induction -/
+
 /-- Lift a face permutation to dimension `n+1`: send `0` to `Fin.last n` (the first edge
 points at the last coordinate) and `j.succ` to `(s j).castSucc`. -/
 noncomputable def liftPerm {n : ℕ} (s : Equiv.Perm (Fin n)) : Equiv.Perm (Fin (n+1)) :=
@@ -428,32 +444,24 @@ noncomputable def liftPerm {n : ℕ} (s : Equiv.Perm (Fin n)) : Equiv.Perm (Fin 
 def liftBase {n : ℕ} (Pb : Fin (n+1) → ℤ) : Fin (n+2) → ℤ :=
   fun i => (Fin.snoc Pb (0:ℤ) : Fin (n+2) → ℤ) i - edgeVec (Fin.last n) i
 
-/-
+/--
 `liftPerm` sends `0` to `Fin.last n`.
 -/
 lemma liftPerm_zero {n : ℕ} (s : Equiv.Perm (Fin n)) : liftPerm s 0 = Fin.last n := by
   unfold liftPerm;
   simp +decide [ finSuccEquiv, finSuccEquiv' ]
 
-/-
-`liftPerm` sends `j.succ` to `(s j).castSucc`.
--/
-lemma liftPerm_succ {n : ℕ} (s : Equiv.Perm (Fin n)) (j : Fin n) :
-    liftPerm s j.succ = (s j).castSucc := by
-  unfold liftPerm;
-  simp +decide [ finSuccEquiv, finSuccEquiv' ]
-
-/-
+/--
 The on-face vertices of the lifted cell project to the vertices of the face cell.
 -/
 lemma cellVert_lift {n : ℕ} (Pb : Fin (n+1) → ℤ) (s : Equiv.Perm (Fin n))
     (k i : Fin (n+1)) :
     cellVert (liftBase Pb) (liftPerm s) k.succ i.castSucc = cellVert Pb s k i := by
   unfold cellVert liftBase liftPerm;
-  rw [ Fin.sum_univ_succ ] ; simp +decide [ Fin.snoc, edgeVec ] ; ring;
+  rw [ Fin.sum_univ_succ ] ; simp +decide [ Fin.snoc, edgeVec ] ; ring_nf;
   grind +qlia
 
-/-
+/--
 An on-face vertex of the lifted cell is the corresponding face vertex with a `0`
 appended in the last coordinate.
 -/
@@ -468,10 +476,8 @@ lemma cellVert_lift_snoc {n : ℕ} (Pb : Fin (n+1) → ℤ) (s : Equiv.Perm (Fin
   · convert cellVert_lift Pb s k _ using 1;
     exact if_pos ( Nat.le_of_lt_succ ( Fin.is_lt _ ) )
 
-/-
-A valid face cell has its last-coordinate base `≥ 1` (its bottom vertex on that
-coordinate is `Pb (Fin.last n) - 1 ≥ 0`).
--/
+/-- A valid face cell has its last-coordinate base `≥ 1` (its bottom vertex on that
+coordinate is `Pb (Fin.last n) - 1 ≥ 0`). -/
 lemma face_last_ge {n : ℕ} {m : ℤ} {Pb : Fin (n+1) → ℤ} {s : Equiv.Perm (Fin n)}
     (hm : 1 ≤ m) (hv : ValidCell m Pb s) : 1 ≤ Pb (Fin.last n) := by
   -- By definition of `ValidCell`, we know that `cellVert Pb s (Fin.last n) (Fin.last n) ≥ 0`.
@@ -480,7 +486,7 @@ lemma face_last_ge {n : ℕ} {m : ℤ} {Pb : Fin (n+1) → ℤ} {s : Equiv.Perm 
   rcases n with ( _ | n ) <;> simp_all +decide [ cellVert_last_coord ];
   have := hv 0; simp_all +decide [ IsLat, cellVert ] ;
 
-/-
+/--
 The lift of a valid face cell is a valid cell.
 -/
 lemma liftCell_valid {n : ℕ} {m : ℤ} {Pb : Fin (n+1) → ℤ} {s : Equiv.Perm (Fin n)}
@@ -500,16 +506,7 @@ lemma liftCell_valid {n : ℕ} {m : ℤ} {Pb : Fin (n+1) → ℤ} {s : Equiv.Per
       exact hv k |>.1 _, by
       rw [ Fin.sum_univ_castSucc ] ; simp +decide [ hv k |>.2 ] ⟩ ;
 
-/-
-The base point recovered from a lifted cell is the original face base.
--/
-lemma liftBase_proj {n : ℕ} (Pb : Fin (n+1) → ℤ) (s : Equiv.Perm (Fin n)) (i : Fin (n+1)) :
-    cellVert (liftBase Pb) (liftPerm s) 1 i.castSucc = Pb i := by
-  convert cellVert_lift Pb s 0 i using 1;
-  · unfold cellVert; aesop;
-  · unfold cellVert; simp +decide [ Finset.sum_ite ] ;
-
-/-
+/--
 The label of an on-face point lifts to the face label via `castSucc`.
 -/
 lemma faceLabel_castSucc {n : ℕ} {m : ℤ} (l : (Fin (n+2) → ℤ) → Fin (n+2))
@@ -519,7 +516,7 @@ lemma faceLabel_castSucc {n : ℕ} {m : ℤ} (l : (Fin (n+2) → ℤ) → Fin (n
   unfold faceLabel; split_ifs <;> simp_all +decide [ Fin.snoc ] ;
   exact hadm _ hq ( by simp +decide [ *, Fin.snoc ] )
 
-/-
+/--
 A permutation fixing `0 ↦ Fin.last n` is in the image of `liftPerm`.
 -/
 lemma exists_facePerm {n : ℕ} {σ : Equiv.Perm (Fin (n+1))} (h0 : σ 0 = Fin.last n) :
@@ -543,7 +540,7 @@ noncomputable def liftCell {n : ℕ} (c : (Fin (n+1) → ℤ) × Equiv.Perm (Fin
     ((Fin (n+2) → ℤ) × Equiv.Perm (Fin (n+1))) × Fin (n+2) :=
   ((liftBase c.1, liftPerm c.2), 0)
 
-/-
+/--
 The lift of a fully-labeled face cell is a boundary half-door.
 -/
 lemma liftCell_mem {n : ℕ} {m : ℤ} (hm : 1 ≤ m) (l : (Fin (n+2) → ℤ) → Fin (n+2))
@@ -577,7 +574,7 @@ lemma liftCell_mem {n : ℕ} {m : ℤ} (hm : 1 ≤ m) (l : (Fin (n+2) → ℤ) �
     · unfold liftBase; simp +decide [ edgeVec ] ;
     · exact Equiv.symm_apply_eq _ |>.2 ( by simp +decide [ liftPerm_zero ] )
 
-/-
+/--
 The `j`-th coordinate of vertex `k` as a difference of edge-counts.
 -/
 lemma cellVert_coord {n : ℕ} (P : Fin (n+1) → ℤ) (σ : Equiv.Perm (Fin n))
@@ -588,7 +585,7 @@ lemma cellVert_coord {n : ℕ} (P : Fin (n+1) → ℤ) (σ : Equiv.Perm (Fin n))
   unfold cellVert; simp +decide [ Finset.sum_ite ] ;
   simp +decide [ Finset.filter_filter, add_sub_assoc ]
 
-/-
+/--
 Indicator form of the coordinate (each fiber has at most one element since `σ` is
 injective).
 -/
@@ -626,7 +623,7 @@ lemma facet_coord_zero {n : ℕ} {m : ℤ} {P : Fin (n+1) → ℤ} {σ : Equiv.P
     · rw [if_pos hout] at hge; omega
     · rw [if_neg hout]; ring
 
-/-
+/--
 Coordinate formula for the top vertex `Fin.last (n+1)` of a cell: every edge is included,
 so the correction is `+1` at every coordinate except `Fin.last (n+1)` and `-1` at every
 coordinate except `0`.
@@ -645,7 +642,7 @@ lemma cellVert_last_all {n : ℕ} (P : Fin (n+2) → ℤ) (σ : Equiv.Perm (Fin 
         use σ.symm a; ext x; aesop;
       · obtain ⟨ a, ha ⟩ := Fin.exists_castSucc_eq.mpr h; use σ.symm a; ext x; aesop;
 
-/-
+/--
 Coordinate formula for vertex `1` of a cell: only the first edge `σ 0` is included.
 -/
 lemma cellVert_one_all {n : ℕ} (P : Fin (n+2) → ℤ) (σ : Equiv.Perm (Fin (n+1))) (j : Fin (n+2)) :
@@ -654,7 +651,7 @@ lemma cellVert_one_all {n : ℕ} (P : Fin (n+2) → ℤ) (σ : Equiv.Perm (Fin (
   unfold cellVert; simp +decide [ Fin.sum_univ_succ ] ;
   ring
 
-/-
+/--
 The vertex `k0` of the interior-swapped cell differs from the original vertex `k0` by
 removing edge `σ a` and adding edge `σ b`, where `a, b` are the swapped positions
 (`a.val = k0.val - 1`, `b.val = k0.val`).
@@ -667,8 +664,8 @@ lemma cellVert_swap_pivot_vertex {n : ℕ} (P : Fin (n+2) → ℤ) (σ : Equiv.P
   unfold cellVert edgeVec;
   simp +decide [ Finset.sum_ite, Equiv.swap_apply_def ];
   rw [ show ( Finset.filter ( fun x => x.castSucc < k0 ) Finset.univ : Finset ( Fin ( n + 1 ) ) ) = Finset.filter ( fun x => x.castSucc < k0 ∧ x ≠ a ∧ x ≠ b ) Finset.univ ∪ { a } from ?_, Finset.filter_union ];
-  · rw [ Finset.filter_union, Finset.filter_singleton ] ; simp +decide [ Finset.filter_singleton ] ; ring;
-    split_ifs <;> simp_all +decide [ Finset.filter_insert ] <;> try ring;
+  · rw [ Finset.filter_union, Finset.filter_singleton ] ; simp +decide [ Finset.filter_singleton ] ; ring_nf;
+    split_ifs <;> simp_all +decide [ Finset.filter_insert ] <;> try ring_nf;
     all_goals congr! 3;
     all_goals first
       | exact congrArg Finset.card
@@ -679,7 +676,7 @@ lemma cellVert_swap_pivot_vertex {n : ℕ} (P : Fin (n+2) → ℤ) (σ : Equiv.P
     · exact Nat.lt_of_le_of_lt ( Nat.le_refl _ ) ( show ( a : ℕ ) < k0 from by omega );
     · exact iff_of_false ( by rw [ Fin.lt_def ] ; aesop ) ( by aesop )
 
-/-
+/--
 Consecutive vertices of a cell differ by one edge vector.
 -/
 lemma cellVert_consecutive {n : ℕ} (P : Fin (n+2) → ℤ) (σ : Equiv.Perm (Fin (n+1)))
@@ -691,7 +688,7 @@ lemma cellVert_consecutive {n : ℕ} (P : Fin (n+2) → ℤ) (σ : Equiv.Perm (F
   simp +decide [ Finset.sum_ite ];
   rw [ show ( Finset.filter ( fun x => x ≤ k ) ( Finset.univ \ { k } ) ) = Finset.filter ( fun x => x < k ) ( Finset.univ \ { k } ) from Finset.filter_congr fun x hx => by rw [ le_iff_lt_or_eq, or_iff_left ( by aesop ) ] ] ; ring
 
-/-
+/--
 The vertex `k0` of the interior-swapped cell equals the (valid) vertex `a.castSucc`
 immediately below `k0` plus the edge `σ b`.
 -/
@@ -705,7 +702,7 @@ lemma cellVert_swap_pivot_vertex_below {n : ℕ} (P : Fin (n+2) → ℤ) (σ : E
   · exact hb;
   · assumption
 
-/-
+/--
 The components of an interior pivot (`k0 ≠ 0`, `k0 ≠ Fin.last (n+1)`): same base `P`,
 the permutation with the two adjacent positions `a, b` swapped, and same omitted vertex.
 -/
@@ -716,7 +713,7 @@ lemma pivot_interior_components {n : ℕ} (P : Fin (n+2) → ℤ) (σ : Equiv.Pe
   unfold pivot; simp +decide [ * ] ;
   congr 2 <;> aesop
 
-/-
+/--
 The `k0 = 0` endpoint case of `pivot_invalid_facet`.
 -/
 lemma pivot_invalid_facet_zero {n : ℕ} {m : ℤ} {P : Fin (n+2) → ℤ} {σ : Equiv.Perm (Fin (n+1))}
@@ -753,7 +750,7 @@ lemma pivot_invalid_facet_zero {n : ℕ} {m : ℤ} {P : Fin (n+2) → ℤ} {σ :
     · obtain ⟨ w, rfl ⟩ := Fin.eq_castSucc_of_ne_last hk; simp_all +decide [ cellVert_pivot_zero ] ;
       exact hv _
 
-/-
+/--
 The interior case (`k0 ≠ 0` and `k0 ≠ Fin.last (n+1)`) of `pivot_invalid_facet`.
 -/
 lemma pivot_invalid_facet_interior {n : ℕ} {m : ℤ} {P : Fin (n+2) → ℤ}
@@ -864,7 +861,8 @@ lemma pivot_invalid_facet {n : ℕ} {m : ℤ} {P : Fin (n+2) → ℤ} {σ : Equi
 edge points at the last coordinate (`σ 0 = Fin.last n`), and the last coordinate of the base
 is `1`. -/
 lemma boundary_door_struct {n : ℕ} {m : ℤ} (_hm : 1 ≤ m) (l : (Fin (n+2) → ℤ) → Fin (n+2))
-    (hadm : ∀ p, IsLat m p → p (l p) ≠ 0) {x : ((Fin (n+2) → ℤ) × Equiv.Perm (Fin (n+1))) × Fin (n+2)}
+    (hadm : ∀ p, IsLat m p → p (l p) ≠ 0)
+    {x : ((Fin (n+2) → ℤ) × Equiv.Perm (Fin (n+1))) × Fin (n+2)}
     (hx : x ∈ boundaryDoors n m l) :
     x.2 = 0 ∧ x.1.2 0 = Fin.last n ∧ x.1.1 (Fin.last (n+1)) = 1 := by
   rw [boundaryDoors, Finset.mem_filter] at hx
@@ -917,12 +915,13 @@ lemma boundary_door_struct {n : ℕ} {m : ℤ} (_hm : 1 ≤ m) (l : (Fin (n+2) �
     exact h2.symm
   exact ⟨hk0, hsig, hPone⟩
 
-/-
+set_option maxRecDepth 16384 in
+/--
 Every boundary half-door is the lift of a fully-labeled face cell.
 -/
-set_option maxRecDepth 16384 in
 lemma boundary_isLift {n : ℕ} {m : ℤ} (hm : 1 ≤ m) (l : (Fin (n+2) → ℤ) → Fin (n+2))
-    (hadm : ∀ p, IsLat m p → p (l p) ≠ 0) {x : ((Fin (n+2) → ℤ) × Equiv.Perm (Fin (n+1))) × Fin (n+2)}
+    (hadm : ∀ p, IsLat m p → p (l p) ≠ 0)
+    {x : ((Fin (n+2) → ℤ) × Equiv.Perm (Fin (n+1))) × Fin (n+2)}
     (hx : x ∈ boundaryDoors n m l) :
     ∃ c ∈ (cellFin n m).filter (fun pσ => IsFull (faceLabel l) pσ.1 pσ.2), x = liftCell c := by
   obtain ⟨c, hc⟩ : ∃ c : (Fin (n+1) → ℤ) × Equiv.Perm (Fin n), liftCell c = x := by
@@ -950,7 +949,7 @@ lemma boundary_isLift {n : ℕ} {m : ℤ} (hm : 1 ≤ m) (l : (Fin (n+2) → ℤ
       unfold faceLabel; simp_all +decide [ Fin.snoc ] ;
     · ext ( _ | i ) <;> simp +decide [ Fin.ext_iff ]
 
-/-
+/--
 The lift map is injective.
 -/
 lemma liftCell_inj {n : ℕ} : Function.Injective (liftCell (n := n)) := by
@@ -1010,6 +1009,8 @@ lemma sperner_step {n : ℕ} {m : ℤ} (hm : 1 ≤ m)
   rw [Nat.ModEq] at h4
   omega
 
+/-! ## Sperner's lemma -/
+
 /-- **Sperner parity**: the number of valid fully-labeled cells is odd. -/
 lemma sperner_card_odd {n : ℕ} {m : ℤ} (hm : 1 ≤ m)
     (l : (Fin (n+1) → ℤ) → Fin (n+1))
@@ -1035,10 +1036,9 @@ lemma sperner {n : ℕ} {m : ℤ} (hm : 1 ≤ m)
   rw [cellFin, Finset.mem_filter] at hcell
   exact ⟨P, σ, hcell.2, hfull⟩
 
-/-
-The base vertex (`k = 0`) of a cell is its base point.
--/
-/-
+/-! ## From Sperner to Brouwer on the standard simplex -/
+
+/--
 Each coordinate of every vertex of a cell is within `n` of the base point.
 -/
 lemma cellVert_coord_dist {n : ℕ} (P : Fin (n+1) → ℤ) (σ : Equiv.Perm (Fin n))
@@ -1047,7 +1047,7 @@ lemma cellVert_coord_dist {n : ℕ} (P : Fin (n+1) → ℤ) (σ : Equiv.Perm (Fi
   simp +zetaDelta at *;
   exact le_trans ( Finset.abs_sum_le_sum_abs _ _ ) ( le_trans ( Finset.sum_le_sum fun i hi ↦ show |_| ≤ 1 by split_ifs <;> norm_num ) ( by norm_num ) )
 
-/-
+/--
 On the simplex, there is always a coordinate that is positive and not increased by `f`.
 -/
 lemma exists_label {n : ℕ} (x fx : Fin n → ℝ)
@@ -1064,7 +1064,7 @@ lemma exists_label {n : ℕ} (x fx : Fin n → ℝ)
 /-- The real point associated to a lattice point at resolution `m`. -/
 noncomputable def ptOf {n : ℕ} (m : ℕ) (p : Fin (n+1) → ℤ) : Fin (n+1) → ℝ := fun i => (p i : ℝ) / m
 
-/-
+/--
 Approximate fixed point at resolution `m`, via Sperner's lemma.
 -/
 lemma simplex_approx {n : ℕ}
@@ -1094,7 +1094,7 @@ lemma simplex_approx {n : ℕ}
       gcongr ; norm_cast ; exact cellVert_coord_dist P σ k j;
     · simpa only [ hk ] using hl.2 ( cellVert P σ k ) ( hPσ k ) |>.2
 
-/-
+/--
 Brouwer's fixed point theorem for the standard simplex (deep combinatorial core).
 -/
 lemma simplex_brouwer {n : ℕ} (hn : 0 < n)
@@ -1137,20 +1137,20 @@ lemma simplex_brouwer {n : ℕ} (hn : 0 < n)
     have := hmaps hx; simp_all +decide [ stdSimplex ] ;
   exact ⟨ x, hx, funext fun i => le_antisymm ( h_eq i ) ( by simpa [ h_sum_eq ] using Finset.single_le_sum ( fun i _ => sub_nonneg_of_le ( h_eq i ) ) ( Finset.mem_univ i ) ) ⟩
 
-
 end BrouwerProof.Sperner
 
 namespace BrouwerProof
 
 open Set Function
 
+/-! ## The fixed-point property and its transfers -/
 
 /-- The fixed point property for a subset `s` of a topological space:
 every continuous self-map of the subspace `s` has a fixed point. -/
 def HasFPP {V : Type*} [TopologicalSpace V] (s : Set V) : Prop :=
   ∀ g : s → s, Continuous g → ∃ x : s, g x = x
 
-/-
+/--
 The fixed point property transfers along a homeomorphism of subspaces.
 -/
 lemma HasFPP.congr {V W : Type*} [TopologicalSpace V] [TopologicalSpace W]
@@ -1159,7 +1159,7 @@ lemma HasFPP.congr {V W : Type*} [TopologicalSpace V] [TopologicalSpace W]
   obtain ⟨ x, hx ⟩ := hs ( fun x => e.symm ( g ( e x ) ) ) ( e.symm.continuous.comp ( hg.comp e.continuous ) );
   exact ⟨ e x, by simpa [ eq_comm ] using congr_arg e hx ⟩
 
-/-
+/--
 If `s ⊆ t`, `r : t → s` is a continuous retraction (identity on `s`), and `t`
 has the fixed point property, then so does `s`.
 -/
@@ -1173,7 +1173,7 @@ lemma HasFPP.of_retract {V : Type*} [TopologicalSpace V] {s t : Set V} (hst : s 
   generalize_proofs at *;
   grind
 
-/-
+/--
 The fixed point property, in terms of `ContinuousOn`/`MapsTo`.
 -/
 lemma fixed_of_hasFPP {V : Type*} [TopologicalSpace V] {s : Set V} (hs : HasFPP s)
@@ -1183,7 +1183,7 @@ lemma fixed_of_hasFPP {V : Type*} [TopologicalSpace V] {s : Set V} (hs : HasFPP 
     exact Continuous.subtype_mk ( hf.comp_continuous ( continuous_subtype_val ) fun x => x.2 ) _;
   grind
 
-/-
+/--
 The nearest-point projection onto a closed convex nonempty set is a continuous
 retraction.
 -/
@@ -1232,31 +1232,7 @@ def euclSimplex (n : ℕ) : Set (EuclideanSpace ℝ (Fin n)) :=
 def cornerSimplex (d : ℕ) : Set (EuclideanSpace ℝ (Fin d)) :=
   {x | (∀ i, 0 ≤ x i) ∧ ∑ i, x i ≤ 1}
 
-/-
-The standard simplex is closed.
--/
-lemma euclSimplex_isClosed (n : ℕ) : IsClosed (euclSimplex n) := by
-  unfold euclSimplex;
-  simp +decide only [setOf_and, setOf_forall];
-  refine' IsClosed.inter ( isClosed_iInter fun i => isClosed_le continuous_const <| _ ) ( isClosed_eq _ _ ); all_goals fun_prop
-
-/-
-The standard simplex is compact.
--/
-lemma euclSimplex_isCompact (n : ℕ) : IsCompact (euclSimplex n) := by
-  refine' Metric.isCompact_iff_isClosed_bounded.mpr ⟨ euclSimplex_isClosed n, _ ⟩;
-  refine' isBounded_iff_forall_norm_le.mpr ⟨ 1, _ ⟩;
-  simp +decide [ EuclideanSpace.norm_eq, euclSimplex ];
-  exact fun x hx₁ hx₂ => hx₂ ▸ Finset.sum_le_sum fun i _ => pow_le_of_le_one ( hx₁ i ) ( hx₂ ▸ Finset.single_le_sum ( fun a _ => hx₁ a ) ( Finset.mem_univ i ) ) ( by norm_num )
-
-/-
-The standard simplex is nonempty (for `n ≥ 1`).
--/
-lemma euclSimplex_nonempty {n : ℕ} (hn : 0 < n) : (euclSimplex n).Nonempty := by
-  refine' ⟨ EuclideanSpace.single ⟨ 0, hn ⟩ 1, _, _ ⟩ <;> norm_num;
-  exact fun i => by split_ifs <;> norm_num;
-
-/-
+/--
 If every continuous self-map (as a `ContinuousOn`/`MapsTo` pair) of `s` has a fixed
 point, then `s` has the fixed point property.
 -/
@@ -1275,7 +1251,7 @@ lemma hasFPP_of_continuousOn {V : Type*} [TopologicalSpace V] {s : Set V}
 lemma stdSimplex_hasFPP {n : ℕ} (hn : 0 < n) : HasFPP (stdSimplex ℝ (Fin n)) :=
   hasFPP_of_continuousOn (fun f hf hmaps => Sperner.simplex_brouwer hn f hf hmaps)
 
-/-
+/--
 The continuous-linear equivalence `EuclideanSpace ℝ (Fin n) ≃ (Fin n → ℝ)` maps the
 Euclidean simplex onto the standard simplex.
 -/
@@ -1290,7 +1266,7 @@ lemma euclSimplex_hasFPP {n : ℕ} (hn : 0 < n) : HasFPP (euclSimplex n) := by
       (Homeomorph.setCongr (image_equiv_euclSimplex n))
   exact (stdSimplex_hasFPP hn).congr e.symm
 
-/-
+/--
 The corner simplex has the fixed point property (transferred from `euclSimplex (d+1)`).
 -/
 lemma cornerSimplex_hasFPP (d : ℕ) : HasFPP (cornerSimplex d) := by
@@ -1325,8 +1301,8 @@ lemma cornerSimplex_hasFPP (d : ℕ) : HasFPP (cornerSimplex d) := by
   generalize_proofs at *;
   fapply Homeomorph.mk;
   refine' ⟨ fun a => ⟨ phi a, by
-    exact? ⟩, fun b => ⟨ psi b, by
-    exact? ⟩, fun a => _, fun b => _ ⟩
+    expose_names; exact mem_preimage.mp (pf_1 a) ⟩, fun b => ⟨ psi b, by
+    expose_names; exact mem_preimage.mp (pf_2 b) ⟩, fun a => _, fun b => _ ⟩
   all_goals generalize_proofs at *;
   · ext i; simp [phi, psi];
     refine' Fin.lastCases _ _ i <;> simp +decide [ Fin.snoc ];
@@ -1336,7 +1312,9 @@ lemma cornerSimplex_hasFPP (d : ℕ) : HasFPP (cornerSimplex d) := by
   · exact h_cont;
   · exact h_cont_psi
 
-/-
+/-! ## Brouwer for a nonempty compact convex set -/
+
+/--
 Any nonempty compact set `K` is contained in some set with the fixed point property.
 -/
 lemma exists_container {d : ℕ} {K : Set (EuclideanSpace ℝ (Fin d))}
@@ -1375,17 +1353,23 @@ lemma convexCompact_hasFPP {d : ℕ} {K : Set (EuclideanSpace ℝ (Fin d))}
 end BrouwerProof
 
 open Set Function BrouwerProof in
+/--
+**Brouwer's fixed-point theorem**, in the form the market maker consumes: a continuous
+self-map `f` of a nonempty compact convex `K ⊆ EuclideanSpace ℝ (Fin d)` has a fixed point
+in `K`. Continuity and the self-map condition are stated as a `ContinuousOn`/`MapsTo` pair
+on `K` rather than on the subtype, which is how the sole consumer,
+`fixed_point_lemma_bounded` (`Construction/MarketMaker.lean`), has them.
+
+Proved from Sperner's lemma over the Freudenthal/Kuhn triangulation, since Mathlib has
+neither Brouwer nor Kakutani.
+-/
 lemma brouwer_fixed_point {d : ℕ}
     {K : Set (EuclideanSpace ℝ (Fin d))}
-    (_hK_compact : IsCompact K) (_hK_convex : Convex ℝ K)
-    (_hK_nonempty : K.Nonempty)
+    (hK_compact : IsCompact K) (hK_convex : Convex ℝ K)
+    (hK_nonempty : K.Nonempty)
     (f : EuclideanSpace ℝ (Fin d) → EuclideanSpace ℝ (Fin d))
-    (_hf_cont : ContinuousOn f K) (_hf_maps : MapsTo f K K) :
-    ∃ x ∈ K, f x = x := by
-  exact fixed_of_hasFPP
-    (convexCompact_hasFPP _hK_compact _hK_convex _hK_nonempty) _hf_cont _hf_maps
-
--- Trust check: must report only `propext`, `Classical.choice`, `Quot.sound`.
-#print axioms brouwer_fixed_point
+    (hf_cont : ContinuousOn f K) (hf_maps : MapsTo f K K) :
+    ∃ x ∈ K, f x = x :=
+  fixed_of_hasFPP (convexCompact_hasFPP hK_compact hK_convex hK_nonempty) hf_cont hf_maps
 
 end LogicalInduction

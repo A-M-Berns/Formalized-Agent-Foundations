@@ -1,42 +1,59 @@
-/-
+import LogicalInduction.Framework
+import LogicalInduction.Properties
+import LogicalInduction.Construction
+
+/-!
 # Logical Induction (Garrabrant et al., arXiv:1609.03543) — Lean 4 formalization
 
 The root roll-up: importing this file brings in the whole formalization. Start here, then
 read `LogicalInduction/README.md` for what is proved, the declared modeling boundary,
-and the faithfulness record; `AxiomAudit.lean` is the checked inventory of
-every public endpoint. The library follows the paper's own sectioning — `Framework` is
-§2–3 (sentences, markets, features, traders, exploitation, the criterion, efficient
-computability, expectations, and the shared asymptotic vocabulary), `Properties` is the
-§4 property tail with one file per theorem family, and `Construction` is the §5 existence
-proof, with `Construction/Witnesses/` holding the representation machinery that
-discharges the property tail's interfaces over the concrete constructed inductor. Every
-paper-facing statement cites the paper's real `\label`, and the citation is checked in
-both directions by script.
+and the faithfulness record; `LogicalInduction/API.lean` is the supported client surface,
+and `AxiomAudit.lean` the checked inventory of every public endpoint. The library follows
+the paper's own sectioning — `Framework` is §2–3 (sentences, markets, features, traders,
+exploitation, the criterion, efficient computability, expectations, and the shared
+asymptotic vocabulary) together with the substrate the later directories consume (the
+background theory `Θ`, the `dd:fuel` emission calculus, and the machine compiler),
+`Properties` is the §4 property tail with one file per theorem
+family, and `Construction` is the §5 existence proof, with one lane directory per §4 family
+(`Paper/`, `Quotation/`, `Knowledge/`, `Statistics/`, `NonDogmatism/`, `Freeze/`,
+`Conditioning/`, `LUV/` and `SemanticExtension/`) holding the representation
+machinery that discharges the property tail's interfaces over the concrete constructed
+inductor. Every paper-facing statement cites the paper's real
+`\label`, and the citation is checked in both directions by script.
 
 ## Reading the repository against the paper
 
 Core vocabulary, repo name → paper name (labels are the paper's own `\label`s):
 
-* `Sentence` — sentences of the base language (`def:lang`), propositional via Foundation.
+* `Sentence` — sentences of the ambient propositional language, via Foundation. The paper
+  fixes `ℒ` only up to "some language of propositional logic" (tex:560) and gives it no
+  label of its own.
 * `History` (usually `P`) — the market: one pricing per day (`def:market`).
 * `PCWorld` — a plausible world: a propositionally consistent `{0,1}` valuation
-  (`def:world`).
-* `DeductiveProcess` (usually `DP`) — the deductive process `D̄` (`def:worlds`).
+  (`def:world`, plus propositional consistency).
+* `DeductiveProcess` (usually `DP`) — the deductive process `D̄` (`def:dedproc`).
 * `EF` — an expressible feature (`def:valfeature`/`def:tf`).
 * `Trader`, `AffineCombination` — traders and their affine buy combinations
   (`def:trader`, `def:tradestrat`).
-* `MachineEfficientTrader` — `def:ec` at the paper's own quantifier: ordinary machine
-  polynomial time, through `Complexity.FP`. This is the class the construction enumerates
-  and dominates.
-* `EfficientlyComputable` / `PolyFueled` — the fuel-clocked interpreter certificates
-  (`dd:fuel`). Internal certification technology: every certificate implies membership in
-  the machine class (`EfficientlyComputable.toMachine`).
-* `IsMachineLogicalInductor` — the logical induction criterion at the machine class
-  (`def:lic`), and what the construction proves.
-* `IsLogicalInductor` — the same criterion over the fuel class, kept as a compatibility
-  predicate; every machine logical inductor is one.
+* `EfficientlyComputable` — `def:ec`: ordinary polynomial time, through `Complexity.FP`.
+  This is the class the construction enumerates and dominates, and the class `def:lic`
+  quantifies over.
+* `PolyFueledTrader` / `PolyFueled` — the fuel-clocked interpreter certificates
+  (`dd:fuel`). Internal certification technology, not a reading of `def:ec`: every
+  certificate implies membership in `EfficientlyComputable`
+  (`PolyFueledTrader.toEfficientlyComputable`). The clock never appears as a *statement*
+  device: the paper's own polynomial-in-the-output clauses are machine-metered too, on the
+  unary pair whose length carries the bound (`DeferralFunction.graph_fp`,
+  `FeedbackTruth.FeedbackTruthComputation.computes`).
+* `IsLogicalInductor` — the logical induction criterion (`def:lic`) over
+  `EfficientlyComputable`: what the construction proves, and what the whole §4 property
+  tail is stated against. State a new *consequence* of the criterion against it. A property
+  proof that certifies its exploiting trader in the fuel calculus reaches the criterion
+  through `IsLogicalInductor.noExploitTok` / `.noExploitDigit`.
 * `LUV` — a logically uncertain variable (`def:luv`).
-* `LIA` — the paper's logical induction algorithm (`def:lia`).
+* `liaStates` / `liaHistory` — the paper's logical induction algorithm and the market it
+  induces (`def:lia`, `alg:li`; `Construction/LIA.lean`, with `liaQuote` and `liaTrader`
+  beside them). There is no declaration named `LIA`.
 
 ## Design-decision labels (`dd:*`)
 
@@ -46,27 +63,49 @@ list is exhaustive; a label appearing nowhere below is not in use.
 
 * **`dd:fuel`** — a trader's efficiency *certificate* is a fuel-clocked interpreter
   bound: a `Nat.Partrec.Code` program emitting its trade stream within a polynomial fuel
-  bound on Mathlib's `evaln` (`EfficientlyComputable` / `PolyFueled`). This is no longer a
-  substitution for the paper's class. `def:ec` itself is `MachineEfficientTrader` —
-  ordinary machine polynomial time via `Complexity.FP` — the construction enumerates and
-  dominates *that*, and `EfficientlyComputable.toMachine` proves every fuel certificate
-  lands inside it. The label now marks a *sufficient certification device*, and what
-  remains open is only its converse (the model card's lower calibration), which nothing
-  paper-facing depends on.
+  bound on Mathlib's `evaln` (`PolyFueledTrader` / `PolyFueled`). `def:ec` itself is
+  `EfficientlyComputable` — ordinary machine polynomial time via `Complexity.FP` — and the
+  construction enumerates and dominates *that* class. A fuel certificate is a *sufficient*
+  route into it: `PolyFueledTrader.toEfficientlyComputable` proves every certificate lands inside
+  the class. The converse is open on a *workspace* bound rather than a missing compiler —
+  at a fixed code the fuel device is poly-time with `O(log n)` workspace, since `evaln`'s
+  guard and the class's own polynomial bounds cap every value it handles by a polynomial in
+  the input, while `Complexity.FP` is poly-time with polynomial workspace, so the converse
+  is a P-versus-L-flavoured containment over tally inputs. Nothing paper-facing depends on
+  it; the model card in `Framework/Emission/Computable.lean` states the calibration in full,
+  and `Framework/Machine/WriteOutMachine.lean` exhibits the asymmetry in Lean. The choice is
+  a convenience rather than a necessity: `Framework/Machine/` carries the `Complexity.FP`
+  reading of the whole emission ladder — six classes, two closure suites and the two trader
+  capstones — so a trader can be certified at `EfficientlyComputable` with no fuel
+  certificate in the derivation, as `APITests/LogicalInduction.lean` does. Where the fuel
+  side takes a `PolyFueled c f` parameter the machine side takes a unary ruler (for
+  reindexing) or `MachineDigits f` (for a value written into the stream), and every bridge
+  between the two lanes runs fuel → machine. **No canonical endpoint takes a fuel
+  certificate as an emission premise** — printed or through a boundary structure; what is
+  still metered in this calculus on the emission side is deliberate, binds no endpoint, and
+  is named at the `def:ec` row of `scripts/coverage-classification.md`. **`dd:fuel` is a
+  certification device everywhere, including on the two premises that are not emission
+  premises**: `DeferralFunction.graph_fp` (`def:deferralfunc`, tex:1244) and
+  `FeedbackTruth.FeedbackTruthComputation.computes` (`thm:wub`, tex:1251) render the paper's
+  own *output-sensitive* clocks — runtime polynomial in the value returned, not in the day —
+  at the machine model, by handing the machine the **unary pair** whose length carries the
+  bound: the deferral function's *graph* `f n = m` is decided in `Complexity.FP` on
+  `⟨n, m⟩`, and the feedback value codes are `MachineDigits` read at `⟨k, f (k+1)⟩`.
+  Twenty-three canonical endpoints bind the first, six of them the second, and none of them
+  takes a fuel-metered data premise; the `def:ec` row is `exact`.
 * **`dd:nnf`** — the *semantic* object language is Foundation's
   **negation-normal-form** `Semiformula` (constructors `verum/falsum/rel/nrel/and/or/all/exs`,
   negation a meta-level involution, `A 🡒 B` notation for `∼A ⋎ B`, `A 🡘 B` notation for
   `(A 🡒 B) ⋏ (B 🡒 A)`), but *writing* is metered on a **source** language, not on that
-  normal form. `ArithSource k` (`Construction/Witnesses/ArithmeticSource.lean`) carries the
+  normal form. `ArithSource k` (`Construction/LUV/ArithmeticSource.lean`) carries the
   paper's own primitive connectives (tex:560) — `¬`, `∧`, `∨`, `⟹`, `⟺`, `∀`, `∃`, plus
   atomic leaves — `compile : ArithSource k → ArithmeticSemiformula ℕ k` gives it its
   meaning (`eval_compile`), and `def:ec`'s condition is `PolyArithmeticSourceSeq`: one
   emitted token per node of the formula **as the paper writes it**. Normal-form expansion
-  happens inside the parser (tags `20`/`21`/`22`) and is never charged. So this label no
-  longer marks a substitution: nothing pays twice for a `⟺`. What it marks is the
-  two-layer architecture, and the fact that the normal-form-metered class
-  `PolyArithmeticFormulaSeq` is retained as a **strictness foil** rather than deleted: it
-  embeds (`PolyArithmeticFormulaSeq.toSource`) and the inclusion is *strict*, witnessed at
+  happens inside the parser (tags `20`/`21`/`22`) and is never charged, so nothing pays
+  twice for a `⟺`. What the label marks is that two-layer architecture, and the role of the
+  normal-form-metered class `PolyArithmeticFormulaSeq` as a **strictness foil**: it embeds
+  (`PolyArithmeticFormulaSeq.toSource`) and the inclusion is *strict*, witnessed at
   the left-nested chain `Φ₀ = A`, `Φₖ₊₁ = Φₖ ⟺ A`, which costs `5n + 4` source tokens
   (`iffChainSource_polyArithmeticSourceSeq`, `sourceTokens_iffChainSource_length`) and
   `≥ 2ⁿ` normal-form tokens (`iffChain_not_polyArithmeticFormulaSeq`,
@@ -76,7 +115,13 @@ list is exhaustive; a label appearing nowhere below is not in use.
 * **`dd:dsl`** — expressible features (`EF`) are a *reified* datatype with two semantics
   (a denotation into `ℝ` and a token/cost semantics), rather than Lean functions. The
   syntax is what carries the efficiency certificate, so features must be objects that can
-  be emitted and metered.
+  be emitted and metered. The datatype adds `var`/`letE` — straight-line sharing — to the
+  paper's printed grammar (tex:786-788), on the licence of that grammar's own footnote
+  (tex:788: expressible features are "a generalization of arithmetic circuits", which are
+  "compactly specifiable in polynomial time"). The extension is denotationally
+  conservative but enlarges the class of *cheaply writable* features, hence enlarges
+  `EfficientlyComputable` and strengthens `IsLogicalInductor`; it is disclosed at the `EF`
+  definition and in `LogicalInduction/README.md`.
 * **`dd:asymp`** — one module, `Framework/Asymptotics`, owns the limit vocabulary
   (`≈ₙ`, `≳ₙ`, `≲ₙ`, "eventually within ε", "converges to"), built on Mathlib's
   `Tendsto` and `∀ᶠ n in atTop`, in the limiting rather than the finite-stage form. It is
@@ -89,7 +134,7 @@ list is exhaustive; a label appearing nowhere below is not in use.
 * **`dd:symbolcount`** — §4.10's finite proof searches are metered by the **symbol count
   of the derivation**, as the paper's `Con(Θ′)(ν)` is (tex:1855-1866), with the bound
   inclusive. Foundation exposes no size function on its internal derivations, so
-  `Framework/DerivationSize.lean` builds one: `dSize`, defined by external recursion over
+  `Framework/Theory/DerivationSize.lean` builds one: `dSize`, defined by external recursion over
   the derivation codes at `V := ℕ`, with equations tying it to Foundation's own
   constructors (`dSize_axL`, `dSize_cutRule`, …) and the converse bound
   `le_G_dSize : d ≤ G (dSize d)` that keeps the metered search decidable in both
@@ -108,23 +153,21 @@ list is exhaustive; a label appearing nowhere below is not in use.
   every day's claim from consistency alone, never mentions `dSize` — the choice affects
   only which horizons discharge the non-degeneracy side conditions
   (`conGamma_mentions_zero_of_bProv`, `conGamma_mentions_zero_of_horizon_unbounded`), whose
-  hypotheses are quantitative in the measure. *(This entry replaces the retired
-  `dd:proofcode`, which disclosed the Gödel-number measure that used to stand in for the
-  paper's symbol count.)*
+  hypotheses are quantitative in the measure.
 * **`dd:machinetheory`** — a day's theory in `thm:incons` is presented by a **machine that
   enumerates the written sources of its axioms** (`theoryOf`,
-  `Construction/Witnesses/ComputationRepresented.lean`), and reading a machine as a theory
+  `Construction/Knowledge/Endpoints.lean`), and reading a machine as a theory
   requires fixing a convention. Ours: **an output contributes the sentence a written source
   names, and anything else contributes nothing.** Concretely, an output `v` is admitted only
   if it is literally the name of its own decoded token run *and* that run is the complete
   emitted run of one `ArithSource 0` whose compiled form is a sentence (`AdmissibleName`,
-  `Construction/Witnesses/SourceWindow.lean`, deciding source-hood with the depth-tracking,
+  `Construction/Knowledge/SourceWindow.lean`, deciding source-hood with the depth-tracking,
   free-variable-rejecting recognizer `sourceRun`,
-  `Construction/Witnesses/SourceRecognizer.lean`); the budget-`b` window at inputs `is` is
+  `Construction/Knowledge/SourceRecognizer.lean`); the budget-`b` window at inputs `is` is
   `is.map (fun i => gateName ((evaln b m i).getD verumSourceNat))`, a diverging or
   inadmissible output contributing the inert `⊤`. The gate is not hygiene: without it the
   token splice is unsound, and `MachineTheoryInconsistent` holds of machines presenting the
-  *empty* theory (R11). With it, `machineTheoryInconsistent_iff` proves the represented
+  *empty* theory. With it, `machineTheoryInconsistent_iff` proves the represented
   predicate **equivalent** to the convention's claim — the day-`n` sentence says exactly
   "`theoryOf (mₙ)` is inconsistent", in both directions.
   This is a **convention, not a modelling substitution** — the same status `dd:symbolcount`
@@ -141,46 +184,77 @@ list is exhaustive; a label appearing nowhere below is not in use.
   presents it.
 * **`dd:quote-code`** — quotation data is *code-indexed*: a quote structure carries a
   selector `code : ℕ` naming the program being quoted, instead of quantifying over an
-  abstract quotation schema. This is what makes the quotation presentation satisfiable
-  (an abstract free-schema version was not).
+  abstract quotation schema. This is what makes the quotation presentation satisfiable; an
+  abstract free-schema version is not (`Construction/Paper/Market.lean`,
+  `Construction/Quotation/Packages.lean`).
 * **`dd:mesh`** — `thm:ccee`'s quoted product `⌜Xₙ · w_{f(n)}⌝` is realized on a finite
   *mesh* of the deferred weight's own threshold atoms, so it reflects the product only to
   within `1/(n+1)` rather than exactly. This is a disclosed type-`(c)` substitution, not
   merely a presentation choice: an exactly-reflecting product LUV would need either the
   weight's *value* (unavailable to an emitter) or an infinite disjunction (absent from the
   propositional substrate). It is what buys the paper's arbitrary e.c. source family; the
-  slack is carried explicitly by `ConditionalExpectationQuote.slack`.
+  slack is carried explicitly by `ConditionalExpectationQuote.slack`
+  (`Properties/SelfTrust.lean`). The quotation-free deferred and paired-index affine
+  machinery the `thm:cee`/`thm:ceu`/`thm:ccee`/`thm:st` packages are assembled from lives
+  in `Construction/Quotation/DeferralFibre.lean`.
 
 ## Naming conventions
 
 * `lic_<node>` is a consequence of the logical induction criterion, mirroring the paper
   node named in its docstring — `lic_provind` ↔ `thm:provind`, `lic_nonDogmatism` ↔
-  `thm:nd`. Such statements take `[IsLogicalInductor P DP]`. (`lic_iff_of_finitePerturbation`
-  is the one transport rather than consequence.) Where the paper's statement is about a
+  `thm:nd`. Such statements take `[IsLogicalInductor P DP]`. The `lic_iff_*` family
+  (`lic_iff_of_finitePerturbation`, `lic_iff_of_finiteSupportPerturbation` and the
+  syntactically-restricted forms in `API.lean`) are transports between two markets
+  rather than consequences of one. Where the paper's statement is about a
   combination or a LUV rather than a sentence, the endpoint lives in the corresponding
-  namespace and drops the prefix — `AffineCombination.BoundedCombinationSequence.prandaff`,
-  `LUVCombination.BoundedSequence.wubexp`.
-* `theorem` is reserved for paper-facing statements, and every one of them ends its
-  docstring with a `Paper node:` line listing labels verbatim from the paper's
-  `\label{…}`. Internal statements are `lemma` or `private lemma`; they carry no
-  `Paper node:` line and may be renamed or inlined freely.
+  namespace; the prefix is dropped when the endpoint is a *projection off a bounded-sequence
+  structure* — `AffineCombination.BoundedCombinationSequence.affpolymax` ↔ `thm:affpolymax`,
+  `LUVCombination.BoundedSequence.wubexp` ↔ `thm:wubexp` — and kept when the endpoint
+  quantifies over a market, as in
+  `AffineCombination.ApproxDeterminedViaTheory.lic_prandaff_above`.
+* `theorem` is reserved for statements of paper claims. Supporting declarations of any
+  kind — `lemma`, `def`, `structure` — may carry the provenance line that ends a
+  paper-facing docstring, listing labels verbatim from the paper's `\label{…}`: that line
+  marks membership in the checked endpoint inventory, which `check-paper-nodes.sh` forces
+  on every `AxiomAudit.lean` name whatever its keyword. So a `lemma` bearing one is
+  inventoried infrastructure for that node, not a paper claim; a `theorem` is the claim.
 * Suffixes say what has been discharged, and compose left to right:
-  - `_ofComputation` / `_ofCode` / `_ofRepresentation` / `_ofPrefixMachine` / … — the
-    same statement with a formerly *assumed* boundary interface supplied by a concrete
-    construction named in the suffix.
+  - `_ofComputation` / `_ofComputations` / `_ofCode` / `_ofRepresentation` /
+    `_ofPrefixMachine` / … — the same statement with the boundary interface, a hypothesis
+    on the unsuffixed form, supplied by the concrete construction the suffix names. Both
+    the singular and the plural spelling of the computation form are in use, according to
+    whether one program or a family is supplied.
   - `_unconditional` — the `[IsLogicalInductor P DP]` hypothesis is gone: the statement
-    holds of the constructed `LIA` over the constructed deductive process. Representation
-    data may still be a caller hypothesis.
+    holds of the constructed `liaHistory` over the constructed deductive process.
+    Representation data may still be a caller hypothesis.
   - `_closed` — `_unconditional` *and* the reflection/quote-code data constructed too, so
     nothing remains but the statement's own data and its efficiency certificates. This is
     the strongest form a property endpoint takes.
   - `_arith` — restricted to the `dd:luv-arith` certified class (see above).
   - `_above` / `_below` / `_eq` — the one-sided comparison directions of a two-sided
     asymptotic conclusion.
+* A lowercase `_of_<hypothesis>` tail — `recunbiasedaff_of_historicalVerifiers`,
+  `affpolymax_of_noPreemptiveGaps` — is Mathlib-style hypothesis naming, saying which
+  premise the statement is factored over. It is distinct from the discharge suffix `_ofX`
+  above, which names a construction that *removes* a premise.
+
+* **`Machine*` names the metering model of a certificate, never a second reading of
+  `def:ec` or of `def:lic`.** There is one efficient-trader class, `EfficientlyComputable`
+  (`def:ec`), and one criterion, `IsLogicalInductor` (`def:lic`); `PolyFueledTrader` beside
+  them is the `dd:fuel` certificate, and the marker on it is `PolyFueled`, not `Machine`.
+  On the **emission data classes** — those that meter *write-out* on an ordinary machine:
+  `MachineSentenceCodes`, `MachineSpliceStream`, `MachineTokenStream`, `MachineDigits`,
+  `MachineRatCodes`, `MachineMachineCodes`, `MachineArithmeticSourceSeq`,
+  `LUV.MachineThresholdCodes(Seq)`, and the count class `UnaryRuler` beside them — the
+  prefix contrasts with the certification calculus's own renderings of the same data
+  (`Big*`, `Digit*`, `Poly*`, `Rpn*`), each with live producers and a `.toMachine` bridge.
+  Both readings are legitimate there and neither is a criterion. Three declarations outside
+  that family carry the prefix for the same reason at the level of an object rather than a
+  class: `CondStep.MachineSentenceBlocks` (the block discipline read off a machine word),
+  `MachineTheoryInconsistent` (the machine-decided inconsistency predicate of `thm:incons`)
+  and `MachineTraderProgram` (a trader named by a machine description and a clock).
+  `Framework/Efficiency.lean` points here.
 
 `scripts/coverage-classification.md` records, per paper label, which of these forms the
 strongest endpoint actually reaches.
 -/
-import LogicalInduction.Framework
-import LogicalInduction.Properties
-import LogicalInduction.Construction

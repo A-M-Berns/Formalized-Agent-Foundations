@@ -14,6 +14,7 @@ Each entry states the published claim, the defect, and what this repository does
 | PE6 | `thm:ref` / `app:ref` — Introspection | printed hypotheses too weak for the printed proof |
 | PE7 | `Con(PA)(Ack)` gloss (tex:1859) | gloss contradicts its definition (off by one) |
 | PE8 | `app:incons` — proof of `thm:incons` | proof cites representability where Σ₁-completeness is needed |
+| PE9 | `def:luv` (tex:1655) — `γ_f` at a `[0,1]` codomain | notation applied outside its own definition; repairable |
 
 ---
 
@@ -52,9 +53,9 @@ step further out.
 ### Formal refutation
 
 `FinitePerturbationCounterexample.not_overgeneral_ifp`
-(`Construction/Witnesses/FinitePerturbationWitness.lean`) proves the negation of the
-printed statement, at the paper's own quantifier (`IsMachineLogicalInductor`,
-`MachineEfficientTrader`), with no theory parameter and no unproved hypothesis. It is
+(`Construction/Freeze/Counterexample.lean`) proves the negation of the
+printed statement, at the paper's own quantifier (`IsLogicalInductor`,
+`EfficientlyComputable`), with no theory parameter and no unproved hypothesis. It is
 kernel-checked and axiom-clean; `not_overgeneral_ifp_ofTheory` is the same result over any
 Σ₁-sound Δ₁ theory extending `𝗜𝚺₁`. The abstract reduction it rests on,
 `not_overgeneral_ifp_of_advice`, lives in `Properties/FinitePerturbationCounterexample.lean`.
@@ -75,7 +76,7 @@ perturbation smuggles across.
 Made precise:
 
 * `P` is the constructed `LIA` over the `𝗜𝚺₁` theorem process — a genuine machine logical
-  inductor (`LIA_isMachineLogicalInductor`).
+  inductor (`LIA_is_logical_inductor`).
 * `χ` is the repository's diagonal price family: in every world consistent with the
   completed theory, `χ n` holds exactly when `P n (χ n) < 1/2`. A trader knowing that one
   bit earns a *certain* `≥ 1/2` on day `n` once the day has settled — buy below the
@@ -86,7 +87,7 @@ Made precise:
   advice atoms at otherwise unused tags. It is a legal `ComputableMarket`: the day-`0` row
   is a total computable search, terminating by propositional compactness
   (`DeductiveProcess.exists_stage_entails`).
-* The exploiting trader is a genuine `MachineEfficientTrader`, and never computes the
+* The exploiting trader is a genuine `EfficientlyComputable`, and never computes the
   bits. Its day-`n` coefficient is the rank-`0` feature
   `price (schedAtom n) 0 * (2 * price (signAtom n) 0 - 1)`, so the *market* supplies the
   advice at valuation time. A sparse schedule lets each round settle before the next
@@ -101,22 +102,22 @@ theorem, not merely its proof, is wrong.
 Finite *support* is what rescues the hard-coding step, and the repository proves that
 case.
 
-`FreezeOracle.machine_lic_iff_of_finiteSupport`
-(`Construction/Witnesses/FreezeOracle.lean`) is the statement to cite:
+`FreezeOracle.lic_iff_of_finiteSupport`
+(`Construction/Freeze/Oracle.lean`) is the statement to cite:
 
 ```lean
-theorem machine_lic_iff_of_finiteSupport (P P' : History) (DP : DeductiveProcess)
+theorem lic_iff_of_finiteSupport (P P' : History) (DP : DeductiveProcess)
     (hPcomp : ComputableMarket P) (hP'comp : ComputableMarket P')
     (hpert : FiniteSupportPerturbation P P') :
-    IsMachineLogicalInductor P DP ↔ IsMachineLogicalInductor P' DP
+    IsLogicalInductor P DP ↔ IsLogicalInductor P' DP
 ```
 
 `FiniteSupportPerturbation P P'` asks for a finite set `S` of `(day, sentence)` coordinates
 off which the two markets agree, and asks nothing else — nothing about the sentences in it.
 There is no certificate hypothesis either: the freeze certificate each market needs is
 *compiled* from its own computability certificate by
-`FreezeOracle.machineFiniteSupportPatch`. The earlier
-`machine_lic_iff_of_noReservedSupport` and `machine_lic_iff_of_recognizableSupport` survive
+`FreezeOracle.finiteSupportPatch`. The earlier
+`lic_iff_of_noReservedSupport` and `lic_iff_of_recognizableSupport` survive
 as one-line compatibility corollaries.
 
 Two things about that statement, both stated at the declaration:
@@ -148,10 +149,10 @@ Two things about that statement, both stated at the declaration:
    primitive is now built — `DigitFP.sqrtRemW_mem_FP` and `DigitFP.unpairW_spec` supply
    base-4 integer square root and `Nat.unpair` inside `Complexity.FP`,
    `FiberTest.fiberW_mem_FP` the escape-leaf decode test on top of them — and the recognizer
-   was rebuilt around it: `RpnFreeze.patterns` replaces the finite spelling list by a finite
-   list of *patterns with holes*, confining the infinite fibre inside a hole predicate, and
-   `PatAuto.ifParse_mem_FP` decides the whole thing in polynomial time.
-   `FreezeOracle.machine_lic_iff_hardPoint` exercises the difference at `atom 0 ⋏ ⊥`, a
+   was rebuilt around it: `StructPat.segPatterns` replaces the finite spelling list by a
+   finite list of *patterns with holes*, confining the infinite fibre inside a hole
+   predicate, and `SegRec.ifParseFull_mem_FP` decides the whole thing in polynomial time.
+   `FreezeOracle.lic_iff_hardPoint` exercises the difference at `atom 0 ⋏ ⊥`, a
    sentence the previous endpoint provably could not freeze
    (`FreezeOracle.not_recognizable_hardS`).
 
@@ -181,7 +182,7 @@ Two things about that statement, both stated at the declaration:
    `StructPat.parseRpn_iff_segMatch` is the characterization the two devices are hung on: a
    run denotes `ψ` under the full grammar exactly when it matches one of `ψ`'s finitely many
    *segment* patterns, structured blocks included, for every `ψ`.
-   `FreezeOracle.machine_lic_iff_reservedPoint` exercises the difference at a reserved atom,
+   `FreezeOracle.lic_iff_reservedPoint` exercises the difference at a reserved atom,
    a coordinate neither earlier endpoint could freeze
    (`FreezeOracle.not_noReserved_pointS_reserved`).
 
@@ -192,17 +193,17 @@ Two things about that statement, both stated at the declaration:
    exactly where the printed finite-*days* proof fails and this one does not.
 
 The underlying general form, taking a freeze certificate per market, is
-`machine_lic_iff_of_finiteSupportPerturbation` (`Properties/FinitePerturbations.lean`).
+`lic_iff_of_finiteSupportPerturbation_ofPatches` (`Properties/FinitePerturbations.lean`).
 
 ### Downstream consequence
 
-* **Non-vacuous.** `FreezeOracle.machine_lic_iff_twoPoint` is the corrected theorem at a
+* **Non-vacuous.** `FreezeOracle.lic_iff_twoPoint` is the corrected theorem at a
   concrete pair of computable markets with real `Nat.Partrec.Code` tables, proved to
   differ at the frozen coordinate, discharging every hypothesis at once.
 * **Informative.** Those particular markets price everything at zero but one coordinate
   and are very likely exploitable, so the equivalence might hold there because both sides
-  fail. `LIAPerturbation.machineLogicalInductor_liaPerturbed` removes that qualification:
-  `liaHistory DP` is a machine logical inductor, and moving one price at the
+  fail. `LIAPerturbation.logicalInductor_liaPerturbed` removes that qualification:
+  `liaHistory DP` is a logical inductor, and moving one price at the
   `Recognizable` coordinate `(0, atom 0)` — a genuinely nonzero change,
   `liaPerturbed_ne` — yields a market that still is, **by this theorem and nothing else**.
   That market is the output of no construction here. The instance inherits
@@ -211,7 +212,7 @@ The underlying general form, taking a freeze certificate per market, is
 * **The fuel-class certificates remain uninhabited.** `EfficientPrefixPatch` and
   `FiniteSupportPatch` have no inhabitant anywhere: the fuel calculus does not close over
   the escape-leaf decode the frozen lookup needs (`dd:fuel`; see
-  `Construction/Witnesses/RpnFreeze.lean`). Only the machine-class certificate is
+  `Construction/Freeze/Compiler.lean`). Only the machine-class certificate is
   discharged. `lic_iff_of_finitePerturbation` and `lic_iff_of_finiteSupportPerturbation`
   therefore still carry certificate hypotheses with no exhibited witness.
 * **The degenerate discharge is available and deliberately not taken.** `S = ∅` makes the
@@ -273,10 +274,10 @@ expectation recurring theorem should read.
 
 The formalization places the hypotheses correctly and declares the correction at the
 statements. `BoundedSequence.recurringunbiasednessexp`
-(`Construction/Witnesses/HistoricalMaturity.lean`) takes a generable divergent weighting
+(`Construction/Statistics/HistoricalMaturity.lean`) takes a generable divergent weighting
 with no deferral or image-of-`f` hypothesis and concludes a limit point;
 `luv_wubexp_ofComputation` and `luv_wubexp_ofComputation_unconditional`
-(`Construction/Witnesses/FeedbackTruth.lean`, `FeedbackUnconditional.lean`) carry the
+(`Construction/Statistics/FeedbackTruth.lean`, `Construction/Statistics/Endpoints.lean`) carry the
 deferral function and the support-in-image hypothesis and conclude a full limit. This is
 forced by construction: the full-limit conclusion is not provable without the deferral
 clause, and the limit-point conclusion does not need it.
@@ -399,7 +400,7 @@ them only computable, which the printed hypotheses do give. `thm:ref` is therefo
 formalized at the paper's own hypothesis strength over the constructed inductor, and the
 defect above is confined to the printed proof.
 
-`lic_introspection_closed` (`Construction/Witnesses/QuoteCodeOfMarket.lean`) carries
+`lic_introspection_closed` (`Construction/Quotation/MarketQuoteCodes.lean`) carries
 exactly the paper's hypotheses. Two `PolyRatCodes` premises formerly stood on the interval
 bounds; they were consumed only as `.computable`, which is derivable from the endpoint's own
 `GeneratedRatFeature` data, and have been removed. The node is classified `exact`.
@@ -416,7 +417,7 @@ symbols" — an inclusive bound. Two lines later, tex:1859 glosses
 Ack(10,10) symbols"; by the definition it requires *more than* Ack(10,10).
 
 The formalization follows the definition, not the gloss: `BProv`'s bound is inclusive
-(`dSize d ≤ k`, `Framework/BoundedConsistency.lean`), so `conWithin T k` is exactly the
+(`dSize d ≤ k`, `Framework/Theory/BoundedConsistency.lean`), so `conWithin T k` is exactly the
 definition's reading. Recorded so that the inclusive bound is not misread as drift
 against the gloss.
 
@@ -441,3 +442,74 @@ The formalization proves the step by the correct route: `re_complete_mp` under
 the paper's own argument tacitly consumes arithmetical strength beyond its stated
 premises at exactly this point.
 
+
+---
+
+## PE9 — `γ_f` is applied to a `[0,1]`-valued `f` that its own definition excludes (`def:luv`)
+
+**Repaired in-repo by naming an encoding the paper defers; the paper's construction is
+fixable but not literally defined as stated.** Mild, and of the same class as PE3.
+
+tex:1655 says: "if `f : ℕ⁺ → [0,1]` is a computable function then `⌜⟨f⟩(7)⌝` is a LUV,
+because `⌜⟨f⟩(7)⌝` is shorthand for the formula `⌜γ_f(7,ν)⌝`, where `γ_f` is the predicate
+of Θ representing `f`."
+
+But `γ_f` is defined in exactly one place, the §2 "Representing computations" paragraph
+(tex:600-606), and only for a **total computable `f : ℕ⁺ → ℕ⁺`**, by
+
+```
+y = f(n)   iff   Θ ⊢ ∀ν : γ_f(⌜n⌝, ν) ⟺ ν = ⌜y⌝.
+```
+
+Two things go wrong at tex:1655. First, the condition names the value by the **numeral**
+`⌜y⌝`, which has no referent for a rational — let alone a real — `y`, so `γ_f` is simply
+undefined for the `f` the sentence applies it to. Second, the codomain as printed is the
+real interval `[0,1]`; a computable real-valued function cannot satisfy that biconditional
+at all, since it demands a single numeral per input. The sentence must be read as
+`ℚ ∩ [0,1]` under some coding of `ℚ`.
+
+The paper is aware a coding is needed and defers it rather than supplying it: tex:1633 says
+"we will need to assume that Θ is capable of representing rational numbers and proving
+things about them", and then discharges that need by assuming Θ *can represent computable
+functions* — the tex:600-606 notion, whose statement contains no clause about rationals.
+So the gap is not that the paper picks an encoding this repository disagrees with; it is
+that the notion actually assumed does not deliver the capability the next sentence uses.
+
+Nor does the paper's ambient notation for rationals close it. Elsewhere (`def:e`,
+tex:1668) rationals appear as **quotients of numerals**, `⌜i⌝/⌜k⌝`, which presupposes
+division as a total operation in the object language — not available in a language of
+ordered rings, and in any case a device for writing a *threshold*, not for naming the value
+`γ_f` must pin down uniquely.
+
+**What the repository does.** `PaperLUV` (`Construction/LUV/PaperLUV.lean`) names one
+encoding — a numerator/positive-denominator pair code, `paperRatDef` / `paperRatUnitDef`,
+with `pairDef q a b ∧ 0 < b` — and carries object-level `T`-derivations of uniqueness and
+of `[0,1]` membership as the structure's `unique` and `unit` fields, so the coding
+obligation is discharged at the object level rather than assumed. The representation is
+ordered-value rather than canonical (`1/2` and `2/4` stay distinct codes); the represented
+real is recovered through the rational cut (`rationalCutAt`, `source_valued`), which is
+`def:luv`'s own supremum construction (tex:1642-1646). tex:1655's own route — a Θ-formula
+representing a computable pair-valued function, turned into a LUV — is
+`representedPairPaperLUV` (`Construction/Quotation/RepresentedWeight.lean`). The
+consequence for the paper's printed examples is recorded in `LogicalInduction/README.md`:
+`⌜ν = 0.5⌝` and the twin-prime indicator (tex:1651-1653) have to be re-spelled through the
+pair code to be `PaperLUV`s.
+
+---
+
+## Citation record — where the paper actually says it
+
+Not errata: these are locations in `1609.03543v5-main.tex` that this development cites and
+that are easy to cite wrongly, recorded here because each cost a correction pass. A wrong
+`tex:` line is invisible to every checker.
+
+| what | where | the mistake to avoid |
+| --- | --- | --- |
+| the primitive connectives `¬ ∧ ∨ ⟹ ⟺` | tex:560 | — |
+| the quantifiers `∀ ∃`, and `∀x.φ` read as `¬∃x.¬φ` | tex:568-573 | citing tex:571-577 |
+| the prime-sentence decomposition (Boolean atoms of a first-order theory) | tex:566-573 | citing tex:560, which is the connective paragraph |
+| `⌜⟨f⟩(7)⌝` is shorthand for `⌜γ_f(7,ν)⌝` | tex:1655 | citing tex:1660 |
+| `thm:pazfc`'s own hypothesis — `Θ′` **any recursively axiomatizable consistent theory** | tex:1882 | quoting it as `𝗣𝗔 + Con(𝗣𝗔)`, or as containing `Θ`; the paper states **no** containment hypothesis |
+| the informal "stronger than `Θ`" framing of `thm:pazfc` | tex:1879 | reading it as part of the theorem's hypotheses |
+| `𝗭𝗙𝗖` as the worked example for `thm:pazfc` | tex:1889 | — |
+| `def:ec` meters *writing the object out* | tex:753-755, explicitly tex:1931-1933 | reading it as a bound on a Gödel code's value |

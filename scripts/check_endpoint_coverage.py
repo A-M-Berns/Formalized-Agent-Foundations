@@ -524,10 +524,13 @@ def check_headline_counts(root: Path, strength: dict[str, dict]) -> list[str]:
 UNANNOTATED_PAPER_RESULTS = {
     "lem:fpl":           "MarketMaker.lean — fixed_point_lemma",
     "lem:mm":            "MarketMaker.lean — MarketMaker inexploitability",
-    "lem:budgeter":      "Budgeter.lean — budgeter_props",
+    "lem:budgeter":      "Budgeter.lean — BudgeterAt_value_eq_of_safe, "
+                         "budgetedTrader_netWorth_floor, exists_budgetedTrader_exploits "
+                         "(the lemma's three parts)",
     "prop:enumeration":  "TradingFirm.lean — the trader enumeration",
     "lem:type3":         "ROI.lean — type-3 return-on-investment bound",
-    "lem:type2":         "ROI.lean — type-2 return-on-investment bound",
+    "lem:type2":         "NonDogmatism.lean — the parametric-trader lemma behind the "
+                         "scale ladder (module header, `## The scale ladder`)",
     "lem:conluvapprox":  "ExpectationConvergence.lean — LUV approximation",
     "lem:limexpapprox":  "ExpectationProperties.lean — limiting-expectation approximation",
 }

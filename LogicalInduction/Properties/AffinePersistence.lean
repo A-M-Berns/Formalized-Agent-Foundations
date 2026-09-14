@@ -1,24 +1,61 @@
-/-
-# `thm:peraffkno` — Persistence of Affine Knowledge (paper §4.5, appendix `app:peraffkno`)
-
-The paper's persistence theorem compares every fixed affine combination `Aₙ` with the
-limiting belief state `P∞`. This file constructs that limiting valuation
-(`limitingBelief`), proves that a fixed finite affine combination's prices converge to
-its value under `P∞`, and builds the uniform-in-`n` prefix portfolio of `app:peraffkno`
-with an explicit polynomial affine-sequence certificate; the economic contradiction is
-then discharged by Affine Preemptive Learning (`thm:affpolymax`).
-
-Endpoint: `AffineCombination.PolySequence.peraffkno`, the pair of future-tail /
-limiting-value equalities. Its sentence-level special case `Aₙ := φₙ` is Persistence of
-Knowledge (`thm:perkno`, `app:perkno`), which lives in `Properties.TimelyLearning`.
--/
 import LogicalInduction.Properties.AffinePreemptiveLearning
 import LogicalInduction.Properties.Coherence
-import LogicalInduction.Framework.WriteOut
+import LogicalInduction.Framework.Emission.WriteOut
+
+/-!
+# Persistence of Affine Knowledge
+
+Renders `thm:peraffkno`, paper §4.5 (subsubsection *Affine Strengthenings*), appendix
+`app:peraffkno`. The paper's persistence theorem compares every fixed affine combination
+`Aₙ` with the limiting belief state `P∞`.
+
+`limitingBelief P` is that limiting valuation, presented canonically as the limsup of
+each price sequence so that it is total for any history; under the criterion
+`lic_limitingBelief_tendsto` (`thm:con`) shows it is the genuine limit, and
+`AffineCombination.price_tendsto_limitingValue` lifts that to a fixed finite affine
+combination.
+
+The `app:peraffkno` prefix portfolio is built from `persistenceEntry` (the continuous
+per-member buy signal), `persistenceEntrySum`, `persistenceRawConst`, `persistenceNorm`
+(the safe reciprocal `1 / max(1, Σ entry weights)`) and `persistencePortfolio`, flattened
+over a variable-width segment layout (`persistenceMemberLength` / `Member` / `Offset`).
+The component launched on day `k` buys every member of the prefix `A₀, …, A_k` whose
+day-`k` price is below the chosen threshold. Its emission certificate
+`PolySequence.persistencePortfolioPoly` is built explicitly — term count, coefficient
+syntax, sentence codes — rather than assumed, because that certificate is what the
+`thm:affpolymax` no-gap results consume.
+
+Normalizing by the sum of entry weights rather than by the number of prefix members gives
+the two invariants the economics needs: magnitude at most one always
+(`persistenceNorm_mul_entrySum_le_one`), and total normalized entry weight exactly one as
+soon as a single entry signal is full
+(`persistenceNorm_mul_entrySum_eq_one_of_entry_one`), so detection of an underpricing
+buys a full share.
+
+The main operational result is `PolySequence.noPersistenceGaps(_of_boundedMagnitude)`,
+packaged by the structure `AffineNoPersistenceGaps`: neither future-tail extremum stays
+separated from the limiting affine value on infinitely many members. It is consumed by
+`Properties/TimelyLearning.lean` (`lic_centered_persistence`). The analytic capstone
+`peraffkno_of_noPersistenceGaps` turns it into the paper's two equalities, and the
+paper-facing carrier is `AffineCombination.PolySequence.peraffkno`, consumed by
+`Properties/AffineCoherence.lean`, `Properties/ExpectationProperties.lean` and
+`Construction/Quotation/Packages.lean`.
+
+Also exported are the transport utilities `AffineCombination.addConst` /
+`PolySequence.addConst`, used by `Framework/Emission/Computable.lean` and the conditioning
+and perturbation witnesses among others, and the cross-day bounds
+`BoundedAffinePrices.futureLow_le_price` / `price_le_futureHigh`.
+
+The sentence-level special case `Aₙ := φₙ` is `thm:perkno`, and lives in
+`Properties/TimelyLearning.lean`.
+
+-/
 
 namespace LogicalInduction
 
 open Filter Topology
+
+/-! ## The limiting belief state `P∞` -/
 
 /-- The limiting valuation `P∞`, represented canonically by the limsup of each price
 sequence. The limsup is total, so this is well defined for any history; under the
@@ -33,9 +70,7 @@ theorem lic_limitingBelief_tendsto (P : History) (DP : DeductiveProcess)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) (φ : Sentence) :
     ConvergesTo (fun n => P n φ) (limitingBelief P φ) := by
   obtain ⟨L, hL⟩ := lic_price_convergesTo P DP φ hworld
-  have hlim : limitingBelief P φ = L := by
-    exact hL.limsup_eq
-  rwa [hlim]
+  rwa [show limitingBelief P φ = L from hL.limsup_eq]
 
 namespace AffineCombination
 
@@ -66,6 +101,8 @@ lemma price_tendsto_limitingValue (A : AffineCombination)
       A.const.denote P +
         (A.terms.map (fun p => p.1.denote P * limitingBelief P p.2)).sum by rfl]
   exact tendsto_const_nhds.add (hterms A.terms)
+
+/-! ## Cross-day bounds on a bounded affine family -/
 
 /-- Every tail infimum is below every later price. -/
 lemma BoundedAffinePrices.futureLow_le_price
@@ -133,20 +170,13 @@ lemma BoundedAffinePrices.limitingValue_filterBounds
 
 end AffineCombination
 
-/-! ## Polynomial prefix portfolios
+/-! ## The flattened prefix layout
 
-The `app:peraffkno` component launched on day `k` buys every earlier member that is then
-underpriced.  We package that finite mixture as a single normalized affine combination,
-so that the Affine Preemptive Learning no-gap result
-(`AffineCombination.PolySequence.noPreemptiveUnderpricing`, `thm:affpolymax`) supplies
-the economic contradiction.
-The definitions below spell out the polynomial emission of the portfolio — term count,
-coefficient syntax, sentence codes — rather than assuming a computability certificate
-for it.
-
-The normalizer is the safe reciprocal of the *sum of entry weights*, not of the number of
-prefix members.  Hence the portfolio has magnitude at most one, and whenever even one
-entry signal is fully on, its total normalized entry weight is exactly one.
+The day-`k` mixture is packaged as a single normalized affine combination, so that the
+Affine Preemptive Learning no-gap result
+(`AffineCombination.PolySequence.noPreemptiveUnderpricing`, `thm:affpolymax`) supplies the
+economic contradiction. Its terms are the concatenated term lists of `A₀, …, A_k`, indexed
+by a variable-width segment layout.
 -/
 
 namespace AffineCombination
@@ -178,19 +208,21 @@ def persistenceEntry (As : ℕ → AffineCombination) (start : ℕ) (low δ : �
     (k n : ℕ) : EF :=
   if start < n then buyIndF ((As n).priceFeature k) low δ else EF.const 0
 
+/-- The expression-tree sum `f 0 + ⋯ + f k`, right-nested over `List.range (k + 1)`.
+Both unnormalized aggregates of the prefix portfolio are instances of it, so their
+serialization, rank, closedness and denotation are each proved once. -/
+def sumEF (f : ℕ → EF) (k : ℕ) : EF :=
+  (List.range (k + 1)).foldr (fun n acc => EF.add (f n) acc) (EF.const 0)
+
 /-- Sum of all prefix entry weights on day `k`. -/
 def persistenceEntrySum (As : ℕ → AffineCombination) (start : ℕ) (low δ : ℚ)
     (k : ℕ) : EF :=
-  (List.range (k + 1)).foldr
-    (fun n acc => EF.add (persistenceEntry As start low δ k n) acc) (EF.const 0)
+  sumEF (persistenceEntry As start low δ k) k
 
 /-- Unnormalized constant term of the prefix portfolio. -/
 def persistenceRawConst (As : ℕ → AffineCombination) (start : ℕ) (low δ : ℚ)
     (k : ℕ) : EF :=
-  (List.range (k + 1)).foldr
-    (fun n acc => EF.add
-      (EF.mul (persistenceEntry As start low δ k n) (As n).const) acc)
-    (EF.const 0)
+  sumEF (fun n => EF.mul (persistenceEntry As start low δ k n) (As n).const) k
 
 /-- Safe portfolio normalizer `1 / max(1, sum entry weights)`. -/
 def persistenceNorm (As : ℕ → AffineCombination) (start : ℕ) (low δ : ℚ)
@@ -225,177 +257,174 @@ def persistencePortfolio {As : ℕ → AffineCombination} (h : PolySequence As)
     (persistenceCoefficient h start low δ (Nat.pair k j),
       persistenceSentence h (Nat.pair k j)))
 
+/-! ## Emission of the prefix portfolio -/
+
+/-- The day-`k` entry signal for member `n` is emitted by a spliced token stream: a
+buy-indicator block when `start < n`, the constant `0` otherwise. -/
 lemma persistenceEntry_serialize (As : ℕ → AffineCombination)
     (h : PolySequence As) (start : ℕ) (low δ : ℚ) :
-    BigSpliceStream (fun z =>
+    MachineSpliceStream (fun z =>
       (persistenceEntry As start low δ z.unpair.1 z.unpair.2).serialize) := by
-  have hprice := h.priceFeature_polySeg.comp (PolyFueled.right.pair PolyFueled.left)
-  have hbuy := BigSpliceStream.serialize_buyIndF hprice low δ
-  have hzero : BigSpliceStream (fun _ => (EF.const 0).serialize) :=
-    BigSpliceStream.serialize_const 0
-  have htest := subc_polyFueled.comp
-    (PolyFueled.right.pair (PolyFueled.const start))
-  refine BigSpliceStream.of_eq (BigSpliceStream.ifZero hzero hbuy htest) ?_
+  have hprice := h.priceFeature_polySeg.comp
+    (f := fun z : ℕ => Nat.pair z.unpair.2 z.unpair.1)
+    (UnaryRuler.unpairSnd.pair UnaryRuler.unpairFst)
+  have hbuy := MachineSpliceStream.serialize_buyIndF hprice low δ
+  have hzero : MachineSpliceStream (fun _ : ℕ => (EF.const 0).serialize) :=
+    MachineSpliceStream.serialize_const 0
+  have htest := (subc_polyFueled.comp
+    (PolyFueled.right.pair (PolyFueled.const start))).of_eq
+    (f' := fun z : ℕ => z.unpair.2 - start)
+    (fun z => by simp only [Nat.unpair_pair])
+  refine MachineSpliceStream.of_eq (MachineSpliceStream.ifZero hzero hbuy
+    (t := fun z : ℕ => z.unpair.2 - start) (UnaryRuler.of_polyFueled htest)) ?_
   intro z
   simp only [Nat.unpair_pair]
   by_cases hs : start < z.unpair.2
   · rw [if_neg (by omega), persistenceEntry, if_pos hs]
   · rw [if_pos (by omega), persistenceEntry, if_neg hs]
 
-lemma persistenceEntrySum_serialize (As : ℕ → AffineCombination)
-    (start : ℕ) (low δ : ℚ) (k : ℕ) :
-    (persistenceEntrySum As start low δ k).serialize =
-      (List.range (k + 1)).flatMap
-          (fun n => (persistenceEntry As start low δ k n).serialize) ++
+/-- A `sumEF` serializes as the concatenated summand blocks, then the zero base case,
+then one `add` tag per summand. -/
+lemma sumEF_serialize (f : ℕ → EF) (k : ℕ) :
+    (sumEF f k).serialize =
+      (List.range (k + 1)).flatMap (fun n => (f n).serialize) ++
         (EF.const 0).serialize ++ List.replicate (k + 1) 2 := by
-  simp only [persistenceEntrySum]
+  simp only [sumEF]
   have aux : ∀ l : List ℕ,
-      (l.foldr (fun n acc => EF.add
-        (persistenceEntry As start low δ k n) acc) (EF.const 0)).serialize =
-        l.flatMap (fun n => (persistenceEntry As start low δ k n).serialize) ++
+      (l.foldr (fun n acc => EF.add (f n) acc) (EF.const 0)).serialize =
+        l.flatMap (fun n => (f n).serialize) ++
           (EF.const 0).serialize ++ List.replicate l.length 2 := by
     intro l
     induction l with
     | nil => simp [EF.serialize]
     | cons a l ih =>
         simp only [List.foldr_cons, List.flatMap_cons, List.length_cons]
-        rw [show (EF.add (persistenceEntry As start low δ k a)
-            (l.foldr (fun n acc => EF.add
-              (persistenceEntry As start low δ k n) acc) (EF.const 0))).serialize =
-            (persistenceEntry As start low δ k a).serialize ++
-              (l.foldr (fun n acc => EF.add
-                (persistenceEntry As start low δ k n) acc) (EF.const 0)).serialize ++ [2] by
+        rw [show (EF.add (f a)
+            (l.foldr (fun n acc => EF.add (f n) acc) (EF.const 0))).serialize =
+            (f a).serialize ++
+              (l.foldr (fun n acc => EF.add (f n) acc) (EF.const 0)).serialize ++ [2] by
           simp [EF.serialize]]
         rw [ih]
         simp [List.replicate_succ', List.append_assoc]
   simpa using aux (List.range (k + 1))
 
+/-- The day-`k` entry sum serializes as its entry blocks followed by the `add` tags. -/
+lemma persistenceEntrySum_serialize (As : ℕ → AffineCombination)
+    (start : ℕ) (low δ : ℚ) (k : ℕ) :
+    (persistenceEntrySum As start low δ k).serialize =
+      (List.range (k + 1)).flatMap
+          (fun n => (persistenceEntry As start low δ k n).serialize) ++
+        (EF.const 0).serialize ++ List.replicate (k + 1) 2 :=
+  sumEF_serialize _ k
+
+/-- The entry sum is emitted as the variable-width concatenation of the entry blocks,
+the zero base case, and one `add` tag per member. -/
 lemma persistenceEntrySum_polySeg (As : ℕ → AffineCombination)
     (h : PolySequence As) (start : ℕ) (low δ : ℚ) :
-    BigSpliceStream (fun k => (persistenceEntrySum As start low δ k).serialize) := by
-  have hentries := BigSpliceStream.concatVar
-    (persistenceEntry_serialize As h start low δ) PolyFueled.id.succ_comp
-  have hzero : BigSpliceStream (fun _ => (EF.const 0).serialize) :=
-    BigSpliceStream.serialize_const 0
-  have htags := BigSpliceStream.repeatTag 2 (by norm_num) PolyFueled.id.succ_comp
-  refine BigSpliceStream.of_eq ((hentries.append hzero).append htags) ?_
+    MachineSpliceStream (fun k => (persistenceEntrySum As start low δ k).serialize) := by
+  have hsucc := UnaryRuler.of_polyFueled (cnt := fun k : ℕ => k + 1) PolyFueled.id.succ_comp
+  have hentries := MachineSpliceStream.concatVar
+    (persistenceEntry_serialize As h start low δ) (cnt := fun k : ℕ => k + 1) hsucc
+  have hzero : MachineSpliceStream (fun _ : ℕ => (EF.const 0).serialize) :=
+    MachineSpliceStream.serialize_const 0
+  have htags := MachineSpliceStream.repeatTag 2 (by norm_num)
+    (cnt := fun k : ℕ => k + 1) hsucc
+  refine MachineSpliceStream.of_eq ((hentries.append hzero).append htags) ?_
   intro k
   rw [persistenceEntrySum_serialize]
   simp only [Nat.unpair_pair]
 
+/-- The normalizer is emitted as the entry-sum stream followed by the `safeRecip` tag. -/
 lemma persistenceNorm_polySeg (As : ℕ → AffineCombination)
     (h : PolySequence As) (start : ℕ) (low δ : ℚ) :
-    BigSpliceStream (fun k => (persistenceNorm As start low δ k).serialize) := by
-  refine BigSpliceStream.of_eq
+    MachineSpliceStream (fun k => (persistenceNorm As start low δ k).serialize) := by
+  refine MachineSpliceStream.of_eq
     ((persistenceEntrySum_polySeg As h start low δ).append
-      (BigSpliceStream.tag 5 (by norm_num))) ?_
+      (MachineSpliceStream.tag 5 (by norm_num))) ?_
   intro k
   simp [persistenceNorm, EF.serialize]
 
+/-- The unnormalized constant term serializes as its weighted-constant blocks followed by
+the `add` tags. -/
 lemma persistenceRawConst_serialize (As : ℕ → AffineCombination)
     (start : ℕ) (low δ : ℚ) (k : ℕ) :
     (persistenceRawConst As start low δ k).serialize =
       (List.range (k + 1)).flatMap (fun n =>
           (EF.mul (persistenceEntry As start low δ k n) (As n).const).serialize) ++
-        (EF.const 0).serialize ++ List.replicate (k + 1) 2 := by
-  simp only [persistenceRawConst]
-  have aux : ∀ l : List ℕ,
-      (l.foldr (fun n acc => EF.add
-        (EF.mul (persistenceEntry As start low δ k n) (As n).const) acc)
-        (EF.const 0)).serialize =
-        l.flatMap (fun n =>
-          (EF.mul (persistenceEntry As start low δ k n) (As n).const).serialize) ++
-          (EF.const 0).serialize ++ List.replicate l.length 2 := by
-    intro l
-    induction l with
-    | nil => simp [EF.serialize]
-    | cons a l ih =>
-        simp only [List.foldr_cons, List.flatMap_cons, List.length_cons]
-        rw [show (EF.add
-            (EF.mul (persistenceEntry As start low δ k a) (As a).const)
-            (l.foldr (fun n acc => EF.add
-              (EF.mul (persistenceEntry As start low δ k n) (As n).const) acc)
-              (EF.const 0))).serialize =
-            (EF.mul (persistenceEntry As start low δ k a) (As a).const).serialize ++
-              (l.foldr (fun n acc => EF.add
-                (EF.mul (persistenceEntry As start low δ k n) (As n).const) acc)
-                (EF.const 0)).serialize ++ [2] by simp [EF.serialize]]
-        rw [ih]
-        simp [List.replicate_succ', List.append_assoc]
-  simpa using aux (List.range (k + 1))
+        (EF.const 0).serialize ++ List.replicate (k + 1) 2 :=
+  sumEF_serialize _ k
 
+/-- The unnormalized constant term is emitted as the variable-width concatenation of the
+weighted-constant blocks, the zero base case, and the `add` tags. -/
 lemma persistenceRawConst_polySeg (As : ℕ → AffineCombination)
     (h : PolySequence As) (start : ℕ) (low δ : ℚ) :
-    BigSpliceStream (fun k => (persistenceRawConst As start low δ k).serialize) := by
-  have hblock := BigSpliceStream.serialize_mul
+    MachineSpliceStream (fun k => (persistenceRawConst As start low δ k).serialize) := by
+  have hsucc := UnaryRuler.of_polyFueled (cnt := fun k : ℕ => k + 1) PolyFueled.id.succ_comp
+  have hblock := MachineSpliceStream.serialize_mul
     (persistenceEntry_serialize As h start low δ)
-    (h.const_poly.comp PolyFueled.right)
-  have hblocks := BigSpliceStream.concatVar hblock PolyFueled.id.succ_comp
-  have hzero : BigSpliceStream (fun _ => (EF.const 0).serialize) :=
-    BigSpliceStream.serialize_const 0
-  have htags := BigSpliceStream.repeatTag 2 (by norm_num) PolyFueled.id.succ_comp
-  refine BigSpliceStream.of_eq ((hblocks.append hzero).append htags) ?_
+    (h.const_poly.comp (f := fun z : ℕ => z.unpair.2)
+      (UnaryRuler.unpairSnd))
+  have hblocks := MachineSpliceStream.concatVar hblock (cnt := fun k : ℕ => k + 1) hsucc
+  have hzero : MachineSpliceStream (fun _ : ℕ => (EF.const 0).serialize) :=
+    MachineSpliceStream.serialize_const 0
+  have htags := MachineSpliceStream.repeatTag 2 (by norm_num)
+    (cnt := fun k : ℕ => k + 1) hsucc
+  refine MachineSpliceStream.of_eq ((hblocks.append hzero).append htags) ?_
   intro k
   rw [persistenceRawConst_serialize]
   simp only [Nat.unpair_pair]
 
+/-- The flattened prefix portfolio's term count `Σ_{n ≤ k} termCount n` is a unary ruler,
+hence a legal `PolySequence.termCount`.  This is the prefix scan `UnaryRuler.segPrefix`
+runs, at the segment lengths the source sequence's own count supplies. -/
 lemma PolySequence.persistenceTermCount_poly {As : ℕ → AffineCombination}
-    (h : PolySequence As) : ∃ c, PolyFueled c (persistenceTermCount h) := by
-  obtain ⟨ccount, hcount⟩ := h.termCount_poly
-  have hlen : PolyFueled (ccount.comp Nat.Partrec.Code.right)
-      (persistenceMemberLength h) := by
-    exact (hcount.comp PolyFueled.right).of_eq (fun z => rfl)
-  obtain ⟨cprefix, hprefix⟩ := segPrefix_polyFueled hlen
-  exact ⟨cprefix.comp
-      ((Nat.Partrec.Code.left.pair Nat.Partrec.Code.right).pair
-        (Nat.Partrec.Code.succ.comp
-          (Nat.Partrec.Code.left.pair Nat.Partrec.Code.right))),
-    (hprefix.comp (PolyFueled.id.pair PolyFueled.id.succ_comp)).of_eq
-      (fun k => by simp [persistenceTermCount])⟩
+    (h : PolySequence As) : UnaryRuler (persistenceTermCount h) := by
+  have hlen : UnaryRuler (persistenceMemberLength h) :=
+    (h.termCount_poly.comp UnaryRuler.unpairSnd).of_eq (fun z => rfl)
+  exact ((UnaryRuler.segPrefix hlen).comp (UnaryRuler.id.pair UnaryRuler.id.succ)).of_eq
+    (fun k => by simp [persistenceTermCount])
 
 attribute [local irreducible] Nat.sqrt in
-lemma prefixMember_poly (count : ℕ → ℕ)
-    (hcount : ∃ c, PolyFueled c count) : ∃ c, PolyFueled c (fun z =>
+/-- Locating which member of a variable-width segment layout owns a flattened index is a
+unary ruler whenever the segment widths are. -/
+lemma prefixMember_poly (count : ℕ → ℕ) (hcount : UnaryRuler count) :
+    UnaryRuler (fun z =>
       segLocate (fun q => count q.unpair.2) z.unpair.1 z.unpair.2
         (z.unpair.1 + 1)) := by
-  obtain ⟨ccount, hcount⟩ := hcount
-  have hlen : PolyFueled (ccount.comp Nat.Partrec.Code.right)
-      (fun z => count z.unpair.2) := hcount.comp PolyFueled.right
-  obtain ⟨clocate, hlocate⟩ := segLocate_polyFueled hlen
-  have hinput := (PolyFueled.left.pair PolyFueled.right).pair
-    PolyFueled.left.succ_comp
-  refine ⟨clocate.comp
-    (((Nat.Partrec.Code.left.pair Nat.Partrec.Code.right).pair
-      (Nat.Partrec.Code.succ.comp Nat.Partrec.Code.left))), ?_⟩
-  simpa only [Function.comp_apply, Nat.unpair_pair] using hlocate.comp hinput
+  have hlen : UnaryRuler (fun z => count z.unpair.2) := hcount.comp UnaryRuler.unpairSnd
+  have hinput : UnaryRuler (fun z =>
+      Nat.pair (Nat.pair z.unpair.1 z.unpair.2) (z.unpair.1 + 1)) :=
+    (UnaryRuler.unpairFst.pair UnaryRuler.unpairSnd).pair UnaryRuler.unpairFst.succ
+  exact ((UnaryRuler.segLocate hlen).comp hinput).of_eq
+    (fun z => by simp only [Nat.unpair_pair])
 
 attribute [local irreducible] Nat.sqrt in
-lemma prefixOffset_poly (count : ℕ → ℕ)
-    (hcount : ∃ c, PolyFueled c count) : ∃ c, PolyFueled c (fun z =>
+/-- Recovering a flattened index's offset within its own segment is a unary ruler whenever
+the segment widths are; the difference is `UnaryRuler.sub`, whose truncation at zero is the
+machine's own `List.drop`. -/
+lemma prefixOffset_poly (count : ℕ → ℕ) (hcount : UnaryRuler count) :
+    UnaryRuler (fun z =>
       z.unpair.2 - segPrefix (fun q => count q.unpair.2) z.unpair.1
         (segLocate (fun q => count q.unpair.2) z.unpair.1 z.unpair.2
           (z.unpair.1 + 1))) := by
-  obtain ⟨ccount, hcountPF⟩ := hcount
-  have hlen : PolyFueled (ccount.comp Nat.Partrec.Code.right)
-      (fun z => count z.unpair.2) := hcountPF.comp PolyFueled.right
-  obtain ⟨cprefix, hprefix⟩ := segPrefix_polyFueled hlen
-  obtain ⟨cmember, hmember⟩ := prefixMember_poly count ⟨ccount, hcountPF⟩
-  have hp := hprefix.comp (PolyFueled.left.pair hmember)
-  refine ⟨subc.comp (Nat.Partrec.Code.right.pair
-    (cprefix.comp (Nat.Partrec.Code.left.pair cmember))), ?_⟩
-  simpa only [Function.comp_apply, Nat.unpair_pair] using
-    subc_polyFueled.comp (PolyFueled.right.pair hp)
+  have hlen : UnaryRuler (fun z => count z.unpair.2) := hcount.comp UnaryRuler.unpairSnd
+  have hmember := prefixMember_poly count hcount
+  have hp := (UnaryRuler.segPrefix hlen).comp (UnaryRuler.unpairFst.pair hmember)
+  exact (UnaryRuler.unpairSnd.sub hp).of_eq (fun z => by simp only [Nat.unpair_pair])
 
+/-- The prefix portfolio's member lookup is a unary ruler. -/
 lemma PolySequence.persistenceMember_poly {As : ℕ → AffineCombination}
-    (h : PolySequence As) : ∃ c, PolyFueled c (fun z =>
-      persistenceMember h z.unpair.1 z.unpair.2) := by
-  exact prefixMember_poly h.termCount h.termCount_poly
+    (h : PolySequence As) : UnaryRuler (fun z =>
+      persistenceMember h z.unpair.1 z.unpair.2) :=
+  prefixMember_poly h.termCount h.termCount_poly
 
+/-- The prefix portfolio's within-member offset is a unary ruler. -/
 lemma PolySequence.persistenceOffset_poly {As : ℕ → AffineCombination}
-    (h : PolySequence As) : ∃ c, PolyFueled c (fun z =>
-      persistenceOffset h z.unpair.1 z.unpair.2) := by
-  exact prefixOffset_poly h.termCount h.termCount_poly
+    (h : PolySequence As) : UnaryRuler (fun z =>
+      persistenceOffset h z.unpair.1 z.unpair.2) :=
+  prefixOffset_poly h.termCount h.termCount_poly
 
+/-- Every term of the day-`k` portfolio belongs to one of the prefix members `A₀, …, A_k`. -/
 lemma PolySequence.persistenceMember_lt {As : ℕ → AffineCombination} (h : PolySequence As)
     {k j : ℕ} (hj : j < persistenceTermCount h k) :
     persistenceMember h k j < k + 1 := by
@@ -412,6 +441,7 @@ lemma PolySequence.persistenceMember_lt {As : ℕ → AffineCombination} (h : Po
   change n < k + 1
   omega
 
+/-- Every term of the day-`k` portfolio lands inside its own member's term list. -/
 lemma PolySequence.persistenceOffset_lt {As : ℕ → AffineCombination} (h : PolySequence As)
     {k j : ℕ} (hj : j < persistenceTermCount h k) :
     persistenceOffset h k j < h.termCount (persistenceMember h k j) := by
@@ -432,6 +462,8 @@ lemma PolySequence.persistenceOffset_lt {As : ℕ → AffineCombination} (h : Po
   simpa [persistenceOffset, persistenceMember, lenFn, n,
     persistenceMemberLength] using hoff
 
+/-- The day-`k` entry signal for a prefix member reads only prices posted on or before
+day `k`, which is the rank obligation a `PolySequence` coefficient must meet. -/
 lemma PolySequence.persistenceEntry_rank {As : ℕ → AffineCombination}
     (h : PolySequence As)
     (start : ℕ) (low δ : ℚ) {k n : ℕ} (hn : n ≤ k) :
@@ -441,6 +473,8 @@ lemma PolySequence.persistenceEntry_rank {As : ℕ → AffineCombination}
     exact (As n).priceFeature_rank hn (h.const_rank n) (h.terms_rank n)
   · simp [persistenceEntry, hs]
 
+/-- The day-`k` entry signal reads no local environment variable, which is the
+closedness obligation a `PolySequence` coefficient must meet. -/
 lemma PolySequence.persistenceEntry_closed {As : ℕ → AffineCombination}
     (h : PolySequence As)
     (start : ℕ) (low δ : ℚ) (k n : ℕ) (ρ : List ℝ) (V : History) :
@@ -453,68 +487,65 @@ lemma PolySequence.persistenceEntry_closed {As : ℕ → AffineCombination}
     rw [h.priceFeature_closed n k ρ V]
   · simp [persistenceEntry, hs]
 
+/-- A `sumEF` has rank at most `k` as soon as each of its `k + 1` summands does. -/
+lemma sumEF_rank {f : ℕ → EF} {k : ℕ} (hf : ∀ n ≤ k, (f n).rank ≤ k) :
+    (sumEF f k).rank ≤ k := by
+  simp only [sumEF]
+  have aux : ∀ l : List ℕ, (∀ n ∈ l, n ≤ k) →
+      (l.foldr (fun n acc => EF.add (f n) acc) (EF.const 0)).rank ≤ k := by
+    intro l hl
+    induction l with
+    | nil => simp
+    | cons n l ih =>
+        simp only [List.foldr_cons, EF.rank]
+        exact Nat.max_le.mpr ⟨hf n (hl n (by simp)), ih (fun m hm => hl m (by simp [hm]))⟩
+  exact aux (List.range (k + 1)) (fun n hn => by simp only [List.mem_range] at hn; omega)
+
+/-- The day-`k` entry sum reads only prices posted on or before day `k`. -/
 lemma PolySequence.persistenceEntrySum_rank {As : ℕ → AffineCombination}
     (h : PolySequence As)
     (start : ℕ) (low δ : ℚ) (k : ℕ) :
-    (persistenceEntrySum As start low δ k).rank ≤ k := by
-  simp only [persistenceEntrySum]
-  have aux : ∀ l : List ℕ, (∀ n ∈ l, n ≤ k) →
-      (l.foldr (fun n acc => EF.add (persistenceEntry As start low δ k n) acc)
-        (EF.const 0)).rank ≤ k := by
-    intro l hl
-    induction l with
-    | nil => simp
-    | cons n l ih =>
-        simp only [List.foldr_cons, EF.rank]
-        exact Nat.max_le.mpr ⟨h.persistenceEntry_rank start low δ (hl n (by simp)),
-          ih (fun m hm => hl m (by simp [hm]))⟩
-  exact aux (List.range (k + 1)) (fun n hn => by simp only [List.mem_range] at hn; omega)
+    (persistenceEntrySum As start low δ k).rank ≤ k :=
+  sumEF_rank fun _ hn => h.persistenceEntry_rank start low δ hn
 
+/-- The unnormalized constant term reads only prices posted on or before day `k`. -/
 lemma PolySequence.persistenceRawConst_rank {As : ℕ → AffineCombination}
     (h : PolySequence As)
     (start : ℕ) (low δ : ℚ) (k : ℕ) :
-    (persistenceRawConst As start low δ k).rank ≤ k := by
-  simp only [persistenceRawConst]
-  have aux : ∀ l : List ℕ, (∀ n ∈ l, n ≤ k) →
-      (l.foldr (fun n acc => EF.add
-        (EF.mul (persistenceEntry As start low δ k n) (As n).const) acc)
-        (EF.const 0)).rank ≤ k := by
-    intro l hl
-    induction l with
-    | nil => simp
-    | cons n l ih =>
-        simp only [List.foldr_cons, EF.rank]
-        exact Nat.max_le.mpr ⟨Nat.max_le.mpr
-          ⟨h.persistenceEntry_rank start low δ (hl n (by simp)),
-            (h.const_rank n).trans (hl n (by simp))⟩,
-          ih (fun m hm => hl m (by simp [hm]))⟩
-  exact aux (List.range (k + 1)) (fun n hn => by simp only [List.mem_range] at hn; omega)
+    (persistenceRawConst As start low δ k).rank ≤ k :=
+  sumEF_rank fun n hn => Nat.max_le.mpr
+    ⟨h.persistenceEntry_rank start low δ hn, (h.const_rank n).trans hn⟩
 
-lemma PolySequence.persistenceEntrySum_closed {As : ℕ → AffineCombination}
-    (h : PolySequence As)
-    (start : ℕ) (low δ : ℚ) (k : ℕ) (ρ : List ℝ) (V : History) :
-    (persistenceEntrySum As start low δ k).denoteWith ρ V =
-      (persistenceEntrySum As start low δ k).denote V := by
-  simp only [persistenceEntrySum]
+/-- A `sumEF` is insensitive to the local environment as soon as each summand is. -/
+lemma sumEF_closed {f : ℕ → EF} {k : ℕ} {ρ : List ℝ} {V : History}
+    (hf : ∀ n, (f n).denoteWith ρ V = (f n).denote V) :
+    (sumEF f k).denoteWith ρ V = (sumEF f k).denote V := by
+  simp only [sumEF]
   induction List.range (k + 1) with
   | nil => rfl
   | cons n l ih =>
       simp only [List.foldr_cons, EF.denoteWith, EF.denote_add, Pi.add_apply]
-      rw [h.persistenceEntry_closed start low δ k n ρ V, ih]
+      rw [hf n, ih]
 
+/-- The day-`k` entry sum reads no local environment variable. -/
+lemma PolySequence.persistenceEntrySum_closed {As : ℕ → AffineCombination}
+    (h : PolySequence As)
+    (start : ℕ) (low δ : ℚ) (k : ℕ) (ρ : List ℝ) (V : History) :
+    (persistenceEntrySum As start low δ k).denoteWith ρ V =
+      (persistenceEntrySum As start low δ k).denote V :=
+  sumEF_closed fun n => h.persistenceEntry_closed start low δ k n ρ V
+
+/-- The unnormalized constant term reads no local environment variable. -/
 lemma PolySequence.persistenceRawConst_closed {As : ℕ → AffineCombination}
     (h : PolySequence As)
     (start : ℕ) (low δ : ℚ) (k : ℕ) (ρ : List ℝ) (V : History) :
     (persistenceRawConst As start low δ k).denoteWith ρ V =
-      (persistenceRawConst As start low δ k).denote V := by
-  simp only [persistenceRawConst]
-  induction List.range (k + 1) with
-  | nil => rfl
-  | cons n l ih =>
-      simp only [List.foldr_cons, EF.denoteWith, EF.denote_add, EF.denote_mul,
-        Pi.add_apply, Pi.mul_apply]
-      rw [h.persistenceEntry_closed start low δ k n ρ V, h.const_closed n ρ V, ih]
+      (persistenceRawConst As start low δ k).denote V :=
+  sumEF_closed fun n => by
+    simp only [EF.denoteWith, EF.denote_mul, Pi.mul_apply]
+    rw [h.persistenceEntry_closed start low δ k n ρ V, h.const_closed n ρ V]
 
+/-- The normalizer reads no local environment variable. -/
 lemma PolySequence.persistenceNorm_closed {As : ℕ → AffineCombination}
     (h : PolySequence As)
     (start : ℕ) (low δ : ℚ) (k : ℕ) (ρ : List ℝ) (V : History) :
@@ -530,27 +561,27 @@ sentence codes explicitly. -/
 noncomputable def PolySequence.persistencePortfolioPoly {As : ℕ → AffineCombination}
     (h : PolySequence As) (start : ℕ) (low δ : ℚ) :
     PolySequence (persistencePortfolio h start low δ) := by
-  let ccount := Classical.choose h.persistenceTermCount_poly
-  have hcount := Classical.choose_spec h.persistenceTermCount_poly
-  let cmember := Classical.choose h.persistenceMember_poly
-  have hmember := Classical.choose_spec h.persistenceMember_poly
-  let coffset := Classical.choose h.persistenceOffset_poly
-  have hoffset := Classical.choose_spec h.persistenceOffset_poly
-  let memberPF := hmember
-  let offsetPF := hoffset
-  let canonicalPF := memberPF.pair offsetPF
+  have hcount := h.persistenceTermCount_poly
+  have hmember := h.persistenceMember_poly
+  have hoffset := h.persistenceOffset_poly
+  have canonical := hmember.pair hoffset
   have hentry := (persistenceEntry_serialize As h start low δ).comp
-    (PolyFueled.left.pair memberPF)
-  have hcoeff := h.coefficient_poly.comp canonicalPF
-  have hnorm := (persistenceNorm_polySeg As h start low δ).comp PolyFueled.left
-  have hcoefficient := BigSpliceStream.serialize_mul hnorm
-    (BigSpliceStream.serialize_mul hentry hcoeff)
+    (f := fun z : ℕ => Nat.pair z.unpair.1 (persistenceMember h z.unpair.1 z.unpair.2))
+    (UnaryRuler.unpairFst.pair hmember)
+  have hcoeff := h.coefficient_poly.comp
+    (f := fun z : ℕ => Nat.pair (persistenceMember h z.unpair.1 z.unpair.2)
+      (persistenceOffset h z.unpair.1 z.unpair.2))
+    canonical
+  have hnorm := (persistenceNorm_polySeg As h start low δ).comp
+    (f := fun z : ℕ => z.unpair.1) (UnaryRuler.unpairFst)
+  have hcoefficient := MachineSpliceStream.serialize_mul hnorm
+    (MachineSpliceStream.serialize_mul hentry hcoeff)
   refine
     { termCount := persistenceTermCount h
       coefficient := persistenceCoefficient h start low δ
       sentence := persistenceSentence h
-      termCount_poly := ⟨ccount, hcount⟩
-      const_poly := BigSpliceStream.serialize_mul
+      termCount_poly := hcount
+      const_poly := MachineSpliceStream.serialize_mul
         (persistenceNorm_polySeg As h start low δ)
         (persistenceRawConst_polySeg As h start low δ)
       coefficient_poly := ?_
@@ -561,7 +592,10 @@ noncomputable def PolySequence.persistencePortfolioPoly {As : ℕ → AffineComb
       const_closed := ?_
       coefficient_closed := ?_ }
   · simpa [persistenceCoefficient] using hcoefficient
-  · exact BigSentenceCodes.of_eq (h.sentence_poly.comp canonicalPF)
+  · exact MachineSentenceCodes.of_eq (h.sentence_poly.comp
+      (f := fun z : ℕ => Nat.pair (persistenceMember h z.unpair.1 z.unpair.2)
+        (persistenceOffset h z.unpair.1 z.unpair.2))
+      canonical)
       (fun z => by simp [persistenceSentence])
   · intro k
     simp only [persistencePortfolio, EF.rank, persistenceNorm]
@@ -588,40 +622,6 @@ noncomputable def PolySequence.persistencePortfolioPoly {As : ℕ → AffineComb
         (Nat.pair (persistenceMember h z.unpair.1 z.unpair.2)
           (persistenceOffset h z.unpair.1 z.unpair.2)) ρ V]
 
-/-- Type-generic form of the prefix-length lemma used by the serialized token emitter. -/
-lemma length_flatMap_eq_segPrefix_any {α : Type*} (seg : ℕ → List α)
-    (lenFn : ℕ → ℕ) (n : ℕ)
-    (hlen : ∀ j, (seg (Nat.pair n j)).length = lenFn (Nat.pair n j)) : ∀ k,
-    ((List.range k).flatMap (fun j => seg (Nat.pair n j))).length =
-      segPrefix lenFn n k
-  | 0 => by simp
-  | k + 1 => by
-      rw [List.range_succ, List.flatMap_append, List.flatMap_singleton,
-        List.length_append, length_flatMap_eq_segPrefix_any seg lenFn n hlen k,
-        hlen, segPrefix_succ]
-
-/-- Locate an element in a variable-width flattened prefix, for arbitrary element type. -/
-lemma getD_flatMap_of_prefix_any {α : Type*} (seg : ℕ → List α)
-    (lenFn : ℕ → ℕ) (d : α) (n cnt i j : ℕ)
-    (hlen : ∀ k, (seg (Nat.pair n k)).length = lenFn (Nat.pair n k))
-    (hj : j < cnt) (hlo : segPrefix lenFn n j ≤ i)
-    (hhi : i < segPrefix lenFn n (j + 1)) :
-    ((List.range cnt).flatMap (fun k => seg (Nat.pair n k))).getD i d =
-      (seg (Nat.pair n j)).getD (i - segPrefix lenFn n j) d := by
-  induction cnt generalizing j i with
-  | zero => omega
-  | succ cnt ih =>
-      rw [List.range_succ, List.flatMap_append, List.flatMap_singleton]
-      rcases Nat.eq_or_lt_of_le (show j ≤ cnt by omega) with rfl | hjlt
-      · rw [List.getD_append_right]
-        · rw [length_flatMap_eq_segPrefix_any seg lenFn n hlen]
-        · rw [length_flatMap_eq_segPrefix_any seg lenFn n hlen]
-          exact hlo
-      · rw [List.getD_append]
-        · exact ih i j hjlt hlo hhi
-        · rw [length_flatMap_eq_segPrefix_any seg lenFn n hlen]
-          exact lt_of_lt_of_le hhi (segPrefix_mono lenFn n (by omega))
-
 /-- The flattened representation used by `persistencePortfolio` is exactly the nested
 prefix mixture from the paper. -/
 lemma persistencePortfolio_terms_flatMap {As : ℕ → AffineCombination}
@@ -642,7 +642,7 @@ lemma persistencePortfolio_terms_flatMap {As : ℕ → AffineCombination}
       ((List.range (k + 1)).flatMap (fun n => seg (Nat.pair k n))).length =
         persistenceTermCount h k := by
     simpa [persistenceTermCount, lenFn] using
-      length_flatMap_eq_segPrefix_any seg lenFn k hlen (k + 1)
+      length_flatMap_eq_segPrefix seg lenFn k hlen (k + 1)
   change (List.range (persistenceTermCount h k)).map (fun j =>
       (persistenceCoefficient h start low δ (Nat.pair k j),
         persistenceSentence h (Nat.pair k j))) = _
@@ -671,7 +671,7 @@ lemma persistencePortfolio_terms_flatMap {As : ℕ → AffineCombination}
         simp [n, persistenceMember, lenFn]
       omega
     let d : EF × Sentence := (EF.const 0, h.sentence 0)
-    have hget := getD_flatMap_of_prefix_any seg lenFn d k (k + 1) j n
+    have hget := getD_flatMap_of_prefix seg lenFn d k (k + 1) j n
       hlen hnlt hlo hhi
     have hright :
         ((List.range (k + 1)).flatMap (fun q => seg (Nat.pair k q))).getD j d =
@@ -691,6 +691,8 @@ lemma persistencePortfolio_terms_flatMap {As : ℕ → AffineCombination}
       · simp
       · simpa using hrlt]
     simp [persistenceCoefficient, persistenceSentence, n, r]
+
+/-! ## Rational translation (`addConst`) -/
 
 /-- Add a rational constant to an affine combination without changing its share risk. -/
 def addConst (q : ℚ) (A : AffineCombination) : AffineCombination where
@@ -717,6 +719,15 @@ lemma BoundedAffinePrices.addConst {As : ℕ → AffineCombination} {V : History
   rw [addConst_price]
   exact (abs_add_le _ _).trans (add_le_add (hB n m) le_rfl)
 
+/-- Negation preserves a uniform bound on share magnitude: `(-A).magnitude = A.magnitude`.
+The negation-duality proofs of `thm:affcoh` and `thm:peraffkno` transport their magnitude
+hypothesis through this lemma. -/
+lemma exists_magnitude_bound_neg {As : ℕ → AffineCombination} {P : History}
+    (h : ∃ C : ℝ, ∀ n, (As n).magnitude P ≤ C) :
+    ∃ C : ℝ, ∀ n, ((As n).neg).magnitude P ≤ C := by
+  obtain ⟨C, hC⟩ := h
+  exact ⟨C, fun n => by simpa only [neg_magnitude] using hC n⟩
+
 /-- Polynomial affine sequences are closed under a fixed rational translation. -/
 def PolySequence.addConst {As : ℕ → AffineCombination} (h : PolySequence As) (q : ℚ) :
     PolySequence (fun n => (As n).addConst q) where
@@ -724,8 +735,8 @@ def PolySequence.addConst {As : ℕ → AffineCombination} (h : PolySequence As)
   coefficient := h.coefficient
   sentence := h.sentence
   termCount_poly := h.termCount_poly
-  const_poly := BigSpliceStream.serialize_add h.const_poly
-    (BigSpliceStream.serialize_const q)
+  const_poly := MachineSpliceStream.serialize_add h.const_poly
+    (MachineSpliceStream.serialize_const q)
   coefficient_poly := h.coefficient_poly
   sentence_poly := h.sentence_poly
   terms_eq := h.terms_eq
@@ -743,6 +754,9 @@ def PolySequence.addConst {As : ℕ → AffineCombination} (h : PolySequence As)
     rw [h.const_closed n ρ V]
   coefficient_closed := h.coefficient_closed
 
+/-! ## Denotation and magnitude of the portfolio -/
+
+/-- Entry signals are buy-only: never negative. -/
 lemma persistenceEntry_nonneg (As : ℕ → AffineCombination) (start : ℕ)
     (low δ : ℚ) (V : History) (k n : ℕ) :
     0 ≤ (persistenceEntry As start low δ k n).denote V := by
@@ -751,38 +765,32 @@ lemma persistenceEntry_nonneg (As : ℕ → AffineCombination) (start : ℕ)
       (buyIndF_mem ((As n).priceFeature k) low δ V).1
   · simp [persistenceEntry, hs]
 
-lemma persistenceEntry_le_one (As : ℕ → AffineCombination) (start : ℕ)
-    (low δ : ℚ) (V : History) (k n : ℕ) :
-    (persistenceEntry As start low δ k n).denote V ≤ 1 := by
-  by_cases hs : start < n
-  · simpa [persistenceEntry, hs] using
-      (buyIndF_mem ((As n).priceFeature k) low δ V).2
-  · simp [persistenceEntry, hs]
-
-lemma persistenceEntrySum_denote (As : ℕ → AffineCombination) (start : ℕ)
-    (low δ : ℚ) (V : History) (k : ℕ) :
-    (persistenceEntrySum As start low δ k).denote V =
-      ((List.range (k + 1)).map (fun n =>
-        (persistenceEntry As start low δ k n).denote V)).sum := by
-  simp only [persistenceEntrySum]
+/-- A `sumEF` denotes the ordinary sum of its summands' denotations. -/
+lemma sumEF_denote (f : ℕ → EF) (V : History) (k : ℕ) :
+    (sumEF f k).denote V = ((List.range (k + 1)).map (fun n => (f n).denote V)).sum := by
+  simp only [sumEF]
   induction List.range (k + 1) with
   | nil => simp
   | cons n l ih =>
       simp only [List.foldr_cons, EF.denote_add, Pi.add_apply, List.map_cons,
         List.sum_cons, ih]
 
+lemma persistenceEntrySum_denote (As : ℕ → AffineCombination) (start : ℕ)
+    (low δ : ℚ) (V : History) (k : ℕ) :
+    (persistenceEntrySum As start low δ k).denote V =
+      ((List.range (k + 1)).map (fun n =>
+        (persistenceEntry As start low δ k n).denote V)).sum :=
+  sumEF_denote _ V k
+
 lemma persistenceRawConst_denote (As : ℕ → AffineCombination) (start : ℕ)
     (low δ : ℚ) (V : History) (k : ℕ) :
     (persistenceRawConst As start low δ k).denote V =
       ((List.range (k + 1)).map (fun n =>
         (persistenceEntry As start low δ k n).denote V * (As n).const.denote V)).sum := by
-  simp only [persistenceRawConst]
-  induction List.range (k + 1) with
-  | nil => simp
-  | cons n l ih =>
-      simp only [List.foldr_cons, EF.denote_add, EF.denote_mul, Pi.add_apply,
-        Pi.mul_apply, List.map_cons, List.sum_cons, ih]
+  rw [persistenceRawConst, sumEF_denote]
+  simp only [EF.denote_mul, Pi.mul_apply]
 
+/-- A sum of buy-only entry signals is never negative. -/
 lemma persistenceEntrySum_nonneg (As : ℕ → AffineCombination) (start : ℕ)
     (low δ : ℚ) (V : History) (k : ℕ) :
     0 ≤ (persistenceEntrySum As start low δ k).denote V := by
@@ -792,12 +800,16 @@ lemma persistenceEntrySum_nonneg (As : ℕ → AffineCombination) (start : ℕ)
     obtain ⟨n, _, rfl⟩ := hx
     exact persistenceEntry_nonneg As start low δ V k n)
 
+/-- The safe reciprocal `1 / max(1, Σ entry weights)` is strictly positive, so dividing by
+it is unconditionally legal. -/
 lemma persistenceNorm_pos (As : ℕ → AffineCombination) (start : ℕ)
     (low δ : ℚ) (V : History) (k : ℕ) :
     0 < (persistenceNorm As start low δ k).denote V := by
   rw [persistenceNorm, EF.denote_safeRecip]
   positivity
 
+/-- Total normalized entry weight is at most one, so the portfolio never exceeds one
+share of risk. -/
 lemma persistenceNorm_mul_entrySum_le_one (As : ℕ → AffineCombination)
     (start : ℕ) (low δ : ℚ) (V : History) (k : ℕ) :
     (persistenceNorm As start low δ k).denote V *
@@ -812,6 +824,9 @@ lemma persistenceNorm_mul_entrySum_le_one (As : ℕ → AffineCombination)
   · have hs1 : 1 ≤ s := le_of_not_ge hs
     rw [max_eq_right hs1, inv_mul_cancel₀ (by linarith : s ≠ 0)]
 
+/-- Total normalized entry weight is exactly one as soon as a single entry signal is
+fully on, which is what turns the portfolio into a full-share purchase at the moment the
+underpricing is detected. -/
 lemma persistenceNorm_mul_entrySum_eq_one_of_entry_one
     (As : ℕ → AffineCombination) (start : ℕ) (low δ : ℚ) (V : History)
     {k n : ℕ} (hn : n < k + 1)
@@ -890,12 +905,10 @@ lemma persistencePortfolio_value {As : ℕ → AffineCombination}
         (fun p => p.1.denote V * w p.2)).sum =
       N * ((List.range (k + 1)).map (fun n => e n * (As n).value V w)).sum
   rw [hterms]
-  have hcombine : ∀ l : List ℕ,
+  have hcombine :
       ((List.range (k + 1)).map (fun n => e n * (As n).const.denote V)).sum +
           ((List.range (k + 1)).map (fun n => e n * termValue n)).sum =
         ((List.range (k + 1)).map (fun n => e n * (As n).value V w)).sum := by
-    intro l
-    clear l
     induction List.range (k + 1) with
     | nil => simp
     | cons n l ih =>
@@ -903,8 +916,10 @@ lemma persistencePortfolio_value {As : ℕ → AffineCombination}
         rw [← ih]
         simp only [value, termValue]
         ring
-  rw [← mul_add, hcombine (List.range (k + 1))]
+  rw [← mul_add, hcombine]
 
+/-- Day-`m` market price of the day-`k` portfolio: the normalized entry-weighted sum of
+the prefix members' own day-`m` prices. -/
 lemma persistencePortfolio_price {As : ℕ → AffineCombination}
     (h : PolySequence As) (start : ℕ) (low δ : ℚ) (V : History)
     (k m : ℕ) :
@@ -912,9 +927,11 @@ lemma persistencePortfolio_price {As : ℕ → AffineCombination}
       (persistenceNorm As start low δ k).denote V *
         ((List.range (k + 1)).map (fun n =>
           (persistenceEntry As start low δ k n).denote V *
-            (As n).price V m)).sum := by
-  exact persistencePortfolio_value h start low δ V (V m) k
+            (As n).price V m)).sum :=
+  persistencePortfolio_value h start low δ V (V m) k
 
+/-- Share magnitude of the day-`k` portfolio: the normalized entry-weighted sum of the
+prefix members' magnitudes. -/
 lemma persistencePortfolio_magnitude {As : ℕ → AffineCombination}
     (h : PolySequence As) (start : ℕ) (low δ : ℚ) (V : History) (k : ℕ) :
     (persistencePortfolio h start low δ k).magnitude V =
@@ -958,6 +975,7 @@ lemma persistencePortfolio_magnitude {As : ℕ → AffineCombination}
         List.map_cons, List.sum_cons, hone n, ih]
       ring
 
+/-- The day-`k` portfolio risks at most one share whenever every prefix member does. -/
 lemma persistencePortfolio_magnitude_le_one {As : ℕ → AffineCombination}
     (h : PolySequence As) (start : ℕ) (low δ : ℚ) (V : History)
     (hmag : ∀ n, (As n).magnitude V ≤ 1) (k : ℕ) :
@@ -1031,6 +1049,8 @@ lemma persistencePortfolio_bounded {As : ℕ → AffineCombination}
       (persistenceNorm_mul_entrySum_le_one As start low δ V k) hB0
     _ = B := mul_one B
 
+/-- Under `P∞` the portfolio's value is nonnegative once every member it can buy has
+limiting value above the threshold. -/
 lemma persistencePortfolio_limitingValue_nonneg {As : ℕ → AffineCombination}
     (h : PolySequence As) (start : ℕ) (low δ : ℚ) (P : History) (k : ℕ)
     (hlim : ∀ n, start < n → 0 ≤ (As n).value P (limitingBelief P)) :
@@ -1105,6 +1125,8 @@ lemma persistencePortfolio_price_le_of_entry_one {As : ℕ → AffineCombination
         As start low δ P hn hone]
       ring
 
+/-! ## The `app:peraffkno` underpricing contradiction -/
+
 /-- The `app:peraffkno` underpricing contradiction.  A day-`k` portfolio contains every
 earlier member whose day-`k` price is below the chosen threshold.  The portfolio is
 translated so that its limiting value is nonnegative while any full entry signal drives
@@ -1119,8 +1141,6 @@ lemma PolySequence.noPersistenceUnderpricing {As : ℕ → AffineCombination}
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     NoPreemptiveUnderpricing
       (affineFutureLow As P) (fun n => (As n).value P (limitingBelief P)) := by
-  have hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1 :=
-    fun n φ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n φ
   intro a b hab hfuture hcurrent
   obtain ⟨low, halow, hlowb⟩ := exists_rat_btwn hab
   obtain ⟨anchor, hlowanchor, hanchorb⟩ := exists_rat_btwn hlowb
@@ -1198,6 +1218,8 @@ lemma PolySequence.noPersistenceUnderpricing {As : ℕ → AffineCombination}
       simpa [portfolios, q] using hprice
     exact hprice'.trans_lt hqx
 
+/-- Negating an affine family exchanges its future-tail infimum for the negated
+supremum, which is how the overpricing half is derived from the underpricing half. -/
 lemma affineFutureLow_neg (As : ℕ → AffineCombination) (P : History) (n : ℕ) :
     affineFutureLow (fun i => (As i).neg) P n = -affineFutureHigh As P n := by
   simp only [affineFutureLow, affineFutureHigh, neg_price]
@@ -1247,25 +1269,7 @@ lemma PolySequence.noPersistenceUnderpricing_of_boundedMagnitude
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     NoPreemptiveUnderpricing
       (affineFutureLow As P) (fun n => (As n).value P (limitingBelief P)) := by
-  have hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1 :=
-    fun n φ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n φ
-  obtain ⟨B, hB⟩ := hmag
-  obtain ⟨C, hC⟩ := exists_rat_gt (max B 0)
-  have hC0 : 0 < (C : ℝ) := lt_of_le_of_lt (le_max_right B 0) hC
-  let q : ℚ := 1 / C
-  have hq0 : 0 < (q : ℝ) := by
-    dsimp only [q]
-    rw [Rat.cast_div, Rat.cast_one]
-    exact one_div_pos.mpr hC0
-  have hscaledMag : ∀ n,
-      ((As n).scale (.const q)).magnitude P ≤ 1 := by
-    intro n
-    rw [scale_magnitude, EF.denote_const, abs_of_pos hq0]
-    have hn : (As n).magnitude P < (C : ℝ) :=
-      (hB n).trans_lt ((le_max_left B 0).trans_lt hC)
-    have hdiv : (As n).magnitude P / (C : ℝ) ≤ 1 :=
-      (div_le_one hC0).mpr hn.le
-    simpa [q, div_eq_mul_inv, mul_comm] using hdiv
+  obtain ⟨q, hq0, hscaledMag⟩ := AffineCombination.exists_rat_unitScale hmag
   have hscaled := (h.scaleRat q).noPersistenceUnderpricing P DP
     (hbounded.scaleRat q) hscaledMag hworld
   intro a b hab hfuture hcurrent
@@ -1288,12 +1292,7 @@ lemma PolySequence.noPersistenceOverpricing {As : ℕ → AffineCombination}
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     NoPreemptiveOverpricing
       (affineFutureHigh As P) (fun n => (As n).value P (limitingBelief P)) := by
-  have hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1 :=
-    fun n φ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n φ
-  have hnegBound : BoundedAffinePrices (fun n => (As n).neg) P := by
-    obtain ⟨B, hB0, hB⟩ := hbounded
-    exact ⟨B, hB0, fun n m => by simpa [neg_price] using hB n m⟩
-  have hneg := h.neg.noPersistenceUnderpricing P DP hnegBound
+  have hneg := h.neg.noPersistenceUnderpricing P DP hbounded.neg
     (fun n => by simpa [neg_magnitude] using hmag n) hworld
   intro a b hab hfuture hcurrent
   apply hneg (-b) (-a) (by linarith)
@@ -1315,13 +1314,8 @@ lemma PolySequence.noPersistenceOverpricing_of_boundedMagnitude
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     NoPreemptiveOverpricing
       (affineFutureHigh As P) (fun n => (As n).value P (limitingBelief P)) := by
-  have hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1 :=
-    fun n φ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n φ
-  have hnegMag : ∃ B : ℝ, ∀ n, ((As n).neg).magnitude P ≤ B := by
-    obtain ⟨B, hB⟩ := hmag
-    exact ⟨B, fun n => by simpa only [neg_magnitude] using hB n⟩
   have hneg := h.neg.noPersistenceUnderpricing_of_boundedMagnitude P DP
-    hbounded.neg hnegMag hworld
+    hbounded.neg (exists_magnitude_bound_neg hmag) hworld
   intro a b hab hfuture hcurrent
   apply hneg (-b) (-a) (by linarith)
   · filter_upwards [hfuture] with n hn
@@ -1332,6 +1326,8 @@ lemma PolySequence.noPersistenceOverpricing_of_boundedMagnitude
       linarith)
 
 end AffineCombination
+
+/-! ## Persistence of Affine Knowledge (`thm:peraffkno`) -/
 
 /-- The two operational persistence conditions supplied by the Appendix `app:peraffkno`
 prefix-portfolio reduction. They say that the full future tail cannot remain
@@ -1368,7 +1364,7 @@ lemma AffineCombination.PolySequence.noPersistenceGaps_of_boundedMagnitude
 /-- Analytic capstone for **Persistence of Affine Knowledge** (`thm:peraffkno`). Once the
 operational no-gap result is supplied, the two exact paper equalities follow from generic
 liminf/limsup order theory and fixed-combination convergence. -/
-theorem peraffkno_of_noPersistenceGaps
+lemma peraffkno_of_noPersistenceGaps
     (As : ℕ → AffineCombination) (P : History) (DP : DeductiveProcess)
     [IsLogicalInductor P DP] (hbounded : BoundedAffinePrices As P)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
@@ -1408,13 +1404,5 @@ theorem AffineCombination.PolySequence.peraffkno
         limsup (fun n => (As n).value P (limitingBelief P)) atTop :=
   peraffkno_of_noPersistenceGaps As P DP hbounded hworld
     (h.noPersistenceGaps_of_boundedMagnitude P DP hbounded hmag hworld)
-
-#print axioms lic_limitingBelief_tendsto
-#print axioms AffineCombination.price_tendsto_limitingValue
-#print axioms AffineCombination.PolySequence.persistencePortfolioPoly
-#print axioms AffineCombination.PolySequence.noPersistenceUnderpricing
-#print axioms AffineCombination.PolySequence.noPersistenceOverpricing
-#print axioms peraffkno_of_noPersistenceGaps
-#print axioms AffineCombination.PolySequence.peraffkno
 
 end LogicalInduction

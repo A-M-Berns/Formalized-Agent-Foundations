@@ -1,27 +1,3 @@
-/-
-# Criterion — expressible features, traders, and the Logical Induction Criterion
-
-The definitions of §3 of the paper, in dependency order:
-
-* `def:tf` → `EF`, `EF.denote`, `EF.cost`, `EF.rank`. An inductive syntax over price
-  features `pf φ`, `ℚ`, `+`, `×`, `max(·,·)`, and safe reciprocation `max(1,·)⁻¹`, with
-  two semantics:
-    - `EF.denote : EF → (History → ℝ)` — the continuous ℝ-valued feature (continuity is
-      proved here: `continuous_denote`);
-    - `EF.cost   : EF → ℕ` — syntactic size, a bound on description size.
-  The rank-≤`n` features form a commutative ring `EFn n`, a subring of `History → ℝ`.
-* `def:world`, `def:pc` → `PCWorld` — propositionally consistent truth assignments.
-* `def:dedproc` → `DeductiveProcess`, with its computability certificate.
-* `def:tradestrat` → `Strategy n` — a finite list of `(feature, sentence)` pairs.
-* `def:trader` → `Trader` — one strategy per day.
-* `def:exploitation` → `Trader.Exploits` — plausible-world net worths bounded below and
-  unbounded above.
-* `def:ec` → the emission-metered efficient-computability classes
-  (`EfficientlyComputableTok`, `EfficientlyComputableDigit`, `EfficientlyComputable`),
-  built on the flat token serialization of a strategy.
-* `def:lic` → `IsLogicalInductor` — "no efficiently computable trader exploits the
-  market", the hypothesis the property tail is conditioned on.
--/
 import LogicalInduction.Framework.Foundations
 import Mathlib.Topology.Algebra.GroupWithZero
 import Mathlib.Topology.Order.OrderClosed
@@ -32,6 +8,69 @@ import Mathlib.Computability.PartrecCode
 import Mathlib.Data.Rat.Encodable
 import Foundation.Propositional.Boolean.Basic
 import Complexitylib.Classes.P.Defs
+
+/-!
+# Criterion — expressible features, traders, and the Logical Induction Criterion
+
+§3 of the paper: expressible features, worlds, deductive processes, trading strategies,
+traders, exploitation, and both readings of the Logical Induction Criterion.
+
+* `def:tf` → `EF`, a reified syntax (`dd:dsl`) with two semantics — `EF.denote` into `ℝ`,
+  proved continuous by `continuous_denote`, which is what breaks the price/trade
+  circularity the Brouwer step needs; and `EF.cost`, the syntactic size — together with
+  `EF.rank`. `EFn n` is the rank-≤`n` subring of `History → ℝ`, the paper's commutative
+  ring `𝓔ₙ`. The `var` / `letE` constructors are a disclosed, denotationally conservative
+  extension for straight-line sharing, load-bearing for `cost`.
+* `def:world` and propositional consistency (an unlabelled definition, tex:726) → `PCWorld`
+  as a Foundation Boolean valuation, with `Holds`, `payout`, `ConsistentWith` and
+  `ConsistentWithTheory`. `sentenceConjunction` / `sentenceDisjunction` and their `Holds`
+  characterizations live here because both the emission layer (`RpnSplice`) and
+  `Properties/LimitCoherence` need them.
+* `def:dedproc` → `DeductiveProcess`, `ComputableDeductiveProcess` and the named
+  `DeductiveProcessComputation`, with the bounded stage-search interface (`stageAtFuel`,
+  `stageSearchUpTo`, `computedProcess`) that a clocked certificate checker consumes.
+* `def:market` → `ComputableMarket` and the named `MarketComputation`, with the clocked
+  exact-quote interface (`quoteAtFuel`, `exists_fuel_quoteAtFuel_list`) and the bounded
+  rational feature evaluator `EF.denoteRatWithAtFuel` built on it.
+* `def:tradestrat` → `Strategy n`, the paper's canonical `(feature, sentence)` encoding
+  denoting `∑ eᵢ·(φᵢ − φᵢ*ⁿ)`; `def:trader` → `Trader`; `def:exploitation` →
+  `Trader.Exploits`, plausible net worth bounded below and unbounded above.
+
+## Serialization
+
+`EF.serialize` is a flat postfix token stream of length `Θ(node count)`
+(`serialize_length_le_cost`, `cost_le_serialize_length`), which is what makes poly-*size*
+features admissible where a single `toNat` numeral would not be. `serializeTrades` flattens
+a strategy, and the streaming stack machine `EF.streamStep` / `EF.streamReadFrom` decodes
+it, giving `EF.serialize_injective` and `serializeTrades_injective`.
+
+## The three metering layers of `def:ec`
+
+Under `dd:fuel`: `EfficientlyComputableTok` (token emission), `EfficientlyComputableDigit`
+(self-delimiting base-4 blocks, so poly digit length is poly *bit* size), and
+`PolyFueledTrader` (Polish-notation sentence blocks, contracted by `unRpn` before
+validation). Each layer removes a stated residual of the one above. The
+structured-arithmetic escape grammar (`arithmeticVec2Code`, `negFormulaCode`, the
+`parseStructured*` mutual block, `parseStructuredPaperPrime`, `parseRpn`, `unRpn`) lives
+here beside the serializers because `clockedTrader` needs it; its lemma corpus is
+`Framework/Emission/RpnSentence.lean`.
+
+`def:ec` is `EfficientlyComputable`: a `Complexity.FP` function of the *unary* day
+(`unaryDay`, so machine-polynomial means day-polynomial) emitting the strategy through
+`strategyOfOutput = strategyOfTokens ∘ unRpn ∘ undigitize ∘ bitsToDigits`, introducing no
+new parser. This is the class the construction enumerates and dominates. `PolyFueledTrader`
+beside it is the `dd:fuel` certificate — a certification device for that class, landed
+inside it by `PolyFueledTrader.toEfficientlyComputable` (`Framework/Efficiency.lean`).
+
+## The criterion
+
+`def:lic` → `IsLogicalInductor`, over `EfficientlyComputable`: the paper's own quantifier,
+what the construction proves, and what the whole §4 tail is conditioned on.
+
+Non-vacuity is witnessed here too: the paper's running example `exMaxDiff` with its
+computed value, safe reciprocation landing in `(0,1]`, and `Trader.zero_not_exploits`,
+which shows `Exploits` is refutable rather than vacuous.
+-/
 
 namespace LogicalInduction
 
@@ -44,13 +83,19 @@ A reified DSL (`dd:dsl`) with two semantics. The *syntax* `EF` is the object tha
 /-- `def:tf` (Expressible Feature), as syntax. Built from price features `pf φ n`,
 rational constants, `+`, `×`, `max(·,·)`, and the safe reciprocation `max(1,·)⁻¹`.
 
-The `var`/`letE` constructors are a **disclosed extension** of the paper's feature grammar:
-straight-line sharing (evaluate once, reference many times). Denotationally conservative —
-every `letE` term denotes the same function as its (possibly exponentially larger)
-substitution-expanded form — but load-bearing for `cost`: sharing is what keeps deep
-features (hysteresis chains, purchase counters) at polynomial *syntactic size*, which is
-the quantity `def:ec`'s token-emission model meters. A free `var` denotes `0`, keeping all
-raw syntax total. -/
+The `var`/`letE` constructors are a **disclosed extension** of the paper's feature grammar
+(`dd:dsl`; `LogicalInduction/README.md`, *What differs from the paper*): straight-line
+sharing (evaluate once, reference many times). Denotationally conservative — every `letE`
+term denotes the same function as its (possibly exponentially larger) substitution-expanded
+form — but load-bearing for `cost`: sharing is what keeps deep features (hysteresis chains,
+purchase counters) at polynomial *syntactic size*, which is the quantity `def:ec`'s
+token-emission model meters. A free `var` denotes `0`, keeping all raw syntax total.
+
+The paper licenses it: its own footnote at tex:788 reads the expressible features as "a
+generalization of arithmetic circuits", and circuits are precisely straight-line programs
+with sharing, "compactly specifiable in polynomial time".  A literal *tree* reading of
+tex:786-788's grammar would not be, so the extension enlarges `EfficientlyComputable` and
+strengthens every theorem quantified over it, including `IsLogicalInductor`. -/
 inductive EF : Type where
   /-- The price feature `φ^{*n}`: the value of `φ` on day `n`. -/
   | price (φ : Sentence) (n : ℕ) : EF
@@ -84,6 +129,8 @@ noncomputable def denoteWith : EF → List ℝ → History → ℝ
   | var i,       ρ, _ => ρ.getD i 0
   | letE x body, ρ, V => body.denoteWith (x.denoteWith ρ V :: ρ) V
 
+/-- `def:tf`.  The feature's continuous ℝ-valued denotation: the closed-environment case
+of `denoteWith`, evaluated against a whole price history. -/
 noncomputable def denote (e : EF) (V : History) : ℝ := e.denoteWith [] V
 
 @[simp] lemma denoteWith_price (φ : Sentence) (n : ℕ) (ρ : List ℝ) (V : History) :
@@ -115,6 +162,8 @@ def denoteRatWith : EF → List ℚ → (ℕ → Sentence → ℚ) → ℚ
   | var i,       ρ, _ => ρ.getD i 0
   | letE x body, ρ, V => body.denoteRatWith (x.denoteRatWith ρ V :: ρ) V
 
+/-- The exact rational denotation against a rational price table: the closed-environment
+case of `denoteRatWith`. -/
 def denoteRat (e : EF) (V : ℕ → Sentence → ℚ) : ℚ := e.denoteRatWith [] V
 
 /-- Rational and real feature semantics agree under pointwise-related variable
@@ -151,7 +200,7 @@ lemma denote_eq_ratCast (e : EF) (P : History) (Q : ℕ → Sentence → ℚ)
 /-- Syntactic size of an expressible feature (`def:tf`): the structural node count. An
 auxiliary complexity measure — a small feature is cheap to write down. (Efficient
 computability itself is *not* defined via `cost`; it goes through the clocked interpreter,
-see `EfficientlyComputable`. `cost` remains a convenient bound on description size.) -/
+see `PolyFueledTrader`. `cost` remains a convenient bound on description size.) -/
 def cost : EF → ℕ
   | price _ _   => 1
   | const _     => 1
@@ -162,18 +211,8 @@ def cost : EF → ℕ
   | var _       => 1
   | letE x body => x.cost + body.cost + 1
 
-/-- Rank = the latest day the feature inspects (`def:valfeature`); `EF_n` = rank ≤ `n`.
-`const` inspects nothing (rank `0`); a binary node takes the `max` of its children. -/
-def rankWith : EF → List ℕ → ℕ
-  | price _ n,   _ => n
-  | const _,     _ => 0
-  | add a b,     ρ => Nat.max (a.rankWith ρ) (b.rankWith ρ)
-  | mul a b,     ρ => Nat.max (a.rankWith ρ) (b.rankWith ρ)
-  | max a b,     ρ => Nat.max (a.rankWith ρ) (b.rankWith ρ)
-  | safeRecip a, ρ => a.rankWith ρ
-  | var i,       ρ => ρ.getD i 0
-  | letE x body, ρ => body.rankWith (x.rankWith ρ :: ρ)
-
+/-- `def:valfeature`.  The latest day the feature inspects; a `const` and a free `var`
+inspect nothing.  This is what `EFn` grades the feature algebra by. -/
 def rank : EF → ℕ
   | price _ n   => n
   | const _     => 0
@@ -195,7 +234,8 @@ def rank : EF → ℕ
 
 /-! ### `denote` is a ring map on the nose (all `rfl`), packaged for `simp`. -/
 
-@[simp] theorem denote_price (φ : Sentence) (n : ℕ) :
+/-- A price feature denotes the market's own day-`n` price of its sentence. -/
+@[simp] lemma denote_price (φ : Sentence) (n : ℕ) :
     (price φ n).denote = fun V => V n φ := rfl
 
 @[simp] lemma denote_const (q : ℚ) :
@@ -292,7 +332,11 @@ abbrev EFn (n : ℕ) : Subring (History → ℝ) := ExpressibleRankLE n
 ring via the subring structure. -/
 example (n : ℕ) : CommRing (EFn n) := inferInstance
 
-lemma denote_mem_EFn (e : EF) : e.denote ∈ EFn e.rank := ⟨e, le_rfl, rfl⟩
+/-- The rank grading is monotone, so a rank-`n` strategy may be built from lower-rank
+pieces. -/
+lemma EFn_mono {m n : ℕ} (h : m ≤ n) : EFn m ≤ EFn n := by
+  rintro f ⟨e, he, rfl⟩
+  exact ⟨e, he.trans h, rfl⟩
 
 /-! ### Non-vacuity witnesses (`def:tf`).  Concrete features with computed denotations,
 so the DSL is not an empty shell. -/
@@ -338,8 +382,7 @@ well-founded `ofNat`, each child encoded strictly smaller than its parent. -/
 `Nat.Partrec.Code` *primitive* (`Code.pair`, no `prec`), so a program that builds a
 strategy's code from `n` is a tree of `const`/`pair`/`comp` whose clocked-interpreter fuel
 is a clean `n + O(1)` — which is what makes responsive traders' efficient computability
-provable (see `Computable.lean`). The encoding is still a genuine computable bijection, so
-faithfulness of the poly-time e.c. class is unchanged. -/
+provable (see `Computable.lean`). The encoding is a genuine computable bijection. -/
 def toNat : EF → ℕ
   | const q     => Nat.pair 0 (Encodable.encode q)
   | price φ n   => Nat.pair 1 (Nat.pair (Encodable.encode φ) n)
@@ -443,8 +486,13 @@ inconvenience.
 small (tags `0..5`, day indices, and the atomic sentence/constant codes). Efficient
 computability (`EfficientlyComputableTok`) asks a program to emit this stream *one token at a
 time* — polynomially many small tokens — which deep poly-size features admit. The stream is a
-genuine encoding: `serialize_injective` (via the stack machine `readM`) shows it determines the
-feature. -/
+genuine encoding: `EF.serialize_injective` (via the streaming stack machine `EF.streamStep`)
+shows it determines the feature. -/
+/-- The flat postfix (RPN) token stream of a feature: tags `0..5`, `7`, `8` with their
+small payloads (day indices and atomic sentence/constant codes).  Its length is
+`Θ(node count)` (`serialize_length_le_cost`, `cost_le_serialize_length`), which is what
+makes poly-*size* features admissible where a single `toNat` numeral would not be, and it
+determines the feature (`EF.serialize_injective`). -/
 def serialize : EF → List ℕ
   | price φ n   => [0, Encodable.encode φ, n]
   | const q     => [1, Encodable.encode q]
@@ -501,88 +549,20 @@ end EF
 
 /-! ## Flat serialization of strategies + unique decodability
 
-A **strategy** is a `List (EF × Sentence)`; `serializeTrades` flattens it to a token stream by
-concatenating each coefficient's `EF.serialize` followed by a trade-frame `[6, ⌜φ⌝]`. A single
-stack machine `readM` decodes both features (tags `0..5`, pushing onto an `EF` stack) and trade
-frames (tag `6`, popping a coefficient and recording the trade), so both `serialize` and
-`serializeTrades` are proved injective from one roundtrip induction: the token stream
-`EfficientlyComputableTok` emits determines the strategy. -/
+A **strategy** is a `List (EF × Sentence)`; `serializeTrades` flattens it to a token stream
+by concatenating each coefficient's `EF.serialize` followed by a trade-frame `[6, ⌜φ⌝]`.
 
-namespace EF
+One streaming stack machine decodes it. `EF.streamStep` consumes exactly one token per step,
+carrying the parser control state explicitly, so a whole run is a single `List.foldl`
+(`EF.streamReadFrom`). Tags `0..5` build features and push them; tag `6` reads a sentence
+code and pops a coefficient to record a trade. Both `EF.serialize_injective` and
+`serializeTrades_injective` come from its one roundtrip induction
+(`EF.streamReadFrom_serialize_self`), so the token stream `EfficientlyComputableTok` emits
+determines the strategy. This is also the form the concrete LIA compiler runs.
 
-/-- The stack machine decoding a token stream. `efst` is the stack of features built so far;
-`tr` accumulates decoded trades. Tags `0..5` build features (pushing); tag `6` reads a sentence
-code and pops one feature to record a trade. Returns the final `(feature stack, trades)`. -/
-def readM : List ℕ → List EF → List (EF × Sentence) → Option (List EF × List (EF × Sentence))
-  | [], efst, tr => some (efst, tr)
-  | (0 :: p1 :: p2 :: rest), efst, tr =>
-      match (Encodable.decode p1 : Option Sentence) with
-      | some φ => readM rest (price φ p2 :: efst) tr
-      | none => none
-  | (1 :: p :: rest), efst, tr =>
-      match (Encodable.decode p : Option ℚ) with
-      | some q => readM rest (const q :: efst) tr
-      | none => none
-  | (2 :: rest), (b :: a :: efst), tr => readM rest (add a b :: efst) tr
-  | (3 :: rest), (b :: a :: efst), tr => readM rest (mul a b :: efst) tr
-  | (4 :: rest), (b :: a :: efst), tr => readM rest (max a b :: efst) tr
-  | (5 :: rest), (a :: efst), tr => readM rest (safeRecip a :: efst) tr
-  | (6 :: p :: rest), (e :: efst), tr =>
-      match (Encodable.decode p : Option Sentence) with
-      | some φ => readM rest efst (tr ++ [(e, φ)])
-      | none => none
-  | (7 :: i :: rest), efst, tr => readM rest (var i :: efst) tr
-  | (8 :: rest), (body :: x :: efst), tr => readM rest (letE x body :: efst) tr
-  | _, _, _ => none
-
-/-- Reading a feature's serialization pushes exactly that feature (for any stack/trade state).
-The single roundtrip induction both `serialize` and `serializeTrades` injectivity rest on. -/
-lemma readM_serialize (e : EF) : ∀ (rest : List ℕ) (efst : List EF)
-    (tr : List (EF × Sentence)), readM (e.serialize ++ rest) efst tr = readM rest (e :: efst) tr := by
-  induction e with
-  | price φ n => intro rest efst tr; simp [serialize, readM, Encodable.encodek]
-  | const q => intro rest efst tr; simp [serialize, readM, Encodable.encodek]
-  | add a b iha ihb => intro rest efst tr
-                       simp only [serialize, List.append_assoc, List.cons_append,
-                         List.nil_append]
-                       rw [iha, ihb]; simp only [readM]
-  | mul a b iha ihb => intro rest efst tr
-                       simp only [serialize, List.append_assoc, List.cons_append,
-                         List.nil_append]
-                       rw [iha, ihb]; simp only [readM]
-  | max a b iha ihb => intro rest efst tr
-                       simp only [serialize, List.append_assoc, List.cons_append,
-                         List.nil_append]
-                       rw [iha, ihb]; simp only [readM]
-  | safeRecip a iha => intro rest efst tr
-                       simp only [serialize, List.append_assoc, List.cons_append,
-                         List.nil_append]
-                       rw [iha]; simp only [readM]
-  | var i => intro rest efst tr; simp [serialize, readM]
-  | letE x body ihx ihbody => intro rest efst tr
-                              simp only [serialize, List.append_assoc, List.cons_append,
-                                List.nil_append]
-                              rw [ihx, ihbody]; simp only [readM]
-
-/-- Decode a lone feature: accept iff the machine ends with a single feature and no trades. -/
-def deserialize (toks : List ℕ) : Option EF :=
-  match readM toks [] [] with
-  | some ([e], []) => some e
-  | _ => none
-
-lemma deserialize_serialize (e : EF) : deserialize e.serialize = some e := by
-  unfold deserialize
-  rw [← List.append_nil e.serialize, readM_serialize]
-  simp only [readM]
-
-/-- **`serialize` is injective** — the token stream determines the feature. -/
-lemma serialize_injective : Function.Injective serialize := by
-  intro a b h
-  have ha := deserialize_serialize a
-  rw [h, deserialize_serialize] at ha
-  exact (Option.some.inj ha).symm
-
-end EF
+The state is `((mode, pendingSentence), (featureStack, trades))`. Mode `0` is ready; modes
+`1,2` read a price's sentence/day; mode `3` reads a constant; mode `4` reads a trade
+sentence; and mode `5` reads a variable index. -/
 
 /-- Flatten a strategy to a token stream: each trade is its coefficient's `EF.serialize`
 followed by the frame `[6, ⌜φ⌝]`. This is the object `EfficientlyComputableTok` requires a
@@ -591,20 +571,11 @@ def serializeTrades : List (EF × Sentence) → List ℕ
   | [] => []
   | (e, φ) :: rest => e.serialize ++ (6 :: Encodable.encode φ :: serializeTrades rest)
 
-/-! ### A one-token streaming decoder
-
-`EF.readM` above is convenient for round-trip proofs, but several of its equations consume
-two or three tokens at once.  The equivalent streaming presentation below records that small
-amount of parser control state explicitly, so execution is one `List.foldl`.  This is the form
-used by the concrete LIA compiler.
-
-The state is `((mode, pendingSentence), (featureStack, trades))`.  Mode `0` is ready; modes
-`1,2` read a price's sentence/day; mode `3` reads a constant; mode `4` reads a trade sentence;
-and mode `5` reads a variable index. -/
-
+/-- The streaming decoder's state: `((mode, pendingSentence), (featureStack, trades))`. -/
 abbrev EF.StreamState :=
   (ℕ × Option Sentence) × (List EF × List (EF × Sentence))
 
+/-- The decoder's start state: ready mode, nothing pending, empty stack and no trades. -/
 def EF.streamInitial : EF.StreamState := ((0, none), ([], []))
 
 /-- Consume exactly one token of the flat strategy serialization. -/
@@ -664,6 +635,15 @@ def EF.streamReadFrom (tokens : List ℕ) (state : Option EF.StreamState) :
       EF.streamReadFrom right (EF.streamReadFrom left state) := by
   simp [EF.streamReadFrom, List.foldl_append]
 
+/-- The failed state absorbs: once the parser has rejected, no suffix can revive it. -/
+@[simp] lemma EF.streamReadFrom_none (tokens : List ℕ) :
+    EF.streamReadFrom tokens none = none := by
+  induction tokens with
+  | nil => rfl
+  | cons token tokens ih =>
+      simp only [EF.streamReadFrom, List.foldl_cons, EF.streamStep]
+      simpa [EF.streamReadFrom] using ih
+
 /-- Reading one canonical feature serialization pushes exactly that feature. -/
 lemma EF.streamReadFrom_serialize_self (e : EF) (efst : List EF)
     (trades : List (EF × Sentence)) :
@@ -694,12 +674,12 @@ lemma EF.streamReadFrom_serialize_self (e : EF) (efst : List EF)
       rw [EF.streamReadFrom_append, ihx, EF.streamReadFrom_append, ihbody]
       simp [EF.streamReadFrom, EF.streamStep]
 
-lemma EF.streamReadFrom_serialize (e : EF) (rest : List ℕ) (efst : List EF)
-    (trades : List (EF × Sentence)) :
-    EF.streamReadFrom (e.serialize ++ rest)
-      (some ((0, none), (efst, trades))) =
-    EF.streamReadFrom rest (some ((0, none), (e :: efst, trades))) := by
-  rw [EF.streamReadFrom_append, EF.streamReadFrom_serialize_self]
+/-- **`EF.serialize` is injective** — the token stream determines the feature. -/
+lemma EF.serialize_injective : Function.Injective EF.serialize := by
+  intro a b h
+  have ha := EF.streamReadFrom_serialize_self a [] []
+  rw [h, EF.streamReadFrom_serialize_self b [] []] at ha
+  simpa using ha.symm
 
 /-- Reading a canonical strategy serialization records exactly its trades. -/
 lemma EF.streamReadFrom_serializeTrades_self (l : List (EF × Sentence))
@@ -722,21 +702,6 @@ lemma EF.streamReadFrom_serializeTrades_self (l : List (EF × Sentence))
         simp [EF.streamReadFrom, EF.streamStep, Encodable.encodek]
       rw [hframe, ih]
       simp [List.append_assoc]
-
-/-- Reading a strategy's serialization records exactly its trades (onto any state). -/
-lemma readM_serializeTrades (l : List (EF × Sentence)) : ∀ (rest : List ℕ) (efst : List EF)
-    (tr : List (EF × Sentence)),
-    EF.readM (serializeTrades l ++ rest) efst tr = EF.readM rest efst (tr ++ l) := by
-  induction l with
-  | nil => intro rest efst tr; simp [serializeTrades]
-  | cons t rest_l ih =>
-      obtain ⟨e, φ⟩ := t
-      intro rest efst tr
-      simp only [serializeTrades, List.append_assoc, List.cons_append]
-      rw [EF.readM_serialize]
-      simp only [EF.readM, Encodable.encodek]
-      rw [ih, List.append_assoc]
-      rfl
 
 /-- Decode a strategy with the one-token streaming machine: accept iff parsing ends ready
 with an empty feature stack. -/
@@ -761,7 +726,8 @@ lemma serializeTrades_injective : Function.Injective serializeTrades := by
 /-! ## `def:world` + Propositional Consistency
 
 A world (`def:world`) is a truth assignment `Sentence → 𝔹`. The only worlds the criterion
-quantifies over are the **propositionally consistent** ones (`def:pc`): those determined by
+quantifies over are the **propositionally consistent** ones (an unlabelled definition,
+tex:726): those determined by
 Boolean algebra from an assignment to prime sentences. Rather than re-derive Boolean
 recursion over Foundation's connectives, we take a p.c. world to *be* a Foundation Boolean
 model — an atom valuation `ℕ → Prop` read through `Formula.Boolean.val` — which is exactly
@@ -791,12 +757,46 @@ model.) -/
 def ConsistentWith (v : PCWorld) (D : Finset Sentence) : Prop :=
   ∀ φ ∈ D, v.Holds φ
 
+/-! ### Boolean payout laws
+
+A p.c. world evaluates compound sentences by Boolean algebra (Foundation's `val`), so its
+`{0,1}` payouts compose the way a coherent probability must.  These are the connective
+laws every §4 property family and every `Construction/` deductive process reads.
+`holds_atom` and `holds_neg` are `@[simp]`: atom and negation normalisation is what every
+deductive-process lane wants, and the remaining connective laws are left to explicit
+rewriting because each of them splits the goal. -/
+
+/-- A world holds an atom exactly when its valuation does. -/
+@[simp] lemma holds_atom (v : PCWorld) (m : ℕ) :
+    v.Holds (LO.Propositional.Formula.atom m) ↔ v m := Iff.rfl
+
+/-- Every world holds `⊤` (Foundation: `⊤ = ⊥ 🡒 ⊥`). -/
+lemma holds_top (v : PCWorld) : v.Holds (⊤ : Sentence) := fun h => h
+
+/-- `∼χ`-worlds falsify `χ` (Foundation: `∼χ = χ 🡒 ⊥`). -/
+@[simp] lemma holds_neg (v : PCWorld) (χ : Sentence) : v.Holds (∼χ) ↔ ¬ v.Holds χ := by
+  simp [PCWorld.Holds, LO.Propositional.Formula.Boolean.val]
+
+/-- A world holds a disjunction exactly when it holds one of the disjuncts. -/
+lemma holds_or (v : PCWorld) (φ ψ : Sentence) :
+    v.Holds (φ ⋎ ψ) ↔ v.Holds φ ∨ v.Holds ψ := Iff.rfl
+
+/-- A world holds a conjunction exactly when it holds both conjuncts. -/
+lemma holds_and (v : PCWorld) (φ ψ : Sentence) :
+    v.Holds (φ ⋏ ψ) ↔ v.Holds φ ∧ v.Holds ψ := Iff.rfl
+
 end PCWorld
+
+/-- A share pays out in `[0,1]`: `1` when the sentence holds in the world, `0`
+otherwise. -/
+lemma payout_mem_Icc (v : PCWorld) (φ : Sentence) : 0 ≤ v.payout φ ∧ v.payout φ ≤ 1 := by
+  unfold PCWorld.payout
+  split <;> norm_num
 
 /-! ### Finite conjunctions and disjunctions of sentences
 
 Right-associated folds with the neutral element at the empty list.  They live here,
-beside `PCWorld.Holds`, because both the syntactic emission layer (`Framework/RpnSplice`,
+beside `PCWorld.Holds`, because both the syntactic emission layer (`Framework/Emission/RpnSplice`,
 which builds variable-width disjunction blocks) and the semantic coherence development
 (`Properties/LimitCoherence`) need them. -/
 
@@ -863,6 +863,21 @@ types so quotation interfaces can use it without importing the later affine-cohe
 development. -/
 def PCWorld.ConsistentWithTheory (v : PCWorld) (DP : DeductiveProcess) : Prop :=
   ∀ n, v.ConsistentWith (DP.D n)
+
+/-- A sentence lying in *some* finite stage holds in every world consistent with the
+completed theory.
+
+This is the sufficient condition for the semantic premise the paper's timely-learning
+theorems quantify over: under Θ-completeness (tex:740) "`φ` is a theorem" is
+`∀ v ∈ cworlds(Θ), v ⊨ φ`, and membership in a stage is one way — not the only way — for a
+world to be forced.  The converse direction, from a completed-theory consequence back to a
+finite stage that *entails* it, is `DeductiveProcess.exists_stage_entails`
+(`Framework/Compactness.lean`) and lands on entailment rather than on membership, because
+`DeductiveProcess.D` is an arbitrary nondecreasing family with no closure condition. -/
+lemma PCWorld.ConsistentWithTheory.holds_of_mem_stage {v : PCWorld} {DP : DeductiveProcess}
+    (hv : v.ConsistentWithTheory DP) {φ : Sentence} (h : ∃ k, φ ∈ DP.D k) : v.Holds φ := by
+  obtain ⟨k, hk⟩ := h
+  exact hv k φ hk
 
 /-- A deductive process is computable in the paper's unary-time sense: one fixed partial
 recursive program eventually emits the encoded finite set `D n`.  No polynomial runtime is
@@ -1040,6 +1055,8 @@ lemma DeductiveProcessComputation.computedProcess_eq
   funext n
   exact c.computedStage_eq n
 
+/-! ## `def:market` — computable markets and clocked evaluation -/
+
 /-- A paper-faithful computable rational market certificate. `quote n ⌜φ⌝` is the exact
 rational price of `φ` on day `n`, and one fixed partial-recursive program computes this
 two-argument table (with its input paired into one natural). No polynomial runtime is
@@ -1064,6 +1081,22 @@ structure MarketComputation (P : History) where
   quote_exact : ∀ n φ, P n φ = (quote n (Encodable.encode φ) : ℝ)
   code_spec : ∀ z, Encodable.encode (quote z.unpair.1 z.unpair.2) ∈ code.eval z
 
+/-- **Building a computable market from a computable rational table.**  This is the
+constructor every concrete market witness wants: supply the exact rational quote table, the
+`[0,1]` range fact, the pointwise exactness of the table, and computability of its encoded
+paired form, and the `Nat.Partrec.Code` is produced here.  Consumed by the `app:ifp` market
+witnesses (`Construction/Freeze/LIAPerturbation.lean`,
+`Construction/Freeze/Oracle.lean`,
+`Construction/Freeze/Counterexample.lean`). -/
+lemma ComputableMarket.ofComputableTable {P : History} (quote : ℕ → ℕ → ℚ)
+    (hrange : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1)
+    (hexact : ∀ n φ, P n φ = (quote n (Encodable.encode φ) : ℝ))
+    (hcomp : Computable fun z : ℕ => Encodable.encode (quote z.unpair.1 z.unpair.2)) :
+    ComputableMarket P := by
+  obtain ⟨code, hcode⟩ := Nat.Partrec.Code.exists_code.mp
+    (Partrec.nat_iff.mp hcomp.partrec)
+  exact ⟨hrange, quote, code, hexact, fun z => by rw [hcode]; simp⟩
+
 lemma ComputableMarket.nonemptyComputation
     {P : History} (h : ComputableMarket P) : Nonempty (MarketComputation P) := by
   obtain ⟨hrange, quote, code, hexact, hcode⟩ := h
@@ -1086,13 +1119,6 @@ lemma MarketComputation.evaln_eq_quote
     (h : out ∈ Nat.Partrec.Code.evaln fuel c.code z) :
     out = Encodable.encode (c.quote z.unpair.1 z.unpair.2) := by
   exact Part.mem_unique (Nat.Partrec.Code.evaln_sound h) (c.code_spec z)
-
-/-- Decoded rational form of `MarketComputation.evaln_eq_quote`. -/
-lemma MarketComputation.evaln_quote_eq
-    {P : History} (c : MarketComputation P) {z fuel : ℕ} {q : ℚ}
-    (h : Encodable.encode q ∈ Nat.Partrec.Code.evaln fuel c.code z) :
-    q = c.quote z.unpair.1 z.unpair.2 := by
-  exact Encodable.encode_injective (c.evaln_eq_quote h)
 
 /-- Every exact rational market quote eventually appears at some finite clock. -/
 lemma MarketComputation.exists_evaln_quote
@@ -1221,45 +1247,27 @@ lemma denoteRatWithAtFuel_sound
   | const value =>
       simpa [denoteRatWithAtFuel, denoteRatWith] using h.symm
   | add a b iha ihb =>
-      simp only [denoteRatWithAtFuel, Option.bind_eq_bind] at h
-      rw [Option.bind_eq_some_iff] at h
-      obtain ⟨qa, ha, h⟩ := h
-      rw [Option.bind_eq_some_iff] at h
-      obtain ⟨qb, hb, hq⟩ := h
-      change some (qa + qb) = some q at hq
-      injection hq with hq
-      subst q
+      simp only [denoteRatWithAtFuel, Option.bind_eq_bind, Option.bind_eq_some_iff,
+        Option.pure_def, Option.some.injEq] at h
+      obtain ⟨qa, ha, qb, hb, rfl⟩ := h
       simp only [denoteRatWith]
       rw [iha ρ ha, ihb ρ hb]
   | mul a b iha ihb =>
-      simp only [denoteRatWithAtFuel, Option.bind_eq_bind] at h
-      rw [Option.bind_eq_some_iff] at h
-      obtain ⟨qa, ha, h⟩ := h
-      rw [Option.bind_eq_some_iff] at h
-      obtain ⟨qb, hb, hq⟩ := h
-      change some (qa * qb) = some q at hq
-      injection hq with hq
-      subst q
+      simp only [denoteRatWithAtFuel, Option.bind_eq_bind, Option.bind_eq_some_iff,
+        Option.pure_def, Option.some.injEq] at h
+      obtain ⟨qa, ha, qb, hb, rfl⟩ := h
       simp only [denoteRatWith]
       rw [iha ρ ha, ihb ρ hb]
   | max a b iha ihb =>
-      simp only [denoteRatWithAtFuel, Option.bind_eq_bind] at h
-      rw [Option.bind_eq_some_iff] at h
-      obtain ⟨qa, ha, h⟩ := h
-      rw [Option.bind_eq_some_iff] at h
-      obtain ⟨qb, hb, hq⟩ := h
-      change some (Max.max qa qb) = some q at hq
-      injection hq with hq
-      subst q
+      simp only [denoteRatWithAtFuel, Option.bind_eq_bind, Option.bind_eq_some_iff,
+        Option.pure_def, Option.some.injEq] at h
+      obtain ⟨qa, ha, qb, hb, rfl⟩ := h
       simp only [denoteRatWith]
       rw [iha ρ ha, ihb ρ hb]
   | safeRecip a iha =>
-      simp only [denoteRatWithAtFuel, Option.bind_eq_bind] at h
-      rw [Option.bind_eq_some_iff] at h
-      obtain ⟨qa, ha, hq⟩ := h
-      change some (Max.max 1 qa)⁻¹ = some q at hq
-      injection hq with hq
-      subst q
+      simp only [denoteRatWithAtFuel, Option.bind_eq_bind, Option.bind_eq_some_iff,
+        Option.pure_def, Option.some.injEq] at h
+      obtain ⟨qa, ha, rfl⟩ := h
       simp only [denoteRatWith]
       rw [iha ρ ha]
   | var i =>
@@ -1282,35 +1290,21 @@ lemma denoteRatWithAtFuel_mono
   | price φ n => exact market.quoteAtFuel_mono hff h
   | const value => simpa [denoteRatWithAtFuel] using h
   | add a b iha ihb =>
-      simp only [denoteRatWithAtFuel, Option.bind_eq_bind] at h ⊢
-      rw [Option.bind_eq_some_iff] at h
-      obtain ⟨qa, ha, h⟩ := h
-      rw [Option.bind_eq_some_iff] at h
-      obtain ⟨qb, hb, hq⟩ := h
-      rw [iha ρ ha, ihb ρ hb]
-      exact hq
+      simp only [denoteRatWithAtFuel, Option.bind_eq_bind, Option.bind_eq_some_iff] at h ⊢
+      obtain ⟨qa, ha, qb, hb, hq⟩ := h
+      exact ⟨qa, iha ρ ha, qb, ihb ρ hb, hq⟩
   | mul a b iha ihb =>
-      simp only [denoteRatWithAtFuel, Option.bind_eq_bind] at h ⊢
-      rw [Option.bind_eq_some_iff] at h
-      obtain ⟨qa, ha, h⟩ := h
-      rw [Option.bind_eq_some_iff] at h
-      obtain ⟨qb, hb, hq⟩ := h
-      rw [iha ρ ha, ihb ρ hb]
-      exact hq
+      simp only [denoteRatWithAtFuel, Option.bind_eq_bind, Option.bind_eq_some_iff] at h ⊢
+      obtain ⟨qa, ha, qb, hb, hq⟩ := h
+      exact ⟨qa, iha ρ ha, qb, ihb ρ hb, hq⟩
   | max a b iha ihb =>
-      simp only [denoteRatWithAtFuel, Option.bind_eq_bind] at h ⊢
-      rw [Option.bind_eq_some_iff] at h
-      obtain ⟨qa, ha, h⟩ := h
-      rw [Option.bind_eq_some_iff] at h
-      obtain ⟨qb, hb, hq⟩ := h
-      rw [iha ρ ha, ihb ρ hb]
-      exact hq
+      simp only [denoteRatWithAtFuel, Option.bind_eq_bind, Option.bind_eq_some_iff] at h ⊢
+      obtain ⟨qa, ha, qb, hb, hq⟩ := h
+      exact ⟨qa, iha ρ ha, qb, ihb ρ hb, hq⟩
   | safeRecip a iha =>
-      simp only [denoteRatWithAtFuel, Option.bind_eq_bind] at h ⊢
-      rw [Option.bind_eq_some_iff] at h
+      simp only [denoteRatWithAtFuel, Option.bind_eq_bind, Option.bind_eq_some_iff] at h ⊢
       obtain ⟨qa, ha, hq⟩ := h
-      rw [iha ρ ha]
-      exact hq
+      exact ⟨qa, iha ρ ha, hq⟩
   | var i => simpa [denoteRatWithAtFuel] using h
   | letE value body ihvalue ihbody =>
       simp only [denoteRatWithAtFuel, Option.bind_eq_bind] at h ⊢
@@ -1468,11 +1462,43 @@ worth on day `n`, as valued by any world propositionally consistent with `D n`, 
 def plausibleAssessments (Tr : Trader) (V : History) (DP : DeductiveProcess) : Set ℝ :=
   { x | ∃ (n : ℕ) (v : PCWorld), v.ConsistentWith (DP.D n) ∧ x = Tr.netWorth V v n }
 
-/-- `def:exploitation`. `Tr` **exploits** the history `𝓥` relative to `DP` if its plausible
-assessments are bounded below but not bounded above — unbounded upside off bounded
-downside. -/
+/-- `Tr` **exploits** the history `𝓥` relative to `DP` if its plausible assessments are
+bounded below but not bounded above — unbounded upside off bounded downside.  This is
+tex:901 verbatim: the paper's set of values is `plausibleAssessments`, the net worth
+`∑_{i ≤ n} 𝑡ᵢ(𝓥)` assessed by every world in `pcworlds(D n)` over every day.  It is
+refutable rather than vacuously true (`Trader.zero_not_exploits`), which is what keeps
+`def:lic` from being empty.
+Paper node: `def:exploitation` -/
 def Exploits (Tr : Trader) (V : History) (DP : DeductiveProcess) : Prop :=
   BddBelow (Tr.plausibleAssessments V DP) ∧ ¬ BddAbove (Tr.plausibleAssessments V DP)
+
+/-- **Uniform bounded net-worth error preserves exploitation.**  If `Tr` exploits `P` and
+`Tr'`'s net worth against `P'` stays within a constant `C` of `Tr`'s against `P` on every
+day and every consistent world, then `Tr'` exploits `P'`.  This is the abstract
+finite-prefix accounting step every finite-perturbation closure theorem runs through
+(`Properties/FinitePerturbations.lean`). -/
+lemma Exploits.of_boundedDifference
+    {Tr Tr' : Trader} {P P' : History} {DP : DeductiveProcess}
+    (h : Tr.Exploits P DP) (C : ℝ)
+    (hdiff : ∀ n v, v.ConsistentWith (DP.D n) →
+      |Tr.netWorth P v n - Tr'.netWorth P' v n| ≤ C) :
+    Tr'.Exploits P' DP := by
+  rcases h with ⟨⟨L, hL⟩, hnotAbove⟩
+  refine ⟨⟨L - C, ?_⟩, ?_⟩
+  · rintro x ⟨n, v, hv, rfl⟩
+    have hbase := hL ⟨n, v, hv, rfl⟩
+    have herr := hdiff n v hv
+    rw [abs_le] at herr
+    linarith
+  · intro hUpper
+    apply hnotAbove
+    rcases hUpper with ⟨U, hU⟩
+    refine ⟨U + C, ?_⟩
+    rintro x ⟨n, v, hv, rfl⟩
+    have hpatched := hU ⟨n, v, hv, rfl⟩
+    have herr := hdiff n v hv
+    rw [abs_le] at herr
+    linarith
 
 end Trader
 
@@ -1513,9 +1539,9 @@ its inputs (`guard (n ≤ k)` in `Mathlib.Computability.PartrecCode`), so a fixe
 for `poly n` fuel can only *output* a value `≤ poly n` — `O(log n)` bits.
 
 That claim is **proved**, not read off the source: `codeEvaln_result_le` with
-`codeEvalBound_poly` (`Framework/Emission.lean`) bound a fixed code's output by an explicit
+`codeEvalBound_poly` (`Framework/Emission/Emission.lean`) bound a fixed code's output by an explicit
 polynomial in the fuel; compose with the clock. Note it is *not* "output `≤ fuel`" — that is
-false, and proved false (`evaln_output_can_exceed_fuel`, `Framework/Computable.lean`) — and
+false, and proved false (`evaln_output_can_exceed_fuel`, `Framework/Emission/Computable.lean`) — and
 it does not follow from Mathlib's `evaln_bound`, which bounds the input only. A strategy
 whose `Encodable.encode` is a large number (any poly-*size* but deep feature: its `toNat` value
 is `2^{poly n}`) is therefore *unemittable as one number*, though the paper's poly-*size*
@@ -1524,14 +1550,14 @@ is `2^{poly n}`) is therefore *unemittable as one number*, though the paper's po
 faithful poly-*size* rendering, and it is what deep traders (`thm:con` hysteresis, `thm:nd`
 purchase counters) need.
 
-**Residual disclosure (type-`(c)`):** each token's *value* is still generated by a clocked
+**Residual disclosure (type-`(c)`):** each token's *value* is generated by a clocked
 program, so a traded sentence's atomic code `⌜φ⌝` must be `poly n`-value on day `n`. A trader
 that always trades the same sentences pays a constant, absorbed into `a`; a trader whose
 traded sentence varies with the day must carry a poly bound on `⌜φₙ⌝`. Two further layers
 below remove the residual: `EfficientlyComputableDigit` meters token *bits* rather than
 token values, and the Polish-notation layer replaces a sentence's single pair code by one
 token per formula symbol, so that stream length tracks symbol count even for skewed
-formulas. Their composite is the token-metered class `EfficientlyComputable`. -/
+formulas. Their composite is the token-metered class `PolyFueledTrader`. -/
 
 /-- Run a length program and then a token program under a shared clock.  The requested
 length is clamped to the clock, so every index emits a polynomial-size stream even when its
@@ -1550,10 +1576,28 @@ def strategyOfTokens (n : ℕ) (tokens : List ℕ) : Strategy n :=
   | some trades =>
       if h : ∀ trade ∈ trades, trade.1.rank ≤ n then ⟨trades, h⟩ else ⟨[], by simp⟩
 
+/-- The empty stream decodes to the empty validated strategy. -/
+lemma strategyOfTokens_nil_trades (n : ℕ) :
+    (strategyOfTokens n ([] : List ℕ)).trades = [] := by
+  have hdec : deserializeTrades ([] : List ℕ) = some [] := rfl
+  unfold strategyOfTokens
+  split
+  · rfl
+  · next trades hdecode =>
+      rw [hdec] at hdecode
+      obtain rfl := Option.some.inj hdecode
+      simp
+
 /-- The total trader denoted by two programs and a day-dependent clock. -/
 def clockedTraderTok (lengthCode tokenCode : Nat.Partrec.Code) (clock : ℕ → ℕ) : Trader where
   strat n := strategyOfTokens n (clockedTokens lengthCode tokenCode (clock n) n)
 
+/-- **The token-emission efficiency class** (`def:ec`, `dd:fuel`).  A trader is efficiently
+computable at this layer when one program emits the length of the day-`n` strategy's flat
+token stream and a second emits that stream one token at a time, both under a single
+polynomial clock.  The residual this layer still carries — token *values* must be
+polynomial in the day — is stated in the section block above and removed by
+`EfficientlyComputableDigit`. -/
 def EfficientlyComputableTok (Tr : Trader) : Prop :=
   ∃ (lengthCode tokenCode : Nat.Partrec.Code) (a k : ℕ),
     clockedTraderTok lengthCode tokenCode (fun n => a * (n + 1) ^ k + a) = Tr
@@ -1564,7 +1608,7 @@ def EfficientlyComputableTok (Tr : Trader) : Prop :=
 so each *token value* must be polynomial in the day — which excludes per-day rational
 literals (`2^{-n}`) and deep/large sentence codes, though the paper's poly-*time* `def:ec`
 admits them (the residual disclosed above). The digit layer removes that residual without
-touching `serialize`/`readM`/`cost`: every token is re-emitted as a **self-delimiting
+touching `serialize`/`cost`: every token is re-emitted as a **self-delimiting
 base-4 digit block** (digits `0..3`, terminator `4`), so a `B`-bit token becomes `O(B)`
 bounded-value digits. `EfficientlyComputableDigit` meters the digitized stream; poly
 digit-stream length ⇔ poly *bit* size — the paper's accounting. -/
@@ -1593,6 +1637,13 @@ def tokenBlock (t : ℕ) : List ℕ := natDigits4 t ++ [4]
 
 /-- The digit stream of a token stream. -/
 def digitize (ts : List ℕ) : List ℕ := ts.flatMap tokenBlock
+
+@[simp] lemma digitize_append (xs ys : List ℕ) :
+    digitize (xs ++ ys) = digitize xs ++ digitize ys := by
+  simp [digitize]
+
+@[simp] lemma digitize_singleton (t : ℕ) : digitize [t] = tokenBlock t := by
+  simp [digitize]
 
 lemma digitize_flatMap (l : List ℕ) (f : ℕ → List ℕ) :
     digitize (l.flatMap f) = l.flatMap fun x => digitize (f x) := by
@@ -1686,7 +1737,7 @@ def EfficientlyComputableDigit (Tr : Trader) : Prop :=
 Sentence slots of the flat strategy stream may carry Polish-notation symbol runs
 instead of single pair-code tokens (one token per formula symbol, escape tag `1` for
 a literal pair code).  The grammar defs live here beside the serializers; the lemma
-corpus is `Framework/RpnSentence.lean`. -/
+corpus is `Framework/Emission/RpnSentence.lean`. -/
 
 section
 open LO.Propositional
@@ -1701,7 +1752,7 @@ def rpn : Sentence → List ℕ
 
 /-! ### Structured arithmetic leaves
 
-The formerly invalid escape prefix `[1, 0]` introduces an exact paper-prime atom.  Its
+The escape prefix `[1, 0]` introduces an exact paper-prime atom.  Its
 payload is a small-token prefix tree.  Tags `0`--`2` encode naturals in binary; tags
 `3`--`8` encode arithmetic terms; and tags `9`--`18` together with `20`--`22`
 encode arithmetic formulas: `9`--`18` are Foundation's negation-normal-form
@@ -1711,21 +1762,18 @@ numeric parser below deliberately constructs Foundation's established Godel code
 inside contraction.  In particular, the emitted stream never contains that code as a
 token. -/
 
-/-- Arity of one node in the shared structured arithmetic payload grammar. -/
-public def structuredArithmeticArity (t : ℕ) : Option ℕ :=
-  if t = 0 then some 0
-  else if t = 1 ∨ t = 2 ∨ t = 3 ∨ t = 4 ∨ t = 17 ∨ t = 18 ∨ t = 20 then some 1
-  else if t = 5 ∨ t = 6 ∨ t = 9 ∨ t = 10 then some 0
-  else if t ≤ 16 ∨ t = 21 ∨ t = 22 then some 2
-  else none
-
-public def arithmeticVec2Code (a b : ℕ) : ℕ :=
+/-- The code of the two-element argument vector `![a, b]`, as a cons list. -/
+def arithmeticVec2Code (a b : ℕ) : ℕ :=
   Nat.pair a (Nat.pair b 0 + 1) + 1
 
-public def arithmeticFuncCode (arity symbol args : ℕ) : ℕ :=
+/-- The code of a function-symbol term: symbol `symbol` of arity `arity` applied to the
+argument vector coded by `args`. -/
+def arithmeticFuncCode (arity symbol args : ℕ) : ℕ :=
   Nat.pair 2 (Nat.pair arity (Nat.pair symbol args)) + 1
 
-public def arithmeticRelCode (negative : Bool) (symbol a b : ℕ) : ℕ :=
+/-- The code of a binary atomic formula: `rel` when `negative` is `false` and `nrel` when
+it is `true`, since Foundation's `Semiformula` is in negation-normal form. -/
+def arithmeticRelCode (negative : Bool) (symbol a b : ℕ) : ℕ :=
   Nat.pair (if negative then 1 else 0)
     (Nat.pair 2 (Nat.pair symbol (arithmeticVec2Code a b))) + 1
 
@@ -1739,7 +1787,7 @@ without those connectives ever being emitted as codes.
 
 *Proof kind:* `Def`.  Its correctness against Foundation's `∼` is
 `negFormulaCode_spec`. -/
-public def negFormulaCode (n : ℕ) : ℕ :=
+def negFormulaCode (n : ℕ) : ℕ :=
   match n with
   | 0 => 0
   | e + 1 =>
@@ -1764,10 +1812,16 @@ decreasing_by
       | exact le_trans (Nat.unpair_right_le _) (Nat.unpair_right_le _)
       | exact Nat.unpair_right_le _
 
-/- Numeric mirror of the structural arithmetic codec.  The three mutually recursive
-parsers return an exact Foundation code and the untouched suffix. -/
+/-! ### The structured-arithmetic parsers
+
+The numeric mirror of the structural arithmetic codec.  The three mutually recursive
+parsers each return an exact Foundation code together with the untouched suffix of the
+token stream. -/
+
 mutual
-  public def parseStructuredNat : ℕ → List ℕ → Option (ℕ × List ℕ)
+  /-- Parse a natural number written in the small-token binary encoding (tags `0`--`2`),
+  returning its value and the remaining tokens. -/
+  def parseStructuredNat : ℕ → List ℕ → Option (ℕ × List ℕ)
     | 0, _ => none
     | _ + 1, [] => none
     | fuel + 1, t :: rest =>
@@ -1778,10 +1832,12 @@ mutual
           (parseStructuredNat fuel rest).map fun p => (2 * p.1 + 1, p.2)
         else none
 
-  public def parseStructuredArithmeticTerm : ℕ → ℕ → List ℕ → Option (ℕ × List ℕ)
-    | 0, _, _ => none
-    | _ + 1, _, [] => none
-    | fuel + 1, depth, t :: rest =>
+  /-- Parse an arithmetic term (tags `3`--`8`), returning its Foundation term code and the
+  remaining tokens. -/
+  def parseStructuredArithmeticTerm : ℕ → List ℕ → Option (ℕ × List ℕ)
+    | 0, _ => none
+    | _ + 1, [] => none
+    | fuel + 1, t :: rest =>
         if t = 3 then
           (parseStructuredNat fuel rest).map fun p =>
             (Nat.pair 0 p.1 + 1, p.2)
@@ -1790,40 +1846,43 @@ mutual
         else if t = 5 then some (arithmeticFuncCode 0 0 0, rest)
         else if t = 6 then some (arithmeticFuncCode 0 1 0, rest)
         else if t = 7 ∨ t = 8 then
-          (parseStructuredArithmeticTerm fuel 0 rest).bind fun p =>
-            (parseStructuredArithmeticTerm fuel 0 p.2).map fun q =>
+          (parseStructuredArithmeticTerm fuel rest).bind fun p =>
+            (parseStructuredArithmeticTerm fuel p.2).map fun q =>
               (arithmeticFuncCode 2 (if t = 7 then 0 else 1)
                 (arithmeticVec2Code p.1 q.1), q.2)
         else none
 
-  public def parseStructuredArithmeticFormula : ℕ → ℕ → List ℕ → Option (ℕ × List ℕ)
-    | 0, _, _ => none
-    | _ + 1, _, [] => none
-    | fuel + 1, depth, t :: rest =>
+  /-- Parse an arithmetic formula (tags `9`--`18`, plus `20`--`22` for the paper's `¬`,
+  `⟹`, `⟺`, contracted into negation-normal form here), returning its Foundation formula
+  code and the remaining tokens. -/
+  def parseStructuredArithmeticFormula : ℕ → List ℕ → Option (ℕ × List ℕ)
+    | 0, _ => none
+    | _ + 1, [] => none
+    | fuel + 1, t :: rest =>
         if t = 9 then some (Nat.pair 2 0 + 1, rest)
         else if t = 10 then some (Nat.pair 3 0 + 1, rest)
         else if t = 11 ∨ t = 12 ∨ t = 13 ∨ t = 14 then
-          (parseStructuredArithmeticTerm fuel 0 rest).bind fun p =>
-            (parseStructuredArithmeticTerm fuel 0 p.2).map fun q =>
+          (parseStructuredArithmeticTerm fuel rest).bind fun p =>
+            (parseStructuredArithmeticTerm fuel p.2).map fun q =>
               (arithmeticRelCode (t = 12 ∨ t = 14) (if t = 11 ∨ t = 12 then 0 else 1)
                 p.1 q.1, q.2)
         else if t = 15 ∨ t = 16 then
-          (parseStructuredArithmeticFormula fuel 0 rest).bind fun p =>
-            (parseStructuredArithmeticFormula fuel 0 p.2).map fun q =>
+          (parseStructuredArithmeticFormula fuel rest).bind fun p =>
+            (parseStructuredArithmeticFormula fuel p.2).map fun q =>
               (Nat.pair (if t = 15 then 4 else 5) (Nat.pair p.1 q.1) + 1, q.2)
         else if t = 17 ∨ t = 18 then
-          (parseStructuredArithmeticFormula fuel 0 rest).map fun p =>
+          (parseStructuredArithmeticFormula fuel rest).map fun p =>
             (Nat.pair (if t = 17 then 6 else 7) p.1 + 1, p.2)
         else if t = 20 then
-          (parseStructuredArithmeticFormula fuel 0 rest).map fun p =>
+          (parseStructuredArithmeticFormula fuel rest).map fun p =>
             (negFormulaCode p.1, p.2)
         else if t = 21 then
-          (parseStructuredArithmeticFormula fuel 0 rest).bind fun p =>
-            (parseStructuredArithmeticFormula fuel 0 p.2).map fun q =>
+          (parseStructuredArithmeticFormula fuel rest).bind fun p =>
+            (parseStructuredArithmeticFormula fuel p.2).map fun q =>
               (Nat.pair 5 (Nat.pair (negFormulaCode p.1) q.1) + 1, q.2)
         else if t = 22 then
-          (parseStructuredArithmeticFormula fuel 0 rest).bind fun p =>
-            (parseStructuredArithmeticFormula fuel 0 p.2).map fun q =>
+          (parseStructuredArithmeticFormula fuel rest).bind fun p =>
+            (parseStructuredArithmeticFormula fuel p.2).map fun q =>
               (Nat.pair 4
                 (Nat.pair (Nat.pair 5 (Nat.pair (negFormulaCode p.1) q.1) + 1)
                   (Nat.pair 5 (Nat.pair (negFormulaCode q.1) p.1) + 1)) + 1, q.2)
@@ -1847,7 +1906,7 @@ def parseStructuredPaperPrime : List ℕ → Option (Sentence × List ℕ)
       if polarity ≤ 1 then
         (readStructuredLength framed).bind fun p =>
           if p.1 ≤ p.2.length then
-            match parseStructuredArithmeticFormula p.1 0 (p.2.take p.1) with
+            match parseStructuredArithmeticFormula p.1 (p.2.take p.1) with
             | some (formulaCode, []) =>
                 if List.getD p.2 p.1 0 = 19 then
                   some (Formula.atom (Nat.pair 5 (Nat.pair polarity formulaCode)),
@@ -1864,7 +1923,7 @@ def parseStructuredPaperPrimeC : List ℕ → Option (ℕ × List ℕ)
       if polarity ≤ 1 then
         (readStructuredLength framed).bind fun p =>
           if p.1 ≤ p.2.length then
-            match parseStructuredArithmeticFormula p.1 0 (p.2.take p.1) with
+            match parseStructuredArithmeticFormula p.1 (p.2.take p.1) with
             | some (formulaCode, []) =>
                 if List.getD p.2 p.1 0 = 19 then
                   some (Nat.pair 1 (Nat.pair 5 (Nat.pair polarity formulaCode)) + 1,
@@ -1874,26 +1933,6 @@ def parseStructuredPaperPrimeC : List ℕ → Option (ℕ × List ℕ)
           else none
       else none
   | [] => none
-
-/-- The pre-structured RPN grammar, retained to state generic backwards compatibility. -/
-def parseRpnLegacy : ℕ → List ℕ → Option (Sentence × List ℕ)
-  | 0, _ => none
-  | _ + 1, [] => none
-  | fuel + 1, t :: rest =>
-      if t = 0 then some (Formula.falsum, rest)
-      else if t = 1 then
-        rest.head?.bind fun c =>
-          (Encodable.decode (α := Sentence) c).map fun φ => (φ, rest.tail)
-      else if t = 2 then
-        (parseRpnLegacy fuel rest).bind fun p =>
-          (parseRpnLegacy fuel p.2).bind fun q => some (Formula.imp p.1 q.1, q.2)
-      else if t = 3 then
-        (parseRpnLegacy fuel rest).bind fun p =>
-          (parseRpnLegacy fuel p.2).bind fun q => some (Formula.and p.1 q.1, q.2)
-      else if t = 4 then
-        (parseRpnLegacy fuel rest).bind fun p =>
-          (parseRpnLegacy fuel p.2).bind fun q => some (Formula.or p.1 q.1, q.2)
-      else some (Formula.atom (t - 5), rest)
 
 /-- `parseRpn fuel ts` reads one sentence block from the front of `ts`, returning the
 parsed sentence and the unread suffix.  Any `fuel ≥ ts.length` is enough. -/
@@ -1959,22 +1998,22 @@ def clockedTrader (lengthCode tokenCode : Nat.Partrec.Code) (clock : ℕ → ℕ
 
 /-- **The token-metered efficient-computability class** (`def:ec`): two
 programs under one polynomial clock emit the digit stream of an RPN-expanded strategy
-serialization.  Earlier revisions of this development called this tier "symbol-metered"; the
-name changed to "token-metered" to avoid collision with the paper's own derivation-symbol
-count (`dSize`, `dd:symbolcount`).
+serialization.  "Token" here counts emitted stream tokens, not the derivation symbols
+`dSize` counts under `dd:symbolcount`.
 Paper node: `def:ec` -/
-def EfficientlyComputable (Tr : Trader) : Prop :=
+def PolyFueledTrader (Tr : Trader) : Prop :=
   ∃ (lengthCode tokenCode : Nat.Partrec.Code) (a k : ℕ),
     clockedTrader lengthCode tokenCode (fun n => a * (n + 1) ^ k + a) = Tr
 
 end
 
-/-! ### The machine class (`def:ec`, machine reading)
+/-! ### `def:ec` — the trader class
 
-`EfficientlyComputable` above renders `def:ec` through a fuel-clocked interpreter — a
-sufficient certification device, and a disclosed modeling choice. The paper's own reading is
-ordinary polynomial time, and this is it: a trader is efficient when some `Complexity.FP`
-function of the *unary* day emits its day-`n` strategy through the standard token decoding.
+`PolyFueledTrader` above is the `dd:fuel` certificate: a fuel-clocked interpreter, a
+sufficient certification device and a disclosed modeling choice, not `def:ec` itself.
+`def:ec` is ordinary polynomial time, and this is it: a trader is efficient when some
+`Complexity.FP` function of the *unary* day emits its day-`n` strategy through the standard
+token decoding.
 
 Unary days matter: `unaryDay n` has length exactly `n`, so a machine polynomial in its input
 length is polynomial in the day, which is the paper's meter. A binary rendering would
@@ -1989,6 +2028,20 @@ and the digit layer's `List ℕ`. -/
 def unaryDay (n : ℕ) : List Bool := List.replicate n true
 
 @[simp] lemma length_unaryDay (n : ℕ) : (unaryDay n).length = n := by simp [unaryDay]
+
+lemma unaryDay_injective : Function.Injective unaryDay :=
+  List.replicate_left_injective true
+
+/-- A unary word is the image of `k` under `unaryDay` exactly when `k` is in the set. -/
+lemma mem_image_unaryDay (S : Finset ℕ) (k : ℕ) :
+    List.replicate k true ∈ S.image unaryDay ↔ k ∈ S := by
+  rw [Finset.mem_image]
+  constructor
+  · rintro ⟨d, hd, he⟩
+    have hdk : d = k := unaryDay_injective (by rw [he]; rfl)
+    exact hdk ▸ hd
+  · intro hk
+    exact ⟨k, hk, rfl⟩
 
 /-- `Bool` as `0`/`1`. -/
 def b2n (b : Bool) : ℕ := if b then 1 else 0
@@ -2017,38 +2070,36 @@ serialization, and it introduces no new parser. -/
 def strategyOfOutput (n : ℕ) (w : List Bool) : Strategy n :=
   strategyOfTokens n (unRpn (undigitize (bitsToDigits w)))
 
-/-- **The polynomial-time trader class** (`def:ec`, machine reading). A trader is
-machine-efficient when some honestly polynomial-time function of the *unary* day emits its
-day-`n` strategy through the standard token decoding.
+/-- **The efficiently computable trader class** (`def:ec`). A trader is efficiently
+computable when some honestly polynomial-time function of the *unary* day emits its day-`n`
+strategy through the standard token decoding.
 
-This is the class the Logical Induction construction enumerates and dominates. Contrast
-`EfficientlyComputable`, which asks for a fuel-clocked `Nat.Partrec.Code` pair; every trader
-that certifies is one of these (`EfficientlyComputable.toMachine`, in
-`Framework/MachineEfficiency.lean`), and the converse is neither needed nor claimed.
+This is the class the Logical Induction construction enumerates and dominates, and the class
+`def:lic` quantifies over. Contrast `PolyFueledTrader`, which asks for a fuel-clocked
+`Nat.Partrec.Code` pair; every trader that certifies there is one of these
+(`PolyFueledTrader.toEfficientlyComputable`, in `Framework/Efficiency.lean`), and the
+converse is neither needed nor claimed.
 Paper node: `def:ec` -/
-def MachineEfficientTrader (Tr : Trader) : Prop :=
+def EfficientlyComputable (Tr : Trader) : Prop :=
   ∃ F : List Bool → List Bool, F ∈ Complexity.FP ∧
     ∀ n, strategyOfOutput n (F (unaryDay n)) = Tr.strat n
 
-/-- `def:lic`, in the fuel-certified reading.  The market `P` satisfies the **Logical
-Induction Criterion** relative to `DP` if no efficiently computable trader exploits it,
-where efficiency is the token-metered class `EfficientlyComputable` above.
+/-! ## `def:lic` — the criterion -/
 
-**This is the compatibility reading, not the paper's quantifier.**  The paper's own
-quantifier is ordinary machine polynomial time, and `IsMachineLogicalInductor`
-(`Framework/MachineEfficiency.lean`) states it; that is the criterion the construction
-proves.  `dd:fuel` is now a *sufficient certification device* for the machine class rather
-than a substitution for it — every fuel certificate is a machine-efficiency certificate
-(`EfficientlyComputable.toMachine`), so a machine logical inductor is one of these, and the
-whole property tail transfers unchanged through that instance.  The converse inclusion is
-neither proved nor claimed; the `dd:fuel` model card (`Framework/Computable.lean`,
-"### `dd:fuel` model card") records what is and is not settled.
+/-- **The Logical Induction Criterion** (`def:lic`).  The market `P` satisfies it relative
+to `DP` when no efficiently computable trader exploits `P` — efficiency being `def:ec`
+itself, ordinary polynomial time, which is the paper's own quantifier.
 
-This is the hypothesis the entire property tail is conditioned on
-(`[IsLogicalInductor P DP]`), which is why it is kept rather than retired.
-Token-model and digit-model no-exploitation follow through the emission constructors
-`EfficientlyComputable.ofTokenEmitter` / `.ofDigitEmitter`
-(`IsLogicalInductor.noExploitTok` / `.noExploitDigit` in `Framework/RpnEmission.lean`).
+This is the criterion the §5 construction proves (`LIA_is_logical_inductor`) and the
+hypothesis the entire §4 property tail is conditioned on (`[IsLogicalInductor P DP]`).
+
+A client whose exploiting trader is certified in the `dd:fuel` calculus crosses one bridge,
+`PolyFueledTrader.toEfficientlyComputable`; the token-model and digit-model no-exploitation
+forms `IsLogicalInductor.noExploitTok` / `.noExploitDigit` (`Framework/Efficiency.lean`)
+package that crossing, so the fuel calculus is a *certification device* for `def:ec` rather
+than a reading of it.  The converse inclusion — machine ⟹ fuel — is neither proved nor
+claimed; the `dd:fuel` model card (`Framework/Emission/Computable.lean`, "### `dd:fuel`
+model card") records what is and is not settled.
 Paper node: `def:lic` -/
 class IsLogicalInductor (P : History) (DP : DeductiveProcess) : Prop where
   /-- Markets are computable rational pricing sequences in the paper's definition. -/
@@ -2056,9 +2107,7 @@ class IsLogicalInductor (P : History) (DP : DeductiveProcess) : Prop where
   /-- Deductive processes are computable nested finite-set sequences in the paper's
   definition. -/
   processComputable : ComputableDeductiveProcess DP
-  /-- No efficiently computable trader exploits `P`, in the fuel-certified reading. The
-  paper's own quantifier is the machine class: `IsMachineLogicalInductor` in
-  `Framework/MachineEfficiency.lean` is that criterion, and it implies this one. -/
+  /-- No efficiently computable trader exploits `P`. -/
   noExploit : ∀ Tr : Trader, EfficientlyComputable Tr → ¬ Tr.Exploits P DP
 
 /-- The pricing range carried by every logical inductor's computable-market certificate. -/

@@ -1,53 +1,135 @@
-/-
+import LogicalInduction.Properties.AffineCoherence
+import LogicalInduction.Properties.Support.WeightedAverages
+import LogicalInduction.Properties.Support.SettlementDecision
+import LogicalInduction.Framework.BooleanWorlds
+import LogicalInduction.Framework.Emission.WriteOut
+import LogicalInduction.Framework.Machine.Witnesses
+import Mathlib.Topology.Bases
+import Mathlib.Topology.Compactness.Compact
+
+/-!
 # Calibration and unbiasedness
 
-Renders §4.3 "Calibration and Unbiasedness": `thm:simcal` (Recurring Calibration) and
-`thm:recurringunbiasedness` (Recurring Unbiasedness), over divergent weightings (`def:fuz`)
-generable from the market (`def:ece`), together with the affine generalization
-`thm:recunbiasedaff`.  Appendix proofs: `app:simcal`, `app:recurringunbiasedness`,
-`app:recunbiasedaff`.
+Renders §4.3 "Calibration and Unbiasedness" — the continuous threshold indicator
+`def:ctsind` (tex:1174), divergent weightings `def:fuz` (tex:1212) and weightings generable
+from the market `def:ece` (tex:1218) — together with the §4.5 affine generalization
+`thm:recunbiasedaff` (tex:1469).  Appendix proofs: `app:simcal`,
+`app:recurringunbiasedness`, `app:recunbiasedaff`.
+
+## What this module builds
+
+* **The two halves of "ℙ-generable divergent weighting".** `DivergentWeighting` carries
+  `def:fuz`'s `[0,1]` bound together with the divergent prefix sum; `PGenerableWeighting`
+  carries `def:ece`'s emitted feature progression.  `pGenerableWeighting_iff` places the
+  latter against `GeneratedRatFeature`, which is the same data plus a denotation clause.
+* **The calibration selector.** `calibrationLower`, `calibrationUpper` and
+  `calibrationIndicator` render `def:ctsind` at the feature level, and
+  `calibrationIndicator_pgenerable` proves the selector generable from the paper's own
+  hypotheses on `⟨φ⟩` and `⟨δ⟩` rather than assuming it.  The real-valued rendering of the
+  same definition is `ctsInd` in `Properties/SelfTrust.lean`.
+* **Limit points.** `HasLimitPoint` and `HasLimitPointIn`, and the analytic calibration
+  transfer built on them.
+* **The capped bias-run trader family.** `biasRunRate`, `biasRunAttempt`,
+  `biasRunCoefficient` and `biasRunTrader`, emitted by the single uniform polynomial
+  emitter `biasRunTrader_polyTrade`; persistent negative bias forces every late member to
+  unit share magnitude and positive ROI.
+
+The averaging vocabulary this file is stated in and the settlement/maturity decision
+procedures it runs are shared §4.3–4.4 technology and sit upstream, in
+`Properties/Support/WeightedAverages.lean` and `Properties/Support/SettlementDecision.lean`;
+those module headers inventory them.
+
+## The conditional layer and where it is discharged
+
+`BiasRunHistoricallyVerifiable` isolates the one remaining operational premise: a bounded
+verifier for historical maturity claims about the capped-run family.  Every endpoint here
+whose name ends `_of_historicalVerifiers` is stated against that premise —
+`ApproxDeterminedViaTheory.recunbiasedaff_of_historicalVerifiers`, its exact-determination
+specialization `DeterminedViaTheory.recunbiasedaff_of_historicalVerifiers`, the
+bounded-sequence form
+`BoundedCombinationSequence.recunbiasedaff_of_historicalVerifiers`, and the sentence-level
+`recurringunbiasedness_of_historicalVerifiers` and `simcal_of_historicalVerifiers`.
+
+The unconditional forms — `thm:recunbiasedaff` as
+`AffineCombination.BoundedCombinationSequence.recunbiasedaff`,
+`thm:recurringunbiasedness` as `AffineCombination.recurringunbiasedness` and `thm:simcal`
+as `AffineCombination.simcal` — are proved in
+`Construction/Statistics/HistoricalMaturity.lean`, which discharges the premise from the
+constructed market and deductive-process computations.
 
 Convention: `weightedAverage` is total, taking value zero when the denominator vanishes.
 Every result that divides separately proves the denominator eventually positive from
 divergence, so the paper's divergent-weighting hypothesis is never silently strengthened.
+
 -/
-import LogicalInduction.Properties.AffineCoherence
-import LogicalInduction.Framework.WriteOut
-import Mathlib.Topology.Bases
-import Mathlib.Topology.Compactness.Compact
 
 namespace LogicalInduction
 
 open Filter Topology Set
 open scoped BigOperators
 
-/-! ## Generated divergent weightings -/
+/-! ## Divergent weightings generable from the market -/
+
+/-- A **divergent weighting**: a sequence of reals in `[0,1]` whose sum diverges.  The
+sequence is presented as the realized values `(W n).denote P` of a market feature
+progression, which is the only form §4.3 and §4.5 use it in; the paper's "ℙ-generable
+divergent weighting" is this together with `PGenerableWeighting W` below.  Divergence is
+stated as `Tendsto atTop atTop` of the inclusive prefix sums, which for nonnegative
+summands is the paper's `Σ ϝᵢ = ∞`.
+Paper node: `def:fuz` -/
+def DivergentWeighting (W : ℕ → EF) (P : History) : Prop :=
+  (∀ n, 0 ≤ (W n).denote P ∧ (W n).denote P ≤ 1) ∧
+    Tendsto (prefixSum (fun n => (W n).denote P)) atTop atTop
+
+/-- A divergent weighting's normalizing denominator is eventually positive, which is what
+lets every weighted average below divide by it. -/
+lemma DivergentWeighting.eventually_prefixSum_pos {W : ℕ → EF} {P : History}
+    (h : DivergentWeighting W P) :
+    ∀ᶠ n in atTop, 0 < prefixSum (fun i => (W i).denote P) n :=
+  h.2.eventually (eventually_gt_atTop 0)
 
 /-- A sequence of expressible features generated uniformly in polynomial time and legal
 on its own day.  Its denotation may depend continuously on the market prefix, exactly as
 in the paper's notion “generable from `P`”.
-Paper node: `def:ece`, `def:fuz` -/
+Paper node: `def:ece` -/
 structure PGenerableWeighting (W : ℕ → EF) : Prop where
-  polySeg : BigSpliceStream (fun n => (W n).serialize)
+  /-- The feature progression is emitted by a machine-metered spliceable stream, the class
+  `AffineCombination.PolySequence`'s emission fields are stated at: the patient-selector
+  witness `patientUnderpriceWeight_pgenerable` (`Properties/Pseudorandomness.lean`) is built
+  out of `PolySequence.priceFeature_polySeg`, which is machine-metered and has no fuel form.
+  A client holding a fuel certificate converts by `BigSpliceStream.toMachine`. -/
+  polySeg : MachineSpliceStream (fun n => (W n).serialize)
   rank_le : ∀ n, (W n).rank ≤ n
   closed : ∀ n ρ V, (W n).denoteWith ρ V = (W n).denote V
 
-/-! ### `def:fuz` against `def:ece`
+/-! ### The `def:ece` data with and without its denotation clause
 
-The two renderings carry the **same** emission data — both meter the feature
-serialization by `BigSpliceStream`, both cap the rank at the day, both demand closure — and
-differ only in `GeneratedRatFeature`'s extra `denote` clause tying the feature's value at
-the market to a rational sequence.  The lemmas below make that relation a theorem rather
-than a remark, in both directions. -/
+`PGenerableWeighting` and `GeneratedRatFeature` are two renderings of the same paper
+notion, `def:ece`: the `def:ece` progression data *without* and *with* its denotation
+clause.  Both meter the feature serialization by `MachineSpliceStream`, both cap the rank
+at the day, both demand closure; they differ only in `GeneratedRatFeature`'s extra `denote`
+clause tying the feature's value at the market to a rational sequence.  The lemmas below
+make that relation a theorem rather than a remark, in both directions.
 
-/-- The `def:ece` data forgets its denotation clause to `def:fuz` data. -/
+Both meter at `MachineSpliceStream`, as `AffineCombination.PolySequence`'s emission fields
+do, so a client discharges them from ordinary `Complexity.FP` data and never writes a
+`Nat.Partrec.Code`; a client holding a fuel certificate converts by
+`BigSpliceStream.toMachine`.  Primitive recursiveness of the
+progression, which `PGenerableRat.computable` consumes, comes back through
+`MachineTokenStream.primrec`.
+
+`def:fuz` is a separate condition, and a separate declaration: the `[0,1]` bound together
+with a divergent sum, carried by `DivergentWeighting` above.  The paper's "ℙ-generable
+divergent weighting" is the conjunction of the two. -/
+
+/-- The `def:ece` data forgets its denotation clause. -/
 lemma GeneratedRatFeature.toWeighting {P : History} {q : ℕ → ℚ} {feature : ℕ → EF}
     (h : GeneratedRatFeature P q feature) : PGenerableWeighting feature where
   polySeg := h.polyTok
   rank_le := h.rank_le
   closed := h.closed
 
-/-- Conversely, `def:fuz` data plus a denotation is `def:ece` data. -/
+/-- Conversely, that data plus a denotation clause is `def:ece` data again. -/
 lemma PGenerableWeighting.toGeneratedRatFeature {P : History} {q : ℕ → ℚ} {W : ℕ → EF}
     (h : PGenerableWeighting W) (hq : ∀ n, (W n).denote P = (q n : ℝ)) :
     GeneratedRatFeature P q W where
@@ -56,32 +138,46 @@ lemma PGenerableWeighting.toGeneratedRatFeature {P : History} {q : ℕ → ℚ} 
   closed := h.closed
   denote := hq
 
-/-- **`def:fuz` is `def:ece` minus the denotation clause**, exactly.  The
-`def:fuz` / `def:ece` annotations themselves sit on `PGenerableWeighting` and
-`GeneratedRatFeature`; this is the bridge between them. -/
+/-- **`PGenerableWeighting` is `GeneratedRatFeature` minus the denotation clause**,
+exactly.  Both render `def:ece`; this is the bridge between them. -/
 lemma pGenerableWeighting_iff {P : History} {q : ℕ → ℚ} {W : ℕ → EF} :
     GeneratedRatFeature P q W ↔
       PGenerableWeighting W ∧ ∀ n, (W n).denote P = (q n : ℝ) :=
   ⟨fun h => ⟨h.toWeighting, h.denote⟩, fun h => h.1.toGeneratedRatFeature h.2⟩
 
-example {P : History} {q : ℕ → ℚ} {W : ℕ → EF} (h : GeneratedRatFeature P q W) :
-    PGenerableWeighting W := (pGenerableWeighting_iff.mp h).1
-
-#print axioms pGenerableWeighting_iff
-
 /-- Operational certificate for the paper's efficiently computable positive calibration
 widths: exactly tex:1193-1195's "`⟨δ⟩` is an e.c. sequence of positive rationals", and
 nothing more.  Efficient codeability of the reciprocal `1/δ` is *derived* from these two
-(`PolyRatCodes.inv_of_pos`, `PolyPositiveWidths.inverse_codes`), never assumed. -/
+(`MachineRatCodes.inv_of_pos`, `PolyPositiveWidths.inverse_codes`), never assumed. -/
 structure PolyPositiveWidths (δ : ℕ → ℚ) : Prop where
-  codes : DigitRatCodes δ
+  /-- The widths are written out by a polynomial-time machine, three runs (numerator code,
+  numerator magnitude, denominator).  A client holding the fuel-metered `DigitRatCodes δ`
+  crosses by `DigitRatCodes.toMachine`. -/
+  codes : MachineRatCodes δ
   positive : ∀ n, 0 < (δ n : ℝ)
 
 /-- The reciprocal widths are efficiently codeable, *derived* from the paper's two
 hypotheses rather than assumed alongside them. -/
 lemma PolyPositiveWidths.inverse_codes {δ : ℕ → ℚ} (h : PolyPositiveWidths δ) :
-    DigitRatCodes (fun n => 1 / δ n) :=
+    MachineRatCodes (fun n => 1 / δ n) :=
   h.codes.inv_of_pos (fun n => by exact_mod_cast h.positive n)
+
+/-- **The data premise of `thm:simcal` is inhabited**, at the paper's own tolerance sequence
+`δ n = 2⁻ⁿ` (tex:1193-1195): its three write-out runs are `machineRatCodes_two_pow_inv`
+(`Framework/Machine/Witnesses.lean`) and its positivity is arithmetic.  The widths are a
+genuinely varying family, not a constant one — `machineRatCodes_two_pow_inv_nonconstant` —
+and the family's rational code `⟪2, 2ⁿ⟫` is exponential in the day, so it is admitted by the
+write-out class and excluded by the value-bounded one.
+
+Kind `N+` non-vacuity witness; provenance (a) derived in-project. -/
+lemma polyPositiveWidths_two_pow_inv :
+    PolyPositiveWidths (fun n => (((2 ^ n : ℕ) : ℚ))⁻¹) where
+  codes := machineRatCodes_two_pow_inv
+  positive := fun n => by
+    have h : (0 : ℚ) < (((2 ^ n : ℕ) : ℚ))⁻¹ := by positivity
+    exact_mod_cast h
+
+/-! ## The calibration selector -/
 
 /-- Lower continuous indicator `ctsInd[δₙ](a < Pₙ(φₙ))`. -/
 def calibrationLower (φ : ℕ → Sentence) (a : ℚ) (δ : ℕ → ℚ) (n : ℕ) : EF :=
@@ -110,24 +206,24 @@ argument list back to the paper's.
 Paper node: `thm:simcal` -/
 lemma calibrationIndicator_pgenerable
     (φ : ℕ → Sentence) (a b : ℚ) (δ : ℕ → ℚ)
-    (hφ : BigSentenceCodes φ) (hδ : PolyPositiveWidths δ) :
+    (hφ : MachineSentenceCodes φ) (hδ : PolyPositiveWidths δ) :
     PGenerableWeighting (calibrationIndicator φ a b δ) := by
-  have hprice := BigSpliceStream.serialize_price
-    hφ PolyFueled.id PolyFueled.id
-  have hinv : BigSpliceStream (fun n => (EF.const (1 / δ n)).serialize) :=
-    BigSpliceStream.serialize_const_write hδ.inverse_codes.toBigDigits
-  have hlowerRaw := BigSpliceStream.serialize_mul
-    (BigSpliceStream.serialize_add hprice
-      (BigSpliceStream.serialize_const (-a))) hinv
-  have hupperRaw := BigSpliceStream.serialize_mul
-    (BigSpliceStream.serialize_add
-      (BigSpliceStream.serialize_const b)
-      (BigSpliceStream.serialize_mul
-        (BigSpliceStream.serialize_const (-1)) hprice)) hinv
+  have hprice := MachineSpliceStream.serialize_price
+    hφ UnaryRuler.id (MachineDigits.ofUnaryRuler UnaryRuler.id)
+  have hinv : MachineSpliceStream (fun n => (EF.const (1 / δ n)).serialize) :=
+    MachineSpliceStream.serialize_const_write hδ.inverse_codes.toMachineDigits
+  have hlowerRaw := MachineSpliceStream.serialize_mul
+    (MachineSpliceStream.serialize_add hprice
+      (MachineSpliceStream.serialize_const (-a))) hinv
+  have hupperRaw := MachineSpliceStream.serialize_mul
+    (MachineSpliceStream.serialize_add
+      (MachineSpliceStream.serialize_const b)
+      (MachineSpliceStream.serialize_mul
+        (MachineSpliceStream.serialize_const (-1)) hprice)) hinv
   refine
-    { polySeg := BigSpliceStream.serialize_efMin
-        (BigSpliceStream.serialize_clip01 hlowerRaw)
-        (BigSpliceStream.serialize_clip01 hupperRaw)
+    { polySeg := MachineSpliceStream.serialize_efMin
+        (MachineSpliceStream.serialize_clip01 hlowerRaw)
+        (MachineSpliceStream.serialize_clip01 hupperRaw)
       rank_le := ?_
       closed := ?_ }
   · intro n
@@ -136,6 +232,10 @@ lemma calibrationIndicator_pgenerable
     simp [calibrationIndicator, calibrationLower, calibrationUpper, clip01, efMin,
       EF.denoteWith, EF.denote]
 
+/-- The calibration selector takes values in `[0,1]` at every market and on every day.
+This is exactly the range half of the `DivergentWeighting (calibrationIndicator φ a b δ) P`
+hypothesis that every calibration endpoint takes; the other half, divergence of the prefix
+sums, is genuinely a hypothesis about the market. -/
 lemma calibrationIndicator_mem (φ : ℕ → Sentence) (a b : ℚ)
     (δ : ℕ → ℚ) (P : History) (n : ℕ) :
     0 ≤ (calibrationIndicator φ a b δ n).denote P ∧
@@ -180,334 +280,6 @@ lemma calibrationIndicator_pos_imp
   norm_num at hright
   constructor <;> linarith
 
-/-- Inclusive prefix sum: `prefixSum x n` sums days `0` through `n`. -/
-noncomputable def prefixSum (x : ℕ → ℝ) (n : ℕ) : ℝ :=
-  ∑ i ∈ Finset.range (n + 1), x i
-
-@[simp] lemma prefixSum_zero (x : ℕ → ℝ) : prefixSum x 0 = x 0 := by
-  simp [prefixSum]
-
-lemma prefixSum_succ (x : ℕ → ℝ) (n : ℕ) :
-    prefixSum x (n + 1) = prefixSum x n + x (n + 1) := by
-  simp [prefixSum, Finset.sum_range_succ]
-
-/-- Removing a fixed finite prefix and scaling by a positive constant preserves
-divergence of inclusive prefix sums.  The explicit identity is useful for launched
-trader families, whose `k`th member must be syntactically empty before day `k`. -/
-lemma prefixSum_gate_mul_eq (x : ℕ → ℝ) (c : ℝ) (k n : ℕ) (hkn : k ≤ n) :
-    prefixSum (fun i => if k ≤ i then c * x i else 0) n =
-      c * (prefixSum x n - ∑ i ∈ Finset.range k, x i) := by
-  induction n, hkn using Nat.le_induction with
-  | base =>
-      rw [prefixSum, Finset.sum_range_succ]
-      have hz : ∑ i ∈ Finset.range k, (if k ≤ i then c * x i else 0) = 0 := by
-        apply Finset.sum_eq_zero
-        intro i hi
-        rw [if_neg]
-        exact Nat.not_le.mpr (Finset.mem_range.mp hi)
-      rw [hz, if_pos le_rfl, prefixSum, Finset.sum_range_succ]
-      ring
-  | succ n hkn ih =>
-      rw [prefixSum_succ, ih, prefixSum_succ,
-        if_pos (hkn.trans (Nat.le_succ n))]
-      ring
-
-lemma prefixSum_gate_mul_tendsto_atTop (x : ℕ → ℝ) (c : ℝ) (hc : 0 < c)
-    (hdiv : Tendsto (prefixSum x) atTop atTop) (k : ℕ) :
-    Tendsto (prefixSum (fun i => if k ≤ i then c * x i else 0)) atTop atTop := by
-  let C : ℝ := ∑ i ∈ Finset.range k, x i
-  have hscaled : Tendsto (fun n => c * prefixSum x n) atTop atTop :=
-    hdiv.const_mul_atTop hc
-  have hshifted : Tendsto (fun n => c * prefixSum x n + -(c * C)) atTop atTop :=
-    tendsto_atTop_add_const_right atTop (-(c * C)) hscaled
-  apply Tendsto.congr' _ hshifted
-  filter_upwards [eventually_ge_atTop k] with n hn
-  rw [prefixSum_gate_mul_eq x c k n hn]
-  dsimp only [C]
-  ring
-
-/-- Finite Abel summation in inclusive-prefix notation. -/
-lemma prefixSum_mul_eq_abel (β y : ℕ → ℝ) (n : ℕ) :
-    prefixSum (fun i => β i * y i) n =
-      β n * prefixSum y n +
-        ∑ i ∈ Finset.range n, (β i - β (i + 1)) * prefixSum y i := by
-  induction n with
-  | zero => simp
-  | succ n ih =>
-      rw [prefixSum_succ, prefixSum_succ, Finset.sum_range_succ, ih]
-      ring
-
-lemma abel_coefficients_sum (β : ℕ → ℝ) (n : ℕ) :
-    β n + ∑ i ∈ Finset.range n, (β i - β (i + 1)) = β 0 := by
-  induction n with
-  | zero => simp
-  | succ n ih =>
-      rw [Finset.sum_range_succ]
-      linarith
-
-/-- A nonnegative decreasing cap cannot turn a stream whose every cumulative sum is at
-least `-δ` into weighted cumulative loss below `-δ · β₀`.  This is the Abel/Cesàro bridge
-needed by the continuous fractional cap. -/
-lemma prefixSum_mul_lower_of_prefixSum_lower
-    (β y : ℕ → ℝ) (δ : ℝ)
-    (hβ0 : ∀ n, 0 ≤ β n) (hβanti : Antitone β)
-    (hy : ∀ n, -δ ≤ prefixSum y n) (n : ℕ) :
-    -δ * β 0 ≤ prefixSum (fun i => β i * y i) n := by
-  rw [prefixSum_mul_eq_abel]
-  have hlast : β n * (-δ) ≤ β n * prefixSum y n :=
-    mul_le_mul_of_nonneg_left (hy n) (hβ0 n)
-  have hsum :
-      ∑ i ∈ Finset.range n, (β i - β (i + 1)) * (-δ) ≤
-        ∑ i ∈ Finset.range n, (β i - β (i + 1)) * prefixSum y i := by
-    apply Finset.sum_le_sum
-    intro i _
-    exact mul_le_mul_of_nonneg_left (hy i)
-      (sub_nonneg.mpr (hβanti (Nat.le_succ i)))
-  calc
-    -δ * β 0 = β n * (-δ) +
-        ∑ i ∈ Finset.range n, (β i - β (i + 1)) * (-δ) := by
-          rw [← Finset.sum_mul]
-          rw [← add_mul, abel_coefficients_sum]
-          ring
-    _ ≤ β n * prefixSum y n +
-        ∑ i ∈ Finset.range n, (β i - β (i + 1)) * prefixSum y i :=
-          add_le_add hlast hsum
-
-/-- A market-generated weighting is divergent when its realized values lie in `[0,1]`
-and its inclusive prefix sums tend to positive infinity. -/
-def DivergentWeighting (W : ℕ → EF) (P : History) : Prop :=
-  (∀ n, 0 ≤ (W n).denote P ∧ (W n).denote P ≤ 1) ∧
-    Tendsto (prefixSum (fun n => (W n).denote P)) atTop atTop
-
-lemma DivergentWeighting.eventually_prefixSum_pos {W : ℕ → EF} {P : History}
-    (h : DivergentWeighting W P) :
-    ∀ᶠ n in atTop, 0 < prefixSum (fun i => (W i).denote P) n :=
-  h.2.eventually (eventually_gt_atTop 0)
-
-/-! ## Weighted averages and bias -/
-
-/-- Normalized weighted average through day `n`.  The zero branch is irrelevant
-eventually for divergent weightings, but makes the definition total. -/
-noncomputable def weightedAverage (w x : ℕ → ℝ) (n : ℕ) : ℝ :=
-  if prefixSum w n = 0 then 0
-  else prefixSum (fun i => w i * x i) n / prefixSum w n
-
-lemma weightedAverage_eq_div {w x : ℕ → ℝ} {n : ℕ}
-    (hden : prefixSum w n ≠ 0) :
-    weightedAverage w x n =
-      prefixSum (fun i => w i * x i) n / prefixSum w n := by
-  simp [weightedAverage, hden]
-
-lemma prefixSum_add (x y : ℕ → ℝ) (n : ℕ) :
-    prefixSum (fun i => x i + y i) n = prefixSum x n + prefixSum y n := by
-  simp only [prefixSum, Finset.sum_add_distrib]
-
-lemma prefixSum_sub (x y : ℕ → ℝ) (n : ℕ) :
-    prefixSum (fun i => x i - y i) n = prefixSum x n - prefixSum y n := by
-  simp only [prefixSum, Finset.sum_sub_distrib]
-
-lemma weightedAverage_sub (w x y : ℕ → ℝ) {n : ℕ}
-    (hden : prefixSum w n ≠ 0) :
-    weightedAverage w (fun i => x i - y i) n =
-      weightedAverage w x n - weightedAverage w y n := by
-  simp only [weightedAverage_eq_div hden]
-  rw [show prefixSum (fun i => w i * (x i - y i)) n =
-      prefixSum (fun i => w i * x i) n - prefixSum (fun i => w i * y i) n by
-    rw [← prefixSum_sub]
-    congr 1
-    funext i
-    ring]
-  field_simp
-
-lemma weightedAverage_add (w x y : ℕ → ℝ) {n : ℕ}
-    (hden : prefixSum w n ≠ 0) :
-    weightedAverage w (fun i => x i + y i) n =
-      weightedAverage w x n + weightedAverage w y n := by
-  simp only [weightedAverage_eq_div hden]
-  rw [show prefixSum (fun i => w i * (x i + y i)) n =
-      prefixSum (fun i => w i * x i) n + prefixSum (fun i => w i * y i) n by
-    rw [← prefixSum_add]
-    congr 1
-    funext i
-    ring]
-  field_simp
-
-/-- Fixed scalar multiplication commutes with the weighted average, including its
-zero-denominator branch. -/
-lemma weightedAverage_const_mul (w x : ℕ → ℝ) (c : ℝ) (n : ℕ) :
-    weightedAverage w (fun i => c * x i) n = c * weightedAverage w x n := by
-  by_cases hden : prefixSum w n = 0
-  · simp [weightedAverage, hden]
-  · rw [weightedAverage_eq_div hden, weightedAverage_eq_div hden]
-    have hnum : prefixSum (fun i => w i * (c * x i)) n =
-        c * prefixSum (fun i => w i * x i) n := by
-      simp only [prefixSum, Finset.mul_sum]
-      apply Finset.sum_congr rfl
-      intro i hi
-      ring
-    rw [hnum]
-    ring
-
-lemma weightedAverage_mem_Icc {w x : ℕ → ℝ} {a b : ℝ} {n : ℕ}
-    (hw : ∀ i, 0 ≤ w i) (hx : ∀ i, x i ∈ Icc a b)
-    (hden : 0 < prefixSum w n) :
-    weightedAverage w x n ∈ Icc a b := by
-  rw [weightedAverage_eq_div (ne_of_gt hden)]
-  constructor
-  · apply (le_div_iff₀ hden).2
-    calc
-      a * prefixSum w n = prefixSum (fun i => w i * a) n := by
-        simp only [prefixSum, Finset.mul_sum]
-        apply Finset.sum_congr rfl
-        intro i _
-        ring
-      _ ≤ prefixSum (fun i => w i * x i) n := by
-        apply Finset.sum_le_sum
-        intro i _
-        exact mul_le_mul_of_nonneg_left (hx i).1 (hw i)
-  · apply (div_le_iff₀ hden).2
-    calc
-      prefixSum (fun i => w i * x i) n ≤ prefixSum (fun i => w i * b) n := by
-        apply Finset.sum_le_sum
-        intro i _
-        exact mul_le_mul_of_nonneg_left (hx i).2 (hw i)
-      _ = b * prefixSum w n := by
-        simp only [prefixSum, Finset.mul_sum]
-        apply Finset.sum_congr rfl
-        intro i _
-        ring
-
-/-- Weighted averages only need the value bound on the support of the weighting.  This is
-the form calibration uses: the continuous indicator is zero whenever the quoted price is
-outside the target interval. -/
-lemma weightedAverage_mem_Icc_of_support {w x : ℕ → ℝ} {a b : ℝ} {n : ℕ}
-    (hw : ∀ i, 0 ≤ w i)
-    (hsupport : ∀ i, 0 < w i → x i ∈ Icc a b)
-    (hden : 0 < prefixSum w n) :
-    weightedAverage w x n ∈ Icc a b := by
-  rw [weightedAverage_eq_div (ne_of_gt hden)]
-  constructor
-  · apply (le_div_iff₀ hden).2
-    calc
-      a * prefixSum w n = prefixSum (fun j => w j * a) n := by
-        simp only [prefixSum, Finset.mul_sum]
-        apply Finset.sum_congr rfl
-        intro j _
-        ring
-      _ ≤ prefixSum (fun j => w j * x j) n := by
-        apply Finset.sum_le_sum
-        intro j _
-        by_cases hj : w j = 0
-        · simp [hj]
-        · exact mul_le_mul_of_nonneg_left
-            ((hsupport j (lt_of_le_of_ne (hw j) (Ne.symm hj))).1) (hw j)
-  · apply (div_le_iff₀ hden).2
-    calc
-      prefixSum (fun j => w j * x j) n ≤ prefixSum (fun j => w j * b) n := by
-        apply Finset.sum_le_sum
-        intro j _
-        by_cases hj : w j = 0
-        · simp [hj]
-        · exact mul_le_mul_of_nonneg_left
-            ((hsupport j (lt_of_le_of_ne (hw j) (Ne.symm hj))).2) (hw j)
-      _ = b * prefixSum w n := by
-        simp only [prefixSum, Finset.mul_sum]
-        apply Finset.sum_congr rfl
-        intro j _
-        ring
-
-/-- The paper's normalized bias: market assessment minus determined value. -/
-noncomputable def weightedBias (w market truth : ℕ → ℝ) (n : ℕ) : ℝ :=
-  weightedAverage w (fun i => market i - truth i) n
-
-lemma weightedBias_eq_market_sub_truth (w market truth : ℕ → ℝ) {n : ℕ}
-    (hden : prefixSum w n ≠ 0) :
-    weightedBias w market truth n =
-      weightedAverage w market n - weightedAverage w truth n := by
-  exact weightedAverage_sub w market truth hden
-
-/-- Negating both the affine price and its determined value negates normalized bias,
-including the harmless zero-denominator branch. -/
-lemma weightedBias_neg (w market truth : ℕ → ℝ) (n : ℕ) :
-    weightedBias w (fun i => -market i) (fun i => -truth i) n =
-      -weightedBias w market truth n := by
-  simp only [weightedBias, weightedAverage]
-  split <;> rename_i hden
-  · simp
-  · have hnum :
-        prefixSum (fun i => w i * (-market i - -truth i)) n =
-          -prefixSum (fun i => w i * (market i - truth i)) n := by
-      simp only [prefixSum, ← Finset.sum_neg_distrib]
-      apply Finset.sum_congr rfl
-      intro i _
-      ring
-    rw [hnum]
-    ring
-
-/-- Scaling both market assessment and determined truth scales normalized bias exactly. -/
-lemma weightedBias_const_mul (w market truth : ℕ → ℝ) (c : ℝ) (n : ℕ) :
-    weightedBias w (fun i => c * market i) (fun i => c * truth i) n =
-      c * weightedBias w market truth n := by
-  unfold weightedBias
-  rw [show (fun i => c * market i - c * truth i) =
-      fun i => c * (market i - truth i) by funext i; ring,
-    weightedAverage_const_mul]
-
-/-- Normalized weighted averages of a bounded stream have vanishing adjacent jumps when
-the nonnegative weights have divergent total mass.  This discharges the analytic premise
-used by the recurring-unbiasedness crossing argument; it is not assumed as a regularity
-condition on the bias. -/
-lemma weightedAverage_step_tendsto_zero
-    (w x : ℕ → ℝ) (C : ℝ)
-    (hw0 : ∀ n, 0 ≤ w n) (hw1 : ∀ n, w n ≤ 1)
-    (hx : ∀ n, |x n| ≤ C)
-    (hdiv : Tendsto (prefixSum w) atTop atTop) :
-    Tendsto (fun n => weightedAverage w x (n + 1) - weightedAverage w x n)
-      atTop (𝓝 0) := by
-  have hC : 0 ≤ C := (abs_nonneg (x 0)).trans (hx 0)
-  have hpos : ∀ᶠ n in atTop, 0 < prefixSum w n :=
-    hdiv.eventually (eventually_gt_atTop 0)
-  have hbound : ∀ᶠ n in atTop,
-      |weightedAverage w x (n + 1) - weightedAverage w x n| ≤
-        (2 * C) / prefixSum w (n + 1) := by
-    filter_upwards [hpos] with n hn
-    have hns : 0 < prefixSum w (n + 1) := by
-      rw [prefixSum_succ]
-      exact add_pos_of_pos_of_nonneg hn (hw0 (n + 1))
-    have havg : weightedAverage w x n ∈ Icc (-C) C := by
-      apply weightedAverage_mem_Icc hw0 (fun i => ?_) hn
-      rw [mem_Icc, ← abs_le]
-      exact hx i
-    have hformula :
-        weightedAverage w x (n + 1) - weightedAverage w x n =
-          w (n + 1) * (x (n + 1) - weightedAverage w x n) /
-            prefixSum w (n + 1) := by
-      rw [weightedAverage_eq_div (ne_of_gt hns),
-        weightedAverage_eq_div (ne_of_gt hn), prefixSum_succ, prefixSum_succ]
-      have hsumne : prefixSum w n + w (n + 1) ≠ 0 := by
-        have := hw0 (n + 1)
-        linarith
-      field_simp [ne_of_gt hn, hsumne]
-      ring
-    rw [hformula, abs_div, abs_mul, abs_of_nonneg (hw0 (n + 1)),
-      abs_of_pos hns]
-    apply div_le_div_of_nonneg_right _ hns.le
-    have hdiff : |x (n + 1) - weightedAverage w x n| ≤ 2 * C := by
-      rw [abs_le]
-      have hxn := (abs_le.mp (hx (n + 1)))
-      constructor <;> linarith [havg.1, havg.2]
-    calc
-      w (n + 1) * |x (n + 1) - weightedAverage w x n|
-          ≤ 1 * (2 * C) :=
-            mul_le_mul (hw1 (n + 1)) hdiff (abs_nonneg _) (by linarith)
-      _ = 2 * C := one_mul _
-  have hdenShift : Tendsto (fun n => prefixSum w (n + 1)) atTop atTop :=
-    hdiv.comp (tendsto_add_atTop_nat 1)
-  have hmajorant : Tendsto (fun n => (2 * C) / prefixSum w (n + 1))
-      atTop (𝓝 0) := hdenShift.const_div_atTop (2 * C)
-  rw [tendsto_zero_iff_abs_tendsto_zero]
-  exact squeeze_zero' (Eventually.of_forall (fun _ => abs_nonneg _)) hbound hmajorant
-
 /-! ## Limit points -/
 
 /-- “`x` is a limit point of the sequence `f`”, in the standard subsequential sense.
@@ -536,18 +308,7 @@ def HasLimitPointIn (f : ℕ → ℝ) (s : Set ℝ) : Prop :=
 lemma HasLimitPoint.exists_subseq {f : ℕ → ℝ} {x : ℝ}
     (h : HasLimitPoint f x) :
     ∃ ψ : ℕ → ℕ, StrictMono ψ ∧ Tendsto (f ∘ ψ) atTop (𝓝 x) :=
-  TopologicalSpace.FirstCountableTopology.tendsto_subseq h
-
-lemma hasLimitPoint_of_convergesTo {f : ℕ → ℝ} {x : ℝ}
-    (h : ConvergesTo f x) : HasLimitPoint f x :=
-  h.mapClusterPt
-
-lemma convergesTo_eq_of_hasLimitPoint {f : ℕ → ℝ} {x y : ℝ}
-    (hy : ConvergesTo f y) (hx : HasLimitPoint f x) : x = y := by
-  obtain ⟨ψ, hψ, hψx⟩ := hx.exists_subseq
-  have hψy : Tendsto (f ∘ ψ) atTop (𝓝 y) :=
-    hy.comp hψ.tendsto_atTop
-  exact tendsto_nhds_unique hψx hψy
+  MapClusterPt.tendsto_subseq h
 
 /-- If a real sequence returns arbitrarily late to both sides of zero and its adjacent
 jumps vanish, it has zero as a limit point.  This is the exact crossing argument used in
@@ -649,7 +410,7 @@ of calibration indicator.
 
 The truth stream is allowed to be any `[0,1]` stream here; sentence truth values are the
 important downstream instance. -/
-theorem calibration_limitPoint_transfer
+lemma calibration_limitPoint_transfer
     (w market truth : ℕ → ℝ) (a b : ℝ)
     (hw : ∀ n, 0 ≤ w n)
     (htruth : ∀ n, truth n ∈ Icc (0 : ℝ) 1)
@@ -672,8 +433,7 @@ theorem calibration_limitPoint_transfer
   obtain ⟨x, hx01, hxcluster⟩ :=
     isCompact_Icc.exists_mapClusterPt_of_frequently
       (htruthAvg.frequently)
-  obtain ⟨χ, hχmono, hχtruth⟩ :=
-    TopologicalSpace.FirstCountableTopology.tendsto_subseq hxcluster
+  obtain ⟨χ, hχmono, hχtruth⟩ := HasLimitPoint.exists_subseq hxcluster
   let θ : ℕ → ℕ := ψ ∘ χ
   have hθmono : StrictMono θ := hψmono.comp hχmono
   have hbiasθ : Tendsto (weightedBias w market truth ∘ θ) atTop (𝓝 0) := by
@@ -731,7 +491,7 @@ lemma calibration_convergent_limit_mem
 as a limit point of the weighted bias for the paper's continuous calibration selector,
 both clauses of recurring calibration follow: an interval-valued limit point always
 exists, and every global limit belongs to the interval. -/
-theorem simcal_of_recurring_unbiasedness
+lemma simcal_of_recurring_unbiasedness
     (P : History) (φ : ℕ → Sentence) (truth : ℕ → ℝ)
     (a b : ℚ) (δ : ℕ → ℚ)
     (hδpos : ∀ n, 0 < (δ n : ℝ))
@@ -822,657 +582,11 @@ lemma weightedExposure_tendsto_atTop_of_eventually_negative_bias
     nlinarith
   exact le_of_lt (hB.trans (hpayoff.trans_le hweightedDom))
 
-/-! ## Determination via the deductive theory -/
-
-/-- A concrete value stream witnesses that every member of an affine sequence is
-determined via the completed theory.  Quantifying the value stream explicitly makes the
-paper's notation `ThmValue(Aₙ)` usable without choice and exposes exactly what later
-trader proofs may rely on. -/
-def AffineCombination.DeterminedViaTheory
-    (As : ℕ → AffineCombination) (P : History) (DP : DeductiveProcess)
-    (truth : ℕ → ℝ) : Prop :=
-  ∀ n (v : PCWorld), v.ConsistentWithTheory DP →
-    (As n).value P v.payout = truth n
-
-/-- Approximate determination: every completed-theory world values `As n` within `e n` of
-the advertised `truth n`.  `DeterminedViaTheory` is the `e = 0` case
-(`DeterminedViaTheory.approx`).
-
-This is the form the threshold mesh of a LUV combination satisfies.  The paper's
-`def:affthmval` determines a LUV *combination*, not its component LUVs, so completed
-worlds may disagree about the individual threshold sentences; what survives is that the
-precision-`n` mesh reproduces the determined combination value up to the mesh error.
-Every consumer below is stated at this generality; the exact statements are its `e = 0`
-specializations. -/
-def AffineCombination.ApproxDeterminedViaTheory
-    (As : ℕ → AffineCombination) (P : History) (DP : DeductiveProcess)
-    (truth e : ℕ → ℝ) : Prop :=
-  ∀ n (v : PCWorld), v.ConsistentWithTheory DP →
-    |(As n).value P v.payout - truth n| ≤ e n
-
-/-- The determination error of an approximately determined sequence is *negligible against
-share magnitude*: it never exceeds the day's magnitude, and past a launch day chosen from
-any tolerance it is within that fraction of it.
-
-This is exactly what the precision-`n` threshold mesh of a bounded LUV-combination sequence
-provides (`err n ≤ magnitude n / n`), and it is all the bias-run economics needs: a run
-launched late enough forfeits an arbitrarily small share of its unit magnitude. -/
-def AffineCombination.ErrorNegligible (As : ℕ → AffineCombination) (P : History)
-    (err : ℕ → ℝ) : Prop :=
-  (∀ i, 0 ≤ err i) ∧ (∀ i, err i ≤ (As i).magnitude P) ∧
-    ∀ c > 0, ∃ N, ∀ i, N ≤ i → err i ≤ c * (As i).magnitude P
-
-lemma AffineCombination.errorNegligible_zero (As : ℕ → AffineCombination) (P : History) :
-    AffineCombination.ErrorNegligible As P 0 :=
-  ⟨fun _ => le_rfl, fun i => (As i).magnitude_nonneg P,
-    fun c hc => ⟨0, fun i _ => by
-      simpa using mul_nonneg hc.le ((As i).magnitude_nonneg P)⟩⟩
-
-lemma AffineCombination.ErrorNegligible.neg
-    {As : ℕ → AffineCombination} {P : History} {err : ℕ → ℝ}
-    (h : AffineCombination.ErrorNegligible As P err) :
-    AffineCombination.ErrorNegligible (fun n => (As n).neg) P err := by
-  obtain ⟨h0, hmag, hneg⟩ := h
-  refine ⟨h0, fun i => by rw [AffineCombination.neg_magnitude]; exact hmag i,
-    fun c hc => ?_⟩
-  obtain ⟨N, hN⟩ := hneg c hc
-  exact ⟨N, fun i hi => by rw [AffineCombination.neg_magnitude]; exact hN i hi⟩
-
-lemma AffineCombination.DeterminedViaTheory.approx
-    {As : ℕ → AffineCombination} {P : History} {DP : DeductiveProcess}
-    {truth : ℕ → ℝ} (h : DeterminedViaTheory As P DP truth) :
-    AffineCombination.ApproxDeterminedViaTheory As P DP truth 0 := by
-  intro n v hv
-  rw [h n v hv]
-  simp
-
-lemma AffineCombination.ApproxDeterminedViaTheory.neg
-    {As : ℕ → AffineCombination} {P : History} {DP : DeductiveProcess}
-    {truth e : ℕ → ℝ} (h : ApproxDeterminedViaTheory As P DP truth e) :
-    AffineCombination.ApproxDeterminedViaTheory (fun n => (As n).neg) P DP
-      (fun n => -truth n) e := by
-  intro n v hv
-  rw [AffineCombination.neg_value, show -(As n).value P v.payout - -truth n =
-    -((As n).value P v.payout - truth n) by ring, abs_neg]
-  exact h n v hv
-
-/-- Determination in every completed-theory world becomes uniform approximate
-determination over all sufficiently late finite-stage plausible worlds.  This compactness
-bridge is what turns a finite capped run of weighted affine purchases into an actual ROI
-component; no settlement schedule is assumed. -/
-lemma AffineCombination.DeterminedViaTheory.eventually_close
-    {As : ℕ → AffineCombination} {P : History} {DP : DeductiveProcess}
-    {truth : ℕ → ℝ}
-    (h : AffineCombination.DeterminedViaTheory As P DP truth)
-    (i : ℕ) (ε : ℝ) (hε : 0 < ε) :
-    ∀ᶠ n in atTop, ∀ v : PCWorld, v.ConsistentWith (DP.D n) →
-      |(As i).value P v.payout - truth i| < ε := by
-  have hlo := eventually_affineValue_gt_of_theory DP (As i) P (truth i - ε)
-    (fun v hv => by rw [h i v hv]; linarith)
-  have hhi := eventually_affineValue_gt_of_theory DP (As i).neg P (-truth i - ε)
-    (fun v hv => by rw [AffineCombination.neg_value, h i v hv]; linarith)
-  filter_upwards [hlo, hhi] with n hnlo hnhi
-  intro v hv
-  have hl := hnlo v hv
-  have hu := hnhi v hv
-  rw [AffineCombination.neg_value] at hu
-  rw [abs_lt]
-  constructor <;> linarith
-
-/-- Approximate determination in every completed-theory world likewise becomes uniform
-finite-stage approximation, with the determination error added to the tolerance. -/
-lemma AffineCombination.ApproxDeterminedViaTheory.eventually_close
-    {As : ℕ → AffineCombination} {P : History} {DP : DeductiveProcess}
-    {truth e : ℕ → ℝ}
-    (h : AffineCombination.ApproxDeterminedViaTheory As P DP truth e)
-    (i : ℕ) (ε : ℝ) (hε : 0 < ε) :
-    ∀ᶠ n in atTop, ∀ v : PCWorld, v.ConsistentWith (DP.D n) →
-      |(As i).value P v.payout - truth i| < e i + ε := by
-  have hlo := eventually_affineValue_gt_of_theory DP (As i) P (truth i - e i - ε)
-    (fun v hv => by have := abs_le.1 (h i v hv); linarith [this.1])
-  have hhi := eventually_affineValue_gt_of_theory DP (As i).neg P (-truth i - e i - ε)
-    (fun v hv => by
-      rw [AffineCombination.neg_value]
-      have := abs_le.1 (h i v hv); linarith [this.2])
-  filter_upwards [hlo, hhi] with n hnlo hnhi
-  intro v hv
-  have hl := hnlo v hv
-  have hu := hnhi v hv
-  rw [AffineCombination.neg_value] at hu
-  rw [abs_lt]
-  constructor <;> linarith
-
-/-! ### Exact finite-stage settlement
-
-`eventually_close` gives only *approximate* finite-stage determination, but the paper's
-patient selector (`app:prandaff`) needs **exact** settlement: a stage `m` at which every
-plausible world already values `As i` at exactly `truth i`.  The gap closes because an
-affine combination has *finitely many* terms, so its value depends on a world only through
-finitely many `{0,1}` payouts and therefore ranges over a finite set.  Pick `δ` below the
-smallest nonzero gap to `truth i` and approximate determination becomes exact. -/
-
-open Classical in
-/-- The payout-sum of a fixed term list ranges over a finite set of reals: each term
-contributes one of two values (`0`, or its coefficient). -/
-private lemma AffineCombination.exists_termsSum_finset (P : History) :
-    ∀ terms : List (EF × Sentence),
-      ∃ S : Finset ℝ, ∀ v : PCWorld,
-        (terms.map (fun p => p.1.denote P * v.payout p.2)).sum ∈ S
-  | [] => ⟨{0}, by intro v; simp⟩
-  | (e, φ) :: rest => by
-      obtain ⟨S, hS⟩ := AffineCombination.exists_termsSum_finset P rest
-      refine ⟨Finset.image (fun p : ℝ × ℝ => p.1 + p.2)
-        (({0, e.denote P} : Finset ℝ) ×ˢ S), ?_⟩
-      intro v
-      simp only [List.map_cons, List.sum_cons]
-      refine Finset.mem_image.mpr ⟨(e.denote P * v.payout φ, _), ?_, rfl⟩
-      refine Finset.mem_product.mpr ⟨?_, hS v⟩
-      by_cases h : v.Holds φ <;> simp [PCWorld.payout, h]
-
-/-- An affine combination's value ranges over a finite set of reals, uniformly in the
-world.  Finiteness of `terms` is what makes this true — it is the fact that upgrades
-approximate determination to exact settlement. -/
-lemma AffineCombination.exists_valueSet (A : AffineCombination) (P : History) :
-    ∃ S : Finset ℝ, ∀ v : PCWorld, A.value P v.payout ∈ S := by
-  classical
-  obtain ⟨S, hS⟩ := AffineCombination.exists_termsSum_finset P A.terms
-  exact ⟨S.image (fun x => A.const.denote P + x), fun v => Finset.mem_image_of_mem _ (hS v)⟩
-
-/-- **Exact finite-stage settlement.**  If the completed theory determines `As i`, then
-some finite stage already pins its value to `truth i` in *every* plausible world.
-
-This is the realizability core of `PatientSettlementClock.eventually_inactive`: it is what
-guarantees the settlement checker eventually fires, so the clock can be sound (inactive ⇒
-settled) and still eventually go inactive.  Purely semantic — no computability claim. -/
-lemma AffineCombination.DeterminedViaTheory.exists_settled_stage
-    {As : ℕ → AffineCombination} {P : History} {DP : DeductiveProcess}
-    {truth : ℕ → ℝ}
-    (h : AffineCombination.DeterminedViaTheory As P DP truth) (i : ℕ) :
-    ∃ m, ∀ v : PCWorld, v.ConsistentWith (DP.D m) →
-      (As i).value P v.payout = truth i := by
-  classical
-  obtain ⟨S, hS⟩ := AffineCombination.exists_valueSet (As i) P
-  by_cases hB : (S.filter (fun x => x ≠ truth i)).Nonempty
-  · -- `δ` = smallest gap from an achievable wrong value to `truth i`; it is positive.
-    have hδpos :
-        0 < (S.filter (fun x => x ≠ truth i)).inf' hB (fun x => |x - truth i|) := by
-      rw [Finset.lt_inf'_iff]
-      intro x hx
-      exact abs_pos.mpr (sub_ne_zero.mpr (Finset.mem_filter.mp hx).2)
-    obtain ⟨m, hm⟩ := (h.eventually_close i _ hδpos).exists
-    refine ⟨m, fun v hv => ?_⟩
-    by_contra hne
-    exact absurd (hm v hv)
-      (not_lt.mpr (Finset.inf'_le _ (Finset.mem_filter.mpr ⟨hS v, hne⟩)))
-  · -- No achievable value differs from `truth i`, so every stage settles — take `0`.
-    refine ⟨0, fun v _ => ?_⟩
-    by_contra hne
-    exact hB ⟨_, Finset.mem_filter.mpr ⟨hS v, hne⟩⟩
-
-/-- **The settlement test does not need to know `truth`.**  Provided the theory is
-consistent, `As i` is settled at stage `m` — every world plausible at `m` values it at
-exactly `truth i` — **iff** the worlds plausible at `m` merely *agree with each other*.
-
-This is what makes the paper's `settled` machine (`app:prandaff`) implementable, and the
-paper does not spell it out: a checker cannot compute `truth i` (it is defined by a limit
-over the completed theory), but it *can* test agreement across the finitely many relevant
-assignments.  The forward direction is trivial; the reverse leans on completed-theory
-worlds being a nonempty subset of the stage-`m` plausible worlds, which is exactly where
-consistency (`hworld`) is used. -/
-lemma AffineCombination.DeterminedViaTheory.settled_iff_agree
-    {As : ℕ → AffineCombination} {P : History} {DP : DeductiveProcess}
-    {truth : ℕ → ℝ}
-    (h : AffineCombination.DeterminedViaTheory As P DP truth)
-    (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) (i m : ℕ) :
-    (∀ v : PCWorld, v.ConsistentWith (DP.D m) → (As i).value P v.payout = truth i) ↔
-      (∀ v w : PCWorld, v.ConsistentWith (DP.D m) → w.ConsistentWith (DP.D m) →
-        (As i).value P v.payout = (As i).value P w.payout) := by
-  constructor
-  · intro hs v w hv hw
-    rw [hs v hv, hs w hw]
-  · intro hagree v hv
-    obtain ⟨v₀, hv₀⟩ := exists_consistentWithTheory DP hworld
-    rw [hagree v v₀ hv (hv₀ m), h i v₀ hv₀]
-
-/-- **Tolerance agreement bounds the distance to `truth`.**  If the worlds plausible at
-stage `m` all value `As i` within `tol` of each other, then — since some completed-theory
-world is among them, and it values `As i` within `e i` of `truth i` — every plausible
-world is within `tol + e i` of `truth i`.  This is the approximate replacement for the
-easy direction of `settled_iff_agree`. -/
-lemma AffineCombination.ApproxDeterminedViaTheory.close_of_agree
-    {As : ℕ → AffineCombination} {P : History} {DP : DeductiveProcess}
-    {truth e : ℕ → ℝ}
-    (h : AffineCombination.ApproxDeterminedViaTheory As P DP truth e)
-    (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) (i m : ℕ) (tol : ℝ)
-    (hagree : ∀ v w : PCWorld, v.ConsistentWith (DP.D m) → w.ConsistentWith (DP.D m) →
-      |(As i).value P v.payout - (As i).value P w.payout| ≤ tol) :
-    ∀ v : PCWorld, v.ConsistentWith (DP.D m) →
-      |(As i).value P v.payout - truth i| ≤ tol + e i := by
-  intro v hv
-  obtain ⟨v₀, hv₀⟩ := exists_consistentWithTheory DP hworld
-  exact (abs_sub_le _ ((As i).value P v₀.payout) _).trans
-    (add_le_add (hagree v v₀ hv (hv₀ m)) (h i v₀ hv₀))
-
-/-- **Tolerance agreement is reachable.**  Completed-theory worlds pin `As i` to within
-`e i` of `truth i`, so `eventually_close` makes the plausible worlds' spread beat any
-tolerance strictly above `2 * e i` at some finite stage.  This is the realizability core
-of the approximate clock's `eventually_inactive`: it is why the tolerance checker
-eventually fires even though exact agreement may never hold. -/
-lemma AffineCombination.ApproxDeterminedViaTheory.exists_agree_stage
-    {As : ℕ → AffineCombination} {P : History} {DP : DeductiveProcess}
-    {truth e : ℕ → ℝ}
-    (h : AffineCombination.ApproxDeterminedViaTheory As P DP truth e)
-    (i : ℕ) (tol : ℝ) (htol : 2 * e i < tol) :
-    ∃ m, ∀ v w : PCWorld, v.ConsistentWith (DP.D m) → w.ConsistentWith (DP.D m) →
-      |(As i).value P v.payout - (As i).value P w.payout| ≤ tol := by
-  obtain ⟨m, hm⟩ := (h.eventually_close i ((tol - 2 * e i) / 2) (by linarith)).exists
-  refine ⟨m, fun v w hv hw => ?_⟩
-  have h1 := hm v hv
-  have h2 := hm w hw
-  have hstep := abs_sub_le ((As i).value P v.payout) (truth i) ((As i).value P w.payout)
-  rw [abs_sub_comm (truth i)] at hstep
-  linarith
-
-/-! ### Deciding settlement
-
-`settled_iff_agree` reduces settlement to *agreement* among plausible worlds and
-`exists_settled_stage` guarantees agreement eventually holds.  What remains is to decide
-agreement.  Two facts make it decidable, and both are exactly what the `ℝ`-valued
-`History` hides:
-
-* against a **rational** market every coefficient is rational (`EF.denoteRat`), so values
-  compare exactly.  Over an arbitrary `History` this is equality of reals — undecidable,
-  which is why no clock exists at that generality.
-* an affine combination and a deductive stage each mention finitely many atoms, so world
-  quantification collapses onto the finite type `BoolPCWorld.FiniteWorld`.
-
-This mirrors the maturity checker (`unitMaturityCheckAtFuel`) below. -/
-
-/-- Executable rational value of an affine combination under a rational price table and a
-rational payout table. -/
-def AffineCombination.valueRat (A : AffineCombination) (Q : ℕ → Sentence → ℚ)
-    (w : Sentence → ℚ) : ℚ :=
-  A.const.denoteRat Q + (A.terms.map (fun p => p.1.denoteRat Q * w p.2)).sum
-
-private lemma AffineCombination.termsSum_eq_ratCast
-    (P : History) (Q : ℕ → Sentence → ℚ) (hQ : ∀ d φ, P d φ = (Q d φ : ℝ))
-    (wR : Sentence → ℝ) (wQ : Sentence → ℚ) (hw : ∀ φ, wR φ = (wQ φ : ℝ)) :
-    ∀ terms : List (EF × Sentence),
-      (terms.map (fun p => p.1.denote P * wR p.2)).sum
-        = ((terms.map (fun p => p.1.denoteRat Q * wQ p.2)).sum : ℝ)
-  | [] => by simp
-  | p :: rest => by
-      simp only [List.map_cons, List.sum_cons, Rat.cast_add, Rat.cast_mul]
-      rw [EF.denote_eq_ratCast p.1 P Q hQ, hw p.2,
-        AffineCombination.termsSum_eq_ratCast P Q hQ wR wQ hw rest]
-
-/-- Rational affine value agrees exactly with the real semantics of an exact rational
-market whenever the payout tables agree pointwise. -/
-lemma AffineCombination.value_eq_ratCast (A : AffineCombination)
-    (P : History) (Q : ℕ → Sentence → ℚ) (hQ : ∀ d φ, P d φ = (Q d φ : ℝ))
-    (wR : Sentence → ℝ) (wQ : Sentence → ℚ) (hw : ∀ φ, wR φ = (wQ φ : ℝ)) :
-    A.value P wR = (A.valueRat Q wQ : ℝ) := by
-  unfold AffineCombination.value AffineCombination.valueRat
-  rw [Rat.cast_add, EF.denote_eq_ratCast A.const P Q hQ,
-    AffineCombination.termsSum_eq_ratCast P Q hQ wR wQ hw A.terms]
-
-private lemma AffineCombination.termsSum_congr (Q : ℕ → Sentence → ℚ)
-    (w w' : Sentence → ℚ) :
-    ∀ terms : List (EF × Sentence), (∀ p ∈ terms, w p.2 = w' p.2) →
-      (terms.map (fun p => p.1.denoteRat Q * w p.2)).sum
-        = (terms.map (fun p => p.1.denoteRat Q * w' p.2)).sum
-  | [], _ => rfl
-  | p :: rest, h => by
-      simp only [List.map_cons, List.sum_cons]
-      rw [h p (by simp),
-        AffineCombination.termsSum_congr Q w w' rest
-          (fun q hq => h q (List.mem_cons_of_mem _ hq))]
-
-/-- The rational value only inspects the payouts of the combination's own sentences. -/
-lemma AffineCombination.valueRat_congr (A : AffineCombination) (Q : ℕ → Sentence → ℚ)
-    (w w' : Sentence → ℚ) (h : ∀ p ∈ A.terms, w p.2 = w' p.2) :
-    A.valueRat Q w = A.valueRat Q w' := by
-  unfold AffineCombination.valueRat
-  rw [AffineCombination.termsSum_congr Q w w' A.terms h]
-
-/-- Support bound covering every sentence the stage-`m` settlement test inspects: the
-stage's own sentences and the combination's traded sentences.  Sums rather than maxima
-keep the membership proofs elementary; only the upper bound matters. -/
-def AffineCombination.settlementAtomLimit (A : AffineCombination)
-    (stage : Finset Sentence) : ℕ :=
-  stage.sum BoolPCWorld.atomBound +
-    (A.terms.map (fun p => BoolPCWorld.atomBound p.2)).sum
-
-lemma AffineCombination.settlementAtomLimit_stage_bounded (A : AffineCombination)
-    (stage : Finset Sentence) : ∀ φ ∈ stage,
-      BoolPCWorld.atomBound φ ≤ A.settlementAtomLimit stage := by
-  intro φ hφ
-  have hsingle : BoolPCWorld.atomBound φ ≤ stage.sum BoolPCWorld.atomBound :=
-    Finset.single_le_sum (fun ψ _ => Nat.zero_le (BoolPCWorld.atomBound ψ)) hφ
-  unfold AffineCombination.settlementAtomLimit
-  omega
-
-lemma AffineCombination.settlementAtomLimit_terms_bounded (A : AffineCombination)
-    (stage : Finset Sentence) : ∀ p ∈ A.terms,
-      BoolPCWorld.atomBound p.2 ≤ A.settlementAtomLimit stage := by
-  intro p hp
-  have hlocal : BoolPCWorld.atomBound p.2 ≤
-      (A.terms.map (fun q => BoolPCWorld.atomBound q.2)).sum :=
-    List.single_le_sum (fun x _ => Nat.zero_le x) _ (List.mem_map.mpr ⟨p, hp, rfl⟩)
-  unfold AffineCombination.settlementAtomLimit
-  omega
-
-/-- Restricting a plausible world to the settlement support keeps it plausible. -/
-private lemma AffineCombination.restrict_plausible (A : AffineCombination)
-    (stage : Finset Sentence) (v : PCWorld) (hv : v.ConsistentWith stage) :
-    ∀ φ ∈ stage, BoolPCWorld.eval
-      (BoolPCWorld.FiniteWorld.restrict (BoolPCWorld.ofPCWorld v)
-        (A.settlementAtomLimit stage)).toBoolPCWorld φ = true := by
-  intro φ hφ
-  rw [BoolPCWorld.eval_toBoolPCWorld_restrict _ _ φ
-    (A.settlementAtomLimit_stage_bounded stage φ hφ)]
-  have heval := BoolPCWorld.eval_eq_true_iff_holds (BoolPCWorld.ofPCWorld v) φ
-  rw [BoolPCWorld.ofPCWorld_toPCWorld] at heval
-  exact heval.mpr (hv φ hφ)
-
-/-- **The settlement test is decidable, on a rational market.**  If every pair of
-*finite* plausible worlds assigns `A` the same rational value, then every pair of genuine
-plausible worlds assigns it the same real value.
-
-The finite quantifier on the left is over `BoolPCWorld.FiniteWorld B = Fin B → Bool`, a
-`Fintype` with decidable rational equality — so the left side is a `decide`-able Boolean
-test.  This is the step that needs `P` rational, and it is the whole reason
-`PatientSettlementClock` is realizable at `liaHistory` but not at an arbitrary
-`History`. -/
-lemma AffineCombination.agree_of_finiteWorlds_agree (A : AffineCombination)
-    (P : History) (Q : ℕ → Sentence → ℚ) (hQ : ∀ d φ, P d φ = (Q d φ : ℝ))
-    (stage : Finset Sentence) (tol : ℚ)
-    (h : ∀ u u' : BoolPCWorld.FiniteWorld (A.settlementAtomLimit stage),
-      (∀ φ ∈ stage, BoolPCWorld.eval u.toBoolPCWorld φ = true) →
-      (∀ φ ∈ stage, BoolPCWorld.eval u'.toBoolPCWorld φ = true) →
-        |A.valueRat Q u.payoutRat - A.valueRat Q u'.payoutRat| ≤ tol)
-    (v w : PCWorld) (hv : v.ConsistentWith stage) (hw : w.ConsistentWith stage) :
-    |A.value P v.payout - A.value P w.payout| ≤ (tol : ℝ) := by
-  classical
-  have hrestrict (x : PCWorld) :
-      A.valueRat Q
-          (BoolPCWorld.FiniteWorld.restrict (BoolPCWorld.ofPCWorld x)
-            (A.settlementAtomLimit stage)).payoutRat
-        = A.valueRat Q x.payoutRat :=
-    A.valueRat_congr Q _ _ (fun p hp =>
-      BoolPCWorld.FiniteWorld.payoutRat_restrict_ofPCWorld x _ p.2
-        (A.settlementAtomLimit_terms_bounded stage p hp))
-  rw [A.value_eq_ratCast P Q hQ v.payout v.payoutRat (PCWorld.payout_eq_ratCast v),
-    A.value_eq_ratCast P Q hQ w.payout w.payoutRat (PCWorld.payout_eq_ratCast w),
-    ← hrestrict v, ← hrestrict w]
-  have hfin := h _ _ (A.restrict_plausible stage v hv) (A.restrict_plausible stage w hw)
-  exact_mod_cast hfin
-
-/-- The converse of `agree_of_finiteWorlds_agree`: genuine agreement restricts to finite
-agreement.  Every plausible *finite* world extends to a genuine plausible `PCWorld` with
-the same payouts, so the finite test cannot be stricter than the real condition.  This is
-what makes the concrete test **complete**, not merely sound. -/
-lemma AffineCombination.finiteWorlds_agree_of_agree (A : AffineCombination)
-    (P : History) (Q : ℕ → Sentence → ℚ) (hQ : ∀ d φ, P d φ = (Q d φ : ℝ))
-    (stage : Finset Sentence) (tol : ℚ)
-    (h : ∀ v w : PCWorld, v.ConsistentWith stage → w.ConsistentWith stage →
-      |A.value P v.payout - A.value P w.payout| ≤ (tol : ℝ)) :
-    ∀ u u' : BoolPCWorld.FiniteWorld (A.settlementAtomLimit stage),
-      (∀ φ ∈ stage, BoolPCWorld.eval u.toBoolPCWorld φ = true) →
-      (∀ φ ∈ stage, BoolPCWorld.eval u'.toBoolPCWorld φ = true) →
-        |A.valueRat Q u.payoutRat - A.valueRat Q u'.payoutRat| ≤ tol := by
-  classical
-  intro u u' hu hu'
-  have hcons (x : BoolPCWorld.FiniteWorld (A.settlementAtomLimit stage))
-      (hx : ∀ φ ∈ stage, BoolPCWorld.eval x.toBoolPCWorld φ = true) :
-      x.toBoolPCWorld.toPCWorld.ConsistentWith stage :=
-    fun φ hφ => (BoolPCWorld.eval_eq_true_iff_holds x.toBoolPCWorld φ).1 (hx φ hφ)
-  have htransfer (x : BoolPCWorld.FiniteWorld (A.settlementAtomLimit stage)) :
-      A.valueRat Q x.payoutRat = A.valueRat Q x.toBoolPCWorld.toPCWorld.payoutRat :=
-    A.valueRat_congr Q _ _ (fun p _ => BoolPCWorld.FiniteWorld.payoutRat_eq_toPCWorld x p.2)
-  have hreal := h _ _ (hcons u hu) (hcons u' hu')
-  rw [A.value_eq_ratCast P Q hQ _ _ (PCWorld.payout_eq_ratCast _),
-    A.value_eq_ratCast P Q hQ _ _ (PCWorld.payout_eq_ratCast _)] at hreal
-  rw [htransfer u, htransfer u']
-  exact_mod_cast hreal
-
-/-- **The concrete settlement test.**  Decidable: a `Fintype` quantifier over
-`BoolPCWorld.FiniteWorld B = Fin B → Bool` with rational comparison.  This is the
-object the paper's `settled` Turing machine (`app:prandaff`) decides — stated here so that
-a checker's correctness is a *theorem* rather than an assumption.
-
-The test is **agreement within a rational tolerance** `tol`, not exact agreement.  Exact
-agreement is `tol = 0`; the tolerance is what makes the test satisfiable for a
-combination-determined threshold mesh, whose completed worlds genuinely disagree about the
-individual threshold sentences (`def:affthmval` determines the *combination*). -/
-def AffineCombination.SettlementTest (A : AffineCombination) (Q : ℕ → Sentence → ℚ)
-    (stage : Finset Sentence) (tol : ℚ) : Prop :=
-  ∀ u u' : BoolPCWorld.FiniteWorld (A.settlementAtomLimit stage),
-    (∀ φ ∈ stage, BoolPCWorld.eval u.toBoolPCWorld φ = true) →
-    (∀ φ ∈ stage, BoolPCWorld.eval u'.toBoolPCWorld φ = true) →
-      |A.valueRat Q u.payoutRat - A.valueRat Q u'.payoutRat| ≤ tol
-
-instance AffineCombination.SettlementTest.decidable (A : AffineCombination)
-    (Q : ℕ → Sentence → ℚ) (stage : Finset Sentence) (tol : ℚ) :
-    Decidable (A.SettlementTest Q stage tol) := by
-  unfold AffineCombination.SettlementTest
-  infer_instance
-
-/-! ### A non-dependent presentation of the test
-
-`SettlementTest` quantifies over `BoolPCWorld.FiniteWorld B = Fin B → Bool`, whose *type*
-depends on `B` — which is computed from the input.  Lean's `Computable` machinery wants
-`Primcodable` domains and does not decompose a `decide` over such a dependent family, so no
-code can be shown to recognize the test in that form.
-
-`SettlementTestBool` is the same test presented over `List Bool` — one non-dependent
-`Primcodable` type — with `settlementTestBool_iff` proving them equivalent.  The checker's
-obligation is stated against the Bool version.  Bit-vectors are enumerated as lists rather
-than as naturals-with-`Nat.testBit` deliberately: the list route needs only `List.ofFn`
-length/index lemmas, where the numeric route would need bit arithmetic Mathlib does not
-carry. -/
-
-/-- Every Boolean list of a given length. -/
-def allBitLists : ℕ → List (List Bool)
-  | 0 => [[]]
-  | n + 1 => (allBitLists n).flatMap (fun l => [false :: l, true :: l])
-
-lemma mem_allBitLists : ∀ (n : ℕ) (l : List Bool), l ∈ allBitLists n ↔ l.length = n
-  | 0, l => by
-      simp only [allBitLists, List.mem_singleton]
-      exact ⟨fun h => by rw [h]; rfl, fun h => List.length_eq_zero_iff.mp h⟩
-  | n + 1, l => by
-      simp only [allBitLists, List.mem_flatMap, List.mem_cons,
-        List.not_mem_nil, or_false]
-      constructor
-      · rintro ⟨t, ht, rfl | rfl⟩ <;>
-          simp [(mem_allBitLists n t).1 ht]
-      · intro h
-        cases l with
-        | nil => simp at h
-        | cons b t =>
-            refine ⟨t, (mem_allBitLists n t).2 (by simpa using h), ?_⟩
-            cases b <;> simp
-
-/-- The finite world denoted by a bit list (missing entries read `false`). -/
-def bitsToFin (B : ℕ) (l : List Bool) : BoolPCWorld.FiniteWorld B := fun a => l.getD a false
-
-@[simp] lemma bitsToFin_ofFn {B : ℕ} (u : BoolPCWorld.FiniteWorld B) :
-    bitsToFin B (List.ofFn u) = u := by
-  funext a
-  rw [bitsToFin, List.getD_eq_getElem _ _ (by simp [a.isLt])]
-  simp
-
-/-- A bit list of the right length denotes the same world whether read dependently (through
-`FiniteWorld B`) or non-dependently (through `BoolPCWorld.bitsWorld`).  Past the end of the
-list both read `false`: `toBoolPCWorld` by its `dif_neg` branch, `bitsWorld` because
-`getD` is out of range.  This is what lets the compiled test avoid `Fin B` entirely. -/
-lemma toBoolPCWorld_bitsToFin {B : ℕ} {l : List Bool} (hl : l.length = B) :
-    (bitsToFin B l).toBoolPCWorld = BoolPCWorld.bitsWorld l := by
-  funext a
-  rw [BoolPCWorld.FiniteWorld.toBoolPCWorld, BoolPCWorld.bitsWorld]
-  by_cases h : a < B
-  · simp [h, bitsToFin]
-  · rw [dif_neg h, List.getD_eq_default _ _ (by omega)]
-
-lemma payoutRat_bitsToFin {B : ℕ} {l : List Bool} (hl : l.length = B) :
-    (bitsToFin B l).payoutRat = BoolPCWorld.bitsPayoutRat l := by
-  funext φ
-  rw [BoolPCWorld.FiniteWorld.payoutRat, BoolPCWorld.bitsPayoutRat,
-    toBoolPCWorld_bitsToFin hl]
-
-lemma bitsWorld_ofFn {B : ℕ} (u : BoolPCWorld.FiniteWorld B) :
-    BoolPCWorld.bitsWorld (List.ofFn u) = u.toBoolPCWorld := by
-  have h := toBoolPCWorld_bitsToFin (B := B) (l := List.ofFn u) (by simp)
-  rw [bitsToFin_ofFn] at h
-  exact h.symm
-
-lemma bitsPayoutRat_ofFn {B : ℕ} (u : BoolPCWorld.FiniteWorld B) :
-    BoolPCWorld.bitsPayoutRat (List.ofFn u) = u.payoutRat := by
-  have h := payoutRat_bitsToFin (B := B) (l := List.ofFn u) (by simp)
-  rw [bitsToFin_ofFn] at h
-  exact h.symm
-
-/-! ### Extracting the stage's sentences
-
-`Finset.toList` is noncomputable (it picks a representative through `Multiset.toList`), so
-it cannot appear in a test we intend to compile.  `Finset.sort` under the order below is
-both computable and *canonical*: it is the very order the stock `Finset Sentence` encoding
-sorts by, so `stageSort` is the list that stage's own code decodes to.  That is what lets
-the compiled checker recover the stage from its encoding. -/
-
-/-- The order the stock `Finset Sentence` encoding sorts by: comparison of Gödel codes. -/
-def sentenceCodeLE (φ ψ : Sentence) : Prop := Encodable.encode φ ≤ Encodable.encode ψ
-
-instance : DecidableRel sentenceCodeLE := fun _ _ => Nat.decLe _ _
-instance : IsTrans Sentence sentenceCodeLE := ⟨fun _ _ _ hab hbc => Nat.le_trans hab hbc⟩
-instance : Std.Antisymm sentenceCodeLE :=
-  ⟨fun _ _ hab hba => Encodable.encode_injective (Nat.le_antisymm hab hba)⟩
-instance : Std.Total sentenceCodeLE :=
-  ⟨fun φ ψ => Nat.le_total (Encodable.encode φ) (Encodable.encode ψ)⟩
-
-/-- The stage's sentences, in the canonical order of its own encoding. -/
-def stageSort (stage : Finset Sentence) : List Sentence := stage.sort sentenceCodeLE
-
-@[simp] lemma mem_stageSort (stage : Finset Sentence) (φ : Sentence) :
-    φ ∈ stageSort stage ↔ φ ∈ stage := Finset.mem_sort _
-
-/-- Every sentence of the stage is satisfied by the world a bit list denotes.
-
-A `List.all` over `stageSort`, not a `Finset` quantifier: `Primrec` decomposes the former
-and not the latter. -/
-def stageSatBits (stage : Finset Sentence) (l : List Bool) : Bool :=
-  (stageSort stage).all fun φ => BoolPCWorld.eval (BoolPCWorld.bitsWorld l) φ
-
-lemma stageSatBits_eq_true_iff (stage : Finset Sentence) (l : List Bool) :
-    stageSatBits stage l = true ↔
-      ∀ φ ∈ stage, BoolPCWorld.eval (BoolPCWorld.bitsWorld l) φ = true := by
-  simp [stageSatBits, List.all_eq_true]
-
-/-- Two rationals within a tolerance, as a `Bool` built from `≤` alone.  Subtraction and
-`|·|` are deliberately avoided: the primitive-recursive checker has `ratLE_prim` and
-`ratAdd_prim`, so this form compiles with no further rational arithmetic. -/
-def ratWithin (x y tol : ℚ) : Bool := decide (x ≤ y + tol) && decide (y ≤ x + tol)
-
-lemma ratWithin_eq_true_iff (x y tol : ℚ) :
-    ratWithin x y tol = true ↔ |x - y| ≤ tol := by
-  rw [ratWithin, Bool.and_eq_true, decide_eq_true_iff, decide_eq_true_iff,
-    abs_sub_le_iff, sub_le_iff_le_add, sub_le_iff_le_add, add_comm tol y, add_comm tol x]
-
-private lemma orNot_orNot_eq_true_iff (a b c : Bool) :
-    ((!a) || (!b) || c) = true ↔ (a = true → b = true → c = true) := by
-  cases a <;> cases b <;> cases c <;> simp
-
-/-- The settlement test as a Boolean function over a non-dependent enumeration.
-
-Every quantifier is a `List.all` and every connective a `Bool` operation, over the
-`Primcodable` types `List Bool`, `Sentence` and `ℚ`.  Nothing here mentions `Fin B`, and no
-world appears as an argument — `bitsWorld` is applied and beta-reduced in place.  That is
-what makes the test compilable; `settlementTestBool_iff` proves it is still the same
-test. -/
-def AffineCombination.SettlementTestBool (A : AffineCombination) (Q : ℕ → Sentence → ℚ)
-    (stage : Finset Sentence) (tol : ℚ) : Bool :=
-  (allBitLists (A.settlementAtomLimit stage)).all fun l =>
-    (allBitLists (A.settlementAtomLimit stage)).all fun l' =>
-      !(stageSatBits stage l) || !(stageSatBits stage l') ||
-        ratWithin (A.valueRat Q (BoolPCWorld.bitsPayoutRat l))
-          (A.valueRat Q (BoolPCWorld.bitsPayoutRat l')) tol
-
-/-- The `List Bool` presentation is the same test.  Surjectivity of `bitsToFin` onto
-`FiniteWorld B` (via `List.ofFn`) is what makes it complete, not merely sound. -/
-lemma AffineCombination.settlementTestBool_iff (A : AffineCombination)
-    (Q : ℕ → Sentence → ℚ) (stage : Finset Sentence) (tol : ℚ) :
-    A.SettlementTestBool Q stage tol = true ↔ A.SettlementTest Q stage tol := by
-  simp only [AffineCombination.SettlementTestBool, AffineCombination.SettlementTest,
-    List.all_eq_true, orNot_orNot_eq_true_iff, stageSatBits_eq_true_iff,
-    ratWithin_eq_true_iff]
-  constructor
-  · -- Completeness: every finite world is `bitsToFin` of its own `List.ofFn`.
-    intro h u u' hu hu'
-    have hall := h (List.ofFn u) ((mem_allBitLists _ _).2 (by simp))
-      (List.ofFn u') ((mem_allBitLists _ _).2 (by simp))
-    rw [bitsWorld_ofFn, bitsWorld_ofFn, bitsPayoutRat_ofFn, bitsPayoutRat_ofFn] at hall
-    exact hall hu hu'
-  · -- Soundness: a listed bit list has length `B`, so it denotes `bitsToFin B l`.
-    intro h l hl l' hl'
-    rw [← toBoolPCWorld_bitsToFin ((mem_allBitLists _ _).1 hl),
-      ← toBoolPCWorld_bitsToFin ((mem_allBitLists _ _).1 hl'),
-      ← payoutRat_bitsToFin ((mem_allBitLists _ _).1 hl),
-      ← payoutRat_bitsToFin ((mem_allBitLists _ _).1 hl')]
-    exact h _ _
-
-/-- **The concrete test is exactly tolerance agreement.**  Both directions: sound (a
-passing test bounds the spread of the real values over all plausible worlds) and complete
-(a bounded spread makes the test pass).  Rationality of the market (`hQ`) is what carries
-it; `truth` never appears — a checker cannot compute `truth`, and does not need to. -/
-lemma AffineCombination.settlementTest_iff_agree (A : AffineCombination)
-    (P : History) (Q : ℕ → Sentence → ℚ) (hQ : ∀ d φ, P d φ = (Q d φ : ℝ))
-    (stage : Finset Sentence) (tol : ℚ) :
-    A.SettlementTest Q stage tol ↔
-      ∀ v w : PCWorld, v.ConsistentWith stage → w.ConsistentWith stage →
-        |A.value P v.payout - A.value P w.payout| ≤ (tol : ℝ) :=
-  ⟨fun htest v w hv hw => A.agree_of_finiteWorlds_agree P Q hQ stage tol htest v w hv hw,
-    fun hagree => A.finiteWorlds_agree_of_agree P Q hQ stage tol hagree⟩
-
-/-- **The concrete test is exactly settlement.**  The `tol = 0` specialization of
-`settlementTest_iff_agree` against exact determination: an exactly passing test says every
-plausible world values `As i` at `truth i`, and conversely.  Consistency (`hworld`) is
-what turns agreement into agreement *with `truth`*. -/
-lemma AffineCombination.DeterminedViaTheory.settlementTest_iff_settled
-    {As : ℕ → AffineCombination} {P : History} {DP : DeductiveProcess} {truth : ℕ → ℝ}
-    (hdet : AffineCombination.DeterminedViaTheory As P DP truth)
-    (Q : ℕ → Sentence → ℚ) (hQ : ∀ d φ, P d φ = (Q d φ : ℝ))
-    (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) (i j : ℕ) :
-    (As i).SettlementTest Q (DP.D j) 0 ↔
-      ∀ v : PCWorld, v.ConsistentWith (DP.D j) → (As i).value P v.payout = truth i := by
-  rw [hdet.settled_iff_agree hworld i j,
-    (As i).settlementTest_iff_agree P Q hQ (DP.D j) 0]
-  simp only [Rat.cast_zero, abs_nonpos_iff, sub_eq_zero]
-
-lemma AffineCombination.DeterminedViaTheory.unique
-    {As : ℕ → AffineCombination} {P : History} {DP : DeductiveProcess}
-    {x y : ℕ → ℝ}
-    (hx : AffineCombination.DeterminedViaTheory As P DP x)
-    (hy : AffineCombination.DeterminedViaTheory As P DP y)
-    (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
-    x = y := by
-  funext n
-  obtain ⟨v, hv⟩ := exists_consistentWithTheory DP hworld
-  rw [← hx n v hv, hy n v hv]
-
-/-- Completed-theory determination is closed under pointwise affine negation. -/
-lemma AffineCombination.DeterminedViaTheory.neg
-    {As : ℕ → AffineCombination} {P : History} {DP : DeductiveProcess}
-    {truth : ℕ → ℝ}
-    (h : AffineCombination.DeterminedViaTheory As P DP truth) :
-    AffineCombination.DeterminedViaTheory (fun n => (As n).neg) P DP
-      (fun n => -truth n) := by
-  intro n v hv
-  rw [AffineCombination.neg_value, h n v hv]
-
 /-! ## Capped weighted affine runs -/
 
 namespace AffineCombination
+
+/-! ### The run rate and its emitters -/
 
 /-- Canonical slowly varying run rate.  `scale` is chosen once from the alleged bias
 gap; the `k+1` denominator makes the finite-prefix charge vanish uniformly in the family
@@ -1512,10 +626,10 @@ carried through every recurrence body, so a single program covers all pairs `⟨
 than one program per fixed attempted-weight stream. -/
 lemma fractionalFamilyFeatureWeight_polySeg
     (occupancy : ℕ → ℕ → EF) (α : ℕ → ℕ → EF)
-    (hα : BigSpliceStream (fun z => (α z.unpair.1 z.unpair.2).serialize))
-    (hocc : BigSpliceStream (fun z =>
+    (hα : MachineSpliceStream (fun z => (α z.unpair.1 z.unpair.2).serialize))
+    (hocc : MachineSpliceStream (fun z =>
       (occupancy z.unpair.2 z.unpair.1).serialize)) :
-    BigSpliceStream (fun z =>
+    MachineSpliceStream (fun z =>
       (ROIBudget.fractionalSharedFeatureWeight occupancy (α z.unpair.1)
         z.unpair.2).serialize) := by
   let family : ℕ → ℕ := fun z => z.unpair.1.unpair.1
@@ -1533,32 +647,40 @@ lemma fractionalFamilyFeatureWeight_polySeg
     ((predc_polyFueled.comp hday).pair hcomponent)
   have hidx := hidxRaw.of_eq (f' := fun z => day z - 1 - component z) (fun z => by
     simp [day, component, Nat.pred_eq_sub_one])
-  have hvar : BigSpliceStream
+  have hvar : MachineSpliceStream
       (fun z => (EF.var (day z - 1 - component z)).serialize) :=
-    BigSpliceStream.serialize_var hidx
-  have hαterm : BigSpliceStream
+    MachineSpliceStream.serialize_var (MachineDigits.ofUnaryRuler
+      (f := fun z : ℕ => day z - 1 - component z) (UnaryRuler.of_polyFueled hidx))
+  have hαterm : MachineSpliceStream
       (fun z => (α (family z) (component z)).serialize) :=
-    BigSpliceStream.of_eq (hα.comp (hfamily.pair hcomponent)) (fun z => by
+    MachineSpliceStream.of_eq (hα.comp
+      (f := fun z : ℕ => Nat.pair (family z) (component z))
+      (UnaryRuler.of_polyFueled (hfamily.pair hcomponent))) (fun z => by
       simp [family, component])
-  have hoccterm : BigSpliceStream
+  have hoccterm : MachineSpliceStream
       (fun z => (occupancy (component z) (day z)).serialize) :=
-    BigSpliceStream.of_eq (hocc.comp (hday.pair hcomponent)) (fun z => by
+    MachineSpliceStream.of_eq (hocc.comp
+      (f := fun z : ℕ => Nat.pair (day z) (component z))
+      (UnaryRuler.of_polyFueled (hday.pair hcomponent))) (fun z => by
       simp [day, component])
-  have hterm : BigSpliceStream (fun z => (term z).serialize) :=
-    BigSpliceStream.serialize_mul (BigSpliceStream.serialize_mul hvar hαterm) hoccterm
-  have hterms : BigSpliceStream (fun u =>
+  have hterm : MachineSpliceStream (fun z => (term z).serialize) :=
+    MachineSpliceStream.serialize_mul
+      (MachineSpliceStream.serialize_mul hvar hαterm) hoccterm
+  have hterms : MachineSpliceStream (fun u =>
       (List.range u.unpair.2).flatMap
         (fun i => (term (Nat.pair u i)).serialize)) :=
-    BigSpliceStream.concatVar hterm PolyFueled.right
-  have hzero : BigSpliceStream (fun _ => (EF.const 0).serialize) :=
-    BigSpliceStream.serialize_const 0
-  have haddTags : BigSpliceStream (fun u => List.replicate u.unpair.2 2) :=
-    BigSpliceStream.repeatTag 2 (by norm_num) PolyFueled.right
+    MachineSpliceStream.concatVar hterm (cnt := fun u : ℕ => u.unpair.2)
+      (UnaryRuler.unpairSnd)
+  have hzero : MachineSpliceStream (fun _ : ℕ => (EF.const 0).serialize) :=
+    MachineSpliceStream.serialize_const 0
+  have haddTags : MachineSpliceStream (fun u : ℕ => List.replicate u.unpair.2 2) :=
+    MachineSpliceStream.repeatTag 2 (by norm_num) (cnt := fun u : ℕ => u.unpair.2)
+      (UnaryRuler.unpairSnd)
   have hsumRaw := (hterms.append hzero).append haddTags
-  have hsum : BigSpliceStream (fun u =>
+  have hsum : MachineSpliceStream (fun u =>
       (ROIBudget.sumFeatures (List.ofFn (fun i : Fin u.unpair.2 =>
         term (Nat.pair u i)))).serialize) := by
-    refine BigSpliceStream.of_eq hsumRaw ?_
+    refine MachineSpliceStream.of_eq hsumRaw ?_
     intro u
     rw [ROIBudget.serialize_sumFeatures]
     simp only [List.length_ofFn]
@@ -1566,36 +688,41 @@ lemma fractionalFamilyFeatureWeight_polySeg
     rw [← List.map_coe_finRange_eq_range]
     rw [List.flatMap_map]
     simp only [List.ofFn_eq_map, List.flatMap_map]
-  have hone : BigSpliceStream (fun _ => (EF.const 1).serialize) :=
-    BigSpliceStream.serialize_const 1
-  have hnegone : BigSpliceStream (fun _ => (EF.const (-1)).serialize) :=
-    BigSpliceStream.serialize_const (-1)
-  have hbodyRaw := BigSpliceStream.serialize_add hone
-    (BigSpliceStream.serialize_mul hnegone hsum)
-  have hbody : BigSpliceStream (fun u =>
+  have hone : MachineSpliceStream (fun _ : ℕ => (EF.const 1).serialize) :=
+    MachineSpliceStream.serialize_const 1
+  have hnegone : MachineSpliceStream (fun _ : ℕ => (EF.const (-1)).serialize) :=
+    MachineSpliceStream.serialize_const (-1)
+  have hbodyRaw := MachineSpliceStream.serialize_add hone
+    (MachineSpliceStream.serialize_mul hnegone hsum)
+  have hbody : MachineSpliceStream (fun u =>
       (ROIBudget.fractionalWeightBody occupancy (α u.unpair.1) u.unpair.2).serialize) := by
-    refine BigSpliceStream.of_eq hbodyRaw ?_
+    refine MachineSpliceStream.of_eq hbodyRaw ?_
     intro u
     simp only [ROIBudget.fractionalWeightBody, term, family, day, component,
       Nat.unpair_pair]
   have hcanonical :=
     (PolyFueled.left.comp PolyFueled.left).pair PolyFueled.right
-  have hbodies : BigSpliceStream (fun z =>
+  have hbodies : MachineSpliceStream (fun z =>
       (List.range (z.unpair.2 + 1)).flatMap (fun j =>
         (ROIBudget.fractionalWeightBody occupancy (α z.unpair.1) j).serialize)) := by
-    refine BigSpliceStream.of_eq
-      (BigSpliceStream.concatVar (hbody.comp hcanonical)
-        PolyFueled.right.succ_comp) ?_
+    refine MachineSpliceStream.of_eq
+      (MachineSpliceStream.concatVar (hbody.comp
+          (f := fun w : ℕ => Nat.pair w.unpair.1.unpair.1 w.unpair.2)
+          (UnaryRuler.of_polyFueled hcanonical))
+        (cnt := fun z : ℕ => z.unpair.2 + 1)
+        (UnaryRuler.unpairSnd.succ)) ?_
     intro z
     simp only [Nat.unpair_pair]
-  have hvar0 : BigSpliceStream (fun _ => (EF.var 0).serialize) :=
-    BigSpliceStream.serialize_var (PolyFueled.const 0)
-  have htags : BigSpliceStream (fun z => List.replicate (z.unpair.2 + 1) 8) :=
-    BigSpliceStream.repeatTag 8 (by norm_num) PolyFueled.right.succ_comp
-  refine BigSpliceStream.of_eq ((hbodies.append hvar0).append htags) ?_
+  have hvar0 : MachineSpliceStream (fun _ : ℕ => (EF.var 0).serialize) :=
+    MachineSpliceStream.serialize_var (MachineDigits.const 0)
+  have htags : MachineSpliceStream (fun z : ℕ => List.replicate (z.unpair.2 + 1) 8) :=
+    MachineSpliceStream.repeatTag 8 (by norm_num)
+      (cnt := fun z : ℕ => z.unpair.2 + 1)
+      (UnaryRuler.unpairSnd.succ)
+  refine MachineSpliceStream.of_eq ((hbodies.append hvar0).append htags) ?_
   intro z
-  rw [ROIBudget.fractionalSharedFeatureWeight,
-    ROIBudget.fractionalSharedWeights_serialize]
+  rw [ROIBudget.fractionalSharedFeatureWeight, ROIBudget.sharedOf,
+    ROIBudget.letChain_serialize]
   rw [List.range_eq_range']
 
 /-- The attempted purchase weight for family member `k` on day `n`: zero before launch,
@@ -1605,20 +732,25 @@ def biasRunAttempt (W : ℕ → EF) (rate : ℕ → ℚ) (k n : ℕ) : EF :=
 
 lemma biasRunAttempt_family_polySeg {W : ℕ → EF}
     (hW : PGenerableWeighting W) (rate : ℕ → ℚ) (hrate : PolyRatCodes rate) :
-    BigSpliceStream (fun z =>
+    MachineSpliceStream (fun z =>
       (biasRunAttempt W rate z.unpair.1 z.unpair.2).serialize) := by
-  have hrateSeg : BigSpliceStream (fun z => (EF.const (rate z.unpair.1)).serialize) :=
-    (BigSpliceStream.serialize_const_comp hrate).comp PolyFueled.left
-  have hWSeg : BigSpliceStream (fun z => (W z.unpair.2).serialize) :=
-    hW.polySeg.comp PolyFueled.right
-  have hlive := BigSpliceStream.serialize_mul hrateSeg hWSeg
-  have hzero : BigSpliceStream (fun _ => (EF.const 0).serialize) :=
-    BigSpliceStream.serialize_const 0
-  have htest := subc_polyFueled.comp
-    (PolyFueled.right.succ_comp.pair PolyFueled.left)
-  refine BigSpliceStream.of_eq (BigSpliceStream.ifZero hzero hlive htest) ?_
+  have hrateSeg : MachineSpliceStream (fun z => (EF.const (rate z.unpair.1)).serialize) :=
+    ((BigSpliceStream.serialize_const_comp hrate).toMachine).comp
+      (f := fun z : ℕ => z.unpair.1) (UnaryRuler.unpairFst)
+  have hWSeg : MachineSpliceStream (fun z => (W z.unpair.2).serialize) :=
+    hW.polySeg.comp (f := fun z : ℕ => z.unpair.2)
+      (UnaryRuler.unpairSnd)
+  have hlive := MachineSpliceStream.serialize_mul hrateSeg hWSeg
+  have hzero : MachineSpliceStream (fun _ : ℕ => (EF.const 0).serialize) :=
+    MachineSpliceStream.serialize_const 0
+  have htest := (subc_polyFueled.comp
+    (PolyFueled.right.succ_comp.pair PolyFueled.left)).of_eq
+    (f' := fun z : ℕ => z.unpair.2 + 1 - z.unpair.1)
+    (fun z => by simp only [Nat.unpair_pair])
+  refine MachineSpliceStream.of_eq (MachineSpliceStream.ifZero hzero hlive
+    (t := fun z : ℕ => z.unpair.2 + 1 - z.unpair.1)
+    (UnaryRuler.of_polyFueled htest)) ?_
   intro z
-  simp only [Nat.unpair_pair]
   by_cases hkn : z.unpair.1 ≤ z.unpair.2
   · rw [if_neg (by omega)]
     simp [biasRunAttempt, hkn]
@@ -1648,15 +780,16 @@ def biasRunCoefficient (As : ℕ → AffineCombination) (W : ℕ → EF)
 lemma biasRunCoefficient_family_polySeg {As : ℕ → AffineCombination}
     (h : PolySequence As) {W : ℕ → EF} (hW : PGenerableWeighting W)
     (rate : ℕ → ℚ) (hrate : PolyRatCodes rate) :
-    BigSpliceStream (fun z =>
+    MachineSpliceStream (fun z =>
       (biasRunCoefficient As W rate z.unpair.1 z.unpair.2).serialize) := by
   have hattempt := biasRunAttempt_family_polySeg hW rate hrate
-  have hocc : BigSpliceStream (fun z =>
+  have hocc : MachineSpliceStream (fun z =>
       (biasRunOccupancy As z.unpair.2 z.unpair.1).serialize) := by
-    simpa [biasRunOccupancy] using h.magnitudeFeature_polySeg.comp PolyFueled.right
+    simpa [biasRunOccupancy] using h.magnitudeFeature_polySeg.comp
+      (f := fun z : ℕ => z.unpair.2) (UnaryRuler.unpairSnd)
   have hweight := fractionalFamilyFeatureWeight_polySeg
     (biasRunOccupancy As) (biasRunAttempt W rate) hattempt hocc
-  exact BigSpliceStream.serialize_mul hweight hattempt
+  exact MachineSpliceStream.serialize_mul hweight hattempt
 
 /-- Semantic form of the actual capped purchase coefficient. -/
 noncomputable def biasRunGamma (As : ℕ → AffineCombination) (W : ℕ → EF)
@@ -2057,6 +1190,8 @@ lemma biasRun_magnitudePrefix_tendsto_one
         (biasRunAttemptValue W rate P k) (n + 1) = _
     exact (biasRun_magnitudePrefix_eq_one_sub_weight As W rate P k n).symm)
 
+/-! ### The capped-run trader -/
+
 /-- Family member `k` buys its capped run of affine bundles and makes no syntactic trade
 before day `k` (the latter is required by the uniform-emulation interface). -/
 def biasRunTrader {As : ℕ → AffineCombination}
@@ -2068,29 +1203,37 @@ def biasRunTrader {As : ℕ → AffineCombination}
           (biasRunCoefficient_rank_le h hW rate k n) (h.terms_rank n))
     else ⟨[], by simp⟩
 
+/-- The launch-gated per-day trade count of `biasRunTrader`, at the paired index
+`z = ⟨k, n⟩`: family member `k` places one trade per term of `As n` on days `n ≥ k` and none
+before.  This is the count component of `biasRunTrader_polyTrade`'s `PolyTradeEmulatable`
+record. -/
 def biasRunTradeCount {As : ℕ → AffineCombination}
     (h : PolySequence As) (z : ℕ) : ℕ :=
   if z.unpair.1 ≤ z.unpair.2 then h.termCount z.unpair.2 else 0
 
+/-- The traded coefficient of `biasRunTrader` at the flattened index `z = ⟨⟨k, n⟩, j⟩`: the
+run coefficient of member `k` on day `n` times the `j`-th term coefficient of `As n`.  This
+is the coefficient component of `biasRunTrader_polyTrade`'s `PolyTradeEmulatable` record. -/
 def biasRunTradeCoefficient {As : ℕ → AffineCombination}
     (h : PolySequence As) (W : ℕ → EF) (rate : ℕ → ℚ) (z : ℕ) : EF :=
   EF.mul
     (biasRunCoefficient As W rate z.unpair.1.unpair.1 z.unpair.1.unpair.2)
     (h.coefficient (Nat.pair z.unpair.1.unpair.2 z.unpair.2))
 
+/-- The traded sentence of `biasRunTrader` at the flattened index `z = ⟨⟨k, n⟩, j⟩`: the
+`j`-th sentence of `As n`, independent of the family member `k`.  This is the sentence
+component of `biasRunTrader_polyTrade`'s `PolyTradeEmulatable` record. -/
 def biasRunTradeSentence {As : ℕ → AffineCombination}
     (h : PolySequence As) (z : ℕ) : Sentence :=
   h.sentence (Nat.pair z.unpair.1.unpair.2 z.unpair.2)
 
 lemma biasRunTradeCount_poly {As : ℕ → AffineCombination}
-    (h : PolySequence As) : ∃ c, PolyFueled c (biasRunTradeCount h) := by
-  obtain ⟨ccount, hcount⟩ := h.termCount_poly
-  have htest := subc_polyFueled.comp
-    (PolyFueled.right.succ_comp.pair PolyFueled.left)
-  have hraw := ifzSel_polyFueled.comp
-    (((PolyFueled.const 0).pair (hcount.comp PolyFueled.right)).pair htest)
-  refine ⟨_, hraw.of_eq (fun z => ?_)⟩
-  simp only [Nat.unpair_pair, ifzSelFn, biasRunTradeCount]
+    (h : PolySequence As) : UnaryRuler (biasRunTradeCount h) := by
+  have htest : UnaryRuler (fun z : ℕ => z.unpair.2 + 1 - z.unpair.1) :=
+    UnaryRuler.unpairSnd.succ.sub UnaryRuler.unpairFst
+  refine UnaryRuler.of_eq (htest.ifZero (UnaryRuler.const 0)
+    (h.termCount_poly.comp UnaryRuler.unpairSnd)) (fun z => ?_)
+  simp only [biasRunTradeCount]
   by_cases hkn : z.unpair.1 ≤ z.unpair.2
   · rw [if_pos hkn, if_neg (by omega)]
   · rw [if_neg hkn, if_pos (by omega)]
@@ -2098,28 +1241,34 @@ lemma biasRunTradeCount_poly {As : ℕ → AffineCombination}
 lemma biasRunTradeCoefficient_polySeg {As : ℕ → AffineCombination}
     (h : PolySequence As) {W : ℕ → EF} (hW : PGenerableWeighting W)
     (rate : ℕ → ℚ) (hrate : PolyRatCodes rate) :
-    BigSpliceStream (fun z =>
+    MachineSpliceStream (fun z =>
       (biasRunTradeCoefficient h W rate z).serialize) := by
   have hk := PolyFueled.left.comp PolyFueled.left
   have hn := PolyFueled.right.comp PolyFueled.left
   have hj := PolyFueled.right
-  have hrun : BigSpliceStream (fun z =>
+  have hrun : MachineSpliceStream (fun z =>
       (biasRunCoefficient As W rate z.unpair.1.unpair.1
         z.unpair.1.unpair.2).serialize) := by
     simpa only [Nat.unpair_pair] using
-      (biasRunCoefficient_family_polySeg h hW rate hrate).comp (hk.pair hn)
-  have hbase : BigSpliceStream (fun z =>
+      (biasRunCoefficient_family_polySeg h hW rate hrate).comp
+        (f := fun z : ℕ => Nat.pair z.unpair.1.unpair.1 z.unpair.1.unpair.2)
+        (UnaryRuler.of_polyFueled (hk.pair hn))
+  have hbase : MachineSpliceStream (fun z =>
       (h.coefficient (Nat.pair z.unpair.1.unpair.2 z.unpair.2)).serialize) := by
-    simpa only [Nat.unpair_pair] using h.coefficient_poly.comp (hn.pair hj)
+    simpa only [Nat.unpair_pair] using h.coefficient_poly.comp
+      (f := fun z : ℕ => Nat.pair z.unpair.1.unpair.2 z.unpair.2)
+      (UnaryRuler.of_polyFueled (hn.pair hj))
   simpa only [biasRunTradeCoefficient] using
-    BigSpliceStream.serialize_mul hrun hbase
+    MachineSpliceStream.serialize_mul hrun hbase
 
 lemma biasRunTradeSentence_poly {As : ℕ → AffineCombination}
     (h : PolySequence As) :
-    BigSentenceCodes (biasRunTradeSentence h) := by
+    MachineSentenceCodes (biasRunTradeSentence h) := by
   have hn := PolyFueled.right.comp PolyFueled.left
   have hj := PolyFueled.right
-  exact (h.sentence_poly.comp (hn.pair hj)).of_eq (fun _ => rfl)
+  exact (h.sentence_poly.comp
+    (f := fun z : ℕ => Nat.pair z.unpair.1.unpair.2 z.unpair.2)
+    (UnaryRuler.of_polyFueled (hn.pair hj))).of_eq (fun _ => rfl)
 
 lemma biasRunTrader_trades_eq {As : ℕ → AffineCombination}
     (h : PolySequence As) {W : ℕ → EF} (hW : PGenerableWeighting W)
@@ -2140,8 +1289,6 @@ noncomputable def biasRunTrader_polyTrade {As : ℕ → AffineCombination}
     (h : PolySequence As) {W : ℕ → EF} (hW : PGenerableWeighting W)
     (rate : ℕ → ℚ) (hrate : PolyRatCodes rate) :
     PolyTradeEmulatable (biasRunTrader h hW rate) := by
-  let ccount := Classical.choose (biasRunTradeCount_poly h)
-  have hcount := Classical.choose_spec (biasRunTradeCount_poly h)
   have hcoeff := biasRunTradeCoefficient_polySeg h hW rate hrate
   have hzero : ∀ k n, n < k →
       (((biasRunTrader h hW rate) k).strat n).trades = [] := by
@@ -2152,16 +1299,10 @@ noncomputable def biasRunTrader_polyTrade {As : ℕ → AffineCombination}
       tradeCount := biasRunTradeCount h
       coefficient := biasRunTradeCoefficient h W rate
       sentence := biasRunTradeSentence h
-      tradeCount_poly := ⟨ccount, hcount⟩
+      tradeCount_poly := biasRunTradeCount_poly h
       coefficient_poly := hcoeff
       sentence_poly := biasRunTradeSentence_poly h
       trades_eq := biasRunTrader_trades_eq h hW rate }
-
-@[simp] lemma biasRunTrader_before {As : ℕ → AffineCombination}
-    (h : PolySequence As) {W : ℕ → EF} (hW : PGenerableWeighting W)
-    (rate : ℕ → ℚ) (k n : ℕ) (hnk : n < k) :
-    ((biasRunTrader h hW rate k).strat n).trades = [] := by
-  simp [biasRunTrader, Nat.not_le.mpr hnk]
 
 lemma biasRunTrader_value {As : ℕ → AffineCombination}
     (h : PolySequence As) {W : ℕ → EF} (hW : PGenerableWeighting W)
@@ -2282,6 +1423,8 @@ lemma biasRunTrader_magnitude_eq_one_of_attemptedRisk
     exact hraw
   exact tendsto_nhds_unique htoMagnitude hprefTrader
 
+/-! ### ROI accounting under persistent bias -/
+
 /-- An approximately determined affine value differs from its diagonal market price by at
 most its share magnitude plus the determination error.  The completed-theory world needed
 for this comparison is obtained by the compactness theorem, not assumed separately for
@@ -2293,7 +1436,7 @@ lemma ApproxDeterminedViaTheory.abs_truth_sub_price_le_magnitude
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1) (n : ℕ) :
     |truth n - (As n).price P n| ≤ (As n).magnitude P + e n := by
-  obtain ⟨v, hv⟩ := exists_consistentWithTheory DP hworld
+  obtain ⟨v, hv⟩ := DP.exists_consistentWithTheory hworld
   have hval := (As n).abs_value_sub_price_le_magnitude P v.payout n
     (hpoly.terms_rank n) (fun φ => by
       by_cases hφ : v.Holds φ
@@ -2814,6 +1957,8 @@ lemma ApproxDeterminedViaTheory.eventually_biasRunTrader_hasROI
     hworld hP (biasRunRate scale) hrate0 hrate1 (ε / 2) (ε / 8) (ε / 8)
       (by linarith) (by linarith) k hslack hsurplus hrisk using 1 ; ring
 
+/-! ### The repeatable-ROI tolerance budget -/
+
 /-- Exact rational code for the canonical repeatable-ROI tolerance budget. -/
 def roiToleranceRat (i : ℕ) : ℚ := ((1 : ℚ) / 2) ^ (i + 1)
 
@@ -2833,374 +1978,14 @@ lemma roiTolerance_summable : Summable roiTolerance := by
   intro i
   rw [roiTolerance_eq, pow_succ]
 
-/-! ## Finite exact maturity-certificate semantics -/
+/-! ## Recurring unbiasedness and calibration
 
-/-- The semantic core of a finite exact maturity checker for a unit-magnitude trader.
-Every numeric inequality is rational, and the universal plausible-world payoff claim is
-reduced to the finite type of assignments to the first `B` atoms.  The rational quote
-function is fixed by the market's actual partial-recursive presentation, rather than being
-supplied by this object.
-
-The name records what is *not* claimed: the proposition-valued fields are not an encoded
-executable payload.  `unitMaturityCheckAtFuel` below is the Boolean checker whose clocked
-market and process outputs entail them. -/
-structure UnitMaturitySemanticCertificate (Tr : Trader) (P : History)
-    (DP : DeductiveProcess) (market : MarketComputation P)
-    (ε η : ℚ) (m : ℕ) where
-  atomLimit : ℕ
-  deduction_bounded : ∀ φ ∈ DP.D m, BoolPCWorld.atomBound φ ≤ atomLimit
-  trades_bounded : ∀ d ≤ m, ∀ p ∈ (Tr.strat d).trades,
-    BoolPCWorld.atomBound p.2 ≤ atomLimit
-  risk : 1 - η ≤ Tr.partialMagnitudeRat
-    (fun d φ => market.quote d (Encodable.encode φ)) m
-  payoff : ∀ u : BoolPCWorld.FiniteWorld atomLimit,
-    (∀ φ ∈ DP.D m, BoolPCWorld.eval u.toBoolPCWorld φ = true) →
-      ε - η ≤ Tr.partialNetWorthRat
-        (fun d φ => market.quote d (Encodable.encode φ)) u.payoutRat m
-
-/-- A concrete support bound for every sentence inspected by maturity through day `m`.
-Using sums rather than maxima keeps the membership proofs elementary; only finiteness and
-the resulting upper bound matter to the exhaustive Boolean check. -/
-def maturityAtomLimit (Tr : Trader) (DP : DeductiveProcess) (m : ℕ) : ℕ :=
-  (DP.D m).sum BoolPCWorld.atomBound +
-    ∑ d ∈ Finset.range (m + 1),
-      ((Tr.strat d).trades.map (fun p => BoolPCWorld.atomBound p.2)).sum
-
-/-- The same support bound computed from a decoded deductive stage. -/
-def maturityAtomLimitFromStage (Tr : Trader) (stage : Finset Sentence) (m : ℕ) : ℕ :=
-  stage.sum BoolPCWorld.atomBound +
-    ∑ d ∈ Finset.range (m + 1),
-      ((Tr.strat d).trades.map (fun p => BoolPCWorld.atomBound p.2)).sum
-
-/-- The proposition checked for one finite Boolean world at one fuel bound. -/
-def unitMaturityWorldProperty
-    (Tr : Trader) (P : History) (market : MarketComputation P)
-    (ε η : ℚ) (m fuel : ℕ) (stage : Finset Sentence)
-    (u : BoolPCWorld.FiniteWorld (maturityAtomLimitFromStage Tr stage m)) : Prop :=
-  (∀ φ : {φ // φ ∈ stage},
-      BoolPCWorld.eval u.toBoolPCWorld φ.1 = true) →
-    match Tr.partialNetWorthRatAtFuel market fuel u.payoutRat m with
-    | none => False
-    | some worth => ε - η ≤ worth
-
-/-- An explicit executable decision procedure for the single-world maturity property.
-The finite quantifier over the decoded deductive stage is handled by its `Fintype`
-instance; the remaining branches are Boolean equality and rational comparison. -/
-def unitMaturityWorldPropertyDecidable
-    (Tr : Trader) (P : History) (market : MarketComputation P)
-    (ε η : ℚ) (m fuel : ℕ) (stage : Finset Sentence)
-    (u : BoolPCWorld.FiniteWorld (maturityAtomLimitFromStage Tr stage m)) :
-    Decidable (unitMaturityWorldProperty Tr P market ε η m fuel stage u) := by
-  unfold unitMaturityWorldProperty
-  letI : Decidable (∀ φ : {φ // φ ∈ stage},
-      BoolPCWorld.eval u.toBoolPCWorld φ.1 = true) :=
-    Fintype.decidableForallFintype
-  by_cases hstage : ∀ φ : {φ // φ ∈ stage},
-      BoolPCWorld.eval u.toBoolPCWorld φ.1 = true
-  · cases hworth : Tr.partialNetWorthRatAtFuel market fuel u.payoutRat m with
-    | none =>
-        exact isFalse (fun h => by
-          have := h hstage
-          simp at this)
-    | some worth =>
-        by_cases hle : ε - η ≤ worth
-        · exact isTrue (fun _ => by simpa [hworth] using hle)
-        · exact isFalse (fun h => hle (by simpa [hworth] using h hstage))
-  · exact isTrue (fun h => (hstage h).elim)
-
-/-- The executable bounded maturity check.  It accepts only after the certified process
-program has produced stage `m`, all required market calls have terminated, the rational
-risk inequality holds, and every finite Boolean world satisfying that stage passes the
-rational payoff inequality. -/
-def unitMaturityCheckAtFuel
-    (Tr : Trader) (P : History) (DP : DeductiveProcess)
-    (market : MarketComputation P) (process : DeductiveProcessComputation DP)
-    (ε η : ℚ) (m fuel : ℕ) : Bool :=
-  match process.stageAtFuel fuel m with
-  | none => false
-  | some stage =>
-      match Tr.partialMagnitudeRatAtFuel market fuel m with
-      | none => false
-      | some risk => by
-          letI : DecidablePred (fun u : BoolPCWorld.FiniteWorld
-              (maturityAtomLimitFromStage Tr stage m) =>
-              unitMaturityWorldProperty Tr P market ε η m fuel stage u) :=
-            unitMaturityWorldPropertyDecidable Tr P market ε η m fuel stage
-          letI : Decidable (∀ u : BoolPCWorld.FiniteWorld
-              (maturityAtomLimitFromStage Tr stage m),
-              unitMaturityWorldProperty Tr P market ε η m fuel stage u) :=
-            Fintype.decidableForallFintype
-          exact decide
-            (1 - η ≤ risk ∧
-              ∀ u : BoolPCWorld.FiniteWorld
-                  (maturityAtomLimitFromStage Tr stage m),
-                unitMaturityWorldProperty Tr P market ε η m fuel stage u)
-
-lemma maturityAtomLimit_deduction_bounded
-    (Tr : Trader) (DP : DeductiveProcess) (m : ℕ) :
-    ∀ φ ∈ DP.D m, BoolPCWorld.atomBound φ ≤ maturityAtomLimit Tr DP m := by
-  intro φ hφ
-  have hsingle : BoolPCWorld.atomBound φ ≤
-      (DP.D m).sum BoolPCWorld.atomBound :=
-    Finset.single_le_sum (fun ψ _ => Nat.zero_le (BoolPCWorld.atomBound ψ)) hφ
-  unfold maturityAtomLimit
-  omega
-
-lemma maturityAtomLimit_trades_bounded
-    (Tr : Trader) (DP : DeductiveProcess) (m : ℕ) :
-    ∀ d ≤ m, ∀ p ∈ (Tr.strat d).trades,
-      BoolPCWorld.atomBound p.2 ≤ maturityAtomLimit Tr DP m := by
-  intro d hd p hp
-  have hmem : BoolPCWorld.atomBound p.2 ∈
-      ((Tr.strat d).trades.map (fun q => BoolPCWorld.atomBound q.2)) :=
-    List.mem_map.mpr ⟨p, hp, rfl⟩
-  have hlocal : BoolPCWorld.atomBound p.2 ≤
-      ((Tr.strat d).trades.map (fun q => BoolPCWorld.atomBound q.2)).sum :=
-    List.single_le_sum (fun x _ => Nat.zero_le x) _ hmem
-  have hday : d ∈ Finset.range (m + 1) := Finset.mem_range.mpr (by omega)
-  have houter :
-      ((Tr.strat d).trades.map (fun q => BoolPCWorld.atomBound q.2)).sum ≤
-        ∑ j ∈ Finset.range (m + 1),
-          ((Tr.strat j).trades.map
-            (fun q => BoolPCWorld.atomBound q.2)).sum :=
-    Finset.single_le_sum (fun j _ => Nat.zero_le
-      ((Tr.strat j).trades.map
-        (fun q => BoolPCWorld.atomBound q.2)).sum) hday
-  unfold maturityAtomLimit
-  omega
-
-/-- A `true` bounded check produces the exact semantic certificate. -/
-def unitMaturityCheckAtFuel_certificate
-    {Tr : Trader} {P : History} {DP : DeductiveProcess}
-    (market : MarketComputation P) (process : DeductiveProcessComputation DP)
-    {ε η : ℚ} {m fuel : ℕ}
-    (hcheck : unitMaturityCheckAtFuel Tr P DP market process ε η m fuel = true) :
-    UnitMaturitySemanticCertificate Tr P DP market ε η m := by
-  unfold unitMaturityCheckAtFuel at hcheck
-  split at hcheck
-  · contradiction
-  · rename_i stage hstage
-    split at hcheck
-    · contradiction
-    · rename_i risk hrisk
-      letI : DecidablePred (fun u : BoolPCWorld.FiniteWorld
-          (maturityAtomLimitFromStage Tr stage m) =>
-          unitMaturityWorldProperty Tr P market ε η m fuel stage u) :=
-        unitMaturityWorldPropertyDecidable Tr P market ε η m fuel stage
-      letI : Decidable (∀ u : BoolPCWorld.FiniteWorld
-          (maturityAtomLimitFromStage Tr stage m),
-          unitMaturityWorldProperty Tr P market ε η m fuel stage u) :=
-        Fintype.decidableForallFintype
-      have hfinite := of_decide_eq_true hcheck
-      have hstageEq := process.stageAtFuel_sound hstage
-      subst stage
-      refine {
-        atomLimit := maturityAtomLimit Tr DP m
-        deduction_bounded := maturityAtomLimit_deduction_bounded Tr DP m
-        trades_bounded := maturityAtomLimit_trades_bounded Tr DP m
-        risk := ?_
-        payoff := ?_
-      }
-      · have hriskEq := Tr.partialMagnitudeRatAtFuel_sound market fuel m hrisk
-        simpa [hriskEq] using hfinite.1
-      · intro u hu
-        have hworld := hfinite.2 u (fun φ => hu φ.1 φ.2)
-        split at hworld
-        · exact hworld.elim
-        · next worth hworth =>
-            have hworthEq :=
-              Tr.partialNetWorthRatAtFuel_sound market fuel u.payoutRat m hworth
-            rw [hworthEq] at hworld
-            exact hworld
-
-/-- Soundness of the finite rational/Boolean maturity certificate: exhaustive finite
-assignments imply the universal real-valued plausible-world payoff condition in
-`Trader.Matured`. -/
-lemma UnitMaturitySemanticCertificate.sound
-    {Tr : Trader} {P : History} {DP : DeductiveProcess}
-    (market : MarketComputation P) {ε η : ℚ} {m : ℕ}
-    (c : UnitMaturitySemanticCertificate Tr P DP market ε η m)
-    (hmag : Tr.magnitude P = 1) :
-    Tr.Matured P DP (ε : ℝ) (η : ℝ) m := by
-  constructor
-  · rw [hmag, mul_one, Tr.partialMagnitude_eq_ratCast P
-      (fun d φ => market.quote d (Encodable.encode φ)) market.quote_exact]
-    exact_mod_cast c.risk
-  · intro v hv
-    let u : BoolPCWorld.FiniteWorld c.atomLimit :=
-      BoolPCWorld.FiniteWorld.restrict (BoolPCWorld.ofPCWorld v) c.atomLimit
-    have hu : ∀ φ ∈ DP.D m,
-        BoolPCWorld.eval u.toBoolPCWorld φ = true := by
-      intro φ hφ
-      dsimp only [u]
-      rw [BoolPCWorld.eval_toBoolPCWorld_restrict _ _ _
-        (c.deduction_bounded φ hφ)]
-      apply (BoolPCWorld.eval_eq_true_iff_holds _ _).2
-      simpa using hv φ hφ
-    have hpay := c.payoff u hu
-    have hworth :
-        Tr.partialNetWorthRat
-            (fun d φ => market.quote d (Encodable.encode φ)) u.payoutRat m =
-          Tr.partialNetWorthRat
-            (fun d φ => market.quote d (Encodable.encode φ)) v.payoutRat m := by
-      apply Tr.partialNetWorthRat_congr
-      intro d hd p hp
-      exact BoolPCWorld.FiniteWorld.payoutRat_restrict_ofPCWorld
-        v c.atomLimit p.2 (c.trades_bounded d hd p hp)
-    rw [hworth] at hpay
-    rw [hmag, mul_one,
-      Tr.netWorth_eq_ratCast P
-        (fun d φ => market.quote d (Encodable.encode φ)) market.quote_exact
-        v v.payoutRat
-        v.payout_eq_ratCast m]
-    exact_mod_cast hpay
-
-/-- A `true` bounded check is a genuine maturity witness for a unit-magnitude trader: the
-no-false-positive direction for the executable checker. -/
-lemma unitMaturityCheckAtFuel_sound
-    {Tr : Trader} {P : History} {DP : DeductiveProcess}
-    (market : MarketComputation P) (process : DeductiveProcessComputation DP)
-    {ε η : ℚ} {m fuel : ℕ}
-    (hcheck : unitMaturityCheckAtFuel Tr P DP market process ε η m fuel = true)
-    (hmag : Tr.magnitude P = 1) :
-    Tr.Matured P DP (ε : ℝ) (η : ℝ) m :=
-  (unitMaturityCheckAtFuel_certificate market process hcheck).sound market hmag
-
-/-- Semantic completeness of the finite rational/Boolean reduction.  Every genuine
-rational-parameter maturity witness for a unit-magnitude trader yields a finite support
-bound and the exact rational inequalities consumed by the semantic certificate.  No
-computability claim is made here. -/
-def UnitMaturitySemanticCertificate.ofMatured
-    {Tr : Trader} {P : History} {DP : DeductiveProcess}
-    (market : MarketComputation P) {ε η : ℚ} {m : ℕ}
-    (hmature : Tr.Matured P DP (ε : ℝ) (η : ℝ) m)
-    (hmag : Tr.magnitude P = 1) :
-    UnitMaturitySemanticCertificate Tr P DP market ε η m := by
-  let Q : ℕ → Sentence → ℚ :=
-    fun d φ => market.quote d (Encodable.encode φ)
-  refine {
-    atomLimit := maturityAtomLimit Tr DP m
-    deduction_bounded := ?_
-    trades_bounded := ?_
-    risk := ?_
-    payoff := ?_
-  }
-  · intro φ hφ
-    have hsingle : BoolPCWorld.atomBound φ ≤
-        (DP.D m).sum BoolPCWorld.atomBound :=
-      Finset.single_le_sum (fun ψ _ => Nat.zero_le (BoolPCWorld.atomBound ψ)) hφ
-    unfold maturityAtomLimit
-    omega
-  · intro d hd p hp
-    have hmem : BoolPCWorld.atomBound p.2 ∈
-        ((Tr.strat d).trades.map (fun q => BoolPCWorld.atomBound q.2)) :=
-      List.mem_map.mpr ⟨p, hp, rfl⟩
-    have hlocal : BoolPCWorld.atomBound p.2 ≤
-        ((Tr.strat d).trades.map (fun q => BoolPCWorld.atomBound q.2)).sum :=
-      List.single_le_sum (fun x _ => Nat.zero_le x) _ hmem
-    have hday : d ∈ Finset.range (m + 1) := Finset.mem_range.mpr (by omega)
-    have houter :
-        ((Tr.strat d).trades.map (fun q => BoolPCWorld.atomBound q.2)).sum ≤
-          ∑ j ∈ Finset.range (m + 1),
-            ((Tr.strat j).trades.map
-              (fun q => BoolPCWorld.atomBound q.2)).sum :=
-      Finset.single_le_sum (fun j _ => Nat.zero_le
-        ((Tr.strat j).trades.map
-          (fun q => BoolPCWorld.atomBound q.2)).sum) hday
-    unfold maturityAtomLimit
-    omega
-  · have hrisk := hmature.1
-    change 1 - η ≤ Tr.partialMagnitudeRat Q m
-    rw [hmag, mul_one,
-      Tr.partialMagnitude_eq_ratCast P Q market.quote_exact m] at hrisk
-    exact_mod_cast hrisk
-  · intro u hu
-    let v : PCWorld := u.toBoolPCWorld.toPCWorld
-    have hv : v.ConsistentWith (DP.D m) := by
-      intro φ hφ
-      exact (BoolPCWorld.eval_eq_true_iff_holds u.toBoolPCWorld φ).mp (hu φ hφ)
-    have hpay := hmature.2 v hv
-    have hpayout : ∀ φ, v.payout φ = (u.payoutRat φ : ℝ) := by
-      intro φ
-      rw [v.payout_eq_ratCast]
-      congr 1
-      exact (BoolPCWorld.FiniteWorld.payoutRat_eq_toPCWorld u φ).symm
-    change ε - η ≤ Tr.partialNetWorthRat Q u.payoutRat m
-    rw [hmag, mul_one,
-      Tr.netWorth_eq_ratCast P Q market.quote_exact v u.payoutRat hpayout m] at hpay
-    exact_mod_cast hpay
-
-/-- Exact two-way semantic characterization of unit-trader maturity by the finite
-rational/Boolean certificate core. -/
-lemma UnitMaturitySemanticCertificate.nonempty_iff_matured
-    {Tr : Trader} {P : History} {DP : DeductiveProcess}
-    (market : MarketComputation P) {ε η : ℚ} {m : ℕ}
-    (hmag : Tr.magnitude P = 1) :
-    Nonempty (UnitMaturitySemanticCertificate Tr P DP market ε η m) ↔
-      Tr.Matured P DP (ε : ℝ) (η : ℝ) m := by
-  constructor
-  · rintro ⟨c⟩
-    exact c.sound market hmag
-  · intro hmature
-    exact ⟨UnitMaturitySemanticCertificate.ofMatured market hmature hmag⟩
-
-/-- No genuine unit-trader maturity witness is missed forever: one finite interpreter
-clock simultaneously recovers the deductive stage and every exact rational market quote
-needed by the trader prefix, after which the exhaustive Boolean checker accepts. -/
-lemma unitMaturityCheckAtFuel_eventually_complete
-    {Tr : Trader} {P : History} {DP : DeductiveProcess}
-    (market : MarketComputation P) (process : DeductiveProcessComputation DP)
-    {ε η : ℚ} {m : ℕ}
-    (hmature : Tr.Matured P DP (ε : ℝ) (η : ℝ) m)
-    (hmag : Tr.magnitude P = 1) :
-    ∃ fuel, unitMaturityCheckAtFuel Tr P DP market process ε η m fuel = true := by
-  let c : UnitMaturitySemanticCertificate Tr P DP market ε η m :=
-    UnitMaturitySemanticCertificate.ofMatured market hmature hmag
-  obtain ⟨processFuel, hprocess⟩ := process.stageAtFuel_complete m
-  obtain ⟨marketFuel, hmarket⟩ := market.exists_fuel_quoteAtFuel_list
-    (Tr.partialMagnitudeRatQueries m ++ Tr.partialNetWorthRatQueries m)
-  let fuel := max processFuel marketFuel
-  have hstage : process.stageAtFuel fuel m = some (DP.D m) :=
-    process.stageAtFuel_mono (le_max_left _ _) hprocess
-  have hquotes : ∀ query ∈
-      Tr.partialMagnitudeRatQueries m ++ Tr.partialNetWorthRatQueries m,
-      market.quoteAtFuel fuel query.1 query.2 =
-        some (market.quote query.1 (Encodable.encode query.2)) := by
-    intro query hquery
-    exact market.quoteAtFuel_mono (le_max_right _ _) (hmarket query hquery)
-  have hmagnitude : Tr.partialMagnitudeRatAtFuel market fuel m = some
-      (Tr.partialMagnitudeRat
-        (fun d φ => market.quote d (Encodable.encode φ)) m) :=
-    Tr.partialMagnitudeRatAtFuel_complete market fuel m (fun query hquery =>
-      hquotes query (List.mem_append.mpr (Or.inl hquery)))
-  have hnetWorth (u : BoolPCWorld.FiniteWorld (maturityAtomLimit Tr DP m)) :
-      Tr.partialNetWorthRatAtFuel market fuel u.payoutRat m = some
-        (Tr.partialNetWorthRat
-          (fun d φ => market.quote d (Encodable.encode φ)) u.payoutRat m) :=
-    Tr.partialNetWorthRatAtFuel_complete market fuel u.payoutRat m
-      (fun query hquery =>
-        hquotes query (List.mem_append.mpr (Or.inr hquery)))
-  refine ⟨fuel, ?_⟩
-  unfold unitMaturityCheckAtFuel
-  rw [hstage, hmagnitude]
-  letI : DecidablePred (fun u : BoolPCWorld.FiniteWorld
-      (maturityAtomLimitFromStage Tr (DP.D m) m) =>
-      unitMaturityWorldProperty Tr P market ε η m fuel (DP.D m) u) :=
-    unitMaturityWorldPropertyDecidable Tr P market ε η m fuel (DP.D m)
-  letI : Decidable (∀ u : BoolPCWorld.FiniteWorld
-      (maturityAtomLimitFromStage Tr (DP.D m) m),
-      unitMaturityWorldProperty Tr P market ε η m fuel (DP.D m) u) :=
-    Fintype.decidableForallFintype
-  apply decide_eq_true
-  constructor
-  · exact c.risk
-  · intro u hu
-    split
-    · next hnone =>
-        exact (Option.some_ne_none _ ((hnetWorth u).symm.trans hnone)).elim
-    · next worth hsome =>
-        cases Option.some.inj ((hnetWorth u).symm.trans hsome)
-        exact c.payoff u (fun φ hφ => hu ⟨φ, hφ⟩)
+Everything below is stated against `BiasRunHistoricallyVerifiable`, the one remaining
+operational premise.  `Construction/Statistics/HistoricalMaturity.lean` discharges it from
+the constructed market and deductive-process computations, and it is there that the
+unconditional paper endpoints `AffineCombination.BoundedCombinationSequence.recunbiasedaff`
+(`thm:recunbiasedaff`), `AffineCombination.recurringunbiasedness`
+(`thm:recurringunbiasedness`) and `AffineCombination.simcal` (`thm:simcal`) stand. -/
 
 /-- The exact remaining operational boundary in the affine recurring-unbiasedness proof:
 for every alleged bias gap, a single polynomial Boolean table recognizes historical
@@ -3209,7 +1994,7 @@ oracle, the returned object exposes its checker, polynomial clock, soundness, an
 eventual-completeness fields through `HistoricalVerifiedMaturitySchedule`.
 
 The paper derives this interface by dovetailing the computable rational market and
-deductive-process computations; `Construction.Witnesses.HistoricalMaturity` implements
+deductive-process computations; `Construction.Statistics.HistoricalMaturity` implements
 that dovetailer against this predicate. -/
 def BiasRunHistoricallyVerifiable
     (As : ℕ → AffineCombination) (hpoly : PolySequence As)
@@ -3279,8 +2064,8 @@ lemma ApproxDeterminedViaTheory.not_eventually_weightedBias_lt_of_historicalVeri
   have hαrank : ∀ i, (α i).rank ≤ i := by
     intro i
     by_cases hi : N ≤ i <;> simp [α, gateFeature, hi]
-  have hαseg : BigSpliceStream (fun i => (α i).serialize) := by
-    apply BigSpliceStream.gateFeature (BigSpliceStream.serialize_const 1) N
+  have hαseg : MachineSpliceStream (fun i => (α i).serialize) := by
+    apply MachineSpliceStream.gateFeature (MachineSpliceStream.serialize_const 1) N
   have hαclosed : ∀ i ρ V, (α i).denoteWith ρ V = (α i).denote V := by
     intro i ρ V
     by_cases hi : N ≤ i <;>
@@ -3335,8 +2120,6 @@ lemma ApproxDeterminedViaTheory.not_eventually_weightedBias_lt
     ¬ ∀ᶠ n in atTop,
       weightedBias (fun i => (W i).denote P)
         (fun i => (As i).price P i) truth n < -ε := by
-  have hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1 :=
-    fun n φ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n φ
   obtain ⟨q, hq0, hqε⟩ : ∃ q : ℚ, (0 : ℝ) < q ∧ (q : ℝ) < ε :=
     exists_rat_btwn hε
   have hnotq := hdet.not_eventually_weightedBias_lt_of_historicalVerifier
@@ -3431,11 +2214,17 @@ lemma DeterminedViaTheory.recunbiasedaff_of_historicalVerifiers
   hdet.approx.recunbiasedaff_of_historicalVerifiers hpoly hWgen
     (AffineCombination.errorNegligible_zero As P) hWdiv hmag hworld hverify hverifyNeg
 
-/-- Paper-facing `thm:recunbiasedaff` for an arbitrary bounded-combination sequence.
-The economic hub above is stated at unit magnitude; this wrapper performs one canonical
-positive rational normalization, asks the operational verifier only for that concrete
-normalized family, and cancels the scale from the exact zero-limit-point conclusion. -/
-theorem BoundedCombinationSequence.recunbiasedaff_of_historicalVerifiers
+/-- The `thm:recunbiasedaff` shape for an arbitrary bounded-combination sequence, still
+conditional on the historical-maturity verifier.  The economic hub above is stated at unit
+magnitude; this wrapper performs one canonical positive rational normalization, asks the
+operational verifier only for that concrete normalized family, and cancels the scale from the
+exact zero-limit-point conclusion.
+
+It carries no `Paper node` line by the file convention stated above: every
+`_of_historicalVerifiers` form is conditional, and the node is carried by the unconditional
+`AffineCombination.BoundedCombinationSequence.recunbiasedaff` in
+`Construction/Statistics/HistoricalMaturity.lean`, which discharges the verifier. -/
+lemma BoundedCombinationSequence.recunbiasedaff_of_historicalVerifiers
     {As : ℕ → AffineCombination} {P : History} {DP : DeductiveProcess}
     [IsLogicalInductor P DP]
     (h : BoundedCombinationSequence As P)
@@ -3452,8 +2241,6 @@ theorem BoundedCombinationSequence.recunbiasedaff_of_historicalVerifiers
     HasLimitPoint
       (weightedBias (fun i => (W i).denote P)
         (fun i => (As i).price P i) truth) 0 := by
-  have hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1 :=
-    fun n φ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n φ
   let q : ℚ := h.unitNormalization.scale
   have hq : 0 < (q : ℝ) := h.unitNormalization.scale_pos
   have hdetScaled : DeterminedViaTheory
@@ -3494,7 +2281,7 @@ lemma TheoryTruth.isBoolean {φ : ℕ → Sentence} {DP : DeductiveProcess}
     {truth : ℕ → ℝ} (h : TheoryTruth φ DP truth)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) (n : ℕ) :
     truth n = 0 ∨ truth n = 1 := by
-  obtain ⟨v, hv⟩ := exists_consistentWithTheory DP hworld
+  obtain ⟨v, hv⟩ := DP.exists_consistentWithTheory hworld
   have hn := h n v hv
   by_cases hh : v.Holds (φ n)
   · right
@@ -3503,7 +2290,10 @@ lemma TheoryTruth.isBoolean {φ : ℕ → Sentence} {DP : DeductiveProcess}
     simpa [PCWorld.payout, hh] using hn.symm
 
 /-- Ordinary recurring unbiasedness as the one-share specialization of affine recurring
-unbiasedness, retaining the same explicit historical-verification boundary. -/
+unbiasedness, retaining the same explicit historical-verification boundary.  This is the
+generic carrier a client with its own historical verifier applies; the unconditional
+`thm:recurringunbiasedness` endpoint is `AffineCombination.recurringunbiasedness` in
+`Construction/Statistics/HistoricalMaturity.lean`. -/
 lemma recurringunbiasedness_of_historicalVerifiers
     (φ : ℕ → Sentence) (hpoly : PolySequence (sentenceAffine φ))
     {W : ℕ → EF} (hWgen : PGenerableWeighting W)
@@ -3518,8 +2308,6 @@ lemma recurringunbiasedness_of_historicalVerifiers
     HasLimitPoint
       (weightedBias (fun i => (W i).denote P)
         (fun i => P i (φ i)) truth) 0 := by
-  have hP : ∀ n ψ, 0 ≤ P n ψ ∧ P n ψ ≤ 1 :=
-    fun n ψ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n ψ
   have hdet : DeterminedViaTheory (sentenceAffine φ) P DP truth := by
     intro n v hv
     simpa [sentenceAffine, AffineCombination.value] using htruth n v hv
@@ -3533,7 +2321,9 @@ lemma recurringunbiasedness_of_historicalVerifiers
 /-- Recurring calibration from the ordinary recurring-unbiasedness specialization.  Both
 the divergent-case limit point and convergent-case interval guarantee are the exact
 paper conclusions; the only remaining representation premise is the named historical
-verifier for the sentence family and its negation. -/
+verifier for the sentence family and its negation.  This is the generic carrier a client
+with its own verifier applies; the unconditional `thm:simcal` endpoint is
+`AffineCombination.simcal` in `Construction/Statistics/HistoricalMaturity.lean`. -/
 lemma simcal_of_historicalVerifiers
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
     (φ : ℕ → Sentence) (truth : ℕ → ℝ)
@@ -3557,63 +2347,11 @@ lemma simcal_of_historicalVerifiers
           (weightedAverage
             (fun n => (calibrationIndicator φ a b δ n).denote P) truth) x →
         x ∈ Icc (a : ℝ) (b : ℝ) := by
-  have hP : ∀ n ψ, 0 ≤ P n ψ ∧ P n ψ ≤ 1 :=
-    fun n ψ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n ψ
   have hbias := recurringunbiasedness_of_historicalVerifiers φ hpoly hWgen
     htruth hdiv hworld hverify hverifyNeg
   exact simcal_of_recurring_unbiasedness P φ truth a b δ hδpos
     (fun n => htruth.isBoolean hworld n) hdiv hbias
 
 end AffineCombination
-
-#print axioms calibration_limitPoint_transfer
-#print axioms calibration_convergent_limit_mem
-#print axioms hasLimitPoint_zero_of_two_sided_recurring
-#print axioms weightedAverage_step_tendsto_zero
-#print axioms weightedBias_neg
-#print axioms calibrationIndicator_pgenerable
-#print axioms simcal_of_recurring_unbiasedness
-#print axioms AffineCombination.DeterminedViaTheory.unique
-#print axioms AffineCombination.DeterminedViaTheory.neg
-#print axioms AffineCombination.DeterminedViaTheory.eventually_close
-#print axioms AffineCombination.biasRunCoefficient_denote
-#print axioms AffineCombination.biasRun_magnitudePrefix_le_one
-#print axioms AffineCombination.biasRunTrader_summable_and_magnitude_le_one
-#print axioms AffineCombination.biasRunTrader_magnitude_eq_one_of_attemptedRisk
-#print axioms AffineCombination.ApproxDeterminedViaTheory.abs_truth_sub_price_le_magnitude
-#print axioms weightedExposure_tendsto_atTop_of_eventually_negative_bias
-#print axioms prefixSum_mul_lower_of_prefixSum_lower
-#print axioms AffineCombination.fractionalFamilyFeatureWeight_polySeg
-#print axioms AffineCombination.biasRunTrader_polyTrade
-#print axioms AffineCombination.ApproxDeterminedViaTheory.biasRunTrader_hasROI_of_surplus
-#print axioms AffineCombination.ApproxDeterminedViaTheory.eventually_biasRunTrader_hasROI
-#print axioms MarketComputation.evaln_quote_eq
-#print axioms MarketComputation.exists_evaln_quote
-#print axioms MarketComputation.quoteAtFuel_sound
-#print axioms MarketComputation.quoteAtFuel_complete
-#print axioms MarketComputation.exists_fuel_quoteAtFuel_list
-#print axioms DeductiveProcessComputation.evaln_eq_stage
-#print axioms DeductiveProcessComputation.exists_evaln_stage
-#print axioms DeductiveProcessComputation.stageAtFuel_sound
-#print axioms DeductiveProcessComputation.stageAtFuel_complete
-#print axioms AffineCombination.exists_valueSet
-#print axioms AffineCombination.DeterminedViaTheory.exists_settled_stage
-#print axioms AffineCombination.DeterminedViaTheory.settled_iff_agree
-#print axioms AffineCombination.value_eq_ratCast
-#print axioms AffineCombination.valueRat_congr
-#print axioms AffineCombination.agree_of_finiteWorlds_agree
-#print axioms EF.denoteRatWithAtFuel_sound
-#print axioms EF.denoteRatWithAtFuel_complete
-#print axioms EF.exists_fuel_denoteRatWithAtFuel
-#print axioms AffineCombination.unitMaturityCheckAtFuel_certificate
-#print axioms AffineCombination.unitMaturityCheckAtFuel_sound
-#print axioms AffineCombination.unitMaturityCheckAtFuel_eventually_complete
-#print axioms AffineCombination.UnitMaturitySemanticCertificate.sound
-#print axioms AffineCombination.UnitMaturitySemanticCertificate.nonempty_iff_matured
-#print axioms AffineCombination.ApproxDeterminedViaTheory.not_eventually_weightedBias_lt_of_historicalVerifier
-#print axioms AffineCombination.DeterminedViaTheory.recunbiasedaff_of_historicalVerifiers
-#print axioms AffineCombination.BoundedCombinationSequence.recunbiasedaff_of_historicalVerifiers
-#print axioms AffineCombination.recurringunbiasedness_of_historicalVerifiers
-#print axioms AffineCombination.simcal_of_historicalVerifiers
 
 end LogicalInduction

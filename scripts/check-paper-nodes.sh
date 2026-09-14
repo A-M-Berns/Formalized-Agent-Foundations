@@ -3,9 +3,17 @@
 #
 #   1. Every label cited in a `Paper node:` field exists as a `\label{...}` in the
 #      paper source. Catches typos and stale references after a paper/rename.
+#   1b. Every backticked `kind:name` token anywhere in a `LogicalInduction/` source —
+#      prose as well as annotations — is either a real `\label{...}`, a `dd:` glossary
+#      entry, or a `tex:NNNN` line citation. Catches phantom labels cited in explanatory
+#      prose, which check 1 never looks at (a whole family of `def:pgen` miscitations
+#      survived years of green runs because they sat in module docstrings).
 #   2. Every declaration named in `AxiomAudit.lean` (Tier 1 endpoints and Tier 2
 #      `#assert_fields` structures) carries a `Paper node:` field. Catches surface
-#      members that lost their annotation.
+#      members that lost their annotation. A docstring counts as carrying one only if its
+#      `Paper node` line bears an actual backticked `kind:label` token: a *sentence* about
+#      annotation ("carries no `Paper node` line") must not satisfy the check, which is
+#      how three refutation endpoints once passed it.
 #
 # Run from repo root. Exits nonzero on any violation, and says so on the last line: a
 # reader (or a log skimmed through a pipe, where the exit status is the pipeline's and not
@@ -42,6 +50,32 @@ while read -r lab; do
   fi
 done < /tmp/_pn_used
 
+# --- 1b. whole-docstring label validity -------------------------------------
+# Every backticked `kind:name` token anywhere in the library, not only on annotation lines.
+# `dd:` is this repo's own design-decision glossary (defined once, in LogicalInduction.lean)
+# and `tex:NNNN` is a line citation into the paper source; everything else must resolve to a
+# real `\label`.
+grep -oE 'dd:[a-zA-Z0-9_-]+' LogicalInduction.lean | sort -u > /tmp/_pn_dd
+grep -rhoE '`[a-z]+:[a-zA-Z0-9_-]+`' --include='*.lean' "$LIB" \
+  | tr -d '`' | sort -u > /tmp/_pn_prose
+while read -r tok; do
+  [ -z "$tok" ] && continue
+  case "$tok" in
+    tex:[0-9]*) continue ;;
+    dd:*)
+      if ! grep -qxF "$tok" /tmp/_pn_dd; then
+        echo "INVALID LABEL: \`$tok\` is not defined in the LogicalInduction.lean dd: glossary"
+        fail=1
+      fi
+      continue ;;
+  esac
+  if ! grep -qxF "$tok" /tmp/_pn_labels; then
+    echo "INVALID LABEL (prose): \`$tok\` is not a \\label in $TEX"
+    grep -rn "\`$tok\`" --include='*.lean' "$LIB" | sed 's/^/    /'
+    fail=1
+  fi
+done < /tmp/_pn_prose
+
 # --- 2. inventory coverage --------------------------------------------------
 # Short names on the surface. `#assert_axioms_clean` blocks: every ident (the head line
 # plus 2-space continuation lines) is an endpoint. `#assert_fields` lines: only the first
@@ -59,19 +93,162 @@ awk '
 ' "$AUDIT" \
   | grep -oE '[A-Za-z_][A-Za-z0-9_.₀₁₂₃₄₅₆₇₈₉'"'"']*' \
   | sed 's/.*\.//' | sort -u > /tmp/_pn_inv
-# short names that carry a Paper node field (declaration on the line after the field's `-/`)
-grep -rlE 'Paper nodes?:' --include='*.lean' "$LIB" | while read -r f; do
-  awk '/Paper nodes?:/{p=1} p&&/-\/$/{f=1;next} f{print;f=0;p=0}' "$f"
+# Short names that carry a Paper node field (declaration on the line after the field's `-/`).
+# The `Paper node` line must bear a real backticked `kind:label` token — a sentence *about*
+# annotation is prose, not an annotation, and must not license the declaration that follows.
+grep -rlE 'Paper nodes?:.*`[a-z]+:[a-zA-Z0-9_-]+`' --include='*.lean' "$LIB" | while read -r f; do
+  awk '/Paper nodes?:.*`[a-z]+:[a-zA-Z0-9_-]+`/{p=1} p&&/-\/$/{f=1;next} f{print;f=0;p=0}' "$f"
 done | grep -oE '(structure|def|theorem|lemma|abbrev|class)\s+[A-Za-z_][A-Za-z0-9_.₀₁₂₃₄₅₆₇₈₉'"'"']*' \
   | awk '{print $2}' | sed 's/.*\.//' | sort -u > /tmp/_pn_have
 
+# Inventoried members that carry no annotation ON PURPOSE, each with the reason.  These
+# REFUTE a paper claim rather than render one, so a `Paper node:` line would misfile them as
+# a rendering of the very statement they disprove (`thm:ifp`, `notes/paper-errata.md` PE1).
+# They stay inventoried because they must stay axiom-clean; the curated `thm:ifp` endpoint is
+# `not_overgeneral_ifp`, which is annotated.  Same discipline as
+# `check_endpoint_coverage.py`'s excuse table: an exemption is named and justified, never
+# implicit.
+# The second group is the non-vacuity witness block (AxiomAudit.lean, "Non-vacuity
+# witnesses"): declarations that INHABIT an interface rather than render a paper claim. An
+# inhabitant of `def:ec`'s machine reading is not a rendering of `def:ec`, so annotating one
+# would file a witness as a statement. They are inventoried because transitive coverage
+# reaches upstream only, so nothing else would catch a `sorry` in them. The staleness check
+# below is what keeps this list honest. `succDeferral` and `doublingDeferral` are in that
+# group (they inhabit `def:deferralfunc`, at the slow and the fast end of the growth range
+# its output-sensitive clause admits), and so is `not_polyFueled_doublingDeferral`, which
+# REFUTES a fuel certificate for the second rather than rendering anything.
+# `expectation_indicator_not_identity` is in that group for the same reason as
+# `not_polyFueled_doublingDeferral`: it REFUTES the degenerate reading of `thm:ei` at the
+# constructed indicator (a market pricing `φ` and the equivalent `φ ⋏ ∼∼φ` apart), so a
+# `thm:ei` line on it would file a refutation as a rendering of the theorem it protects.
+# The third group (`SettlementChecker`, last) is a repo-side computability interface: frozen
+# and inventoried because a canonical endpoint binds it, but rendering no paper node, since
+# it asks for a recognizer and no runtime bound at all. A `def:ec` line on it would claim an
+# efficiency obligation the structure does not impose.
+# `MachineRatCodes` is in that third group too: it is the machine-metered *data premise*
+# five endpoint structures name (`Framework/Machine/WriteOutMachine.lean`), frozen so a
+# rational emission hypothesis cannot be smuggled in or out of a boundary. It renders no
+# paper node — `def:ec` is carried by `EfficientlyComputable` itself — so a `def:ec` line on
+# it would file a hypothesis-shaped interface as a rendering of the criterion.
+# The LUV lane's six emission inhabitants
+# (`machineTokenStream_binNumeralEnc_id`, `binNumeralEnc_nonconstant`,
+# `machineArithmeticSourceSeq_iffChainSource`, `iffChainSource_nonconstant`,
+# `machineDigits_sourceNat_iffChainSource`, `sourceNat_iffChainSource_nonconstant`) are in
+# the second group: each inhabits a machine emission class at a day-varying family, or
+# records that the inhabitant is not a constant sequence.  `luvThresholdDP_computable` is
+# there too — it inhabits the `ComputableDeductiveProcess` field of the instance hypothesis
+# four `_arith` endpoints bind, rendering no paper node of its own.  The nine applied
+# clients named beside them (`lic_expectation_indicator_dyadicPaperLUVSeq` and its siblings)
+# are in that group too: each applies a canonical endpoint at a constructed family with every
+# hypothesis discharged, so it witnesses satisfiability rather than rendering the node.
+# The fourth group (the three `lic_deducible_*`) is the fixed-sentence fragment of
+# Provability Induction: `∀ n, φ ∈ DP.D n` for a *fixed* `φ` is strictly stronger than
+# `thm:provind`'s "is a theorem", and the paper's statement is about a sequence, so an
+# annotation would credit them with a node they do not render. The carrier is `lic_provind`
+# (`Properties/AffineCoherence.lean`). They stay inventoried because they are public and must
+# stay axiom-clean.
+# The fifth group is the semantic-extension lane's obstruction/non-vacuity block
+# (`semanticProductDP_no_increasing_factor_assignment`,
+# `semanticFreshIncreasing_not_jointly_reflected`, `semanticFreshIncreasing_no_cutCertificate`,
+# `theorem_quote_product_not_jointly_satisfiable`, with `semanticProductDP_hworld` as their
+# `N+` witness, and `semanticFreshIncreasingLUVSeq_fresh` /
+# `_machineThresholdCodeSeq` as the malformed witness family's own certificates) together
+# with the two quotation-path witnesses
+# (`quotationRepresentation_positive_path`, `quotationRepresentation_negative_path`).  The
+# first four REFUTE candidate universal designs — a `thm:ccee` line on them would file a
+# refutation as a rendering of the node they protect — and the last three inhabit an
+# interface rather than rendering anything.
+cat > /tmp/_pn_exempt <<'EOF'
+lic_deducible_price_near_one
+lic_deducible_eventually_ge
+lic_deducible_tendsto_one
+exists_advice_perturbation
+exists_advice_perturbation_ofTheory
+not_overgeneral_ifp_ofTheory
+not_overgeneral_ifp_of_advice
+unaryRuler_triangle
+unaryRuler_triangle_nonconstant
+machineDigits_id
+machineDigits_id_nonconstant
+machineDigits_two_pow
+machineDigits_two_pow_nonconstant
+machineMachineCodes_nest
+machineMachineCodes_nest_nonconstant
+machineRatCodes_two_pow_inv
+machineDigits_ratCode_two_pow_inv
+machineRatCodes_two_pow_inv_nonconstant
+machineTokenStream_atom
+machineSentenceCodes_atom
+machineSentenceCodes_atom_nonconstant
+machineSentenceCodes_conjRange
+machineSentenceCodes_conjRange_nonconstant
+machineSpliceStream_atomTrade
+machineSpliceStream_atomTrade_nonconstant
+buyAtomDaily
+buyAtomDaily_nonconstant
+efficientlyComputable_buyAtomDaily
+machineTokenStream_marks
+machineDigits_tokenListNat_marks
+machineDigits_tokenListNat_marks_nonconstant
+zero
+zero_not_exploits
+polyPositiveWidths_two_pow_inv
+expectation_indicator_not_identity
+succDeferral
+doublingDeferral
+not_polyFueled_doublingDeferral
+presentedLUVSeq
+toDigitMachineCodes
+machineTokenStream_binNumeralEnc_id
+binNumeralEnc_nonconstant
+machineArithmeticSourceSeq_iffChainSource
+iffChainSource_nonconstant
+machineDigits_sourceNat_iffChainSource
+sourceNat_iffChainSource_nonconstant
+luvThresholdDP_computable
+lic_expectation_indicator_dyadicPaperLUVSeq
+expect_converges_dyadicPaperLUV
+lic_expectation_indicator_iffPaperLUVSeq
+expect_converges_iffPaperLUV
+lic_does_not_anticipate_halting_neverHalt
+lic_belief_finitistic_consistency_ackermann
+lic_belief_stronger_theory_consistency_ackermann
+conClaimSentence_ackermann_day_ne
+lic_learns_halting_patterns_nest
+SettlementChecker
+MachineRatCodes
+semanticProductDP_hworld
+semanticProductDP_no_increasing_factor_assignment
+semanticFreshIncreasingLUVSeq_fresh
+semanticFreshIncreasingLUVSeq_machineThresholdCodeSeq
+semanticFreshIncreasing_not_jointly_reflected
+semanticFreshIncreasing_no_cutCertificate
+theorem_quote_product_not_jointly_satisfiable
+quotationRepresentation_positive_path
+quotationRepresentation_negative_path
+EOF
+
 while read -r nm; do
   [ -z "$nm" ] && continue
+  if grep -qxF "$nm" /tmp/_pn_exempt; then continue; fi
   if ! grep -qxF "$nm" /tmp/_pn_have; then
     echo "MISSING FIELD: inventory member '$nm' has no Paper node annotation"
     fail=1
   fi
 done < /tmp/_pn_inv
+
+# The exemption list must not rot: an exempted name that is no longer inventoried, or that
+# has since acquired an annotation, is a stale excuse and fails the run.
+while read -r nm; do
+  [ -z "$nm" ] && continue
+  if ! grep -qxF "$nm" /tmp/_pn_inv; then
+    echo "STALE EXEMPTION: '$nm' is exempted from the annotation rule but is not inventoried"
+    fail=1
+  elif grep -qxF "$nm" /tmp/_pn_have; then
+    echo "STALE EXEMPTION: '$nm' is exempted from the annotation rule but now carries one"
+    fail=1
+  fi
+done < /tmp/_pn_exempt
 
 # --- 3. reverse coverage: every annotated label has an inventory endpoint ----------
 # Checks 1-2 above verify inventory -> paper (listed endpoints cite real, annotated

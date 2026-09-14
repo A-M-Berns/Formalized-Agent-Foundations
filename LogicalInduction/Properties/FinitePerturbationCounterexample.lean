@@ -1,8 +1,8 @@
 import LogicalInduction.Framework.Compactness
-import LogicalInduction.Framework.MachineEfficiency
-import LogicalInduction.Properties.Basic
+import LogicalInduction.Framework.Efficiency
+import LogicalInduction.Properties.Support.Exploitation
 import LogicalInduction.Properties.Introspection
-import LogicalInduction.Framework.WriteOut
+import LogicalInduction.Framework.Emission.WriteOut
 
 /-!
 # A refutation of the unrestricted finite-day perturbation theorem
@@ -10,8 +10,8 @@ import LogicalInduction.Framework.WriteOut
 `Properties/FinitePerturbations.lean` records that the appendix proof of `thm:ifp` has a
 gap.  This file develops the *semantic* refutation: the unrestricted statement
 
-    ∀ P P' DP N, IsMachineLogicalInductor P DP → ComputableMarket P' →
-      (∀ n ≥ N, P n = P' n) → IsMachineLogicalInductor P' DP
+    ∀ P P' DP N, IsLogicalInductor P DP → ComputableMarket P' →
+      (∀ n ≥ N, P n = P' n) → IsLogicalInductor P' DP
 
 is false, because a day-`0` perturbation may publish, as prices of otherwise inert advice
 atoms, the very bits that separate the computable from the efficiently computable.
@@ -27,8 +27,24 @@ Everything below the assembly section is a complete, unconditional development o
 bookkeeping over an *abstract* history, diagonal family and trader.  The assembly section
 records what remains.
 
-This file is deliberately **not** annotated with a `Paper node:` line: it refutes a paper
+This file is deliberately **not** annotated with a `Paper node` line: it refutes a paper
 statement rather than rendering one.
+
+## What the file builds
+
+* Settlement: `Dichotomy`, `SettledAt` and `settleStage`, the *least* stage deciding a
+  diagonal day.
+* The sparse schedule: `sched` and `roundCount`, one open position at a time.
+* Per-round accounting: `signCoeff`, `roundValue`, `half_le_roundValue`,
+  `neg_one_le_roundValue`, `netWorth_eq_sum`, `netWorth_ge`, `exploits`.  Exploitation is
+  read off exact finite sums; no convergence statement is used anywhere.
+* Transport across the day-`0` perturbation: `settledAt_congr`, `settleStage_congr` and
+  `sched_congr` show the schedule depends only on days `≥ 1`, which is what removes the
+  apparent circularity.
+* The advice layer: `schedAtom`/`signAtom`, `adviceRow`, `advicePerturb`,
+  `advicePerturbed`, `gateBit`, `signBit`, `adviceCoefficient`, `adviceTrader` and
+  `adviceTrader_efficient`.
+* The reduction `not_overgeneral_ifp_of_advice`, unconditional and complete.
 
 ## What this refutes, and what it leaves standing
 
@@ -54,8 +70,6 @@ finite list of rows; under mere day agreement it is not.
 
 namespace LogicalInduction
 namespace FinitePerturbationCounterexample
-
-open Classical
 
 /-! ## Settlement
 
@@ -91,11 +105,13 @@ lemma exists_settled {V : History} {DP : DeductiveProcess} {χ : ℕ → Sentenc
       (fun v hv => (PCWorld.holds_neg v (χ m)).2 (fun hH => hlt ((h v hv).1 hH)))
     exact ⟨k, fun v hv => iff_of_false ((PCWorld.holds_neg v (χ m)).1 (hk v hv)) hlt⟩
 
+open Classical in
 /-- A chosen settlement stage for day `m`; `0` on days with no dichotomy. -/
 noncomputable def settleStage (V : History) (DP : DeductiveProcess) (χ : ℕ → Sentence)
     (m : ℕ) : ℕ :=
   if h : ∃ k, SettledAt V DP χ m k then Nat.find h else 0
 
+open Classical in
 /-- Kind `P`; hypotheses `(a)`. -/
 lemma settleStage_spec {V : History} {DP : DeductiveProcess} {χ : ℕ → Sentence} {m : ℕ}
     (h : Dichotomy V DP χ m) : SettledAt V DP χ m (settleStage V DP χ m) := by
@@ -305,7 +321,8 @@ lemma netWorth_ge (Tr : Trader) (V : History) (DP : DeductiveProcess) (χ : ℕ 
   · rw [h0]
     simp only [Finset.range_zero, Finset.sum_empty, Nat.cast_zero]
     norm_num
-  · obtain ⟨d, hd⟩ : ∃ d, roundCount V DP χ n = d + 1 := ⟨roundCount V DP χ n - 1, by omega⟩
+  · obtain ⟨d, hd⟩ : ∃ d, roundCount V DP χ n = d + 1 :=
+      ⟨roundCount V DP χ n - 1, by omega⟩
     have hsettled : ∀ j ∈ Finset.range d,
         (1 : ℝ) / 2 ≤ roundValue V χ v (sched V DP χ j) := by
       intro j hj
@@ -379,6 +396,7 @@ lemma settledAt_congr {P P' : History} {DP : DeductiveProcess} {χ : ℕ → Sen
     SettledAt P DP χ m k ↔ SettledAt P' DP χ m k := by
   simp only [SettledAt, hagree m hm]
 
+open Classical in
 /-- The chosen settlement stage transports too, discharged by minimality rather than by
 rewriting under a dependent motive.
 Kind `C`; hypotheses `(a)`, `(b)` `Nat.find_mono`. -/
@@ -421,15 +439,6 @@ lemma dichotomy_of_paradoxQuote {P P' : History} {DP : DeductiveProcess}
   rw [← hagree m hm, ← hcast]
   exact q.diagonal_reflected m v hv
 
-/-- Every scheduled day carries the dichotomy, which is the hypothesis the exploitation
-bookkeeping consumes.
-Kind `C`; hypotheses `(a)`. -/
-lemma dichotomy_sched_of_paradoxQuote {P P' : History} {DP : DeductiveProcess}
-    (q : ParadoxResistanceQuote P DP (1 / 2))
-    (hagree : ∀ n, 1 ≤ n → ∀ φ, P n φ = P' n φ) (j : ℕ) :
-    Dichotomy P' DP q.sentence (sched P' DP q.sentence j) :=
-  dichotomy_of_paradoxQuote q hagree (one_le_sched P' DP q.sentence j)
-
 /-! ## The advice atoms
 
 `P' 0` is defined by decoding its argument, so the two advice families must be injective
@@ -443,15 +452,15 @@ and never reads `P' 0` at a process atom; and `χ`'s reflection is transported a
 `hagree`, which constrains only days `≥ 1`.  Even a hypothetical collision `sa n = χ m`
 would be harmless, since nothing reads `P' 0 (χ m)`.
 
-Tags `7`/`8` are nevertheless chosen disjoint from every tag this repo's processes emit.
-The global atom-payload space is gapless and fully allocated (see the table at
-`ComputationClaimKind.godelCode`): computation claims `0`–`1`
-(`ComputationClaimKind.godelCode`), quotation claims `2` (`quotationClaimCode`), quoted
-products `3` (`productTag`), semantic handles `4` (`semanticPrimeTag`), first-order primes
-`5` (`paperPrimeTag`), the old-language copy `6` (`oldLanguageTag`).  The advice tags sit
-immediately **above** that block, at `7` and `8`, so the advice layer is inert everywhere,
-not merely where the proof happens to look — and, unlike the earlier `6`/`7` choice, it no
-longer collides numerically with any allocated tag.
+Tags `7`/`8` are nevertheless chosen disjoint from every tag the market perturbed here
+emits, so the advice layer is inert numerically and not merely where the proof happens to
+look.  The registry of the atom-payload space is the table at
+`ComputationClaimKind.godelCode` (`Construction/Knowledge/Syntax.lean`), and
+the process and diagonal family the downstream witness supplies draw their atoms from the
+payload tags `0`–`6` that table allocates.  Disjointness from every tag in the repository
+is a strictly stronger property, and is neither claimed nor needed: `7` also names the
+`thm:dus` bit atoms (`bitAtomTag`, `Construction/NonDogmatism/Endpoints.lean`), which belong
+to a separate development and never enter this market.
 -/
 
 /-- The schedule-gate advice atom for day `n`, on the fresh tag `7`. -/
@@ -474,20 +483,20 @@ lemma rpn_schedAtom (n : ℕ) : rpn (schedAtom n) = [Nat.pair 7 n + 5] := rfl
 lemma rpn_signAtom (n : ℕ) : rpn (signAtom n) = [Nat.pair 8 n + 5] := rfl
 
 /-- Kind `C`; hypotheses `(b)` the `Computable`/`RpnSplice` emitter suite. -/
-lemma rpnSentenceCodes_schedAtom : BigSentenceCodes schedAtom := by
+lemma machineSentenceCodes_schedAtom : MachineSentenceCodes schedAtom := by
   obtain ⟨c, hc⟩ := ((PolyFueled.const 7).pair PolyFueled.id).addConst 5
-  exact BigSentenceCodes.ofCanonical
-    ((BigTokenStream.ofPolySegStream
+  exact MachineSentenceCodes.ofCanonical
+    (BigTokenStream.toMachine ((BigTokenStream.ofPolySegStream
       (PolySegStream.ofTokenStream (PolyTokenStream.polyTok hc))).of_eq
-      (fun n => (rpn_schedAtom n).symm))
+      (fun n => (rpn_schedAtom n).symm)))
 
 /-- Kind `C`; hypotheses `(b)` the `Computable`/`RpnSplice` emitter suite. -/
-lemma rpnSentenceCodes_signAtom : BigSentenceCodes signAtom := by
+lemma machineSentenceCodes_signAtom : MachineSentenceCodes signAtom := by
   obtain ⟨c, hc⟩ := ((PolyFueled.const 8).pair PolyFueled.id).addConst 5
-  exact BigSentenceCodes.ofCanonical
-    ((BigTokenStream.ofPolySegStream
+  exact MachineSentenceCodes.ofCanonical
+    (BigTokenStream.toMachine ((BigTokenStream.ofPolySegStream
       (PolySegStream.ofTokenStream (PolyTokenStream.polyTok hc))).of_eq
-      (fun n => (rpn_signAtom n).symm))
+      (fun n => (rpn_signAtom n).symm)))
 
 /-! ## The perturbed market
 
@@ -503,6 +512,7 @@ rational quote table and a `Nat.Partrec.Code`, not for the history to be a compu
 function, so nothing is lost.
 -/
 
+open Classical in
 /-- The day-`0` advice row over a base valuation. -/
 noncomputable def adviceRow (base : Valuation) (gate sign : ℕ → ℝ) : Valuation :=
   fun φ =>
@@ -588,6 +598,7 @@ because `sched j ≥ 1` — day `0` is not scheduled.  For the gate bit it is `s
 that licenses it, and that is what keeps the day-`0` row a function of `P` alone.
 -/
 
+open Classical in
 /-- The schedule gate bit for day `n`. -/
 noncomputable def gateBit (P : History) (DP : DeductiveProcess) (χ : ℕ → Sentence) (n : ℕ) :
     ℝ := if ∃ j, sched P DP χ j = n then 1 else 0
@@ -719,58 +730,60 @@ lemma adviceTrader_value_on_sched (sa si χ : ℕ → Sentence) (V : History)
   · rw [if_pos h, if_pos h]; ring
   · rw [if_neg h, if_neg h]; ring
 
-/-- **The advice trader is machine-efficient**, given `BigSentenceCodes` certificates for
-the two advice-atom families and for the traded diagonal.
+/-- **The advice trader is efficiently computable**, given `MachineSentenceCodes` certificates
+for the two advice-atom families and for the traded diagonal.
 
 Route note: the coefficient carries *price* leaves, which is the whole point of the
 construction, so the price-free entry points
-(`EfficientlyComputable.ofSingleTradeBlocks` / `ofTradeBlocks`, both of which demand
-`EF.priceFree`) do not apply.  The general splice capstone `BigSpliceStream.ec` does, with
-`BigSpliceStream.serialize_price` supplying each price leaf's sentence slot from the
-corresponding advice-atom code stream.
-Kind `C`; hypotheses `(a)`, `(b)` the `RpnSplice` combinator suite. -/
+(`EfficientlyComputable.ofSingleTradeBlocksBig` / `ofTradeBlocksBig`, both of which demand
+`EF.priceFree`) do not apply.  The general splice capstone `MachineSpliceStream.ec` does,
+with `MachineSpliceStream.serialize_price` supplying each price leaf's sentence slot from
+the corresponding advice-atom code stream.
+Kind `C`; hypotheses `(a)`, `(b)` the `SpliceMachine` combinator suite. -/
 lemma adviceTrader_efficient {sa si χ : ℕ → Sentence}
-    (hsa : BigSentenceCodes sa) (hsi : BigSentenceCodes si) (hχ : BigSentenceCodes χ) :
-    MachineEfficientTrader (adviceTrader sa si χ) := by
-  have hday : PolyFueled (Nat.Partrec.Code.const 0) (fun _ : ℕ => 0) := PolyFueled.const 0
-  have hgate : BigSpliceStream (fun n => (EF.price (sa n) 0).serialize) :=
-    BigSpliceStream.serialize_price hsa PolyFueled.id hday
-  have hsign : BigSpliceStream (fun n => (EF.price (si n) 0).serialize) :=
-    BigSpliceStream.serialize_price hsi PolyFueled.id hday
-  have hcoef : BigSpliceStream (fun n => (adviceCoefficient sa si n).serialize) :=
-    BigSpliceStream.serialize_mul hgate
-      (BigSpliceStream.serialize_add
-        (BigSpliceStream.serialize_mul (BigSpliceStream.serialize_const 2) hsign)
-        (BigSpliceStream.serialize_const (-1)))
-  have htrade : BigSpliceStream (fun n => [6, Encodable.encode (χ n)]) :=
-    BigSpliceStream.tradeSlot hχ PolyFueled.id
-  refine EfficientlyComputable.toMachine
-    (BigSpliceStream.ec _ ((hcoef.append htrade).of_eq (fun n => ?_)))
+    (hsa : MachineSentenceCodes sa) (hsi : MachineSentenceCodes si)
+    (hχ : MachineSentenceCodes χ) :
+    EfficientlyComputable (adviceTrader sa si χ) := by
+  have hday : MachineDigits (fun _ : ℕ => 0) := MachineDigits.const 0
+  have hgate : MachineSpliceStream (fun n => (EF.price (sa n) 0).serialize) :=
+    MachineSpliceStream.serialize_price hsa UnaryRuler.id hday
+  have hsign : MachineSpliceStream (fun n => (EF.price (si n) 0).serialize) :=
+    MachineSpliceStream.serialize_price hsi UnaryRuler.id hday
+  have hcoef : MachineSpliceStream (fun n => (adviceCoefficient sa si n).serialize) :=
+    MachineSpliceStream.serialize_mul hgate
+      (MachineSpliceStream.serialize_add
+        (MachineSpliceStream.serialize_mul (MachineSpliceStream.serialize_const 2) hsign)
+        (MachineSpliceStream.serialize_const (-1)))
+  have htrade : MachineSpliceStream (fun n => [6, Encodable.encode (χ n)]) :=
+    MachineSpliceStream.tradeSlot hχ UnaryRuler.id
+  refine MachineSpliceStream.ec _ ((hcoef.append htrade).of_eq (fun n => ?_))
   simp [adviceTrader, serializeTrades]
 
 /-! ## Assembly
 
-The reduction below is unconditional and complete: given a machine logical inductor, a
-computable market agreeing with it from day `1` on, a machine-efficient trader with the
+The reduction below is unconditional and complete: given a logical inductor, a
+computable market agreeing with it from day `1` on, an efficiently computable trader with the
 two interface laws, and the scheduled-day dichotomy, the unrestricted finite-perturbation
 statement is false.  Every one of those inputs is supplied by this file except the
 concrete witness, which lives downstream (see the closing section).
 -/
 
-/-- **The refutation, modulo the advice construction.**  Given a machine logical inductor
-`P`, a computable market `P'` agreeing with it from day `1` on, and a machine-efficient
+/-- **The refutation, modulo the advice construction.**  Given a logical inductor
+`P`, a computable market `P'` agreeing with it from day `1` on, and an efficiently computable
 trader whose day-`n` position is the advice-signed unit position in `χ n` on schedule and
 empty off it, the unrestricted finite-perturbation statement is false.
 
-Refutes, rather than renders, the paper's `thm:ifp`: it carries no `Paper node:` line and
-is not an inventory endpoint.
+Refutes, rather than renders, the paper's `thm:ifp`, so it carries no `Paper node` line: an
+annotation would file it as a rendering of the statement it disproves.  It is inventoried in
+`AxiomAudit.lean` all the same, to keep it axiom-checked, and `scripts/check-paper-nodes.sh`
+names it in the exemption list that lets an inventory member go unannotated.
 Kind `C`; hypotheses `(a)`. -/
 theorem not_overgeneral_ifp_of_advice
     (P P' : History) (DP : DeductiveProcess) (χ : ℕ → Sentence) (Tr : Trader)
-    (hLI : IsMachineLogicalInductor P DP)
+    (hLI : IsLogicalInductor P DP)
     (hP' : ComputableMarket P')
     (hagree : ∀ n, 1 ≤ n → ∀ φ, P n φ = P' n φ)
-    (hTr : MachineEfficientTrader Tr)
+    (hTr : EfficientlyComputable Tr)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (hdicho : ∀ j, Dichotomy P' DP χ (sched P' DP χ j))
     (hzero : ∀ (v : PCWorld) i, (∀ j, sched P' DP χ j ≠ i) →
@@ -778,31 +791,29 @@ theorem not_overgeneral_ifp_of_advice
     (hval : ∀ (v : PCWorld) j, (Tr.strat (sched P' DP χ j)).value P' v.payout
       = roundValue P' χ v (sched P' DP χ j)) :
     ¬ ∀ (Q Q' : History) (DQ : DeductiveProcess) (N : ℕ),
-        IsMachineLogicalInductor Q DQ → ComputableMarket Q' →
-        (∀ n, N ≤ n → ∀ φ, Q n φ = Q' n φ) → IsMachineLogicalInductor Q' DQ := by
+        IsLogicalInductor Q DQ → ComputableMarket Q' →
+        (∀ n, N ≤ n → ∀ φ, Q n φ = Q' n φ) → IsLogicalInductor Q' DQ := by
   intro hifp
-  have hLI' : IsMachineLogicalInductor P' DP := hifp P P' DP 1 hLI hP' hagree
+  have hLI' : IsLogicalInductor P' DP := hifp P P' DP 1 hLI hP' hagree
   exact hLI'.noExploit Tr hTr
     (exploits Tr P' DP χ hdicho hP'.1 hworld hzero hval)
 
 /-! ## Where the witness lives
 
-The concrete existential this reduction consumes — a machine logical inductor with a
+The concrete existential this reduction consumes — a logical inductor with a
 `p = 1/2` paradox-resistance diagonal, together with the computability of its perturbed
-market — cannot be stated in this module.  The single market `paperDP`, its literal-stream
-component `theoremDP` and the whole quotation layer live in
-`Construction/Witnesses/PaperTheoryDP.lean` and `ComputationDP.lean`, which reach this file
-through `ComputationSyntax` → `BoundedEvaluation` → `LogicalInduction.Properties`, so
-naming them here is an import cycle.
+market — cannot be stated in this module.  It is built over the single market `paperDP` and
+the quotation layer, which live in `Construction/Paper/` and are §5 objects, and the module
+that assembles it, `Construction/Freeze/Counterexample.lean`, imports *this* file for the
+reduction; naming the witness here would close that loop.  The directory invariant is the
+same one stated in `LogicalInduction/README.md`: nothing under `Properties/` imports
+`Construction/`.
 
 The witness and the closed refutation therefore live downstream, in
-`Construction/Witnesses/FinitePerturbationWitness.lean` — the same split
+`Construction/Freeze/Counterexample.lean` — the same split
 `lic_paradox_resistance_ofDiagonal` and `lic_paradox_resistance_ofDiagonal_unconditional`
 already use.  Everything in this file is abstract and unconditional.
 -/
 
 end FinitePerturbationCounterexample
 end LogicalInduction
-
-
-

@@ -1,837 +1,114 @@
-/-
-# §4.6 Closure under finite perturbations (`thm:ifp`, appendix `app:ifp`)
+import LogicalInduction.Framework.Affine
+import LogicalInduction.Framework.Emission.Computable
+import LogicalInduction.Framework.Emission.FreezeTransducer
+import LogicalInduction.Framework.Efficiency
+
+/-!
+# §4.6 Closure under finite perturbations (`thm:ifp`, `app:ifp`)
 
 The paper transports an exploiting trader across a finite change of market history by
 replacing every old price leaf in its feature syntax with the corresponding rational
-constant.  This file realizes that semantics with an administrative dead binding which
-retains the original price leaf, and proves its rank, size, semantic, net-worth, and
-exploitation laws.  Retaining the leaf is what makes the flat rewrite parser-transparent
-even on malformed raw trader programs.
+constant.  This module renders that syntax freeze, proves its rank, size, semantic,
+net-worth and exploitation laws, and states the corrected closure theorem at both
+efficiency classes.
 
-## PAPER ERRATUM — the appendix proof of `thm:ifp` has a gap
+## The paper erratum
 
-This is **not** a modeling artifact of our substrate.  The paper's proof (`app:ifp`)
-transports the trader by hard-coding the old prices, and justifies efficiency thus:
+The printed theorem is false, and its printed proof is separately invalid.  `app:ifp`
+justifies efficiency of the transported trader thus:
 
 > "Note that `F` is efficiently computable: by the assumption that `pt_n = pt'_n` for all
 > `n ≥ N`, only finitely many constants `pt_i(phi)` are needed, and can be hard-coded
 > into `F`."
 
-That sentence is false.  Finitely many *days* `i < N` are involved, but `phi` still ranges
-over **all** sentences: a day-`n` trade expression may reference `phi^{*i}` for any `phi` of
-rank `≤ n`, so the constant set `{pt_i(phi) : i < N, phi ∈ Sentences}` is infinite.  `F`
-must therefore *compute* `pt_i(phi)` rather than hard-code it, and `def:marketprocess`
-(a market is any computable sequence of pricings — no finite support, no time bound)
-guarantees only that this is computable, with no bound on its runtime or on the bit-size of
-the resulting rational.  So `F` is not efficiently computable in general, and the paper's
-proof does not go through for the class of markets it quantifies over.
+Finitely many *days* `i < N` are involved, but `phi` still ranges over **all** sentences: a
+day-`n` trade expression may reference `phi^{*i}` for any `phi` of rank `≤ n`, so the
+constant set `{pt_i(phi) : i < N, phi ∈ Sentences}` is infinite.  `F` must therefore
+*compute* `pt_i(phi)` rather than hard-code it, and `def:marketprocess` — a market is any
+computable sequence of pricings, with no finite support and no time bound — bounds neither
+that computation's runtime nor the bit-size of the rational it returns.  So `F` is not
+efficiently computable for the class of markets the theorem quantifies over.
+`FinitePerturbationCounterexample.not_overgeneral_ifp` refutes the printed statement;
+`notes/paper-errata.md`, PE1, is the ledger.
 
-The gap is real, not merely pedantic.  Let `P'` agree with `LIA` from day 1 on, with
-`P' 0 phi = 1 - 1/2^(2^(encode phi))` — a legal market by `def:marketprocess`.  A trader
-whose day-`n` strategy prices a sentence of code `~n` at day 0 freezes to a `.const` whose
-numeral is `~2^(2^n)`, which no polynomial clock can emit (`codeEvaln_result_le` and
-`codeEvalBound_poly` give the relevant fixed-code polynomial output bound, not an
-output-`≤`-fuel bound).  For such a `P'`,
-`EfficientPrefixPatch P' 1` is **uninhabited** — the hypothesis is not merely unproved but
-unsatisfiable.  (This counterexample is *not* formalized, and neither is the step it rests
-on: that no polynomial clock can emit a numeral of magnitude `2^(2^n)`.)
+The gap is not pedantic.  Let `P'` agree with the constructed inductor's market from day `1`
+on, with `P' 0 phi = 1 - 1/2^(2^(encode phi))` — a legal market by `def:marketprocess`.  A
+trader whose day-`n` strategy prices a sentence of code `~n` at day `0` freezes to a
+`.const` whose numeral is `~2^(2^n)`, which no polynomial clock can emit
+(`codeEvaln_result_le` and `codeEvalBound_poly` give a fixed-code polynomial *output* bound,
+not an output-`≤`-fuel bound; and at `def:ec` itself the frozen constant's *numeral* is
+`~2^n` bits long, longer than any polynomial in the unary day).  For that `P'`,
+`EfficientPrefixPatch P' 1` has no inhabitant: the hypothesis is unsatisfiable, not merely
+unproved.  Neither this market nor the step it rests on — that no polynomial-time writer
+emits a numeral of magnitude `2^(2^n)` on day `n` — is formalized.
 
-Note the paper is aware `LIA` itself has finite support per day (`sec:construct`, remark
-following the belief-sequence definition) and *deliberately* generalizes the property tail
-to arbitrary markets.  Finite support is exactly what would rescue the hard-coding step, so
-the gap is a genuine cost of that generalization, not an oversight about `LIA`.
+The paper knows that its own construction has finite support per day (`sec:construct`, the
+remark following the belief-sequence definition) and deliberately generalizes the property
+tail to arbitrary markets.  Finite support is exactly what rescues the hard-coding step, so
+the gap is a cost of that generalization rather than an oversight about the construction.
 
-## The correction
+## The freeze
 
-Finite support is exactly what rescues the hard-coding step, so this file also proves the
-**corrected** theorem, at both classes: `lic_iff_of_finiteSupportPerturbation` and
-`machine_lic_iff_of_finiteSupportPerturbation` quantify over perturbations that move only
-finitely many `(day, sentence)` price *coordinates*, where the constant table really is
-finite and the appendix's own justification is literally valid.  That hypothesis is
-**strictly stronger** than the paper's `∀ n ≥ N, pt_n = pt'_n`
-(`FiniteSupportPerturbation.tail_agree` proves one direction; the day-`0` huge-numeral
-market below refutes the other), so the corrected theorem is a proper restriction of
-`thm:ifp`, not a restatement of it.  The published unrestricted theorem is **false** —
-`FinitePerturbationCounterexample.not_overgeneral_ifp` refutes it — and its published proof
-is separately invalid.
+The freeze recursion `EF.freezeOn quote sel` on the feature syntax, and the flat-token
+transducer `EF.freezeTokenRunOn` that a machine-class trader runs in its place, are
+`Framework/Emission/FreezeTransducer.lean`.  This module lifts them: `Strategy.freezeOn` and
+`Trader.freezeOn` are the coefficient-wise and day-wise liftings, `Strategy.freezeBefore` and
+`Trader.freezeBefore` their `day < cutoff` instances (each `freezeBefore_eq_freezeOn` is
+`rfl`, so every day-cutoff law is a transport rather than a parallel induction).  The laws
+proved here are strategy value on an unselected day (`Strategy.freezeOn_value`) and the
+explicit finite net-worth error bound `Trader.freezeOnErrorBound` together with
+`Trader.freezeOn_netWorth_difference_le`.  The error statements are bounds rather than
+equalities because the settlement term `- V day φ` of `Strategy.value` is not syntax, so on
+an affected day the frozen strategy's value differs from the original's by the price gap.
 
-The freeze itself is not duplicated, at any layer.  `EF.freezeOn` takes a per-coordinate
-selector and is the only freeze recursion in the source; `EF.freezeBefore`,
-`Strategy.freezeBefore` and `Trader.freezeBefore` are *defined* as its `day < cutoff`
-instance, so each `freezeBefore_eq_freezeOn` is `rfl` and every day-cutoff law below is a
-transport rather than a parallel induction.  (The previously scheduled demolition of the
-second recursion is done; nothing here is layered scaffolding.)
+`Trader.Exploits.of_boundedDifference` (`Framework/Criterion.lean`) is the abstract
+finite-prefix accounting step that both directions of every form below use: a uniform
+bounded net-worth difference preserves exploitation.
 
-The **flat-token** presentation is selector-indexed in the same way.
-`EF.freezeTokenRunOn` runs the transducer against a *code-level* selector
-`selCode : ℕ → ℕ → Bool` — day and pending sentence code, which is all the transducer
-has — and `EF.strategyOfTokens_freezeTokenRunOn_trades` transports the decoded strategy
-across it, given the bridge `hsel` from `selCode` to the sentence-level `sel` that
-`EF.freezeOn` reads.  `EF.freezeTokenRun` and its laws are the `day < cutoff` instance,
-where the bridge is discharged by `rfl` because the day-cutoff selector ignores the
-sentence slot.  This is the token model the finite-support freeze needs, and the
-`Complexity.FP` certificate for the transducer is supplied by
-`Construction/Witnesses/FreezeStep.lean`.
+## The corrected statement
 
-**Where the corrected theorem now stands.**  `MachineFiniteSupportPatch` is inhabited, and
-not by a caller-supplied witness: `FreezeOracle.machineFiniteSupportPatch` compiles it from
-the market's own computability certificate and the coordinate set alone.  So the patch is no
-longer a hypothesis of the public statement, and neither is anything about the moved
-sentences — `FreezeOracle.machine_lic_iff_of_finiteSupport` asks for finite support and
-computability of both markets, and nothing else.
+`FiniteSupportPerturbation P P'` asks that only finitely many `(day, sentence)` price
+coordinates move.  That hypothesis is strictly stronger than the paper's tail agreement —
+`FiniteSupportPerturbation.tail_agree` proves one direction and
+`tailAgree_not_finiteSupport` refutes the other — and it is exactly the case in which the
+appendix's hard-coding step is literally valid, the constant table being a finite list of
+`(day, sentence, price)` rows.  `lic_iff_of_finiteSupportPerturbation_ofPatches` is that
+theorem with the two freeze certificates as premises.  The client-facing statement, with the
+patch compiled from each market's own computability certificate and no condition on the
+moved sentences, is
+`FreezeOracle.lic_iff_of_finiteSupport`, re-exported as
+`API.lic_iff_of_finiteSupportPerturbation`.
 
-Two things that remain true, and are not softened by the above:
+`lic_iff_of_finitePerturbation` keeps the paper's own hypothesis shape — finitely many
+changed *days* — and its certificate `EfficientPrefixPatch` has no inhabitant anywhere in
+this repository: a prefix freeze must hard-code a day's quote at *every* sentence, and the
+day-`0` huge-numeral market above forces a frozen constant whose numeral is exponentially
+long in the day, which no `Complexity.FP` output word can hold.  That obstruction is a
+statement about the market, not about a certificate calculus, and it is what the corrected
+finite-support form removes.  The token-model content that does exist for the constructed
+inductor is `liaFreezeBefore_preserves_ecTok` (`Construction/Freeze/Prefix.lean`).
 
-* `FiniteSupportPatch` and `EfficientPrefixPatch` — the *fuel-class* certificates — are
-  still uninhabited, because the fuel calculus does not close over the escape-leaf decode
-  (`dd:fuel`; see `Construction/Witnesses/RpnFreeze.lean`).  Only the machine-class
-  certificate is discharged.
-* The theorem is non-vacuous *and* informative.
-  `FreezeOracle.machine_lic_iff_twoPoint` exhibits a concrete pair of genuinely different
-  computable markets, so the antecedent is satisfiable; and
-  `LIAPerturbation.machineLogicalInductor_liaPerturbed` puts it to work — `liaHistory DP` is
-  a machine logical inductor, and moving one price at an arbitrary coordinate yields a
-  market that still is, *by this theorem and nothing else*.  The price change is proved
-  nonzero (`LIAPerturbation.liaPerturbed_ne`).  That instance inherits `Construction/LIA.lean`'s
-  own two hypotheses — the LIA market program and a computable deductive process — which
-  nothing here discharges.
-
-**What this file does about it.**  We keep the theorem to what is actually provable:
-`EfficientPrefixPatch` states the missing closure fact for the concrete syntax
-transformation, and `lic_iff_of_finitePerturbation` takes it as a hypothesis for each
-market.  The structure contains no trading, exploitation, or logical-inductor conclusion.
-Consequently `lic_iff_of_finitePerturbation` is **strictly weaker than the paper's
-`thm:ifp`**: it does not cover every finite perturbation of a computable market, only those
-whose frozen prefix admits an efficient presentation.  For `LIA` the obstruction above is
-absent — the per-day quote table is a finite entry list (`RationalBeliefState`,
-`MarketMaker.lean`), so the freeze is a finite lookup rather than an unbounded computation
-— but the efficiency certificate for the emitted stream is not discharged, so no `LIA`
-instance of `EfficientPrefixPatch` exists at present.  The restriction must be stated
-whenever this theorem is cited as the paper's.
+`FreezeStreamRewriter` isolates the one `Complexity.FP` fact the machine-class patch turns
+on, and `FreezeStep.freezeStreamRewriter_of_runOracle` discharges it.  Non-vacuity is
+`FreezeOracle.lic_iff_twoPoint`, a concrete pair of genuinely different computable
+markets, so the antecedent is satisfiable; content is
+`LIAPerturbation.logicalInductor_liaPerturbed`, which moves one price of the
+constructed inductor `liaHistory` and concludes that the result is still a machine logical
+inductor, with `LIAPerturbation.liaPerturbed_ne` proving the price change nonzero.  That
+instance inherits `Construction/LIA.lean`'s own two hypotheses — the market program and a
+computable deductive process — which nothing here discharges.
 -/
-import LogicalInduction.Framework.Affine
-import LogicalInduction.Framework.Computable
-import LogicalInduction.Framework.MachineEfficiency
 
 namespace LogicalInduction
 
 open scoped BigOperators
 
-namespace EF
-
-/-! ## The selector-indexed freeze
-
-`EF.freezeOn` is **the** freeze in this file: `freezeBefore` below is literally its
-`day < cutoff` instance, not a second recursion. -/
-
-/-- Freeze exactly the price leaves whose coordinate is selected.
-
-The administrative `letE` deliberately retains the dead original price leaf.  Its body is
-the constant quote, so the denotation is independent of that leaf, while retaining it makes
-the flat-token rewrite parser-transparent and preserves the feature's original rank.  This
-matters for arbitrary clocked trader programs: malformed sentence tokens stay malformed and
-a rank-invalid source program cannot become valid merely because an old leaf was frozen.
-
-With `sel = fun d _ => decide (d < cutoff)` this is `EF.freezeBefore`; with
-`sel = fun d φ => decide ((d, φ) ∈ S)` it is the finite-support freeze. -/
-def freezeOn (quote : ℕ → Sentence → ℚ) (sel : ℕ → Sentence → Bool) : EF → EF
-  | .price φ day =>
-      if sel day φ then .letE (.price φ day) (.const (quote day φ)) else .price φ day
-  | .const q => .const q
-  | .add a b => .add (a.freezeOn quote sel) (b.freezeOn quote sel)
-  | .mul a b => .mul (a.freezeOn quote sel) (b.freezeOn quote sel)
-  | .max a b => .max (a.freezeOn quote sel) (b.freezeOn quote sel)
-  | .safeRecip a => .safeRecip (a.freezeOn quote sel)
-  | .var i => .var i
-  | .letE value body =>
-      .letE (value.freezeOn quote sel) (body.freezeOn quote sel)
-
-@[simp] lemma freezeOn_rank (e : EF) (quote : ℕ → Sentence → ℚ)
-    (sel : ℕ → Sentence → Bool) : (e.freezeOn quote sel).rank = e.rank := by
-  induction e with
-  | price φ day => simp only [freezeOn]; split <;> simp
-  | const q => simp [freezeOn]
-  | add a b iha ihb => simp [freezeOn, iha, ihb]
-  | mul a b iha ihb => simp [freezeOn, iha, ihb]
-  | max a b iha ihb => simp [freezeOn, iha, ihb]
-  | safeRecip a iha => simp [freezeOn, iha]
-  | var i => simp [freezeOn]
-  | letE value body ihv ihb => simp [freezeOn, ihv, ihb]
-
-lemma freezeOn_rank_le (e : EF) (quote : ℕ → Sentence → ℚ)
-    (sel : ℕ → Sentence → Bool) : (e.freezeOn quote sel).rank ≤ e.rank := by
-  rw [freezeOn_rank]
-
-lemma freezeOn_cost_le (e : EF) (quote : ℕ → Sentence → ℚ)
-    (sel : ℕ → Sentence → Bool) : (e.freezeOn quote sel).cost ≤ 3 * e.cost := by
-  induction e with
-  | price φ day => simp only [freezeOn]; split <;> simp [cost]
-  | const q => norm_num [freezeOn, cost]
-  | add a b iha ihb => simp only [freezeOn, cost]; omega
-  | mul a b iha ihb => simp only [freezeOn, cost]; omega
-  | max a b iha ihb => simp only [freezeOn, cost]; omega
-  | safeRecip a iha => simp only [freezeOn, cost]; omega
-  | var i => norm_num [freezeOn, cost]
-  | letE value body ihv ihb => simp only [freezeOn, cost]; omega
-
-/-- **Exact denotational transport.**  Every selected leaf reads its frozen constant,
-which is the `P`-price; every unselected leaf reads the `P'`-price, which *is* the
-`P`-price.  So the frozen feature against `P'` denotes exactly what the original feature
-denoted against `P` — no error term, and no constraint on the day. -/
-lemma freezeOn_denoteWith (e : EF) (quote : ℕ → Sentence → ℚ)
-    (sel : ℕ → Sentence → Bool) (P P' : History)
-    (hin : ∀ d φ, sel d φ = true → P d φ = (quote d φ : ℝ))
-    (hout : ∀ d φ, sel d φ = false → P d φ = P' d φ) :
-    ∀ ρ : List ℝ, (e.freezeOn quote sel).denoteWith ρ P' = e.denoteWith ρ P := by
-  induction e with
-  | price φ day =>
-      intro ρ
-      simp only [freezeOn]
-      cases hsel : sel day φ with
-      | true => simp [hsel, hin day φ hsel]
-      | false => simp [hsel, hout day φ hsel]
-  | const q => intro ρ; rfl
-  | add a b iha ihb => intro ρ; simp [freezeOn, iha ρ, ihb ρ]
-  | mul a b iha ihb => intro ρ; simp [freezeOn, iha ρ, ihb ρ]
-  | max a b iha ihb => intro ρ; simp [freezeOn, iha ρ, ihb ρ]
-  | safeRecip a iha => intro ρ; simp [freezeOn, iha ρ]
-  | var i => intro ρ; rfl
-  | letE value body ihv ihb =>
-      intro ρ
-      simp only [freezeOn, denoteWith_letE]
-      rw [ihv ρ, ihb]
-
-lemma freezeOn_denote (e : EF) (quote : ℕ → Sentence → ℚ)
-    (sel : ℕ → Sentence → Bool) (P P' : History)
-    (hin : ∀ d φ, sel d φ = true → P d φ = (quote d φ : ℝ))
-    (hout : ∀ d φ, sel d φ = false → P d φ = P' d φ) :
-    (e.freezeOn quote sel).denote P' = e.denote P :=
-  e.freezeOn_denoteWith quote sel P P' hin hout []
-
-/-! ### The day-cutoff instance
-
-`freezeBefore` freezes every price leaf strictly before `cutoff` at its exact rational
-quote.  It is *defined* as the `day < cutoff` instance of `freezeOn`, so
-`freezeBefore_eq_freezeOn` is `rfl` and every law below is a transport rather than a
-parallel induction. -/
-
-/-- The day-cutoff freeze, as the `day < cutoff` instance of `EF.freezeOn`. -/
-def freezeBefore (quote : ℕ → Sentence → ℚ) (cutoff : ℕ) (e : EF) : EF :=
-  e.freezeOn quote (fun d _ => decide (d < cutoff))
-
-/-- The day-cutoff freeze *is* the selector freeze at the day-cutoff selector. -/
-lemma freezeBefore_eq_freezeOn (e : EF) (quote : ℕ → Sentence → ℚ) (cutoff : ℕ) :
-    e.freezeBefore quote cutoff = e.freezeOn quote (fun d _ => decide (d < cutoff)) := rfl
-
-/-- Defining equation at a price leaf, in the `Prop`-valued day test. -/
-@[simp] lemma freezeBefore_price (quote : ℕ → Sentence → ℚ) (cutoff : ℕ)
-    (φ : Sentence) (day : ℕ) :
-    (EF.price φ day).freezeBefore quote cutoff =
-      if day < cutoff then .letE (.price φ day) (.const (quote day φ))
-      else .price φ day := by
-  simp only [freezeBefore, freezeOn, decide_eq_true_eq]
-
-@[simp] lemma freezeBefore_const (quote : ℕ → Sentence → ℚ) (cutoff : ℕ) (q : ℚ) :
-    (EF.const q).freezeBefore quote cutoff = .const q := rfl
-
-@[simp] lemma freezeBefore_var (quote : ℕ → Sentence → ℚ) (cutoff i : ℕ) :
-    (EF.var i).freezeBefore quote cutoff = .var i := rfl
-
-@[simp] lemma freezeBefore_add (quote : ℕ → Sentence → ℚ) (cutoff : ℕ) (a b : EF) :
-    (EF.add a b).freezeBefore quote cutoff =
-      .add (a.freezeBefore quote cutoff) (b.freezeBefore quote cutoff) := rfl
-
-@[simp] lemma freezeBefore_mul (quote : ℕ → Sentence → ℚ) (cutoff : ℕ) (a b : EF) :
-    (EF.mul a b).freezeBefore quote cutoff =
-      .mul (a.freezeBefore quote cutoff) (b.freezeBefore quote cutoff) := rfl
-
-@[simp] lemma freezeBefore_max (quote : ℕ → Sentence → ℚ) (cutoff : ℕ) (a b : EF) :
-    (EF.max a b).freezeBefore quote cutoff =
-      .max (a.freezeBefore quote cutoff) (b.freezeBefore quote cutoff) := rfl
-
-@[simp] lemma freezeBefore_safeRecip (quote : ℕ → Sentence → ℚ) (cutoff : ℕ) (a : EF) :
-    (EF.safeRecip a).freezeBefore quote cutoff =
-      .safeRecip (a.freezeBefore quote cutoff) := rfl
-
-@[simp] lemma freezeBefore_letE (quote : ℕ → Sentence → ℚ) (cutoff : ℕ) (v b : EF) :
-    (EF.letE v b).freezeBefore quote cutoff =
-      .letE (v.freezeBefore quote cutoff) (b.freezeBefore quote cutoff) := rfl
-
-/-- The retained dead leaf makes the administrative freeze rank-preserving. -/
-@[simp] lemma freezeBefore_rank (e : EF) (quote : ℕ → Sentence → ℚ) (cutoff : ℕ) :
-    (e.freezeBefore quote cutoff).rank = e.rank :=
-  e.freezeOn_rank quote _
-
-lemma freezeBefore_rank_le (e : EF) (quote : ℕ → Sentence → ℚ) (cutoff : ℕ) :
-    (e.freezeBefore quote cutoff).rank ≤ e.rank :=
-  e.freezeOn_rank_le quote _
-
-/-- The administrative binding makes the literal rewrite at most three times larger. -/
-lemma freezeBefore_cost_le (e : EF) (quote : ℕ → Sentence → ℚ) (cutoff : ℕ) :
-    (e.freezeBefore quote cutoff).cost ≤ 3 * e.cost :=
-  e.freezeOn_cost_le quote _
-
-
-/-! #### Flat-token presentation of the prefix freeze
-
-The retained price leaf makes the compiler a bounded streaming transducer.  It copies every
-input token and, immediately after an old price frame `[0, phi, day]`, appends the constant
-and administrative-binding suffix `[1, quote, 8]`. -/
-
-/-- Parser control needed by the flat-token prefix transducer: `(mode, pendingSentenceCode)`.
-The modes agree with `EF.streamStep`; only mode `2` uses the pending code. -/
-abbrev FreezeTokenState := ℕ × ℕ
-
-def freezeTokenNext (state : FreezeTokenState) (token : ℕ) : FreezeTokenState :=
-  match state.1 with
-  | 0 =>
-      if token = 0 then (1, 0)
-      else if token = 1 then (3, 0)
-      else if token = 6 then (4, 0)
-      else if token = 7 then (5, 0)
-      else (0, 0)
-  | 1 => (2, token)
-  | _ => (0, 0)
-
-/-- Tokens emitted while consuming one source token.
-
-`selCode` is the **code-level** selector: at a price-day slot it is applied to the day just
-read and to the pending sentence *code* buffered by the parser control, because that is all
-the transducer has.  `hselCode` below is the bridge to the sentence-level `sel` that
-`EF.freezeOn` uses. -/
-def freezeTokenEmitOn (selCode : ℕ → ℕ → Bool) (quoteCode : ℕ → ℕ → ℕ)
-    (state : FreezeTokenState) (token : ℕ) : List ℕ :=
-  if state.1 = 2 ∧ selCode token state.2 = true then
-    [token, 1, quoteCode token state.2, 8]
-  else
-    [token]
-
-/-- Run the prefix transducer, returning its final parser control and emitted stream. -/
-def freezeTokenRunOn (selCode : ℕ → ℕ → Bool) (quoteCode : ℕ → ℕ → ℕ) :
-    FreezeTokenState → List ℕ → FreezeTokenState × List ℕ
-  | state, [] => (state, [])
-  | state, token :: tokens =>
-      let rest := freezeTokenRunOn selCode quoteCode (freezeTokenNext state token) tokens
-      (rest.1, freezeTokenEmitOn selCode quoteCode state token ++ rest.2)
-
-/-- Control state before source-token index `j`. -/
-def freezeTokenControlAt (tokenFn : ℕ → ℕ) (n : ℕ) : ℕ → FreezeTokenState
-  | 0 => (0, 0)
-  | j + 1 => freezeTokenNext (freezeTokenControlAt tokenFn n j)
-      (tokenFn (Nat.pair n j))
-
-@[simp] lemma freezeTokenRunOn_nil (selCode : ℕ → ℕ → Bool) (quoteCode : ℕ → ℕ → ℕ)
-    (state : FreezeTokenState) :
-    freezeTokenRunOn selCode quoteCode state [] = (state, []) := rfl
-
-lemma freezeTokenRunOn_append (selCode : ℕ → ℕ → Bool) (quoteCode : ℕ → ℕ → ℕ)
-    (state : FreezeTokenState) (xs ys : List ℕ) :
-    freezeTokenRunOn selCode quoteCode state (xs ++ ys) =
-      let first := freezeTokenRunOn selCode quoteCode state xs
-      let second := freezeTokenRunOn selCode quoteCode first.1 ys
-      (second.1, first.2 ++ second.2) := by
-  induction xs generalizing state with
-  | nil => rfl
-  | cons token tokens ih =>
-      simp only [List.cons_append, freezeTokenRunOn]
-      rw [ih]
-      simp [List.append_assoc]
-
-lemma freezeTokenRunOn_range (selCode : ℕ → ℕ → Bool) (quoteCode : ℕ → ℕ → ℕ)
-    (tokenFn : ℕ → ℕ) (n count : ℕ) :
-    freezeTokenRunOn selCode quoteCode (0, 0)
-        ((List.range count).map fun j => tokenFn (Nat.pair n j)) =
-      (freezeTokenControlAt tokenFn n count,
-        (List.range count).flatMap fun j =>
-          freezeTokenEmitOn selCode quoteCode (freezeTokenControlAt tokenFn n j)
-            (tokenFn (Nat.pair n j))) := by
-  induction count with
-  | zero => rfl
-  | succ count ih =>
-      rw [List.range_succ, List.map_append, List.flatMap_append,
-        freezeTokenRunOn_append, ih]
-      simp [freezeTokenRunOn, freezeTokenControlAt]
-
-/-- On a canonical feature serialization the streaming rewrite is exactly
-`EF.freezeOn`. -/
-lemma freezeTokenRunOn_serialize (quote : ℕ → Sentence → ℚ)
-    (sel : ℕ → Sentence → Bool) (selCode : ℕ → ℕ → Bool) (quoteCode : ℕ → ℕ → ℕ)
-    (hsel : ∀ day φ, selCode day (Encodable.encode φ) = sel day φ)
-    (hquote : ∀ day φ, quoteCode day (Encodable.encode φ) =
-      Encodable.encode (quote day φ)) (e : EF) :
-    freezeTokenRunOn selCode quoteCode (0, 0) e.serialize =
-      ((0, 0), (e.freezeOn quote sel).serialize) := by
-  induction e with
-  | price φ day =>
-      simp only [serialize, freezeTokenRunOn, freezeTokenNext, freezeTokenEmitOn]
-      by_cases hday : sel day φ = true
-      · simp [hsel, hday, hquote, freezeOn, serialize]
-      · simp [hsel, hday, freezeOn, serialize]
-  | const q => simp [serialize, freezeTokenRunOn, freezeTokenNext, freezeTokenEmitOn, freezeOn]
-  | add a b iha ihb =>
-      simp only [serialize, freezeOn, freezeTokenRunOn_append]
-      rw [iha, ihb]
-      simp [freezeTokenRunOn, freezeTokenNext, freezeTokenEmitOn, List.append_assoc]
-  | mul a b iha ihb =>
-      simp only [serialize, freezeOn, freezeTokenRunOn_append]
-      rw [iha, ihb]
-      simp [freezeTokenRunOn, freezeTokenNext, freezeTokenEmitOn, List.append_assoc]
-  | max a b iha ihb =>
-      simp only [serialize, freezeOn, freezeTokenRunOn_append]
-      rw [iha, ihb]
-      simp [freezeTokenRunOn, freezeTokenNext, freezeTokenEmitOn, List.append_assoc]
-  | safeRecip a iha =>
-      simp only [serialize, freezeOn, freezeTokenRunOn_append]
-      rw [iha]
-      simp [freezeTokenRunOn, freezeTokenNext, freezeTokenEmitOn]
-  | var i => simp [serialize, freezeTokenRunOn, freezeTokenNext, freezeTokenEmitOn, freezeOn]
-  | letE value body ihv ihb =>
-      simp only [serialize, freezeOn, freezeTokenRunOn_append]
-      rw [ihv, ihb]
-      simp [freezeTokenRunOn, freezeTokenNext, freezeTokenEmitOn, List.append_assoc]
-
-lemma freezeTokenRunOn_serializeTrades (quote : ℕ → Sentence → ℚ)
-    (sel : ℕ → Sentence → Bool) (selCode : ℕ → ℕ → Bool) (quoteCode : ℕ → ℕ → ℕ)
-    (hsel : ∀ day φ, selCode day (Encodable.encode φ) = sel day φ)
-    (hquote : ∀ day φ, quoteCode day (Encodable.encode φ) =
-      Encodable.encode (quote day φ)) (trades : List (EF × Sentence)) :
-    freezeTokenRunOn selCode quoteCode (0, 0) (serializeTrades trades) =
-      ((0, 0), serializeTrades
-        (trades.map fun trade => (trade.1.freezeOn quote sel, trade.2))) := by
-  induction trades with
-  | nil => rfl
-  | cons trade trades ih =>
-      rcases trade with ⟨e, φ⟩
-      simp only [serializeTrades, List.map_cons, freezeTokenRunOn_append]
-      rw [freezeTokenRunOn_serialize quote sel selCode quoteCode hsel hquote e]
-      simp [freezeTokenRunOn, freezeTokenNext, freezeTokenEmitOn, ih]
-
-/-- Apply the feature freeze to every feature currently held by the streaming decoder. -/
-def freezeStreamStateOn (quote : ℕ → Sentence → ℚ) (sel : ℕ → Sentence → Bool) :
-    EF.StreamState → EF.StreamState
-  | (control, stack, trades) =>
-      (control,
-        stack.map fun e => e.freezeOn quote sel,
-        trades.map fun trade => (trade.1.freezeOn quote sel, trade.2))
-
-/-- The small transducer control agrees with the real decoder control.  In the price-day
-mode it additionally remembers the raw code which decoded to the pending sentence. -/
-def FreezeTokenState.Matches (control : FreezeTokenState) (state : EF.StreamState) : Prop :=
-  control.1 = state.1.1 ∧
-    (state.1.1 = 2 → ∃ φ, state.1.2 = some φ ∧
-      Encodable.decode (α := Sentence) control.2 = some φ)
-
-lemma freezeToken_initial_matches :
-    FreezeTokenState.Matches (0, 0) EF.streamInitial := by
-  simp [FreezeTokenState.Matches, EF.streamInitial]
-
-/-- One source token and the bounded suffix emitted for it commute with the actual streaming
-decoder.  This includes malformed inputs: the copied offending token fails before an inserted
-suffix could repair it. -/
-lemma streamReadFrom_freezeTokenEmitOn
-    (quote : ℕ → Sentence → ℚ) (sel : ℕ → Sentence → Bool)
-    (selCode : ℕ → ℕ → Bool) (quoteCode : ℕ → ℕ → ℕ)
-    (hsel : ∀ day code φ, Encodable.decode (α := Sentence) code = some φ →
-      selCode day code = sel day φ)
-    (hquote : ∀ day code φ, Encodable.decode (α := Sentence) code = some φ →
-      quoteCode day code = Encodable.encode (quote day φ))
-    (control : FreezeTokenState) (state : EF.StreamState) (token : ℕ)
-    (hmatch : control.Matches state) :
-    EF.streamReadFrom (freezeTokenEmitOn selCode quoteCode control token)
-        (some (freezeStreamStateOn quote sel state)) =
-      (EF.streamStep (some state) token).map (freezeStreamStateOn quote sel) ∧
-    ∀ next, EF.streamStep (some state) token = some next →
-      (freezeTokenNext control token).Matches next := by
-  rcases state with ⟨⟨mode, pending⟩, ⟨stack, trades⟩⟩
-  simp only [FreezeTokenState.Matches] at hmatch ⊢
-  rcases hmatch with ⟨hmode, hpending⟩
-  rcases control with ⟨controlMode, code⟩
-  simp only at hmode
-  subst controlMode
-  cases mode with
-  | zero =>
-      by_cases h0 : token = 0
-      · subst token
-        simp [freezeTokenEmitOn, freezeTokenNext, freezeStreamStateOn,
-          EF.streamReadFrom, EF.streamStep]
-      by_cases h1 : token = 1
-      · subst token
-        simp [freezeTokenEmitOn, freezeTokenNext, freezeStreamStateOn,
-          EF.streamReadFrom, EF.streamStep]
-      by_cases h2 : token = 2
-      · subst token
-        cases stack with
-        | nil => simp [freezeTokenEmitOn, freezeTokenNext, freezeStreamStateOn,
-            EF.streamReadFrom, EF.streamStep]
-        | cons a stack =>
-          cases stack with
-          | nil => simp [freezeTokenEmitOn, freezeTokenNext, freezeStreamStateOn,
-              EF.streamReadFrom, EF.streamStep]
-          | cons b stack => simp [freezeTokenEmitOn, freezeTokenNext, freezeStreamStateOn,
-              EF.streamReadFrom, EF.streamStep, freezeOn]
-      by_cases h3 : token = 3
-      · subst token
-        cases stack with
-        | nil => simp [freezeTokenEmitOn, freezeTokenNext, freezeStreamStateOn,
-            EF.streamReadFrom, EF.streamStep]
-        | cons a stack =>
-          cases stack with
-          | nil => simp [freezeTokenEmitOn, freezeTokenNext, freezeStreamStateOn,
-              EF.streamReadFrom, EF.streamStep]
-          | cons b stack => simp [freezeTokenEmitOn, freezeTokenNext, freezeStreamStateOn,
-              EF.streamReadFrom, EF.streamStep, freezeOn]
-      by_cases h4 : token = 4
-      · subst token
-        cases stack with
-        | nil => simp [freezeTokenEmitOn, freezeTokenNext, freezeStreamStateOn,
-            EF.streamReadFrom, EF.streamStep]
-        | cons a stack =>
-          cases stack with
-          | nil => simp [freezeTokenEmitOn, freezeTokenNext, freezeStreamStateOn,
-              EF.streamReadFrom, EF.streamStep]
-          | cons b stack => simp [freezeTokenEmitOn, freezeTokenNext, freezeStreamStateOn,
-              EF.streamReadFrom, EF.streamStep, freezeOn]
-      by_cases h5 : token = 5
-      · subst token
-        cases stack <;> simp [freezeTokenEmitOn, freezeTokenNext, freezeStreamStateOn,
-          EF.streamReadFrom, EF.streamStep, freezeOn]
-      by_cases h6 : token = 6
-      · subst token
-        simp [freezeTokenEmitOn, freezeTokenNext, freezeStreamStateOn,
-          EF.streamReadFrom, EF.streamStep]
-      by_cases h7 : token = 7
-      · subst token
-        simp [freezeTokenEmitOn, freezeTokenNext, freezeStreamStateOn,
-          EF.streamReadFrom, EF.streamStep]
-      by_cases h8 : token = 8
-      · subst token
-        cases stack with
-        | nil => simp [freezeTokenEmitOn, freezeTokenNext, freezeStreamStateOn,
-            EF.streamReadFrom, EF.streamStep]
-        | cons a stack =>
-          cases stack with
-          | nil => simp [freezeTokenEmitOn, freezeTokenNext, freezeStreamStateOn,
-              EF.streamReadFrom, EF.streamStep]
-          | cons b stack => simp [freezeTokenEmitOn, freezeTokenNext, freezeStreamStateOn,
-              EF.streamReadFrom, EF.streamStep, freezeOn]
-      · simp [freezeTokenEmitOn, freezeTokenNext, freezeStreamStateOn,
-          EF.streamReadFrom, EF.streamStep, h0, h1, h2, h3, h4, h5, h6, h7, h8]
-  | succ mode =>
-      cases mode with
-      | zero =>
-          cases hdecode : Encodable.decode (α := Sentence) token <;>
-            simp [freezeTokenEmitOn, freezeTokenNext, freezeStreamStateOn,
-              EF.streamReadFrom, EF.streamStep, hdecode]
-      | succ mode =>
-          cases mode with
-          | zero =>
-              obtain ⟨φ, hpendingEq, hdecode⟩ := hpending rfl
-              subst pending
-              have hcode := hsel token code φ hdecode
-              by_cases hday : sel token φ = true
-              · simp [freezeTokenEmitOn, freezeTokenNext, freezeStreamStateOn,
-                  EF.streamReadFrom, EF.streamStep, hcode, hday,
-                  hquote token code φ hdecode, freezeOn]
-              · simp [freezeTokenEmitOn, freezeTokenNext, freezeStreamStateOn,
-                  EF.streamReadFrom, EF.streamStep, hcode, hday, freezeOn]
-          | succ mode =>
-              cases mode with
-              | zero =>
-                  cases hdecode : Encodable.decode (α := ℚ) token <;>
-                    simp [freezeTokenEmitOn, freezeTokenNext, freezeStreamStateOn,
-                      EF.streamReadFrom, EF.streamStep, hdecode, freezeOn]
-              | succ mode =>
-                  cases mode with
-                  | zero =>
-                      cases stack with
-                      | nil => simp [freezeTokenEmitOn, freezeTokenNext, freezeStreamStateOn,
-                          EF.streamReadFrom, EF.streamStep]
-                      | cons e stack =>
-                        cases hdecode : Encodable.decode (α := Sentence) token <;>
-                          simp [freezeTokenEmitOn, freezeTokenNext, freezeStreamStateOn,
-                            EF.streamReadFrom, EF.streamStep, hdecode]
-                  | succ mode =>
-                      cases mode with
-                      | zero => simp [freezeTokenEmitOn, freezeTokenNext, freezeStreamStateOn,
-                          EF.streamReadFrom, EF.streamStep, freezeOn]
-                      | succ mode => simp [freezeTokenEmitOn, freezeTokenNext, freezeStreamStateOn,
-                          EF.streamReadFrom, EF.streamStep]
-
-@[simp] lemma streamReadFrom_none (tokens : List ℕ) :
-    EF.streamReadFrom tokens none = none := by
-  induction tokens with
-  | nil => rfl
-  | cons token tokens ih =>
-      simp only [EF.streamReadFrom, List.foldl_cons, EF.streamStep]
-      simpa [EF.streamReadFrom] using ih
-
-lemma streamReadFrom_freezeTokenRunOn
-    (quote : ℕ → Sentence → ℚ) (sel : ℕ → Sentence → Bool)
-    (selCode : ℕ → ℕ → Bool) (quoteCode : ℕ → ℕ → ℕ)
-    (hsel : ∀ day code φ, Encodable.decode (α := Sentence) code = some φ →
-      selCode day code = sel day φ)
-    (hquote : ∀ day code φ, Encodable.decode (α := Sentence) code = some φ →
-      quoteCode day code = Encodable.encode (quote day φ))
-    (control : FreezeTokenState) (state : EF.StreamState) (tokens : List ℕ)
-    (hmatch : control.Matches state) :
-    let run := freezeTokenRunOn selCode quoteCode control tokens
-    EF.streamReadFrom run.2 (some (freezeStreamStateOn quote sel state)) =
-        (EF.streamReadFrom tokens (some state)).map (freezeStreamStateOn quote sel) ∧
-      ∀ next, EF.streamReadFrom tokens (some state) = some next → run.1.Matches next := by
-  induction tokens generalizing control state with
-  | nil =>
-      simp [freezeTokenRunOn, EF.streamReadFrom, hmatch]
-  | cons token tokens ih =>
-      simp only [freezeTokenRunOn]
-      have hstep := streamReadFrom_freezeTokenEmitOn quote sel selCode quoteCode hsel hquote
-        control state token hmatch
-      rcases hstep with ⟨hstep, hnext⟩
-      cases hs : EF.streamStep (some state) token with
-      | none =>
-          constructor
-          · rw [EF.streamReadFrom_append, hstep]
-            rw [hs]
-            simp only [Option.map_none]
-            rw [streamReadFrom_none]
-            change none = (EF.streamReadFrom tokens
-              (EF.streamStep (some state) token)).map (freezeStreamStateOn quote sel)
-            rw [hs, streamReadFrom_none]
-            rfl
-          · intro final hfinalSource
-            change EF.streamReadFrom tokens (EF.streamStep (some state) token) =
-              some final at hfinalSource
-            rw [hs, streamReadFrom_none] at hfinalSource
-            contradiction
-      | some next =>
-          have hmatches := hnext next hs
-          have hrest := ih (freezeTokenNext control token) next hmatches
-          simp only at hrest
-          rcases hrest with ⟨hrest, hfinal⟩
-          constructor
-          · rw [EF.streamReadFrom_append, hstep, hs]
-            simp only [Option.map_some]
-            rw [hrest]
-            simp [EF.streamReadFrom, hs]
-          · intro final hfinalSource
-            apply hfinal final
-            simpa [EF.streamReadFrom, hs] using hfinalSource
-
-lemma deserializeTrades_freezeTokenRunOn
-    (quote : ℕ → Sentence → ℚ) (sel : ℕ → Sentence → Bool)
-    (selCode : ℕ → ℕ → Bool) (quoteCode : ℕ → ℕ → ℕ)
-    (hsel : ∀ day code φ, Encodable.decode (α := Sentence) code = some φ →
-      selCode day code = sel day φ)
-    (hquote : ∀ day code φ, Encodable.decode (α := Sentence) code = some φ →
-      quoteCode day code = Encodable.encode (quote day φ)) (tokens : List ℕ) :
-    let run := freezeTokenRunOn selCode quoteCode (0, 0) tokens
-    deserializeTrades run.2 =
-      (deserializeTrades tokens).map fun trades =>
-        trades.map fun trade => (trade.1.freezeOn quote sel, trade.2) := by
-  have hrun := (streamReadFrom_freezeTokenRunOn quote sel selCode quoteCode hsel hquote
-    (0, 0) EF.streamInitial tokens freezeToken_initial_matches).1
-  simp only at hrun ⊢
-  have hinitial : freezeStreamStateOn quote sel EF.streamInitial = EF.streamInitial := rfl
-  rw [hinitial] at hrun
-  unfold deserializeTrades
-  rw [hrun]
-  cases hread : EF.streamReadFrom tokens (some EF.streamInitial) with
-  | none => rfl
-  | some state =>
-      rcases state with ⟨⟨mode, pending⟩, ⟨stack, trades⟩⟩
-      cases mode <;> cases pending <;> cases stack <;>
-        simp [freezeStreamStateOn]
-
-private def validatedTrades (n : ℕ) (trades : List (EF × Sentence)) :
-    List (EF × Sentence) :=
-  if ∀ trade ∈ trades, trade.1.rank ≤ n then trades else []
-
-private lemma strategyOfTokens_trades_eq (n : ℕ) (tokens : List ℕ) :
-    (strategyOfTokens n tokens).trades =
-      match deserializeTrades tokens with
-      | none => []
-      | some trades => validatedTrades n trades := by
-  unfold strategyOfTokens validatedTrades
-  split <;> rename_i hdecode
-  · simp [hdecode]
-  · split <;> simp_all
-
-/-- **The selector-indexed token model of the freeze.**  Decoding the transducer's output
-gives exactly the `EF.freezeOn`-rewritten trades of the decoded source — on *every* token
-stream, well-formed or garbage.  `hsel` is the bridge from the code-level selector the
-transducer can test to the sentence-level selector `EF.freezeOn` reads; `hquote` is the
-same bridge for the quote table.
-
-This is the finite-support freeze's token model.  It is not an efficiency certificate:
-exhibiting `freezeTokenRunOn` as a `Complexity.FP` function is the separate obligation
-that `MachineFiniteSupportPatch` still waits on.
-
-Proof kind: `C` composition.  Provenance: (a) `deserializeTrades_freezeTokenRunOn`.
-Paper node: `app:ifp` -/
-lemma strategyOfTokens_freezeTokenRunOn_trades
-    (quote : ℕ → Sentence → ℚ) (sel : ℕ → Sentence → Bool)
-    (selCode : ℕ → ℕ → Bool) (quoteCode : ℕ → ℕ → ℕ) (n : ℕ)
-    (hsel : ∀ day code φ, Encodable.decode (α := Sentence) code = some φ →
-      selCode day code = sel day φ)
-    (hquote : ∀ day code φ, Encodable.decode (α := Sentence) code = some φ →
-      quoteCode day code = Encodable.encode (quote day φ)) (tokens : List ℕ) :
-    let run := freezeTokenRunOn selCode quoteCode (0, 0) tokens
-    (strategyOfTokens n run.2).trades =
-      (strategyOfTokens n tokens).trades.map fun trade =>
-        (trade.1.freezeOn quote sel, trade.2) := by
-  have hdecode := deserializeTrades_freezeTokenRunOn quote sel selCode quoteCode hsel hquote tokens
-  simp only at hdecode ⊢
-  rw [strategyOfTokens_trades_eq, strategyOfTokens_trades_eq, hdecode]
-  cases hs : deserializeTrades tokens with
-  | none => simp
-  | some trades =>
-      simp only [Option.map_some]
-      have hrank :
-          (∀ trade ∈ trades.map (fun trade =>
-              (trade.1.freezeOn quote sel, trade.2)), trade.1.rank ≤ n) ↔
-            ∀ trade ∈ trades, trade.1.rank ≤ n := by
-        constructor
-        · intro h trade hmem
-          have hmapped : (trade.1.freezeOn quote sel, trade.2) ∈
-              trades.map (fun trade =>
-                (trade.1.freezeOn quote sel, trade.2)) :=
-            List.mem_map_of_mem hmem
-          simpa using h _ hmapped
-        · intro h trade hmem
-          simp only [List.mem_map] at hmem
-          obtain ⟨source, hsource, rfl⟩ := hmem
-          simpa using h source hsource
-      by_cases hvalid : ∀ trade ∈ trades, trade.1.rank ≤ n
-      · have hfrozenValid := hrank.mpr hvalid
-        unfold validatedTrades
-        rw [if_pos hfrozenValid, if_pos hvalid]
-      · have hfrozenInvalid : ¬∀ trade ∈ trades.map (fun trade =>
-            (trade.1.freezeOn quote sel, trade.2)), trade.1.rank ≤ n :=
-          fun h => hvalid (hrank.mp h)
-        unfold validatedTrades
-        rw [if_neg hfrozenInvalid, if_neg hvalid]
-        rfl
-
-/-! ### The day-cutoff instance of the token model
-
-Every declaration below is the `day < cutoff` instance of the selector-indexed transducer
-above; none of them re-runs an induction.  The bridge hypothesis `hsel` is discharged by
-`rfl`, because the day-cutoff selector ignores the sentence slot entirely. -/
-
-/-- The day-cutoff emission, as the `day < cutoff` instance of `freezeTokenEmitOn`. -/
-def freezeTokenEmit (quoteCode : ℕ → ℕ → ℕ) (cutoff : ℕ) :
-    FreezeTokenState → ℕ → List ℕ :=
-  freezeTokenEmitOn (fun d _ => decide (d < cutoff)) quoteCode
-
-/-- The day-cutoff transducer, as the `day < cutoff` instance of `freezeTokenRunOn`. -/
-def freezeTokenRun (quoteCode : ℕ → ℕ → ℕ) (cutoff : ℕ) :
-    FreezeTokenState → List ℕ → FreezeTokenState × List ℕ :=
-  freezeTokenRunOn (fun d _ => decide (d < cutoff)) quoteCode
-
-lemma freezeTokenEmit_eq (quoteCode : ℕ → ℕ → ℕ) (cutoff : ℕ)
-    (state : FreezeTokenState) (token : ℕ) :
-    freezeTokenEmit quoteCode cutoff state token =
-      if state.1 = 2 ∧ token < cutoff then
-        [token, 1, quoteCode token state.2, 8]
-      else [token] := by
-  simp only [freezeTokenEmit, freezeTokenEmitOn, decide_eq_true_eq]
-
-@[simp] lemma freezeTokenRun_nil (quoteCode : ℕ → ℕ → ℕ) (cutoff : ℕ)
-    (state : FreezeTokenState) :
-    freezeTokenRun quoteCode cutoff state [] = (state, []) := rfl
-
-lemma freezeTokenRun_append (quoteCode : ℕ → ℕ → ℕ) (cutoff : ℕ)
-    (state : FreezeTokenState) (xs ys : List ℕ) :
-    freezeTokenRun quoteCode cutoff state (xs ++ ys) =
-      let first := freezeTokenRun quoteCode cutoff state xs
-      let second := freezeTokenRun quoteCode cutoff first.1 ys
-      (second.1, first.2 ++ second.2) :=
-  freezeTokenRunOn_append _ quoteCode state xs ys
-
-lemma freezeTokenRun_range (quoteCode : ℕ → ℕ → ℕ) (cutoff : ℕ)
-    (tokenFn : ℕ → ℕ) (n count : ℕ) :
-    freezeTokenRun quoteCode cutoff (0, 0)
-        ((List.range count).map fun j => tokenFn (Nat.pair n j)) =
-      (freezeTokenControlAt tokenFn n count,
-        (List.range count).flatMap fun j =>
-          freezeTokenEmit quoteCode cutoff (freezeTokenControlAt tokenFn n j)
-            (tokenFn (Nat.pair n j))) :=
-  freezeTokenRunOn_range _ quoteCode tokenFn n count
-
-/-- The day-cutoff selector ignores the sentence slot, so the code-level and
-sentence-level selectors agree definitionally. -/
-lemma cutoffSel_bridge (cutoff : ℕ) :
-    ∀ day code (φ : Sentence), Encodable.decode (α := Sentence) code = some φ →
-      (fun (d : ℕ) (_ : ℕ) => decide (d < cutoff)) day code
-        = (fun (d : ℕ) (_ : Sentence) => decide (d < cutoff)) day φ :=
-  fun _ _ _ _ => rfl
-
-lemma streamReadFrom_freezeTokenRun
-    (quote : ℕ → Sentence → ℚ) (quoteCode : ℕ → ℕ → ℕ) (cutoff : ℕ)
-    (hquote : ∀ day code φ, Encodable.decode (α := Sentence) code = some φ →
-      quoteCode day code = Encodable.encode (quote day φ))
-    (control : FreezeTokenState) (state : EF.StreamState) (tokens : List ℕ)
-    (hmatch : control.Matches state) :
-    let run := freezeTokenRun quoteCode cutoff control tokens
-    EF.streamReadFrom run.2
-          (some (freezeStreamStateOn quote (fun d _ => decide (d < cutoff)) state)) =
-        (EF.streamReadFrom tokens (some state)).map
-          (freezeStreamStateOn quote (fun d _ => decide (d < cutoff))) ∧
-      ∀ next, EF.streamReadFrom tokens (some state) = some next → run.1.Matches next :=
-  streamReadFrom_freezeTokenRunOn quote _ _ quoteCode (cutoffSel_bridge cutoff) hquote
-    control state tokens hmatch
-
-lemma strategyOfTokens_freezeTokenRun_trades
-    (quote : ℕ → Sentence → ℚ) (quoteCode : ℕ → ℕ → ℕ) (cutoff n : ℕ)
-    (hquote : ∀ day code φ, Encodable.decode (α := Sentence) code = some φ →
-      quoteCode day code = Encodable.encode (quote day φ)) (tokens : List ℕ) :
-    let run := freezeTokenRun quoteCode cutoff (0, 0) tokens
-    (strategyOfTokens n run.2).trades =
-      (strategyOfTokens n tokens).trades.map fun trade =>
-        (trade.1.freezeBefore quote cutoff, trade.2) :=
-  strategyOfTokens_freezeTokenRunOn_trades quote _ _ quoteCode n
-    (cutoffSel_bridge cutoff) hquote tokens
-
-/-- On a canonical feature serialization the day-cutoff rewrite is exactly
-`EF.freezeBefore`. -/
-lemma freezeTokenRun_serialize (quote : ℕ → Sentence → ℚ)
-    (quoteCode : ℕ → ℕ → ℕ) (cutoff : ℕ)
-    (hquote : ∀ day φ, quoteCode day (Encodable.encode φ) =
-      Encodable.encode (quote day φ)) (e : EF) :
-    freezeTokenRun quoteCode cutoff (0, 0) e.serialize =
-      ((0, 0), (e.freezeBefore quote cutoff).serialize) :=
-  freezeTokenRunOn_serialize quote _ _ quoteCode (fun _ _ => rfl) hquote e
-
-lemma freezeTokenRun_serializeTrades (quote : ℕ → Sentence → ℚ)
-    (quoteCode : ℕ → ℕ → ℕ) (cutoff : ℕ)
-    (hquote : ∀ day φ, quoteCode day (Encodable.encode φ) =
-      Encodable.encode (quote day φ)) (trades : List (EF × Sentence)) :
-    freezeTokenRun quoteCode cutoff (0, 0) (serializeTrades trades) =
-      ((0, 0), serializeTrades
-        (trades.map fun trade => (trade.1.freezeBefore quote cutoff, trade.2))) :=
-  freezeTokenRunOn_serializeTrades quote _ _ quoteCode (fun _ _ => rfl) hquote trades
-
-
-/-- If `quote` is the old prefix of `P` and `P'` agrees with `P` after the cutoff,
-the frozen feature sees exactly what the original feature saw against `P`.  A transport of
-`freezeOn_denoteWith` along the day-cutoff selector. -/
-lemma freezeBefore_denoteWith
-    (e : EF) (quote : ℕ → Sentence → ℚ) (cutoff : ℕ) (P P' : History)
-    (hprefix : ∀ day < cutoff, ∀ φ, P day φ = (quote day φ : ℝ))
-    (htail : ∀ day, cutoff ≤ day → ∀ φ, P day φ = P' day φ) :
-    ∀ ρ : List ℝ,
-      (e.freezeBefore quote cutoff).denoteWith ρ P' = e.denoteWith ρ P :=
-  e.freezeOn_denoteWith quote _ P P'
-    (fun d φ h => hprefix d (by simpa using h) φ)
-    (fun d φ h => htail d (by simpa using h) φ)
-
-lemma freezeBefore_denote
-    (e : EF) (quote : ℕ → Sentence → ℚ) (cutoff : ℕ) (P P' : History)
-    (hprefix : ∀ day < cutoff, ∀ φ, P day φ = (quote day φ : ℝ))
-    (htail : ∀ day, cutoff ≤ day → ∀ φ, P day φ = P' day φ) :
-    (e.freezeBefore quote cutoff).denote P' = e.denote P :=
-  e.freezeBefore_denoteWith quote cutoff P P' hprefix htail []
-
-end EF
+/-! ## Strategy and trader freezes, and the net-worth error bound
+
+The freeze lifts coefficient-wise to strategies and day-wise to traders.  On a day whose
+whole sentence fibre is unselected the value transports exactly; on the finitely many
+affected days it is estimated, giving the explicit net-worth bounds
+`Trader.freezeBeforeErrorBound` and `Trader.freezeOnErrorBound`. -/
 
 namespace Strategy
 
@@ -873,10 +150,28 @@ lemma freezeBefore_value
         = p.1.denote P from p.1.freezeBefore_denote quote cutoff P P' hprefix htail]
   rw [← htail day hday p.2]
 
+/-- **The settlement term is the obstruction to exact transport at strategy level.**
+`Strategy.value` contains `- V day p.2`, which is *not* a syntactic leaf and so cannot be
+frozen.  Exact equality therefore needs the whole day-`day` fiber to be unselected. -/
+lemma freezeOn_value {day : ℕ} (T : Strategy day) (quote : ℕ → Sentence → ℚ)
+    (sel : ℕ → Sentence → Bool) (P P' : History) (w : Valuation)
+    (hin : ∀ d φ, sel d φ = true → P d φ = (quote d φ : ℝ))
+    (hout : ∀ d φ, sel d φ = false → P d φ = P' d φ)
+    (hday : ∀ φ, sel day φ = false) :
+    (T.freezeOn quote sel).value P' w = T.value P w := by
+  simp only [Strategy.value, freezeOn, List.map_map]
+  apply congrArg List.sum
+  apply List.map_congr_left
+  intro p hp
+  simp only [Function.comp_apply]
+  rw [p.1.freezeOn_denote quote sel P P' hin hout]
+  rw [← hout day p.2 (hday p.2)]
+
 end Strategy
 
 namespace Trader
 
+/-- Apply the selector freeze to every day's strategy. -/
 def freezeOn (quote : ℕ → Sentence → ℚ) (sel : ℕ → Sentence → Bool) (Tr : Trader) :
     Trader where
   strat day := (Tr.strat day).freezeOn quote sel
@@ -973,201 +268,11 @@ lemma freezeBefore_netWorth_difference_le
             exact hg day
     _ = Tr.freezeBeforeErrorBound quote cutoff P P' := rfl
 
-end Trader
-
-/-- Uniform bounded net-worth error preserves exploitation.  This is the abstract finite-
-prefix accounting step used in both directions of `thm:ifp`. -/
-theorem Trader.Exploits.of_boundedDifference
-    {Tr Tr' : Trader} {P P' : History} {DP : DeductiveProcess}
-    (h : Tr.Exploits P DP) (C : ℝ)
-    (hdiff : ∀ n v, v.ConsistentWith (DP.D n) →
-      |Tr.netWorth P v n - Tr'.netWorth P' v n| ≤ C) :
-    Tr'.Exploits P' DP := by
-  rcases h with ⟨⟨L, hL⟩, hnotAbove⟩
-  refine ⟨⟨L - C, ?_⟩, ?_⟩
-  · rintro x ⟨n, v, hv, rfl⟩
-    have hbase := hL ⟨n, v, hv, rfl⟩
-    have herr := hdiff n v hv
-    rw [abs_le] at herr
-    linarith
-  · intro hUpper
-    apply hnotAbove
-    rcases hUpper with ⟨U, hU⟩
-    refine ⟨U + C, ?_⟩
-    rintro x ⟨n, v, hv, rfl⟩
-    have hpatched := hU ⟨n, v, hv, rfl⟩
-    have herr := hdiff n v hv
-    rw [abs_le] at herr
-    linarith
-
-/-- The narrowly computational boundary in finite-prefix closure: the administrative syntax
-freeze above preserves token-indexed polynomial emission.  It contains no semantic market
-claim and no exploitation or convergence conclusion.
-
-**This is a paper erratum, not a modeling substitution** (see the file header).  `app:ifp`
-asserts this closure is immediate because "only finitely many constants are needed"; that
-is false — finitely many *days*, but unboundedly many sentences.  This structure is **not
-inhabited for every `ComputableMarket P`**: a market with huge-encoding day-`0` quotes
-admits no such patch at all.  Do not read it as a routine obligation awaiting labor;
-instantiating it is a real claim about `P`.
-
-For `LIA` that obstruction is absent — each day's quote table is a finite
-`RationalBeliefState` entry list, so the freeze is a finite lookup with constant-size
-tokens — but the fuel certificate for the emitted stream is not discharged, so no `LIA`
-instance of this structure exists at present.
-Paper node: `app:ifp` -/
-structure EfficientPrefixPatch (P : History) (cutoff : ℕ) where
-  quote : ℕ → Sentence → ℚ
-  quote_exact : ∀ day < cutoff, ∀ φ, P day φ = (quote day φ : ℝ)
-  preserves_ec : ∀ Tr : Trader, EfficientlyComputable Tr →
-    EfficientlyComputable (Tr.freezeBefore quote cutoff)
-
-/-- **Closure under Finite Perturbations** (`thm:ifp`), with the computational
-qualification forced by the clocked efficiency model (`dd:fuel`).  The two histories agree
-from `cutoff` onward, and each supplies the efficient-freeze certificate above.  The
-conclusion is the paper's biconditional, not merely one direction.
-Paper node: `thm:ifp` -/
-theorem lic_iff_of_finitePerturbation
-    (P P' : History) (DP : DeductiveProcess) (cutoff : ℕ)
-    (hPcomp : ComputableMarket P) (hP'comp : ComputableMarket P')
-    (htail : ∀ day, cutoff ≤ day → ∀ φ, P day φ = P' day φ)
-    (patchP : EfficientPrefixPatch P cutoff)
-    (patchP' : EfficientPrefixPatch P' cutoff) :
-    IsLogicalInductor P DP ↔ IsLogicalInductor P' DP := by
-  have hP : ∀ day φ, 0 ≤ P day φ ∧ P day φ ≤ 1 := hPcomp.price_mem_Icc
-  have hP' : ∀ day φ, 0 ≤ P' day φ ∧ P' day φ ≤ 1 := hP'comp.price_mem_Icc
-  constructor
-  · intro hLI
-    exact {
-      marketComputable := hP'comp
-      processComputable := hLI.processComputable
-      noExploit := by
-        intro Tr hTr hExploits
-        let frozen := Tr.freezeBefore patchP'.quote cutoff
-        have hfrozenEC : EfficientlyComputable frozen :=
-          patchP'.preserves_ec Tr hTr
-        have hdiff : ∀ n v, v.ConsistentWith (DP.D n) →
-            |Tr.netWorth P' v n - frozen.netWorth P v n| ≤
-              Tr.freezeBeforeErrorBound patchP'.quote cutoff P' P := by
-          intro n v hv
-          exact Tr.freezeBefore_netWorth_difference_le patchP'.quote cutoff P' P
-            patchP'.quote_exact
-            (fun day hday φ ↦ (htail day hday φ).symm)
-            hP' hP v n
-        have hfrozenExploits : frozen.Exploits P DP :=
-          hExploits.of_boundedDifference
-            (Tr.freezeBeforeErrorBound patchP'.quote cutoff P' P) hdiff
-        exact hLI.noExploit frozen hfrozenEC hfrozenExploits }
-  · intro hLI'
-    exact {
-      marketComputable := hPcomp
-      processComputable := hLI'.processComputable
-      noExploit := by
-        intro Tr hTr hExploits
-        let frozen := Tr.freezeBefore patchP.quote cutoff
-        have hfrozenEC : EfficientlyComputable frozen :=
-          patchP.preserves_ec Tr hTr
-        have hdiff : ∀ n v, v.ConsistentWith (DP.D n) →
-            |Tr.netWorth P v n - frozen.netWorth P' v n| ≤
-              Tr.freezeBeforeErrorBound patchP.quote cutoff P P' := by
-          intro n v hv
-          exact Tr.freezeBefore_netWorth_difference_le patchP.quote cutoff P P'
-            patchP.quote_exact htail hP hP' v n
-        have hfrozenExploits : frozen.Exploits P' DP :=
-          hExploits.of_boundedDifference
-            (Tr.freezeBeforeErrorBound patchP.quote cutoff P P') hdiff
-        exact hLI'.noExploit frozen hfrozenEC hfrozenExploits }
-
-/-! ## The public predicate -/
-
-/-- `P` and `P'` differ on only finitely many `(day, sentence)` price coordinates. -/
-def FiniteSupportPerturbation (P P' : History) : Prop :=
-  ∃ S : Finset (ℕ × Sentence), ∀ d φ, (d, φ) ∉ S → P d φ = P' d φ
-
-/-- Finite support is *strictly stronger* than the paper's tail-agreement hypothesis.
-
-Half of the separation that keeps the corrected `thm:ifp` honest; the other half, that the
-converse fails, is `tailAgree_not_finiteSupport` below.
-
-Proof kind: `P` proved.  Provenance: (b) `Finset.le_sup`.
-Paper node: `app:ifp` -/
-lemma FiniteSupportPerturbation.tail_agree {P P' : History}
-    (h : FiniteSupportPerturbation P P') :
-    ∃ N : ℕ, ∀ d, N ≤ d → ∀ φ, P d φ = P' d φ := by
-  obtain ⟨S, hS⟩ := h
-  refine ⟨(S.image Prod.fst).sup id + 1, ?_⟩
-  intro d hd φ
-  refine hS d φ (fun hmem => ?_)
-  have : d ≤ (S.image Prod.fst).sup id :=
-    Finset.le_sup (f := id) (Finset.mem_image.2 ⟨(d, φ), hmem, rfl⟩)
-  omega
-
-/-- **And it is *strictly* stronger: the converse fails.**  Two markets can agree from day
-one onward and still differ at infinitely many `(day, sentence)` coordinates — a single
-rewritten pricing row already does it, because a day's fibre is infinite.
-
-This is the separation that keeps the corrected `thm:ifp` honest.  The published theorem
-hypothesises *eventual day agreement*; that statement is refuted here
-(`FinitePerturbationCounterexample`).  What is proved instead assumes finite **coordinate**
-support, and the implication runs one way only:
-
-```
-finite coordinate support  ⇒  eventual day agreement   (tail_agree)
-eventual day agreement     ⇏  finite coordinate support (this lemma)
-```
-
-So the corrected theorem cannot accidentally re-derive the false one.  It also locates
-exactly where the paper's own "only finitely many constants are needed, and can be
-hard-coded" argument becomes valid: under finite coordinate support the frozen table really
-is a finite list of `(day, sentence, price)` rows, whereas under mere day agreement the
-rewritten row carries infinitely many prices and no such table exists.
-
-Proof kind: `N-` negative witness.  Provenance: (a) `Infinite.exists_notMem_finset`;
-(b) `LO.Propositional.Formula.atom` injective.
-Paper node: `app:ifp` -/
-lemma tailAgree_not_finiteSupport :
-    ∃ P P' : History, (∀ d, 1 ≤ d → ∀ φ, P d φ = P' d φ) ∧
-      ¬ FiniteSupportPerturbation P P' := by
-  classical
-  haveI : Infinite Sentence :=
-    Infinite.of_injective (LO.Propositional.Formula.atom (α := ℕ))
-      (fun _ _ h => LO.Propositional.Formula.atom.inj h)
-  refine ⟨fun _ _ => 0, fun d _ => if d = 0 then 1 else 0, ?_, ?_⟩
-  · intro d hd _
-    show (0 : ℝ) = if d = 0 then 1 else 0
-    rw [if_neg (by omega)]
-  · rintro ⟨S, hS⟩
-    obtain ⟨φ, hφ⟩ := Infinite.exists_notMem_finset (S.image Prod.snd)
-    have hmem : (0, φ) ∉ S := fun hc => hφ (Finset.mem_image.mpr ⟨(0, φ), hc, rfl⟩)
-    have h0 := hS 0 φ hmem
-    simp at h0
-
-namespace Strategy
-
-/-- **The settlement term is the obstruction to exact transport at strategy level.**
-`Strategy.value` contains `- V day p.2`, which is *not* a syntactic leaf and so cannot be
-frozen.  Exact equality therefore needs the whole day-`day` fiber to be unselected. -/
-lemma freezeOn_value {day : ℕ} (T : Strategy day) (quote : ℕ → Sentence → ℚ)
-    (sel : ℕ → Sentence → Bool) (P P' : History) (w : Valuation)
-    (hin : ∀ d φ, sel d φ = true → P d φ = (quote d φ : ℝ))
-    (hout : ∀ d φ, sel d φ = false → P d φ = P' d φ)
-    (hday : ∀ φ, sel day φ = false) :
-    (T.freezeOn quote sel).value P' w = T.value P w := by
-  simp only [Strategy.value, freezeOn, List.map_map]
-  apply congrArg List.sum
-  apply List.map_congr_left
-  intro p hp
-  simp only [Function.comp_apply]
-  rw [p.1.freezeOn_denote quote sel P P' hin hout]
-  rw [← hout day p.2 (hday p.2)]
-
-end Strategy
-
-namespace Trader
-
 /-- The finite set of days on which the perturbation is felt. -/
 def freezeDays (S : Finset (ℕ × Sentence)) : Finset ℕ := S.image Prod.fst
 
+/-- The explicit bound on the net-worth discrepancy between a trader and its freeze,
+supported on the finitely many affected days `D`. -/
 noncomputable def freezeOnErrorBound (Tr : Trader) (quote : ℕ → Sentence → ℚ)
     (sel : ℕ → Sentence → Bool) (D : Finset ℕ) (P P' : History) : ℝ :=
   ∑ day ∈ D, ((Tr.strat day).magnitude P +
@@ -1239,59 +344,53 @@ lemma freezeOn_netWorth_difference_le (Tr : Trader) (quote : ℕ → Sentence �
 
 end Trader
 
-/-! ## The corrected theorem -/
+/-! ## The paper's own hypothesis shape: finitely many changed *days*
 
-/-- The efficiency certificate for the **finite-support** freeze.  Unlike
-`EfficientPrefixPatch`, the quote table here is genuinely finite: `quote` is only read at
-the finitely many coordinates in `S`, so the paper's "hard-code the constants" step is
-literally valid.  It is nevertheless **uninhabited in this repo** — the fuel calculus does
-not close over the escape-leaf decode the lookup needs.  Its machine counterpart
-`MachineFiniteSupportPatch` *is* inhabited; see there.
+`EfficientPrefixPatch` is the freeze certificate for a *prefix* freeze, and
+`lic_iff_of_finitePerturbation` below is the theorem that keeps the paper's own hypothesis
+shape — finitely many changed days rather than finitely many changed coordinates.  The
+certificate has no inhabitant anywhere in this repository, for the reason recorded at the
+structure; the *discharged* form of `thm:ifp` is the finite-support one below it. -/
+
+/-- The narrowly computational boundary in finite-prefix closure: the administrative syntax
+freeze above preserves token-indexed polynomial emission.  It contains no semantic market
+claim and no exploitation or convergence conclusion.
+
+**This is a paper erratum, not a modeling substitution** (see the module docstring).
+`app:ifp` asserts this closure is immediate because "only finitely many constants are
+needed"; that is false — finitely many *days*, but unboundedly many sentences.  This
+structure is **not inhabited for every `ComputableMarket P`**: a market with huge-encoding
+day-`0` quotes admits no such patch at all.  Do not read it as a routine obligation awaiting
+labor; instantiating it is a real claim about `P`.
+
+For the constructed inductor that obstruction is absent — each day's quote table is a finite
+`RationalBeliefState` entry list, so the freeze is a finite lookup with constant-size tokens
+— but the structure has no inhabitant there either, for the fuel-model reason recorded in
+the module docstring: the escape-leaf decode the frozen lookup needs is an inverse of a
+big-value operation, and the digit model is open under those (`dd:fuel`).  The token-model
+content that does exist is `liaFreezeBefore_preserves_ecTok`
+(`Construction/Freeze/Prefix.lean`).
 Paper node: `app:ifp` -/
-structure FiniteSupportPatch (P : History) (S : Finset (ℕ × Sentence)) where
+structure EfficientPrefixPatch (P : History) (cutoff : ℕ) where
   quote : ℕ → Sentence → ℚ
-  quote_exact : ∀ d φ, (d, φ) ∈ S → P d φ = (quote d φ : ℝ)
+  quote_exact : ∀ day < cutoff, ∀ φ, P day φ = (quote day φ : ℝ)
   preserves_ec : ∀ Tr : Trader, EfficientlyComputable Tr →
-    EfficientlyComputable (Tr.freezeOn quote (fun d φ => decide ((d, φ) ∈ S)))
+    EfficientlyComputable (Tr.freezeBefore quote cutoff)
 
-/-- **Closure under finite-support perturbations** — the *corrected* `thm:ifp`, at the
-fuel class.
-
-**This is not the paper's `thm:ifp`.**  Its hypothesis is **strictly stronger**: finite
-support of the price difference implies the paper's tail agreement
-(`FiniteSupportPerturbation.tail_agree`) and is not implied by it — the day-`0`
-huge-numeral market in this file's header agrees with `LIA` from day `1` and is not
-finitely supported.  What this repairs is the appendix's efficiency step, which is valid
-exactly when the constant table is finite: `quote` is read only at the finitely many
-coordinates in `S`, so "hard-code the constants" is literally true here and false in
-general.  `lic_iff_of_finitePerturbation` below keeps the paper's own hypothesis shape, as a
-compatibility carrier; neither theorem reaches the unrestricted node, which is refuted
-rather than open.
-
-Kind `C`; hypotheses `(a)` except `preserves_ec`, which is the appendix's own obligation.
+/-- **Closure under Finite Perturbations** (`thm:ifp`), with the computational
+qualification forced by the clocked efficiency model (`dd:fuel`).  The two histories agree
+from `cutoff` onward, and each supplies the efficient-freeze certificate above.  The
+conclusion is the paper's biconditional, not merely one direction.
 Paper node: `thm:ifp` -/
-theorem lic_iff_of_finiteSupportPerturbation
-    (P P' : History) (DP : DeductiveProcess) (S : Finset (ℕ × Sentence))
+theorem lic_iff_of_finitePerturbation
+    (P P' : History) (DP : DeductiveProcess) (cutoff : ℕ)
     (hPcomp : ComputableMarket P) (hP'comp : ComputableMarket P')
-    (hagree : ∀ d φ, (d, φ) ∉ S → P d φ = P' d φ)
-    (patchP : FiniteSupportPatch P S) (patchP' : FiniteSupportPatch P' S) :
+    (htail : ∀ day, cutoff ≤ day → ∀ φ, P day φ = P' day φ)
+    (patchP : EfficientPrefixPatch P cutoff)
+    (patchP' : EfficientPrefixPatch P' cutoff) :
     IsLogicalInductor P DP ↔ IsLogicalInductor P' DP := by
-  classical
-  have hP : ∀ d φ, 0 ≤ P d φ ∧ P d φ ≤ 1 := hPcomp.price_mem_Icc
-  have hP' : ∀ d φ, 0 ≤ P' d φ ∧ P' d φ ≤ 1 := hP'comp.price_mem_Icc
-  set sel : ℕ → Sentence → Bool := fun d φ => decide ((d, φ) ∈ S) with hsel
-  have hselF : ∀ d φ, sel d φ = false ↔ (d, φ) ∉ S := by
-    intro d φ; simp [hsel]
-  have hselT : ∀ d φ, sel d φ = true ↔ (d, φ) ∈ S := by
-    intro d φ; simp [hsel]
-  set D : Finset ℕ := Trader.freezeDays S with hD
-  have hDays : ∀ d, d ∉ D → ∀ φ, sel d φ = false := by
-    intro d hd φ
-    rw [hselF]
-    intro hmem
-    refine hd ?_
-    rw [hD, Trader.freezeDays, Finset.mem_image]
-    exact ⟨(d, φ), hmem, rfl⟩
+  have hP : ∀ day φ, 0 ≤ P day φ ∧ P day φ ≤ 1 := hPcomp.price_mem_Icc
+  have hP' : ∀ day φ, 0 ≤ P' day φ ∧ P' day φ ≤ 1 := hP'comp.price_mem_Icc
   constructor
   · intro hLI
     exact {
@@ -1299,81 +398,135 @@ theorem lic_iff_of_finiteSupportPerturbation
       processComputable := hLI.processComputable
       noExploit := by
         intro Tr hTr hExploits
+        let frozen := Tr.freezeBefore patchP'.quote cutoff
+        have hfrozenEC : EfficientlyComputable frozen :=
+          patchP'.preserves_ec Tr hTr
         have hdiff : ∀ n v, v.ConsistentWith (DP.D n) →
-            |Tr.netWorth P' v n - (Tr.freezeOn patchP'.quote sel).netWorth P v n| ≤
-              Tr.freezeOnErrorBound patchP'.quote sel D P' P := by
-          intro n v _
-          exact Tr.freezeOn_netWorth_difference_le patchP'.quote sel D P' P
-            (fun d φ h => patchP'.quote_exact d φ ((hselT d φ).1 h))
-            (fun d φ h => (hagree d φ ((hselF d φ).1 h)).symm)
-            hDays hP' hP v n
-        exact hLI.noExploit _ (patchP'.preserves_ec Tr hTr)
-          (hExploits.of_boundedDifference _ hdiff) }
+            |Tr.netWorth P' v n - frozen.netWorth P v n| ≤
+              Tr.freezeBeforeErrorBound patchP'.quote cutoff P' P := by
+          intro n v hv
+          exact Tr.freezeBefore_netWorth_difference_le patchP'.quote cutoff P' P
+            patchP'.quote_exact
+            (fun day hday φ ↦ (htail day hday φ).symm)
+            hP' hP v n
+        have hfrozenExploits : frozen.Exploits P DP :=
+          hExploits.of_boundedDifference
+            (Tr.freezeBeforeErrorBound patchP'.quote cutoff P' P) hdiff
+        exact hLI.noExploit frozen hfrozenEC hfrozenExploits }
   · intro hLI'
     exact {
       marketComputable := hPcomp
       processComputable := hLI'.processComputable
       noExploit := by
         intro Tr hTr hExploits
+        let frozen := Tr.freezeBefore patchP.quote cutoff
+        have hfrozenEC : EfficientlyComputable frozen :=
+          patchP.preserves_ec Tr hTr
         have hdiff : ∀ n v, v.ConsistentWith (DP.D n) →
-            |Tr.netWorth P v n - (Tr.freezeOn patchP.quote sel).netWorth P' v n| ≤
-              Tr.freezeOnErrorBound patchP.quote sel D P P' := by
-          intro n v _
-          exact Tr.freezeOn_netWorth_difference_le patchP.quote sel D P P'
-            (fun d φ h => patchP.quote_exact d φ ((hselT d φ).1 h))
-            (fun d φ h => hagree d φ ((hselF d φ).1 h))
-            hDays hP hP' v n
-        exact hLI'.noExploit _ (patchP.preserves_ec Tr hTr)
-          (hExploits.of_boundedDifference _ hdiff) }
+            |Tr.netWorth P v n - frozen.netWorth P' v n| ≤
+              Tr.freezeBeforeErrorBound patchP.quote cutoff P P' := by
+          intro n v hv
+          exact Tr.freezeBefore_netWorth_difference_le patchP.quote cutoff P P'
+            patchP.quote_exact htail hP hP' v n
+        have hfrozenExploits : frozen.Exploits P' DP :=
+          hExploits.of_boundedDifference
+            (Tr.freezeBeforeErrorBound patchP.quote cutoff P P') hdiff
+        exact hLI'.noExploit frozen hfrozenEC hfrozenExploits }
 
-/-! ## Refutation of the exact-net-worth claim -/
+/-! ## The finite-support hypothesis and its separation from tail agreement -/
 
-/-- The settlement term `- V day φ` in `Strategy.value` is not syntax, so the frozen
-strategy's value on an *affected* day differs from the original's by exactly
-`coefficient * (P' day φ - P day φ)`.  Concretely, with a single unit trade the
-discrepancy is the price gap itself. -/
-lemma freezeOn_value_gap_on_selected_day
-    (day : ℕ) (φ : Sentence) (P P' : History) (w : Valuation)
-    (quote : ℕ → Sentence → ℚ) (sel : ℕ → Sentence → Bool)
-    (T : Strategy day) (hT : T.trades = [(EF.const 1, φ)]) :
-    (T.freezeOn quote sel).value P' w - T.value P w = P day φ - P' day φ := by
-  simp [Strategy.value, Strategy.freezeOn, hT, EF.freezeOn, EF.denote, EF.denoteWith]
+/-- `P` and `P'` differ on only finitely many `(day, sentence)` price coordinates. -/
+def FiniteSupportPerturbation (P P' : History) : Prop :=
+  ∃ S : Finset (ℕ × Sentence), ∀ d φ, (d, φ) ∉ S → P d φ = P' d φ
 
-/-! ## The same theorem at the machine class (the recommended home) -/
+/-- Finite support is *strictly stronger* than the paper's tail-agreement hypothesis.
 
-/-- The machine-class efficiency certificate for the finite-support freeze.  This is the
-version whose obligation is dischargeable: `Nat.unpair` is polynomial time, so the
-escape-leaf decode that blocks the fuel model is available here.
+Half of the separation that keeps the corrected `thm:ifp` honest; the other half, that the
+converse fails, is `tailAgree_not_finiteSupport` below.
+
+Proof kind: `P` proved.  Provenance: (b) `Finset.le_sup`.
+Paper node: `app:ifp` -/
+lemma FiniteSupportPerturbation.tail_agree {P P' : History}
+    (h : FiniteSupportPerturbation P P') :
+    ∃ N : ℕ, ∀ d, N ≤ d → ∀ φ, P d φ = P' d φ := by
+  obtain ⟨S, hS⟩ := h
+  refine ⟨(S.image Prod.fst).sup id + 1, ?_⟩
+  intro d hd φ
+  refine hS d φ (fun hmem => ?_)
+  have : d ≤ (S.image Prod.fst).sup id :=
+    Finset.le_sup (f := id) (Finset.mem_image.2 ⟨(d, φ), hmem, rfl⟩)
+  omega
+
+/-- **And it is *strictly* stronger: the converse fails.**  Two markets can agree from day
+one onward and still differ at infinitely many `(day, sentence)` coordinates — a single
+rewritten pricing row already does it, because a day's fibre is infinite.
+
+This is the separation that keeps the corrected `thm:ifp` honest.  The published theorem
+hypothesises *eventual day agreement*; that statement is refuted by
+`FinitePerturbationCounterexample.not_overgeneral_ifp`.  What is proved instead assumes
+finite **coordinate** support, and the implication runs one way only:
+
+```
+finite coordinate support  ⇒  eventual day agreement   (tail_agree)
+eventual day agreement     ⇏  finite coordinate support (this lemma)
+```
+
+So the corrected theorem cannot accidentally re-derive the false one.  It also locates
+exactly where the paper's own "only finitely many constants are needed, and can be
+hard-coded" argument becomes valid: under finite coordinate support the frozen table really
+is a finite list of `(day, sentence, price)` rows, whereas under mere day agreement the
+rewritten row carries infinitely many prices and no such table exists.
+
+Proof kind: `N-` negative witness.  Provenance: (a) `Infinite.exists_notMem_finset`;
+(b) `LO.Propositional.Formula.atom` injective.
+Paper node: `app:ifp` -/
+lemma tailAgree_not_finiteSupport :
+    ∃ P P' : History, (∀ d, 1 ≤ d → ∀ φ, P d φ = P' d φ) ∧
+      ¬ FiniteSupportPerturbation P P' := by
+  classical
+  haveI : Infinite Sentence :=
+    Infinite.of_injective (LO.Propositional.Formula.atom (α := ℕ))
+      (fun _ _ h => LO.Propositional.Formula.atom.inj h)
+  refine ⟨fun _ _ => 0, fun d _ => if d = 0 then 1 else 0, ?_, ?_⟩
+  · intro d hd _
+    show (0 : ℝ) = if d = 0 then 1 else 0
+    rw [if_neg (by omega)]
+  · rintro ⟨S, hS⟩
+    obtain ⟨φ, hφ⟩ := Infinite.exists_notMem_finset (S.image Prod.snd)
+    have hmem : (0, φ) ∉ S := fun hc => hφ (Finset.mem_image.mpr ⟨(0, φ), hc, rfl⟩)
+    have h0 := hS 0 φ hmem
+    simp at h0
+
+/-! ## The corrected theorem -/
+
+/-- The efficiency certificate for the finite-support freeze.  This is the version whose
+obligation is dischargeable: the table is finite, so the frozen lookup is a bounded
+polynomial-time rewrite of the trader's own output word.
 
 **This structure is implementation machinery, not a hypothesis.**  It is inhabited —
-unlike `EfficientPrefixPatch` and `FiniteSupportPatch`, which are fuel-class and remain
-uninhabited — and it is inhabited *without a caller-supplied witness*:
-`FreezeOracle.machineFiniteSupportPatch_ofRecognizable` compiles one from the market's own
-`ComputableMarket` certificate and the coordinate set alone.  So the public corrected
-theorem does not mention it.  Read this structure as the compiler's interface; read
-`FreezeOracle.machine_lic_iff_of_recognizableSupport` as the statement.
+unlike the prefix certificate `EfficientPrefixPatch` — and it is inhabited
+*without a caller-supplied witness*: `FreezeOracle.finiteSupportPatch` compiles one
+from the market's own `ComputableMarket` certificate and the coordinate set alone, with no
+syntactic condition on the moved sentences at all.  So the public corrected theorem does not
+mention this structure.  Read it as the compiler's interface, and
+`FreezeOracle.lic_iff_of_finiteSupport` as the statement: that theorem asks for
+finite `(day, sentence)` support and computability of both markets, and carries no condition
+on the moved sentences.
 
-The one condition that survives into the public statement is `Recognizable` — `BotFree` and
-`NoReserved` on each of the finitely many sentences whose price moves, collected in
-`Construction/Witnesses/CanonicalCodes.lean`.  It is a condition on **syntax**, not on
-markets or perturbations, and it is representation residue rather than mathematics: the
-unrestricted theorem is true and unprovable here, for the two missing `Complexity.FP`
-primitives that `FreezeOracle`'s boundary note names.
-
-Non-vacuity and content: `FreezeOracle.machine_lic_iff_twoPoint` exhibits a concrete pair of
+Non-vacuity and content: `FreezeOracle.lic_iff_twoPoint` exhibits a concrete pair of
 genuinely different computable markets, so the antecedent is satisfiable, and
-`LIAPerturbation.machineLogicalInductor_liaPerturbed` derives that a one-price perturbation
+`LIAPerturbation.logicalInductor_liaPerturbed` derives that a one-price perturbation
 of the constructed inductor is still an inductor — which no other result here gives.
 
-`machineFiniteSupportPatch_of_rewriter` below reduces the certificate to one named
+`finiteSupportPatch_of_rewriter` below reduces the certificate to one named
 `Complexity.FP` fact, `FreezeStreamRewriter`, which `FreezeOracle` then discharges from a
 `RunOracle`.
 Paper node: `app:ifp` -/
-structure MachineFiniteSupportPatch (P : History) (S : Finset (ℕ × Sentence)) where
+structure FiniteSupportPatch (P : History) (S : Finset (ℕ × Sentence)) where
   quote : ℕ → Sentence → ℚ
   quote_exact : ∀ d φ, (d, φ) ∈ S → P d φ = (quote d φ : ℝ)
-  preserves_ec : ∀ Tr : Trader, MachineEfficientTrader Tr →
-    MachineEfficientTrader (Tr.freezeOn quote (fun d φ => decide ((d, φ) ∈ S)))
+  preserves_ec : ∀ Tr : Trader, EfficientlyComputable Tr →
+    EfficientlyComputable (Tr.freezeOn quote (fun d φ => decide ((d, φ) ∈ S)))
 
 /-! ### The efficiency step, isolated
 
@@ -1385,8 +538,8 @@ is the granularity `strategyOfTokens` parses.
 It is not a hypothesis of anything public.  `RpnFreeze.freezeStreamRewriter_of_flatPass`
 carries it to the *flat* stream — the one a machine actually holds — and
 `FreezeStep.freezeStreamRewriter_of_runOracle` discharges it from the run-level lookup,
-which `FreezeOracle.runOracleOf` supplies for any finite table.  It survives as the seam
-between the economic argument and the compiler, which is why it is still named. -/
+which `FreezeOracle.runOracleOf` supplies for any finite table.  It is the seam between the
+economic argument and the compiler, which is why it is named rather than inlined. -/
 
 /-- **The `Complexity.FP` step the machine-class patch turns on.**  Every polynomial-time
 output word can be rewritten, in polynomial time, into one whose contracted token stream is
@@ -1407,7 +560,7 @@ list to the strategy, and `Trader.freezeOn` is that strategy-wise.
 
 Kind `C`; hypotheses `(a)` except `hrewrite`, which is the named obligation above.
 Paper node: `app:ifp` -/
-lemma MachineEfficientTrader.freezeOn
+lemma EfficientlyComputable.freezeOn
     {quote : ℕ → Sentence → ℚ} {sel : ℕ → Sentence → Bool}
     {selCode : ℕ → ℕ → Bool} {quoteCode : ℕ → ℕ → ℕ}
     (hsel : ∀ day code φ, Encodable.decode (α := Sentence) code = some φ →
@@ -1415,8 +568,8 @@ lemma MachineEfficientTrader.freezeOn
     (hquote : ∀ day code φ, Encodable.decode (α := Sentence) code = some φ →
       quoteCode day code = Encodable.encode (quote day φ))
     (hrewrite : FreezeStreamRewriter selCode quoteCode)
-    {Tr : Trader} (hTr : MachineEfficientTrader Tr) :
-    MachineEfficientTrader (Tr.freezeOn quote sel) := by
+    {Tr : Trader} (hTr : EfficientlyComputable Tr) :
+    EfficientlyComputable (Tr.freezeOn quote sel) := by
   obtain ⟨F, hF, hFspec⟩ := hTr
   obtain ⟨G, hG, hGspec⟩ := hrewrite F hF
   refine ⟨G, hG, fun n => ?_⟩
@@ -1436,7 +589,7 @@ assumes anything about the market beyond `quote_exact`.
 
 Kind `C`; hypotheses `(a)` except `hrewrite`.
 Paper node: `app:ifp` -/
-def machineFiniteSupportPatch_of_rewriter
+def finiteSupportPatch_of_rewriter
     (P : History) (S : Finset (ℕ × Sentence)) (quote : ℕ → Sentence → ℚ)
     (hexact : ∀ d φ, (d, φ) ∈ S → P d φ = (quote d φ : ℝ))
     (selCode : ℕ → ℕ → Bool) (quoteCode : ℕ → ℕ → ℕ)
@@ -1445,27 +598,27 @@ def machineFiniteSupportPatch_of_rewriter
     (hquote : ∀ day code φ, Encodable.decode (α := Sentence) code = some φ →
       quoteCode day code = Encodable.encode (quote day φ))
     (hrewrite : FreezeStreamRewriter selCode quoteCode) :
-    MachineFiniteSupportPatch P S where
+    FiniteSupportPatch P S where
   quote := quote
   quote_exact := hexact
   preserves_ec := fun _ hTr =>
-    MachineEfficientTrader.freezeOn hsel hquote hrewrite hTr
+    EfficientlyComputable.freezeOn hsel hquote hrewrite hTr
 
 /-- **Closure under finite-support perturbations, at the paper's own quantifier.**  The
 same corrected statement as `lic_iff_of_finiteSupportPerturbation`, over
-`MachineEfficientTrader` rather than the fuel-certified class, and it is the primary one:
+`EfficientlyComputable` rather than the fuel-certified class, and it is the primary one:
 the whole economic argument is class-agnostic, so only the freeze certificate changes.
 Read that theorem's docstring for what "corrected" means here — the hypothesis is strictly
 stronger than the paper's, and this is not the unrestricted `thm:ifp`.
 
 Kind `C`; hypotheses `(a)` except `preserves_ec`.
 Paper node: `thm:ifp` -/
-theorem machine_lic_iff_of_finiteSupportPerturbation
+theorem lic_iff_of_finiteSupportPerturbation_ofPatches
     (P P' : History) (DP : DeductiveProcess) (S : Finset (ℕ × Sentence))
     (hPcomp : ComputableMarket P) (hP'comp : ComputableMarket P')
     (hagree : ∀ d φ, (d, φ) ∉ S → P d φ = P' d φ)
-    (patchP : MachineFiniteSupportPatch P S) (patchP' : MachineFiniteSupportPatch P' S) :
-    IsMachineLogicalInductor P DP ↔ IsMachineLogicalInductor P' DP := by
+    (patchP : FiniteSupportPatch P S) (patchP' : FiniteSupportPatch P' S) :
+    IsLogicalInductor P DP ↔ IsLogicalInductor P' DP := by
   classical
   have hP : ∀ d φ, 0 ≤ P d φ ∧ P d φ ≤ 1 := hPcomp.price_mem_Icc
   have hP' : ∀ d φ, 0 ≤ P' d φ ∧ P' d φ ≤ 1 := hP'comp.price_mem_Icc
@@ -1515,17 +668,3 @@ theorem machine_lic_iff_of_finiteSupportPerturbation
           (hExploits.of_boundedDifference _ hdiff) }
 
 end LogicalInduction
-
-#print axioms LogicalInduction.EF.strategyOfTokens_freezeTokenRunOn_trades
-#print axioms LogicalInduction.MachineEfficientTrader.freezeOn
-#print axioms LogicalInduction.EF.freezeTokenRunOn_serialize
-#print axioms LogicalInduction.EF.freezeBefore_denote
-#print axioms LogicalInduction.Strategy.freezeBefore_value
-#print axioms LogicalInduction.Trader.freezeBefore_netWorth_difference_le
-#print axioms LogicalInduction.Trader.Exploits.of_boundedDifference
-#print axioms LogicalInduction.lic_iff_of_finitePerturbation
-#print axioms LogicalInduction.FiniteSupportPerturbation.tail_agree
-#print axioms LogicalInduction.EF.freezeBefore_eq_freezeOn
-#print axioms LogicalInduction.Trader.freezeOn_netWorth_difference_le
-#print axioms LogicalInduction.lic_iff_of_finiteSupportPerturbation
-#print axioms LogicalInduction.machine_lic_iff_of_finiteSupportPerturbation
