@@ -44,7 +44,7 @@ token outcome the representatives will actually reach, and which token outcome t
 decided by the book.  See erratum D6 and RULING 10.
 
 `conflictStrictToken`'s `uᵉ` takes several distinct values (`conflictStrictToken_ue_ne`), so
-the witness is not a constant `uᵉ` in disguise: the improvement genuinely depends on the
+the witness is not a constant `uᵉ` in disguise: the improvement depends on the
 token outcome.
 -/
 
@@ -346,8 +346,7 @@ lemma conflictStrictToken_isStrictSPI :
     conflictGame.u (pair (Sum.inl true) (Sum.inl true)) Two.one
   norm_num [conflictPages, conflictGame_u_inl, conflictPayoff]
 
-/-- `uᵉ` is genuinely non-constant on the token outcomes: the witness is not a constant
-`uᵉ` in disguise, and the improvement depends on which token outcome is reached. -/
+/-- `uᵉ` takes different values at different token outcomes. -/
 lemma conflictStrictToken_ue_ne :
     conflictStrictUe (conflictBookIso.map (conflictPages true)) ≠
       conflictStrictUe (conflictBookIso.map (pair (Sum.inl false) (Sum.inl true))) := by

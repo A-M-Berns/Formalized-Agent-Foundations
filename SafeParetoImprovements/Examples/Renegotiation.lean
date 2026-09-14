@@ -291,17 +291,17 @@ lemma run_rn_mismatch :
       run (.rn hawk concedeLogic) (.rn fair takeoverLogic) = hawk := ⟨rfl, rfl⟩
 
 /-- The conceding logic does **not** preserve demands: against `rn(𝐩ᶠᵃⁱʳ)`'s counterpart
-using it too, a hawk's realised demand drops to 50%. -/
+using it too, a hawk's realized demand drops to 50%. -/
 lemma run_rn_concede_fst_ne :
     (run (.rn hawk concedeLogic) (.rn fair concedeLogic)).1 ≠ hawk.1 := by decide
 
-/-- The realised action profile of a program profile: each player runs her own program
+/-- The realized action profile of a program profile: each player runs her own program
 against the other's. -/
-def realised (c : Two → RnProg) : ∀ i, NUniverse i := fun i => run (c i) (c i.other)
+def realized (c : Two → RnProg) : ∀ i, NUniverse i := fun i => run (c i) (c i.other)
 
-/-- Program-level payoff: the negotiation game's payoff of the realised profile. -/
+/-- Program-level payoff: the negotiation game's payoff of the realized profile. -/
 noncomputable def programPayoff (t d : ℝ) (c : Two → RnProg) (i : Two) : ℝ :=
-  (negotiation t d).u (realised c) i
+  (negotiation t d).u (realized c) i
 
 /-- The transformation `𝐟 = rn`: every agent's program becomes B.4's renegotiation program
 on the same base strategy. -/
@@ -327,11 +327,11 @@ lemma rnStrategy_basePreserving (p : Two → RnProg) (i : Two) :
 SPIs". -/
 def baseProfiles : Set (Two → RnProg) := {p | ∀ i, (p i).isRn = false}
 
-lemma realised_of_base {p : Two → RnProg} (hp : p ∈ baseProfiles) (i : Two) :
-    realised p i = (p i).baseOf := by
+lemma realized_of_base {p : Two → RnProg} (hp : p ∈ baseProfiles) (i : Two) :
+    realized p i = (p i).baseOf := by
   have := hp i
   cases h : p i with
-  | base b => simp [realised, h, run_base, RnProg.baseOf]
+  | base b => simp [realized, h, run_base, RnProg.baseOf]
   | rn b L => rw [h] at this; cases this
 
 /-- **`rn` is an SPI in B.1's sense** on the space of base-strategy profiles, as soon as a
@@ -341,13 +341,13 @@ without devices, whatever devices the base strategies carried. -/
 lemma rn_isSPITransformation {t d : ℝ} (hd : d ≤ t) :
     IsSPITransformation (programPayoff t d) baseProfiles rnTransform := by
   intro p hp i
-  have h1 := realised_of_base hp .one
-  have h2 := realised_of_base hp .two
+  have h1 := realized_of_base hp .one
+  have h2 := realized_of_base hp .two
   simp only [programPayoff, negotiation]
   rw [h1, h2]
   rcases hp1 : (p .one).baseOf with ⟨a, x⟩
   rcases hp2 : (p .two).baseOf with ⟨a', x'⟩
-  simp only [realised, rnTransform, other_one, other_two, hp1, hp2]
+  simp only [realized, rnTransform, other_one, other_two, hp1, hp2]
   cases i <;> cases a <;> cases a' <;> cases x <;> cases x' <;>
     simp [run, outcome, Outcome.payoff, Share.compatible, takeoverLogic, hd]
 
@@ -356,7 +356,7 @@ than a takeover attempt (`d < t`). -/
 lemma programPayoff_fair_hawk_lt {t d : ℝ} (h : d < t) (i : Two) :
     programPayoff t d (pair (.base fair) (.base hawk)) i <
       programPayoff t d (rnTransform (pair (.base fair) (.base hawk))) i := by
-  cases i <;> simp [programPayoff, negotiation, realised, rnTransform, pair, run, outcome, fair,
+  cases i <;> simp [programPayoff, negotiation, realized, rnTransform, pair, run, outcome, fair,
     hawk, Share.compatible, Outcome.payoff, takeoverLogic, RnProg.baseOf, h]
 
 /-! ### The program game and the execution-level notions -/
@@ -389,41 +389,41 @@ the execution is `run`, as a pure mixed action. -/
 noncomputable def rnProgramGame (t d : ℝ) (b₀ : Two → Base) :
     ProgramGame (negotiation t d) (rnRepresentatives t d b₀) where
   Instr _ := RnProg
-  exec c _ i := (negotiation t d).pureMixed (realised c i) (Finset.mem_univ _)
+  exec c _ i := (negotiation t d).pureMixed (realized c i) (Finset.mem_univ _)
   measurable_exec _ _ _ := measurable_from_top
 
 lemma rnProgramGame_exec (t d : ℝ) (b₀ : Two → Base) (c : Two → RnProg) (ω : Unit) (i : Two) :
     (rnProgramGame t d b₀).exec c ω i =
-      (negotiation t d).pureMixed (realised c i) (Finset.mem_univ _) := rfl
+      (negotiation t d).pureMixed (realized c i) (Finset.mem_univ _) := rfl
 
 /-- The **default instruction** is the base strategy `𝐛₀ i` itself: everybody at their base
-strategy realises `𝐛₀ = Π(Γ₀)`. -/
+strategy realizes `𝐛₀ = Π(Γ₀)`. -/
 noncomputable def rnDefault (t d : ℝ) (b₀ : Two → Base) : (rnProgramGame t d b₀).DefaultInstr where
   default i := .base (b₀ i)
   plays_default ω i b := by
     simp only [rnProgramGame_exec, Game.pureMixed_val, rnRepresentatives_play]
     rfl
 
-/-- Against a counterpart at her default, a renegotiation program realises its base
-strategy, i.e. exactly what the all-default profile realises. -/
-lemma realised_update_rn (b₀ : Two → Base) (c : Two → RnProg) (i : Two) {L : Logic}
+/-- Against a counterpart at her default, a renegotiation program realizes its base
+strategy, i.e. exactly what the all-default profile realizes. -/
+lemma realized_update_rn (b₀ : Two → Base) (c : Two → RnProg) (i : Two) {L : Logic}
     (hc : c i = .rn (b₀ i) L) (j : Two) (hj : j ≠ i) :
-    realised (Function.update c j (.base (b₀ j))) i = realised (fun k => .base (b₀ k)) i := by
+    realized (Function.update c j (.base (b₀ j))) i = realized (fun k => .base (b₀ k)) i := by
   have hji : j = i.other := eq_other_of_ne hj
   subst hji
-  simp only [realised, Function.update_self, Function.update_of_ne (other_ne i).symm, hc,
+  simp only [realized, Function.update_self, Function.update_of_ne (other_ne i).symm, hc,
     run_rn_base, run_base]
 
 /-- **Execution-level participation independence** of a renegotiation program, for every
-baseline and every logic: when the counterpart does not participate, the program realises
-its base strategy, which is what the baseline realises. -/
+baseline and every logic: when the counterpart does not participate, the program realizes
+its base strategy, which is what the baseline realizes. -/
 lemma rn_participationIndependent (t d : ℝ) (b₀ : Two → Base) (c : Two → RnProg) (i : Two)
     {L : Logic} (hc : c i = .rn (b₀ i) L) :
     (rnProgramGame t d b₀).ParticipationIndependent (rnDefault t d b₀) c i := by
   intro j hj ω
   rw [rnProgramGame_exec, rnProgramGame_exec]
   congr 1
-  exact realised_update_rn b₀ c i hc j hj
+  exact realized_update_rn b₀ c i hc j hj
 
 /-- **B.2's participation independence** of the renegotiation full strategy, for any input
 profile, under any simultaneous choice model consistent with it. -/
@@ -482,7 +482,7 @@ noncomputable def rnFallbackPolicy (t d : ℝ) (b₀ : Two → Base) (i : Two) (
     | true => .base b
 
 /-- **Execution-level foreknowledge independence** of the fall-back policy: once the
-counterpart has dropped out, `rn(𝐛)` and `𝐛` realise the same action.  The two instructions
+counterpart has dropped out, `rn(𝐛)` and `𝐛` realize the same action.  The two instructions
 are different programs; only their behaviour after the drop-out coincides. -/
 lemma rnFallbackPolicy_foreknowledgeIndependent (t d : ℝ) (b₀ : Two → Base) (i : Two)
     (b : Base) (c : Two → RnProg) :
@@ -493,7 +493,7 @@ lemma rnFallbackPolicy_foreknowledgeIndependent (t d : ℝ) (b₀ : Two → Base
   congr 1
   have hji : j = i.other := eq_other_of_ne hj
   subst hji
-  simp only [realised, Function.update_self, Function.update_of_ne (other_ne i),
+  simp only [realized, Function.update_self, Function.update_of_ne (other_ne i),
     rnFallbackPolicy, rnDefault, run_rn_base, run_base]
 
 /-! ### B.2's "PI but not FI" agent: 60% regardless, 50% with foreknowledge -/
@@ -556,14 +556,14 @@ lemma rn_sixty_participationIndependent (t d : ℝ) (bB : Base) (c : Two → RnP
   rn_participationIndependent t d _ c .one hc
 
 /-- **Execution-level failure of foreknowledge independence**: once `B` has dropped out
-she demands 60% if she chose uninformed and 50% if she chose knowing — different realised
+she demands 60% if she chose uninformed and 50% if she chose knowing — different realized
 actions, whatever `B`'s base strategy. -/
 lemma sixtyFiftyPolicy_not_foreknowledgeIndependent (t d : ℝ) (bB : Base) (c : Two → RnProg) :
     ¬ (rnProgramGame t d (pair (.s60, .none) bB)).ForeknowledgeIndependent
       (rnDefault t d (pair (.s60, .none) bB)) c (sixtyFiftyPolicy t d bB) := by
   intro h
   have := congrArg (fun m => m.val ⟨(.s60, .none), Finset.mem_univ _⟩) (h .two (by decide) ())
-  simp only [rnProgramGame_exec, Game.pureMixed_val, realised, Function.update_self,
+  simp only [rnProgramGame_exec, Game.pureMixed_val, realized, Function.update_self,
     Function.update_of_ne (show Two.two ≠ Two.one by decide), other_one, sixtyFiftyPolicy,
     rnDefault, run_rn_base, run_base] at this
   simp at this

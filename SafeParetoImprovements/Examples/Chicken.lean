@@ -284,11 +284,8 @@ lemma chickenRepresentatives_integral (i : Two) :
 
 Nothing in the impossibility argument mentions tokens: it uses only that the improved
 payoff vector is feasible at each sample point and dominates the default play there.
-Stating it that way first makes the mathematics independent of how rich the action universe
-happens to be (`dd:room`), and Proposition 16's negated existential is one `rintro` away.
-
-The hypotheses are satisfiable — `v ω := chicken.u (chickenPages ω)` meets both, with mean
-`(2, 2)` — so this is not vacuous. -/
+The hypotheses are satisfiable: `v ω := chicken.u (chickenPages ω)` meets both, with mean
+`(2, 2)`. -/
 
 /-- No `C(Γ)`-valued random variable that weakly dominates the default play at every sample
 point has mean `u(c, c) = (3, 3)`: on heads it is capped by `100 y₁ + 6 y₂ ≤ 400` and
@@ -318,6 +315,7 @@ lemma chicken_no_feasible_dominating_of_mean_cc (v : Bool → Two → ℝ)
   simp only [u_inl, chickenPayoff] at e₁ e₂
   linarith
 
+-- the feasibility hypothesis, at the default play
 example : ∀ ω, chicken.u (chickenPages ω) ∈ chicken.feasible := by
   intro ω
   exact chicken.u_mem_feasible (fun i => by
@@ -340,11 +338,9 @@ Assumption-1/2 representatives over the *same* game for which a perfect-coordina
 with expected payoff `(3, 3)` does exist, so the printed existential over `Π` (Table 7's
 caption, "depending on `Π`") cannot be turned into a universal.
 
-Integrability is automatic and no hypothesis is needed for it:
-`Representatives.integrable_comp_play` — a real function of `Π(Γ)` takes finitely many
-values on measurable fibers — so the expectation clause is never satisfiable by Bochner's
-junk value `0`.  The impossibility itself is `chicken_no_feasible_dominating_of_mean_cc`,
-which mentions no tokens.
+Integrability needs no hypothesis: `Representatives.integrable_comp_play` — a real function
+of `Π(Γ)` takes finitely many values on measurable fibers — so the expectation clause is
+never satisfiable by Bochner's junk value `0`.
 
 Paper node: `Proposition 16` -/
 theorem chicken_no_perfectCoordinationSPI :

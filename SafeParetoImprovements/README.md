@@ -11,12 +11,12 @@ independence after the CLR safe-Pareto-improvements research agenda.
 to them; the two that do not are Theorem 15, deferred by ruling as the final scope (§3
 below), and Lemma 27 (Cook's theorem), a cited external result that is neither re-proved
 nor assumed.  There is no `sorry` and no axiom beyond Lean's three standard ones anywhere
-in the library; every public declaration of the library (854) is named on the axiom gate.  The registry status is
-`in-progress` because the human read-through of the statement surface is outstanding;
-nothing else gates `completed`.
+in the library, and all 854 public declarations are named on the axiom gate.  The registry
+status is `in-progress` because the human read-through of the statement surface is
+outstanding; nothing else gates `completed`.
 
 This file is the trust surface: what is claimed, what is disclosed, what is deliberately
-not claimed, and why each modelling choice was made.  Companion documents:
+not claimed, and why each modeling choice was made.  Companion documents:
 
 | document | what it holds |
 |---|---|
@@ -136,14 +136,14 @@ uniqueness from Lemmas 19–20 (`Reduction.lean`); and the **book representative
 parameter (`Book.lean`).  Every sample space the development instantiates is discrete
 (`Unit`, `Bool`, a finite profile space), so the measurability field of `Representatives`
 is discharged trivially in every witness; the probabilistic content exercised is the fair
-coin's genuinely random play, not a non-trivial σ-algebra.
+coin's random play, not a non-trivial σ-algebra.
 
 **Non-vacuity is proved, not asserted.**  Every Proposition 5–8 conclusion is reached by a
 play family that *also* satisfies Assumptions 1 and 2 inside the same statement
 (`Examples/Witnesses.lean`); the repaired Definition 5 predicates have proved yes-instances
 (the Demand Game, the Complicated Temptation Game) next to their no-instance; Theorem 1's
 hypotheses are witnessed twice, deterministically in the Prisoner's Dilemma and with a
-genuinely random `Π(Γ₀)` in the Demand Game (a fair coin), and its threat-point hypothesis
+random `Π(Γ₀)` in the Demand Game (a fair coin), and its threat-point hypothesis
 is shown to have content by a book that violates it (`Examples/ProgramGameWitnesses.lean`);
 Definition 6 has strict and equality-only witnesses, with `uᵉ` defined along the book's
 isomorphism (`Examples.conflictStrictToken_isStrictSPI`, `conflictPlainToken_isSPI` in
@@ -220,7 +220,7 @@ alongside where it has content, and says so in the docstring.
   and Lemma 4's proof need it; `S i` is a `Finset`.
 * **The game-theory substrate is EconCSLib** (a pinned dependency), reached through one
   bridge `Game.toStrategic`; strict dominance, mixed strategies, expected payoffs and Nash
-  equilibrium are EconCSLib's, each characterised by a lemma that reads as the paper's
+  equilibrium are EconCSLib's, each characterized by a lemma that reads as the paper's
   sentence, and no paper-facing statement names an EconCSLib declaration.
 
 ### 4.2 Certainty and the representatives
@@ -417,7 +417,7 @@ A false claim in the prose, affecting no node: D22.  In brief:
   `Ψ(Φ(Γˢ))`; Proposition 7 names the wrong eliminated strategies.
 * **D5** Isomorphism (§2): `λ ∈ ℝⁿ₊` ambiguous between `≥ 0` and `> 0`, bijectivity
   unstated; both are needed (`dd:iso`).
-* **D6** *(downgraded)* Lemma 13's "WLOG" relabeling is proof-level, not a statement
+* **D6** Lemma 13's "WLOG" relabelling is proof-level, not a statement
   defect.
 * **D7** Corollary 14 says "polygon" for an `n`-player polytope; Lemma 13 and Corollary 14
   condition on null events — rendered on `supp Π(Γ)`.
@@ -426,17 +426,17 @@ A false claim in the prose, affecting no node: D22.  In brief:
 * **D9** Lemma 21: `Γ'ₘ = Γₘ` for `Γ'ₘ = Γₖ`, and "`Γˢ'ʳᵉᵈ` is isomorphic to `Γˢ'ʳᵉᵈ`" for
   "… to `Γʳᵉᵈ`" in the concise restatement.
 * **D10** Definition 7 is named the *strict* problem but its body omits strictness —
-  RULING 7 (2026-09-12) reads "strict" into the carrier
+  RULING 7 reads "strict" into the carrier
   (`Play.StrictPerfectCoordinationSPIDecision`).
 * **D11** Proposition 23 says "unilateral" in the omnilateral subsection; Lemma 19's
   discussion says "path dependence" for independence.
 * **D12** Theorem 15 as printed projects onto the strong Pareto frontier `PF(C(Γ))`, where
   the projections need not exist; the paper's own remark is about `C(Γ)`.  RULING 8
-  (2026-09-12) **defers** Theorem 15: no carrier until the projection reading is settled.
+  **defers** Theorem 15, and RULING 16 makes the deferral final.
 * **D13** Definition 5's non-triviality clause is satisfied by every payoff shift of a
-  subset game, so the printed (unilateral) SPI decision problem is constant-true.  RULING
-  (2026-09-12): the carrier requires the reduced *action sets* to differ (`dd:nontrivial`);
-  the printed clause is carried alongside as `…Printed` with its triviality theorem.
+  subset game, so the printed (unilateral) SPI decision problem is constant-true.  By
+  ruling, the carrier requires the reduced *action sets* to differ (`dd:nontrivial`); the
+  printed clause is carried alongside as `…Printed` with its triviality theorem.
 * **D14** Lemma 21's length bound `m ≤ k` on the reorganized chain is false; the bound is
   not rendered and the wrappers carry the qualitative shape only.
 * **D15** Algorithm 2 line 3 prints `minimax(i, j)`, which is *player `j`'s* strategy; the
@@ -474,11 +474,11 @@ paper.
 **Execution level** (`Independence.lean`, `dd:default-instr`, RULING 9).  Over any
 `ProgramGame`, a *default instruction* per player executes as the paper's baseline
 `Π(Γ₀)`; "player `j` did not participate" is the profile with `j` at her default.
-`ParticipationIndependent` says that when `j` drops out, `i` realises the same mixed
+`ParticipationIndependent` says that when `j` drops out, `i` realizes the same mixed
 action as under everybody's default, at every sample point of the representatives; an
 *information stage* `Policy` chooses an instruction from a signal that may announce a
 counterpart's non-participation, and `ForeknowledgeIndependent` says the mixed action
-realised towards a drop-out is the same whether the instruction was chosen uninformed or
+realized towards a drop-out is the same whether the instruction was chosen uninformed or
 informed.  Both are equalities of conditional action distributions given the
 representatives' sample point (the execution kernel has no private seeds to couple);
 they compare behaviour *towards a non-participant* and say nothing about demands during
@@ -487,7 +487,7 @@ participation.  What is proved: the **dove profile**
 executes the SPI, is participation independent for every player, and is a program
 equilibrium whenever each player's expected *ex-post* best reply to the baseline — the
 best reply computed sample point by sample point, which a program need not be able to
-realise — is at most her expected SPI payoff (`Prog.dove_isProgramEquilibrium`, from the
+realize — is at most her expected SPI payoff (`Prog.dove_isProgramEquilibrium`, from the
 interface-level `ProgramGame.isProgramEquilibrium_of_fallback`; a sufficient criterion
 only, and a demanding one — failing it says nothing); Algorithm 2 is *not*
 participation independent whenever its minimax punishment differs from the baseline, which
@@ -576,33 +576,33 @@ deliberately not parsed.
 
 **The axiom gate.**  `AxiomAudit.lean`'s `SPI-INVENTORY` block names every public
 declaration of the library (854 names: paper-node carriers, witnesses, and every
-supporting definition and lemma) under `#assert_axioms_clean`, which fails the build on `sorryAx` or any axiom
-beyond `propext`, `Classical.choice` and `Quot.sound`, and freezes the field *names* of
-the boundary structures (`Game`, `Play`, `Representatives`, `GameIso`,
-`Play.ParetoImprovingCorrespondence`, `Book`, `ProgramGame`, `ProgramGame.DefaultInstr`,
-`ProgramGame.Policy`, `FullStrategy`, `ChoiceModel`, `Game.Correlated`, `TokenGame`, …)
-under `#assert_fields`, so that a premise cannot be added as a new field without the gate
-noticing; a strengthening hidden inside an existing field's type would pass it, which is
-why the boundary structures are part of the human read-through.  `theorem` is reserved for
-paper-facing statements; supporting results are `lemma`s.
+supporting definition and lemma) under `#assert_axioms_clean`, which fails the build on
+`sorryAx` or any axiom beyond `propext`, `Classical.choice` and `Quot.sound`, and freezes
+the field *names* of the boundary structures (`Game`, `Play`, `Representatives`,
+`GameIso`, `Play.ParetoImprovingCorrespondence`, `Book`, `ProgramGame`,
+`ProgramGame.DefaultInstr`, `ProgramGame.Policy`, `FullStrategy`, `ChoiceModel`,
+`Game.Correlated`, `TokenGame`, …) under `#assert_fields`, so that a premise cannot be
+added as a new field without the gate noticing; a strengthening hidden inside an existing
+field's type would pass it, which is why the boundary structures are part of the human
+read-through. `theorem` is reserved for paper-facing statements; supporting results are
+`lemma`s.
 
-**Audit history.**  The formalization was built under an orchestrated audit loop: nine
-rounds of fresh-context adversarial audits over statements, definitions and proofs,
-combining auditors from two independent model families in every round where the second
-family's channel was available (two rounds ran on one family only, and are recorded as
-such), with the pre-publication audit run blind to this project's own conclusions (given
-the paper, the source and the user's rulings, but not the knowledge base or errata; it
-rediscovered twenty of the recorded errata independently) and the last two rounds reviewing
-the whole written surface as a CLR final project.  Across the rounds 202 findings were raised, 198
-fixed and 4 refuted with a recorded reason.  Four were blockers when raised — a source
-defect (Definition 5's printed non-triviality clause, D13), a vacuous impossibility
-statement caught before anything relied on it (Proposition 16's first carrier lived over a
-finite universe, where no token game exists), a tautological agreement test in the first
-renegotiation model, and a false README row — and all four are fixed; none is open.  Statement-level findings that changed a carrier are
-recorded at the carrier; the notable ones were that Definition 5's printed non-triviality
-clause is constant-true, that the book's play must be a function of the paper's game rather
-than of its Lean presentation, that Lemma 13 must copy `Γ` rather than its reduction, and
-that Table 9 and the printed payoff formula disagree materially.
+**Audit history.**  The statements, definitions and proofs were audited repeatedly by
+fresh-context adversarial readers drawn from two independent model families, and the
+pre-publication audit was run blind to this project's own conclusions — given the paper,
+the source and the rulings, but not the knowledge base or the errata — and rediscovered
+twenty of the recorded errata independently.  Four findings were blockers when raised: the
+source defect at Definition 5's printed non-triviality clause (D13); a vacuous
+impossibility statement, caught before anything relied on it (Proposition 16's first
+carrier lived over a finite universe, where no token game exists); a tautological agreement
+test in the first renegotiation model; and a false README row.  All four are fixed and none
+is open.  Findings that changed a carrier are recorded at that carrier; the notable ones
+were that Definition 5's printed non-triviality clause is constant-true, that the book's
+play must be a function of the paper's game rather than of its Lean presentation, that
+Lemma 13 must copy `Γ` rather than its reduction, and that Table 9 and the printed payoff
+formula disagree materially.  Across the nine rounds, 252 findings were raised, 248 fixed and
+4 refuted with a recorded reason; none is open. Across the nine rounds, 252 findings were
+raised, 248 fixed and 4 refuted with a recorded reason; none is open.
 
 ## 9. File map
 

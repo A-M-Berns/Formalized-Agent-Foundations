@@ -245,7 +245,7 @@ end demandSPI
 
 open demandGame demandSPI
 
-/-- The relabeling `DM ↦ DL`, `RM ↦ RL` (and the identity elsewhere). -/
+/-- The relabelling `DM ↦ DL`, `RM ↦ RL` (and the identity elsewhere). -/
 def demilitarize : DAct → DAct
   | .DM => .DL
   | .RM => .RL

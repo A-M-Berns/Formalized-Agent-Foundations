@@ -215,8 +215,7 @@ theorem temptation_isStrictSPI [L.NeBot] (hA1 : X.SatisfiesA1 L) :
 changes.  The printed statement of Proposition 7 says only "strict SPI"; that the SPI is
 unilateral is the surrounding prose of §4.5 (extraction l. 1116), so this lemma renders
 that half of the node.  No non-degeneracy of the filter is needed: the conclusion has no
-positive-probability clause, so the SPI is derived from the two play lemmas directly
-rather than through the strict theorem.
+positive-probability clause.
 
 Paper node: `Proposition 7` -/
 theorem temptation_isUnilateralSPI (hA1 : X.SatisfiesA1 L) :

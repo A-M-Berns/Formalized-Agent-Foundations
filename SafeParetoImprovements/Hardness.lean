@@ -17,31 +17,30 @@ problem instance size" is rendered only as the action count `size_hardnessGame`
 (`2(2n+2) + 2(2n̂+2)`, linear in the vertex counts), not as an encoding size — the paper
 fixes no encoding.
 
-Three modelling notes, all recorded in the design note.  The paper's `[2n+2]` is carried
+Three modeling notes, all recorded in the design note.  The paper's `[2n+2]` is carried
 as `Fin n ⊕ Fin n ⊕ Bool` — the block `[n]`, the block `{n+1, …, 2n}` written `j ↦ n+j`,
 and the two corner actions `2n+1` (`false`) and `2n+2` (`true`) — so that the payoff
 formula is a case split.  The printed formula and Table 9 disagree on eight blocks of
 entries — `8n` cells: player 1 in the two columns `2n+1, 2n+2` against the `2n` rows
 `[2n]`, player 2 symmetrically — where the formula says `ε` and the table `0`; the
-disagreement is material, because with `ε` no column of the
-unilateral candidate is ever strictly dominated once the corner rows are present, and the
-carrier follows the **table**, under which the printed proof checks (erratum D18).  And
-the reduction's second half is organised around the product structure of an isomorphism
-rather than the printed items (a)–(d): with non-triviality read as "the reduced action
-sets move" (`dd:nontrivial`), the case in which `Ψ` keeps to the `Γ` block is dismissed
-outright, and the printed `ε`-ladder is not needed.
+disagreement is material, because with `ε` no column of the unilateral candidate is ever
+strictly dominated once the corner rows are present, and the carrier follows the
+**table**, under which the printed proof checks (erratum D18).  And the reduction's second
+half is organized around the product structure of an isomorphism rather than the printed
+items (a)–(d): with non-triviality read as "the reduced action sets move"
+(`dd:nontrivial`), the case in which `Ψ` keeps to the `Γ` block is dismissed outright, and
+the printed `ε`-ladder is not needed.
 
 The hypotheses on `ε` are the paper's `ε < 1/(2n)` for `Γ` and `ε < 1/(2n̂)` for `Γ̂`,
 together with `0 < ε`, which the paper never states and the construction needs (with
 `ε = 0` the corner rows no longer strictly dominate anything against the table's `0`s;
-erratum D21);
-`n ≥ 1` replaces the printed "WLOG `n, n̂ ≥ 2`" and is assumed by all four forms of Lemma 28
-(the proof route needs `ε < 1`, which the `Γ`-side bound gives only when `n ≥ 1`).  Two
-remarks about `n = 0` that no declaration carries: the two strict forms appear to need it
-(the empty subgraph isomorphism exists, while the `Γ` block is then the two corner actions
-and `Ψ` carries their payoffs exactly, leaving no strict improvement), and the plain and
-unilateral forms would survive with `ε < 1` assumed separately.  Both are unverified
-side remarks, not claims of this formalization.
+erratum D21); `n ≥ 1` replaces the printed "WLOG `n, n̂ ≥ 2`" and is assumed by all four
+forms of Lemma 28 (the proof route needs `ε < 1`, which the `Γ`-side bound gives only when
+`n ≥ 1`).  Two remarks about `n = 0` that no declaration carries: the two strict forms
+appear to need `n ≥ 1` (the empty subgraph isomorphism exists, while the `Γ` block is then
+the two corner actions and `Ψ` carries their payoffs exactly, leaving no strict
+improvement), and the plain and unilateral forms would survive with `ε < 1` assumed
+separately.  Both are unverified side remarks, not claims of this formalization.
 
 * `Hardness.Graph`, `SubgraphIso`, `SubgraphIsoProblem` — Definition 8.
 * `Hardness.tableU₁`, `tableU₂` — Table 9's payoffs, with the shift `δ` that turns `Γ`

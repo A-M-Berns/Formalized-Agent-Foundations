@@ -39,9 +39,7 @@ baseline" — as the participation-independent alternative to Algorithm 2.
 What is *not* claimed: that the dove profile is always an equilibrium.  The criterion
 `Prog.dove_isProgramEquilibrium` is sufficient only; with the fair-coin representatives of
 `demandRandomRepresentatives` the expected best reply to the baseline is `1` while the SPI
-play is worth less to player 1, so the criterion is silent there, and whether some program
-can exploit a dove-playing counterpart is exactly the kind of question this substrate is
-meant to let one state.
+play is worth less to player 1, so the criterion is silent there.
 -/
 
 namespace SafeParetoImprovements

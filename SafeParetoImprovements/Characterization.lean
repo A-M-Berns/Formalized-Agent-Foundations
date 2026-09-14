@@ -27,30 +27,15 @@ stated on the support.
   outcome, hence the same expected payoff.  Assumption 2 speaks only about reduced games,
   so the paper's "(Â, û) is isomorphic to Γ, thus by Assumption 2 …" needs Assumption 1 to
   first move the play into the reduction, and the isomorphism of reductions is transported
-  to the copy (RULING 11).  The relabeling is
-  *exact* — the paper prints `û(â) = u(a)` — so the isomorphism is exposed with scale `1`
-  and shift `0` (`Game.ExactCopy`), not merely as `Game.Isomorphic`.
+  to the copy (RULING 11).  The relabelling is *exact* — the paper prints `û(â) = u(a)` —
+  so the isomorphism is exposed with scale `1` and shift `0` (`Game.ExactCopy`), not merely
+  as `Game.Isomorphic`.
 * **Corollary 14** (`Representatives.achievable_eq_improvementSum`, `convex_achievable`,
   `isCompact_achievable`, `isPolytope_achievable`): the set of expected payoffs safely
   achievable with perfect coordination is the weighted Minkowski sum
   `∑ₐ P(Π(Γ) = a) • {y ∈ C(Γ) | y ≥ u(a)}` over the outcomes of `Γ` (erratum D7: the
   paper's "convex polygon" is its `n = 2` wording; the polytope substrate is
   `Polytope.lean`), a convex compact polytope.
-
-## What `condExp` is, and what it is in the in-tree models
-
-`Representatives.condExp` is a genuine Bochner integral against the conditional measure.
-In the *book* models of this development it nevertheless collapses to a point evaluation
-whenever the token game is isomorphic to the reduced base game (Lemma 13's case): a `Book`
-page is chosen per isomorphism class, so the token play is then a function of `Π(Γ)` and
-the fiber `{Π(Γ) = a}` carries a single token payoff (a token game in another class, such
-as `Examples.conflictThreeToken`, is played from its own page, which need not be
-determined by `Π(Γ)`'s).  That is a property of the book construction, not of the
-definition — `condExp` averaging strictly between the values it integrates is witnessed by
-the hand-built family
-`Examples.mixPlay` / `Examples.mixToken` of `Examples/CharacterizationWitnesses.lean`,
-whose play reads the *size* of the game it is handed, so the token play is not a function
-of `Π(Γ)` and the conditional expectation `(½, ½)` is a value the integrand never takes.
 -/
 
 universe u v w
@@ -153,11 +138,9 @@ lemma condExp_comp_play (Γ : Game N 𝒜) {a : ∀ i, 𝒜 i} (ha : a ∈ R.sup
   rw [integral_congr_ae ((R.ae_play_eq_cond Γ a).mono fun ω hω => by rw [hω]), integral_const,
     probReal_univ, one_smul]
 
-/-- Conditional expectation respects almost-everywhere order on the fiber.
-
-A coordinate of a vector-valued integral is the integral of the coordinate: that is
-Mathlib's `MeasureTheory.eval_integral` (`Mathlib/MeasureTheory/SpecificCodomains/Pi.lean`),
-not a lemma of this development. -/
+/-- Conditional expectation respects almost-everywhere order on the fiber; a coordinate of
+a vector-valued integral is the integral of the coordinate (Mathlib's
+`MeasureTheory.eval_integral`). -/
 lemma condExp_mono (Γ : Game N 𝒜) (a : ∀ i, 𝒜 i) {g₁ g₂ : R.Ω → N → ℝ}
     (h₁ : Integrable g₁ (R.μ[|R.fiber Γ a])) (h₂ : Integrable g₂ (R.μ[|R.fiber Γ a]))
     (h : ∀ᵐ ω ∂(R.μ[|R.fiber Γ a]), g₁ ω ≤ g₂ ω) :
@@ -234,8 +217,8 @@ reassignment there is `u` itself; the paper's display writes `u` for `uᵉ` on t
 
 The copy is exposed as a `Game.ExactCopy` of `Γ` — an isomorphism with scale `1` and shift
 `0`, i.e. the paper's `û(â) = u(a)` — and not merely as `Game.Isomorphic`: the witness the
-proof builds is the token relabeling `Game.tokenCopy` along `Game.tokenIso`.
-What is *not* exposed is which relabeling: the token map is chosen from the room
+proof builds is the token relabelling `Game.tokenCopy` along `Game.tokenIso`.
+What is *not* exposed is which relabelling: the token map is chosen from the room
 hypothesis, and `uᵉ` is defined along whichever isomorphism Assumption 2 supplies (D6,
 RULING 10).  Assumption 1 is what lets the copy be played through its reduction
 (RULING 11).  The copy is of `Γ` itself, as the paper's `(Â, û)` is — not of `reduce Γ`.

@@ -27,7 +27,7 @@ outcome (extraction l. 1278–1315).  This file carries:
   linear programming, hence in polynomial time" clause is not rendered (`dd:complexity`).
 
 The decision problem (Definition 7), Algorithm 1's correctness (Proposition 12), Lemma 13
-and Corollary 14 follow in later files of the tranche (`notes/coordination-layer.md`);
+and Corollary 14 follow in `PerfectCoordination.lean` and `Characterization.lean`;
 Proposition 16 is `Examples/Chicken.lean`.
 
 ## `dd:room` in full
@@ -48,10 +48,8 @@ Where the argument permits, the impossibility is additionally stated label-free,
 about `C(Γ)`-valued random variables, so that it does not depend on how rich the universe
 is (`Examples.chicken_no_feasible_dominating_of_mean_cc`).
 
-The predicate is parameterized by the set to *avoid*: every §5 construction hands its
-token game back as a `TokenGame Γ`, whose `fresh` field demands disjointness from `Γ.S i`.
 Room for a *subset* game's tokens, avoiding only that subset's action sets, is strictly
-weaker and does **not** suffice (`dd:room`); every §5 endpoint takes `Γ.HasRoom`, which is
+weaker and does not suffice: every §5 endpoint takes `Γ.HasRoom`, which is
 `Γ.HasRoomOutside Γ.S`, and `hasRoomOutside_of_infinite` supplies it over `X ⊕ ℕ`.
 -/
 
@@ -73,11 +71,9 @@ structure Correlated where
   /-- `pₐ`. -/
   weight : (∀ i, 𝒜 i) → ℝ
   nonneg : ∀ a, 0 ≤ weight a
-  /-- Unplayable profiles carry no weight.  Note this field constrains nothing that
+  /-- Unplayable profiles carry no weight.  The field constrains nothing that
   `Game.feasible` sees — `Correlated.payoff` sums over `Γ.profilesFinset`, so off-profile
-  weights never enter — but without it a `Correlated` would not be a distribution on `A`.
-  Do not "simplify" it away thinking it is doing work, and do not add a hypothesis
-  believing it is missing. -/
+  weights never enter — but without it a `Correlated` would not be a distribution on `A`. -/
   support : ∀ a, a ∉ Γ.profiles → weight a = 0
   sum_eq_one : ∑ a ∈ Γ.profilesFinset, weight a = 1
 
@@ -212,15 +208,15 @@ noncomputable def lpObjective (y : N → ℝ) (p : Γ.Correlated) : ℝ :=
   ∑ i, (p.payoff i - y i)
 
 /-- **Lemma 11**, mathematical content: `y` is Pareto-optimal in `C(Γ)` iff every
-correlated strategy `p` that is feasible for the paper's linear program — maximise
+correlated strategy `p` that is feasible for the paper's linear program — maximize
 `∑ᵢ (uᵢ(p) − yᵢ)` subject to `u(p) ≥ y` — has objective `0`.  That is the paper's "the
 program has optimum `0`" wherever the program is feasible; when it is infeasible (`y` above
 `C(Γ)`) the program has no optimum at all, both sides here hold vacuously, and
 `ParetoOptimalIn` is true, which is the reading the paper's use of the lemma needs.  The
-paper states it for an arbitrary payoff vector `y ∈ ℝⁿ` (extraction
-l. 1360–1362), and so does this: no membership hypothesis is needed or imposed.  Below
-`C(Γ)` both sides are false.  The clause "it can be decided by linear programming and thus in
-polynomial time" is not rendered (`dd:complexity`, RULING 6).
+paper states it for an arbitrary payoff vector `y ∈ ℝⁿ` (extraction l. 1360–1362), and so
+does this: no membership hypothesis is imposed.  Below `C(Γ)` both sides are false.  The
+clause "it can be decided by linear programming and thus in polynomial time" is not
+rendered (`dd:complexity`, RULING 6).
 
 Paper node: `Lemma 11` -/
 theorem paretoOptimalIn_feasible_iff (y : N → ℝ) :

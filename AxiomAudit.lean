@@ -4302,21 +4302,21 @@ blocks, a stale entry, a malformed line, a non-empty block once the paper is
   SafeParetoImprovements.Examples.Renegotiation.run_rn_fair_hawk
   SafeParetoImprovements.Examples.Renegotiation.run_rn_hawk_fair
   SafeParetoImprovements.Examples.Renegotiation.outcome_rn_fair_hawk
-  SafeParetoImprovements.Examples.Renegotiation.realised
+  SafeParetoImprovements.Examples.Renegotiation.realized
   SafeParetoImprovements.Examples.Renegotiation.programPayoff
   SafeParetoImprovements.Examples.Renegotiation.rnTransform
   SafeParetoImprovements.Examples.Renegotiation.rnStrategy
   SafeParetoImprovements.Examples.Renegotiation.demands
   SafeParetoImprovements.Examples.Renegotiation.rnStrategy_demandPreserving
   SafeParetoImprovements.Examples.Renegotiation.baseProfiles
-  SafeParetoImprovements.Examples.Renegotiation.realised_of_base
+  SafeParetoImprovements.Examples.Renegotiation.realized_of_base
   SafeParetoImprovements.Examples.Renegotiation.rn_isSPITransformation
   SafeParetoImprovements.Examples.Renegotiation.rnRepresentatives
   SafeParetoImprovements.Examples.Renegotiation.rnRepresentatives_play
   SafeParetoImprovements.Examples.Renegotiation.rnProgramGame
   SafeParetoImprovements.Examples.Renegotiation.rnProgramGame_exec
   SafeParetoImprovements.Examples.Renegotiation.rnDefault
-  SafeParetoImprovements.Examples.Renegotiation.realised_update_rn
+  SafeParetoImprovements.Examples.Renegotiation.realized_update_rn
   SafeParetoImprovements.Examples.Renegotiation.rn_participationIndependent
   SafeParetoImprovements.Examples.Renegotiation.rnStrategy_participationIndependent
   SafeParetoImprovements.Examples.Renegotiation.fairHawkRn

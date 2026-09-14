@@ -37,7 +37,7 @@ open scoped SetRel
 
 universe u v w
 
-/-- The representatives, modelled probabilistically (§3, `dd:representatives`): a
+/-- The representatives, modeled probabilistically (§3, `dd:representatives`): a
 probability space `(Ω, μ)`, a `Play` family on it (`play Γ ω` is `Π(Γ)` at `ω`), and
 measurability of each outcome fiber.  Nothing else is assumed of the representatives;
 Assumptions 1 and 2 are separate predicates (`Assumptions.lean`). -/

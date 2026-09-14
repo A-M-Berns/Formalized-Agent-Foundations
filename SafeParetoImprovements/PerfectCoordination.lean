@@ -64,7 +64,7 @@ end Play
 /-! ### Exact copies
 
 Lemma 13 prints `û(â) = u(a)`: the token game it produces is not merely *isomorphic* to the
-reduced game, it is a relabeling that keeps the payoffs on the nose.  `Game.ExactCopy` is
+reduced game, it is a relabelling that keeps the payoffs on the nose.  `Game.ExactCopy` is
 that stronger relation — an isomorphism with scale `1` and shift `0` — and it is what the
 §5.2/§5.3 constructions actually deliver, since they hand back `Game.tokenCopy` along
 `Game.tokenIso`. -/
@@ -81,7 +81,7 @@ lemma ExactCopy.isomorphic {Γ Γ' : Game N 𝒜} (h : Γ.ExactCopy Γ') : Γ.Is
   ⟨h.choose⟩
 
 omit [Fintype N] [DecidableEq N] [∀ i, DecidableEq (𝒜 i)] in
-/-- The payoffs of an exact copy at the relabeled outcome are the original payoffs. -/
+/-- The payoffs of an exact copy at the relabelled outcome are the original payoffs. -/
 lemma ExactCopy.u_map {Γ Γ' : Game N 𝒜} {φ : GameIso Γ Γ'} (hs : ∀ i, φ.scale i = 1)
     (hc : ∀ i, φ.shift i = 0) {a : ∀ i, 𝒜 i} (ha : a ∈ Γ.profiles) : Γ'.u (φ.map a) = Γ.u a := by
   funext i
@@ -132,7 +132,7 @@ namespace Play
 
 variable {X : Play N 𝒜 Ω} {L : Filter Ω}
 
-/-- **Reassignment realises any feasible-valued function of the play**: under Assumptions
+/-- **Reassignment realizes any feasible-valued function of the play**: under Assumptions
 1 and 2, with room, for every `f` sending reduced outcomes into `C(Γ)` there is a token
 game — an *exact* copy of `Γ` in the sense of `Game.ExactCopy`, the paper's `û(â) = u(a)` —
 whose original-player payoff at the representatives' token play is `f` at the

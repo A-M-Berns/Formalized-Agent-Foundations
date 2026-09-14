@@ -5,7 +5,7 @@ import Mathlib.MeasureTheory.Measure.Dirac
 /-!
 # The fair coin
 
-A two-point probability space shared by the examples that need a genuinely random `Π`
+A two-point probability space shared by the examples that need a random `Π`
 (the random Demand-Game representatives of `ProgramGameWitnesses.lean`, the Table 7
 representatives of `Chicken.lean`).
 -/

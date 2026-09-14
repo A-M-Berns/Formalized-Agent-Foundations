@@ -1,8 +1,7 @@
-# Tranche F — the complexity nodes (§4.6, Appendix D.2–D.3)
+# The complexity nodes (§4.6, Appendix D.2–D.3)
 
-Design note for Theorem 9, Proposition 10, Propositions 23–26, Definition 8 and Lemma 28,
-written before the Lean, in the same role as `instruction-layer.md` and
-`coordination-layer.md`.  RULING 6 governs: these nodes are *qualified*.  The mathematics
+Why Theorem 9, Proposition 10, Propositions 23–26, Definition 8 and Lemma 28 are
+formalized as they are.  RULING 6 governs: these nodes are *qualified*.  The mathematics
 of each printed statement is rendered exactly; the complexity-class and running-time
 clauses ("NP-complete", "non-deterministic polynomial time", "`O(m^l)`", "linear time")
 are disclosed at each declaration as not rendered, because the paper fixes no cost model
@@ -19,7 +18,7 @@ no declaration cites it, and no axiom stands in for it.
 | Prop 25 | the unilateral algorithm (three checks) "… iff there is a (strict) unilateral SPI" | `UnilateralSPIDecision Γ ↔ ∃ i c, c.ParetoImproving ∧ c.Nontrivial ∧ c.Affine i ∧ c.ReducesToImage i`, and the strict variant | "NP time" |
 | Prop 24 / Prop 10 | omnilateral problem solvable in `O(m^l)` | `Fintype.card (Certificate Γ) ≤ m ^ l` with `m = Σᵢ|Aᵢ|`, `l = Σᵢ|Aʳᵉᵈᵢ|`; the decision is a search over that finite type | "solved in `O(m^l)`" |
 | Prop 26 / Prop 10 | unilateral problem in `O(m^l)` | `Fintype.card (N × Certificate Γ) ≤ m ^ l` | same |
-| Def 8 | subgraph isomorphism problem | `Graph.SubgraphIso a â φ`, `Graph.SubgraphIsoProblem a â` | — |
+| Def 8 | subgraph isomorphism problem | `Hardness.SubgraphIso a â φ`, `Hardness.SubgraphIsoProblem a â` | — |
 | Lemma 27 | subgraph isomorphism is NP-complete | cited, not carried | all of it |
 | Lemma 28 | linear-time reduction, so the four SPI problems are NP-hard | `SubgraphIsoProblem a â ↔ (hardnessGame a â ε).SPIDecision`, and the same for the strict, unilateral and strict-unilateral problems; the instance size of the constructed game | "linear time", "NP-hard" (needs Lemma 27) |
 | Thm 9 | the four problems are NP-complete, even for 2 players | the conjunction: membership certificates (Props 23/25, any finite player set) and the hardness reduction (Lemma 28, `N = Two`) — `Hardness.theorem9` | "NP-complete" |
@@ -68,7 +67,7 @@ paper's "arbitrary"), `uˢⱼ = uⱼ`.  The three checks:
    printed check 3's target is the full product image `Φ(Aʳᵉᵈ)`).
 
 Proposition 25: `Γ.UnilateralSPIDecision ↔ ∃ i c, c.ParetoImproving ∧ c.Nontrivial ∧
-c.Affine i ∧ c.ReducesToImage i` (the shipped names), strict likewise.  The `←` direction builds the
+c.Affine i ∧ c.ReducesToImage i`, strict likewise.  The `←` direction builds the
 isomorphism `reduce Γ ≅ reduce (c.unilateralGame i)` with scale `1` for `i` and the
 `(λⱼ, κⱼ)` of check 2 for the others.  The `→` direction is where the paper says "we can
 assume `Γˢ,ʳᵉᵈ` and `Γˢ` have the same action sets for Player `i`": the Lean proof does
@@ -77,27 +76,26 @@ player `i` cut down to `c.image i` (every step removes an action of some `j ≠ 
 dominator survives because player `j`'s actions and payoffs are untouched, and
 removing player `i`'s actions only shrinks the opponent profiles a dominator must beat;
 steps removing player `i`'s own actions are skipped).  That transfer lemma
-(`Game.ElimStar.transfer`, shipped name) is the one piece of new general reduction theory,
+(`Game.ElimStar.transfer`) is the one piece of new general reduction theory,
 together with `Game.elimStar_of_dominated` (eliminating a whole dominated set at once) and
 `Certificate.reducesToImage_of_dominated` (check 3 from a domination of every non-image
 action, the form in which the appendix verifies it).
 
-The fourth problem of Definition 5, the **strict unilateral** one, has had no carrier so
-far; `Game.StrictUnilateralSPIDecision` is added to `Derivation.lean` with a
-`Definition 5` node so that Lemma 28's "(strict) (unilateral)" can be stated four ways.
+The fourth problem of Definition 5, the **strict unilateral** one, is carried by
+`Game.StrictUnilateralSPIDecision` in `Derivation.lean` under a `Definition 5` node, so
+that Lemma 28's "(strict) (unilateral)" can be stated four ways.
 
 ## 3. The search bound (Propositions 24, 26; Proposition 10)
 
 `Fintype.card (Γ.Certificate) = ∏ᵢ mᵢ.descFactorial lᵢ ≤ ∏ᵢ mᵢ ^ lᵢ ≤ m ^ l`.  The
 paper's `O(m^l)` is this cardinality together with "each certificate is checked in
 polynomial time", which is the clause not rendered.  The unilateral search space is
-`N × Certificate Γ`, and it too has cardinality `≤ m ^ l` (`card_unilateralCertificate_le'`,
-final audit R7-F04): the factor `n` from the choice of player — real, since the appendix's
+`N × Certificate Γ`, and it too has cardinality `≤ m ^ l` (`card_unilateralCertificate_le'`): the factor `n` from the choice of player — real, since the appendix's
 algorithm is "given an `n`-player game and a player `i`" while Definition 5's unilateral
 problem quantifies over the player — is absorbed by the certificate count, because
 `n · ∏ᵢ mᵢ ≤ mⁿ` (sum `∏ mᵢ = mⱼ ∏_{i≠j} mᵢ ≤ mⱼ mⁿ⁻¹` over `j`) and `lᵢ ≥ 1` peels one
 `mᵢ` off each `mᵢ^{lᵢ}`.  So the paper's `O(m^l)` is right as printed for the unilateral
-problem too; an intermediate version of this note claimed otherwise.  Proposition 10 is
+problem too.  Proposition 10 is
 the main-text restatement of Propositions 24 and 26 and shares their declarations.
 
 ## 4. Hardness (D.3): graphs, Table 9, Table 10, Lemma 28
@@ -115,9 +113,9 @@ Player 1's actions in `Γᶜ` are `Fin n ⊕ Fin n ⊕ Bool ⊕ (Fin n̂ ⊕ Fin
 `{T} × [2n+2] ⊔ {R} × [2n̂+2]`, and player 2's the same type read as `{D} × … ⊔ {P} × …`.
 `N = Two`.
 
-*Table 9 as a formula.*  `tableNine n a ε δ` takes a shift `δ ∈ {0, 1}` for player 1's
-`4`/`3` entries so that `Γ̂` is the same definition with `δ = 1` ("5 instead of 4 … and 4
-instead of 3").  The printed formula and Table 9 disagree at eight entries: the formula
+*Table 9 as a formula.*  `tableU₁ a ε δ` and `tableU₂ n ε` are the two players' payoff
+tables; `δ ∈ {0, 1}` shifts player 1's `4`/`3` entries so that `Γ̂` is the same definition
+with `δ = 1` ("5 instead of 4 … and 4 instead of 3").  The printed formula and Table 9 disagree at eight entries: the formula
 gives player 1 `ε` in columns `2n+1, 2n+2` for rows `i ∈ [2n]`, and player 2 `ε` in rows
 `2n+1, 2n+2` for columns `j ∈ [2n]`, where the table prints `0`.  **The disagreement is
 material**: with the formula's `ε`, player 2 receives exactly `ε` against rows `2n̂+1`
@@ -137,8 +135,7 @@ the table's `0`s.  The "WLOG `n, n̂ ≥ 2`" is weakened to `1 ≤ n`: the two o
 the proof of item (c) wants are `(D, i)` and `(D, n+i)`, which exist for every `i ∈ [n]`,
 and `1 ≤ n` is what the strict forms need (at `n = 0` the empty subgraph isomorphism exists
 but no strict SPI does; the plain and unilateral forms would survive `n = 0` under `ε < 1`,
-which no declaration states).  (This paragraph was corrected after round 6, R6-F02/F16:
-the first draft claimed the `n`-side bound was unused.)
+which no declaration states).
 
 *Lemma 28 as an iff.*  `subgraphIsoProblem_iff_spiDecision : SubgraphIsoProblem a â ↔
 (hardnessGame a â ε).SPIDecision` and the three variants.  The proof has the paper's two
@@ -177,23 +174,23 @@ than the printed items (a)–(d):
 
 * `Complexity.lean` — certificates, Propositions 23–26, Proposition 10, the transfer
   lemma, the Theorem 9 wrapper.
-* `Hardness.lean` — graphs, Definition 8, `tableNine`, `hardnessGame`, Lemma 28.
+* `Hardness.lean` — graphs, Definition 8, `tableU₁`/`tableU₂`, `hardnessGame`, Lemma 28.
 * `Examples/ComplexityWitnesses.lean` — a Demand-Game certificate (Proposition 23
   two-sided with the one-action game), the transfer lemma exercised on the Complicated
   Temptation Game (Proposition 25's "yes"), the Demand Game certificate failing check 2
-  and a four-action game whose check 2 needs the scale `λ = 2` (round 6), and Lemma 28 on
+  and a four-action game whose check 2 needs the scale `λ = 2`, and Lemma 28 on
   concrete graphs: the one-edge graph into the two-cycle (yes) and the two-cycle into the
   one-edge graph (no), each carried through to the `SPIDecision` verdict on the
   constructed game.
-* `SafeParetoImprovements/TwoPlayer.lean` — the player type `Two`, promoted from the
-  examples directory because Theorem 9 is stated over it (R6-F01).
+* `SafeParetoImprovements/TwoPlayer.lean` — the player type `Two`, at library level rather
+  than in the examples directory because Theorem 9 is stated over it.
 
 ## 6. Rulings
 
-* RULING 14 (proposed, proceeding under it): Lemma 27 is cited only — no axiom, no
+* RULING 14: Lemma 27 is cited only — no axiom, no
   declaration — and Theorem 9's carrier is the conjunction of membership and reduction
   named above.  A named axiom would fail the axiom audit and would certify nothing.
-* RULING 15 (proposed, proceeding under it): the hardness games follow Table 9 where it
+* RULING 15: the hardness games follow Table 9 where it
   disagrees with the printed formula (erratum D18), because that is the reading under
   which the paper's own proof is correct, and the formula's reading falsifies the
   unilateral clause.

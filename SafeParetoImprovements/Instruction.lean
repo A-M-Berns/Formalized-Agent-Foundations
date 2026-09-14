@@ -24,7 +24,7 @@ players' code differs, the paper's loop punishes the *first* such player in the 
 stands in.  Only unilateral deviations matter for program equilibrium, and for those the
 choice is forced.
 
-`Prog.programGame Γ₀ R` realises `Prog` as a `ProgramGame` (the realization: the
+`Prog.programGame Γ₀ R` realizes `Prog` as a `ProgramGame` (the realization: the
 delegation branch is measurable because `Π(Γ′)` has measurable fibers).  `Prog.algorithm2`
 is Algorithm 2 as a term, with one repair (erratum D15): the paper's line 3 says "play
 `minimax(i, j)`", which by its own definition is a strategy for *player `j`*; the punisher
@@ -59,7 +59,7 @@ variable {Γ₀ : Game N 𝒜} (R : Representatives.{u, v, w} N 𝒜) [∀ i, De
 
 open Classical in
 /-- **Execution** of player `k`'s program `p` when everybody's code is `c` and the
-representatives' sample point is `ω`: the mixed action `k` realises. -/
+representatives' sample point is `ω`: the mixed action `k` realizes. -/
 noncomputable def execAt (c : N → Prog Γ₀) (k : N) : Prog Γ₀ → R.Ω → Γ₀.Mixed k
   | play σ, _ => σ k
   | delegate Γ' h, ω => Γ₀.pureMixed (R.play Γ' ω k) (h k (R.toPlay.mem Γ' ω k))
@@ -132,7 +132,7 @@ lemma measurable_execAt (c : N → Prog Γ₀) (k : N) (p : Prog Γ₀) (b : Γ�
 
 variable (Γ₀) in
 /-- **The realization**: `Prog` with `execAt` is a program game on `Γ₀` for the
-representatives `R`.  Every player's instruction set is `Prog Γ₀`; player `k`'s realised
+representatives `R`.  Every player's instruction set is `Prog Γ₀`; player `k`'s realized
 mixed action is the execution of her own code. -/
 noncomputable def programGame : ProgramGame.{u, v, w, max u v} Γ₀ R where
   Instr _ := Prog Γ₀
@@ -216,11 +216,11 @@ exactly the three instructions Algorithm 2 needs — play a fixed mixed action, 
 nothing else.  It is therefore a strictly smaller instruction set than the paper's
 "computer programs in some programming language such as Lisp": there is no general
 recursion, no arithmetic, no inspection of a counterpart's code beyond the equality test.
-The narrowing is disclosed rather than hidden, and it is not where the content sits: the
-language-independent statement is `ProgramGame.isProgramEquilibrium_of_algorithm2`, which
-proves the same conclusion for *any* `ProgramGame` — any instruction set whatever — from
-Algorithm 2's two semantic properties.  A richer language changes only which term realises
-those properties, and `Prog` shows at least one does.
+The narrowing is not where the content sits: the language-independent statement is
+`ProgramGame.isProgramEquilibrium_of_algorithm2`, which proves the same conclusion for
+*any* `ProgramGame` — any instruction set whatever — from Algorithm 2's two semantic
+properties.  A richer language changes only which term realizes those properties, and
+`Prog` shows at least one does.
 
 Paper node: `Theorem 1` -/
 theorem exists_programEquilibrium_plays (hSPI : R.toPlay.IsSPI R.certainty Γ₀ Γs)

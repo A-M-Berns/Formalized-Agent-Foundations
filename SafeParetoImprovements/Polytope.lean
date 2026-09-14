@@ -17,8 +17,8 @@ Mathlib has no Weyl–Minkowski theorem, so "the intersection of a polytope with
 half-space is a polytope" — which Corollary 14's *polytope* clause needs (RULING 12) — is
 proved here directly, for polytopes presented as convex hulls of finite sets:
 
-> `convexHull V ∩ {y | t ≤ ℓ y} = convexHull ((V ∩ H) ∪ {crossing points of the edges
-> from `V \ H` to `V ∩ H`})`.
+> `convexHull V ∩ H` is the convex hull of `V ∩ H` together with the crossing points of
+> the edges from `V \ H` to `V ∩ H`, where `H = {y | t ≤ ℓ y}`.
 
 The inclusion `⊆` is the content.  Given `x = ∑ λᵥ v` in the half-space, split `V` into
 `A` (on or above the hyperplane, surplus `sᵥ = ℓ v − t ≥ 0`) and `B` (below it, deficit
@@ -30,7 +30,7 @@ The inclusion `⊆` is the content.  Given `x = ∑ λᵥ v` in the half-space, 
 Nothing here is specific to games; it is Mathlib-shaped material kept in this
 formalization's directory because the repository has no shared convex-geometry library and
 this paper is its only consumer; it is the first candidate for a shared library the moment
-a second consumer appears (final audit).
+a second consumer appears.
 -/
 
 open Finset Set

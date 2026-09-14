@@ -601,7 +601,7 @@ C and E and the split "Theorem 17" header must be deduplicated by the parser).
   stays recorded, no carrier until the projection reading is settled.
 - Harness round 1 (2026-09-12) closed at `d0333de`: 40 findings, one blocker (Definition 5's
   non-triviality, erratum D13, repaired as `dd:nontrivial`). Next: round 2 audit alongside
-  the tranche E design note (`notes/instruction-layer.md`).
+  the tranche E design note (since folded into the docstrings and the README).
 
 - Harness round 2 (2026-09-12) closed at `3adb026`: 19 findings (Opus channels only; codex
   quota-limited), all fixed — the repaired Definition 5 now has proved yes-instances, the
@@ -626,7 +626,7 @@ C and E and the split "Theorem 17" header must be deduplicated by the parser).
 7. Definition 7: read "strict" into the body (recommended) vs. as printed.
 8. Theorem 15: projections onto `C(Γ)` rather than the strong frontier `PF(C(Γ))`
    (recommended, re-verifying Appendix E) vs. partial `πᵢ` with existence hypotheses.
-10. §5 modeling — design note `notes/coordination-layer.md` (2026-09-12) asks for three
+10. §5 modeling — the §5 design note (since folded into the docstrings and the README) asked for three
    rulings: RULING 10 (Definition 7 / Proposition 12 / Lemma 13 / Corollary 14 stated per
    play family, with the token game built after Assumption 2's isomorphism is known — the
    D6 relabelling), RULING 11 (Assumption 1 added alongside Assumption 2 where `Γ` is not

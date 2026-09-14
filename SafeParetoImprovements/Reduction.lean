@@ -24,7 +24,7 @@ This file carries:
   (`Relation.church_rosser`), hence **uniqueness of the fully reduced game** reachable
   from `Γ` (`reduced_unique`): this is the path independence the paper cites [1, 19, 41].
 * `Game.reduce Γ`, the canonical full reduction — defined by well-founded recursion on
-  the total number of actions, and characterised by `reduce_reduced`, `elimStar_reduce`
+  the total number of actions, and characterized by `reduce_reduced`, `elimStar_reduce`
   and `reduce_eq_of_reduced_of_elimStar` — so that Definition 5's "if we fully reduce
   `Γˢ` and `Γ`" and the book construction of §4.4.3 have one canonical object to name.
 
@@ -352,23 +352,26 @@ every elimination step and the full reduction: `reduce Γ'` is `reduce Γ` with 
 family built from reductions be a function of the paper's game rather than of its
 presentation (`Play.RespectsEqOn`). -/
 
-omit [DecidableEq N] [∀ i, DecidableEq (𝒜 i)] in
+section withPayoffs
+
+omit [DecidableEq N] [∀ i, DecidableEq (𝒜 i)]
+
 /-- The game with the action sets of `Γ₁` and the payoffs of `Γ'`. -/
 def withPayoffs (Γ₁ Γ' : Game N 𝒜) : Game N 𝒜 where
   S := Γ₁.S
   nonempty := Γ₁.nonempty
   u := Γ'.u
 
-omit [DecidableEq N] [∀ i, DecidableEq (𝒜 i)] in
 @[simp] lemma withPayoffs_S (Γ₁ Γ' : Game N 𝒜) : (Γ₁.withPayoffs Γ').S = Γ₁.S := rfl
-omit [DecidableEq N] [∀ i, DecidableEq (𝒜 i)] in
 @[simp] lemma withPayoffs_u (Γ₁ Γ' : Game N 𝒜) : (Γ₁.withPayoffs Γ').u = Γ'.u := rfl
+
+end withPayoffs
 
 section eqOn
 
 omit [DecidableEq N] [∀ i, DecidableEq (𝒜 i)] in
-/-- A subset game of `Γ` with `Γ`'s payoffs, given `Γ'`'s payoffs instead, is `EqOn`-equal
-to itself when `Γ.EqOn Γ'`. -/
+/-- Giving a subset game `G` of `Γ` the payoffs of `Γ'` in place of `Γ`'s leaves it
+`EqOn`-equal to `G`, when `Γ.EqOn Γ'`. -/
 lemma EqOn.withPayoffs_eqOn {Γ Γ' G : Game N 𝒜} (h : Γ.EqOn Γ') (hG : G.IsSubsetGameOf Γ)
     (hu : G.u = Γ.u) : (G.withPayoffs Γ').EqOn G :=
   ⟨rfl, fun a ha i => by rw [withPayoffs_u, hu]; exact (h.2 a (hG.profiles_subset ha) i).symm⟩
@@ -424,30 +427,26 @@ chosen classically from `Γ.canon` is therefore a function of the paper's game. 
 
 section canon
 
+omit [DecidableEq N] [∀ i, DecidableEq (𝒜 i)]
+
 open Classical in
-omit [DecidableEq N] [∀ i, DecidableEq (𝒜 i)] in
 /-- The canonical presentation: `Γ` with its payoffs zeroed outside the profiles. -/
 noncomputable def canon (Γ : Game N 𝒜) : Game N 𝒜 where
   S := Γ.S
   nonempty := Γ.nonempty
   u a i := if a ∈ Γ.profiles then Γ.u a i else 0
 
-omit [DecidableEq N] [∀ i, DecidableEq (𝒜 i)] in
 @[simp] lemma canon_S (Γ : Game N 𝒜) : Γ.canon.S = Γ.S := rfl
 
-omit [DecidableEq N] [∀ i, DecidableEq (𝒜 i)] in
 lemma canon_profiles (Γ : Game N 𝒜) : Γ.canon.profiles = Γ.profiles := rfl
 
-omit [DecidableEq N] [∀ i, DecidableEq (𝒜 i)] in
 lemma canon_u_of_mem (Γ : Game N 𝒜) {a : ∀ i, 𝒜 i} (ha : a ∈ Γ.profiles) (i : N) :
     Γ.canon.u a i = Γ.u a i := by
   simp [canon, ha]
 
-omit [DecidableEq N] [∀ i, DecidableEq (𝒜 i)] in
 lemma canon_eqOn (Γ : Game N 𝒜) : Γ.EqOn Γ.canon :=
   ⟨rfl, fun _ ha i => (Γ.canon_u_of_mem ha i).symm⟩
 
-omit [DecidableEq N] [∀ i, DecidableEq (𝒜 i)] in
 /-- `EqOn`-equal games have the same canonical presentation. -/
 lemma EqOn.canon_eq {Γ Γ' : Game N 𝒜} (h : Γ.EqOn Γ') : Γ.canon = Γ'.canon := by
   refine Game.ext' h.1 (funext fun a => funext fun i => ?_)

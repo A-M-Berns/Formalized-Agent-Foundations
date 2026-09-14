@@ -9,8 +9,7 @@ import Mathlib.MeasureTheory.Measure.Dirac
 Every result of the form "under Assumptions 1 and 2, …" is vacuous unless some
 representatives satisfy both.  §4.4.3 argues informally that such representatives
 exist — "we would need to specify in more detail what the set of games looks like" to
-make it formal — and the repository standard requires the hypotheses of a headline
-theorem to be shown satisfiable.  This file supplies the construction (`dd:book`).
+make it formal.  This file supplies the construction (`dd:book`).
 
 **The book.**  Fix, for each isomorphism class of games over the universe, one
 representative (`rep`, by `Quotient.out`) and, for each game, one isomorphism onto the
@@ -35,17 +34,16 @@ certainty".
 **The pages are a parameter.**  The construction takes any page family; the
 deterministic book (`Book.const`) proves joint satisfiability outright, and books with
 prescribed page distributions are what Proposition 16 and the strictness clause of
-Proposition 6 need — `Book.prescribed` is one, pinning the page of a single class to a
-chosen outcome (`Book.prescribed_play`).  `Book.prescribedRandom` is its `ω`-dependent
-generalization: the page of the target class is an arbitrary random outcome, so the play
-on the games reducing to that class is genuinely random (`Book.prescribedRandom_play`);
-`Book.prescribed` is its constant case.  `Book.varying` goes further: over the sample space of profiles it reaches
-*every* outcome of *every* game's full reduction, which is what the side condition of
-`Play.isStrictSPI_of_deriv` needs (`exists_play_satisfiesA1_satisfiesA2_hits`).
-`Book.toRepresentatives` packages a book with a
-probability measure whose page fibers are measurable into a `Representatives` model, and
-`exists_representatives_satisfiesA1_satisfiesA2` states §4.4.3's consistency claim at that
-level rather than only for a bare play family.
+Proposition 6 need.  `Book.prescribed` pins the page of a single class to a chosen
+outcome (`Book.prescribed_play`); `Book.prescribedRandom` is its `ω`-dependent
+generalization, whose play on the games reducing to that class varies with the sample
+point (`Book.prescribedRandom_play`).  `Book.varying` goes further: over the sample space
+of profiles it reaches *every* outcome of *every* game's full reduction, which is what
+the side condition of `Play.isStrictSPI_of_deriv` needs
+(`exists_play_satisfiesA1_satisfiesA2_hits`).  `Book.toRepresentatives` packages a book
+with a probability measure whose page fibers are measurable into a `Representatives`
+model, and `exists_representatives_satisfiesA1_satisfiesA2` states §4.4.3's consistency
+claim at that level rather than only for a bare play family.
 
 The representative of a class need not itself be reduced; nothing here needs it.
 -/
@@ -212,7 +210,7 @@ noncomputable def const (Ω : Type w) : Book N 𝒜 Ω where
 point: the page of the class of the reduced game `T` is the outcome `a ω` of `T`,
 translated onto the class representative; every other class gets an arbitrary outcome.
 Unlike `Book.prescribed` (the constant case, `a` independent of `ω`) this book's play can
-be genuinely random on the games reducing to `T`, which is what a non-degenerate instance
+vary with the sample point on the games reducing to `T`, which is what a non-degenerate instance
 of Theorem 1 needs. -/
 noncomputable def prescribedRandom (T : Game N 𝒜) {a : Ω → ∀ i, 𝒜 i}
     (ha : ∀ ω, a ω ∈ T.profiles) : Book N 𝒜 Ω where
@@ -253,7 +251,7 @@ lemma prescribed_play (T : Game N 𝒜) {a : ∀ i, 𝒜 i} (ha : a ∈ T.profil
 /-- The **varying book**: the sample space is the space of profiles itself, and the page of
 a class at a sample point `ω` is `ω` whenever that is an outcome of the class's
 representative (and an arbitrary outcome otherwise).  Unlike `const` and `prescribed`,
-whose pages do not depend on `ω`, this book's play genuinely varies with the sample point:
+whose pages do not depend on `ω`, this book's play varies with the sample point:
 `varying_play_eq` shows that *every* outcome of *every* game's full reduction is played at
 some sample point.  That is what the side condition of `Play.isStrictSPI_of_deriv` — all
 outcomes surviving iterated elimination occur with positive probability — asks for. -/

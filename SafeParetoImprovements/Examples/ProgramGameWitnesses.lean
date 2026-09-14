@@ -17,7 +17,7 @@ the way that matters for the paper's reading of `Π`:
 * **the Demand-Game instance is random** — `demandRandomBook` prescribes an `ω`-dependent
   page over the fair coin `coin` on `Bool` (`Book.prescribedRandom`), so `Π(Γ₀)` really is
   a non-constant random variable (`demandRandom_play_ne`), and the threat-point hypothesis
-  is discharged from the *expectation* of a genuinely mixed play, not from a single
+  is discharged from the *expectation* of a mixed play, not from a single
   outcome.  This is the witness that Theorem 1 is not silently a statement about
   deterministic representatives.
 
@@ -26,7 +26,7 @@ The threat-point hypothesis is not automatic: `demandBook_not_threatPoint_le` sh
 content in Theorem 1's statement.
 
 The same representatives witness that the participation- and foreknowledge-independence
-predicates are neither constant-true nor constant-false: the dove-ish instruction is
+predicates are neither constant-true nor constant-false: the dove instruction is
 participation independent, an instruction punishing with `Cooperate` is not (the default
 play is `Defect`), a policy that switches to punishment on learning of a non-participation
 is not foreknowledge independent, and a policy that switches between two *different*
@@ -117,13 +117,12 @@ lemma demandPages_mem : ∀ b, demandPages b ∈ demandGame.reducedGame.profiles
   intro b i
   cases b <;> cases i <;> rw [demandGame.reducedGame_S] <;> decide
 
-
 /-- The `ω`-dependent book prescribing `demandPages` for the class of the reduced Demand
 Game. -/
 noncomputable def demandRandomBook : Book Two DUniverse Bool :=
   Book.prescribedRandom demandGame.reducedGame demandPages_mem
 
-/-- The representatives of `demandRandomBook` on the fair coin: a **genuinely random**
+/-- The representatives of `demandRandomBook` on the fair coin: a **random**
 `Π`. -/
 noncomputable def demandRandomRepresentatives : Representatives.{0, 0, 0} Two DUniverse :=
   demandRandomBook.toRepresentatives (μ := coin) (fun _ _ => trivial)
@@ -132,7 +131,7 @@ lemma demandRandom_play (ω : Bool) :
     demandRandomRepresentatives.play demandGame ω = demandPages ω :=
   Book.prescribedRandom_play _ demandPages_mem demandGame demandGame.reduce_eq ω
 
-/-- The play is genuinely random: the two sample points give different outcomes. -/
+/-- The play is random: the two sample points give different outcomes. -/
 lemma demandRandom_play_ne :
     demandRandomRepresentatives.play demandGame true ≠
       demandRandomRepresentatives.play demandGame false := by
@@ -261,7 +260,7 @@ lemma not_participationIndependent_pd (t : Prog prisonersDilemma) :
   not_participationIndependent_of_punish_play pdRepresentatives _ Two.one t pdCooperateMixed rfl
     (j := Two.two) (by decide) ⟨(), pdCooperateMixed_ne_defect Two.one ()⟩
 
-/-- **Participation independence is not constant-false**: the dove-ish instruction for the
+/-- **Participation independence is not constant-false**: the dove instruction for the
 cooperative subset game is participation independent. -/
 lemma participationIndependent_pd :
     (programGame prisonersDilemma pdRepresentatives).ParticipationIndependent
@@ -345,8 +344,8 @@ lemma not_foreknowledgeIndependent_pd (c : Two → Prog prisonersDilemma) :
   not_foreknowledgeIndependent_of_switch pdRepresentatives _ _ c Two.one pdCooperateMixed
     (j := Two.two) (by decide) pdSwitchPolicy rfl rfl ⟨(), pdCooperateMixed_ne_defect Two.one ()⟩
 
-/-- The policy for player 1 with a **genuinely informative** signal: uninformed she submits
-the dove-ish SPI instruction, informed that a counterpart will not participate she submits
+/-- The policy for player 1 with an **informative** signal: uninformed she submits
+the dove SPI instruction, informed that a counterpart will not participate she submits
 the default instruction.  The two are *different programs*
 (`dove_ne_default`); what coincides is only their behaviour once the counterpart has in
 fact dropped out, and that has to be proved through the execution model. -/
@@ -368,10 +367,8 @@ lemma dove_ne_default :
 
 /-- **Foreknowledge independence is not constant-false**, non-degenerately:
 `pdFallbackPolicy` reads its signal and chooses two syntactically different instructions,
-yet once player 2 has dropped out player 1's realised action is the same either way —
-the dove-ish instruction's own fall-back branch is the default instruction.  Unlike a
-signal-blind policy, the two sides of `ForeknowledgeIndependent` here are not the same
-term, and the proof runs through `Prog.execAt`. -/
+yet once player 2 has dropped out player 1's realized action is the same either way —
+the dove instruction's own fall-back branch is the default instruction. -/
 lemma foreknowledgeIndependent_pd (c : Two → Prog prisonersDilemma) :
     (programGame prisonersDilemma pdRepresentatives).ForeknowledgeIndependent
       (defaultInstr prisonersDilemma pdRepresentatives) c pdFallbackPolicy := by

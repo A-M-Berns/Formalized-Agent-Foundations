@@ -13,8 +13,8 @@ import SafeParetoImprovements.Examples.Witnesses
 * **The search bound is a bound.**  The Demand Game has `144` certificates against the
   bound `8 ^ 4 = 4096` (`card_demandCertificate`).
 * **Lemma 28 is two-sided on concrete graphs.**  The one-edge graph on two vertices embeds
-  in the two-cycle, so the constructed game has a strict unilateral SPI (the edge condition
-  is checked at a true edge); the two-cycle does not embed in the one-edge graph,
+  in the two-cycle, so the constructed game has a strict unilateral SPI; the two-cycle does
+  not embed in the one-edge graph,
   so the constructed game has no SPI at all.  Both verdicts are carried through Lemma 28 to
   the `Game.SPIDecision` predicates themselves, on games with twelve actions per player
   (`size_hardGame`).
@@ -162,7 +162,7 @@ lemma size_hardGame : hardYes.size = 24 ∧ hardNo.size = 24 := by
 
 /-- **A "yes" instance of every SPI decision problem through Lemma 28**: the game built from
 `(oneEdge, twoCycle)` has a strict unilateral SPI.  The source graph has an edge, so the
-subgraph condition `a(0,1) ≤ â(φ 0, φ 1)` is genuinely checked at a true edge. -/
+subgraph condition `a(0,1) ≤ â(φ 0, φ 1)` is checked at a true edge. -/
 lemma hardYes_strictUnilateralSPIDecision : hardYes.StrictUnilateralSPIDecision :=
   (subgraphIsoProblem_iff_strictUnilateralSPIDecision oneEdge twoCycle (by norm_num)
     (by norm_num) (by norm_num) (by norm_num)).1 subgraphIso_oneEdge_twoCycle

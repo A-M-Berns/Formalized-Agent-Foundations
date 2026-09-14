@@ -6,9 +6,10 @@ independence at the level of program choice (substrate beyond the paper)
 
 Source: Anthony DiGiovanni, *CLR's Safe Pareto Improvements Research Agenda* (LessWrong,
 20 April 2026), Appendix B.1–B.2.  The 2022 paper has no counterpart for any of this; it
-is research-facing substrate (RULING 9), carries no `Paper node`, and the source itself
-labels B.2 "working formalizations … we're not highly confident that we'll endorse these
-formalizations/terminology after more thought".  What is rendered is the text as printed,
+is research-facing substrate (the scoping ruling recorded in `notes/scoping.md` §8),
+carries no `Paper node`, and the source itself labels B.2 "working formalizations … we're
+not highly confident that we'll endorse these formalizations/terminology after more
+thought".  What is rendered is the text as printed,
 at its own level of abstraction — programs, a transformation of program profiles, and two
 counterfactual program choices — so that the notions can be compared with the
 execution-level ones of `Independence.lean`, which are stated over the paper's program
@@ -50,10 +51,10 @@ actually use — the clause `𝐩ᵢ = 𝐩ᴾᵢ(𝐟)` is immediate, so partic
 reduces to demand preservation.  Foreknowledge independence does not reduce the same way:
 `not_foreknowledgeIndependent_of_demand_ne` is the shape of B.2's "PI but not FI" agent,
 who demands the same whatever the counterpart does but would have demanded less had she
-known.  The worked instance with the source's numbers is
-`Examples/Renegotiation.lean`, which also exhibits the execution-level notions of
-`Independence.lean` on the same example; no general bridge between the two levels is
-claimed, and Appendix B.3 (surrogate goals, concession equivalence) is not rendered.
+known.  The worked instance with the source's numbers is `Examples/Renegotiation.lean`,
+which also exhibits the execution-level notions of `Independence.lean` on the same
+example; no general bridge between the two levels is claimed, and Appendix B.3 (surrogate
+goals, concession equivalence) is not rendered.
 -/
 
 universe u v w

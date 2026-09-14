@@ -258,11 +258,9 @@ lemma payoff_eq_of_self (θ : GameIso Γ Γ) {a : ∀ i, 𝒜 i} (ha : a ∈ Γ.
 /-- **Any** isomorphism between two games that are equal in the paper's sense
 (`Game.EqOn`) preserves payoffs: it is an automorphism of `Γ` once the target's action
 sets and payoffs are identified with `Γ`'s, so `payoff_eq_of_self` applies.  This is what
-makes Assumption 2 forbid a strict SPI between two `EqOn`-equal **reduced** presentations
-of one paper game (`Play.SatisfiesA2.not_isStrictSPI_of_eqOn`).  The reducedness
-qualification comes from Assumption 2 itself, which is a hypothesis only about games
-without strictly dominated actions and constrains no non-reduced pair; this lemma is
-unconditional. -/
+makes Assumption 2 forbid a strict SPI between two `EqOn`-equal reduced presentations of
+one paper game (`Play.SatisfiesA2.not_isStrictSPI_of_eqOn`); the reducedness there comes
+from Assumption 2, not from this lemma, which is unconditional. -/
 lemma payoff_eq_of_eqOn (h : Γ.EqOn Γ') (φ : GameIso Γ Γ') {a : ∀ i, 𝒜 i}
     (ha : a ∈ Γ.profiles) (i : N) : Γ.u (φ.map a) i = Γ.u a i := by
   have hprof : Γ'.profiles = Γ.profiles := by ext b; simp [Game.profiles, h.1]
@@ -418,7 +416,7 @@ to the subset game `Φ(G)` of `Γ'` (`GameIso.imageGame`), restricts to an isomo
 `G ≅ Φ(G)` with the same constants (`GameIso.restrict`), and commutes with iterated
 elimination: `reduce Γ' = Φ(reduce Γ)` (`GameIso.reduce_eq_imageGame`).  This is what lets
 a token copy of a *whole* game be reduced through the copy (Lemma 13's `(Â, û)` is a copy
-of `Γ`, not of `reduce Γ`;). -/
+of `Γ`, not of `reduce Γ`). -/
 
 namespace GameIso
 

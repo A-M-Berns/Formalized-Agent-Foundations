@@ -40,10 +40,9 @@ false.  What is true, and what the paper uses:
   normal form has the *same endpoints* and a composite that is **contained in** the
   original one on the outcomes of `reduce Γ` — for each such outcome `a`, the original
   composite relates `a` to `ψ.map a`, not necessarily only to it; it is not the original
-  composite (which may relate outcomes killed by the reduction).  A chain with restricted move kinds *is* expressible
-  in a `Prop`-valued system — the earlier claim that "the same chain reorganized is not
-  expressible" was over-broad; what is genuinely not expressible is a statement about a
-  *given* chain being permuted, since `Deriv` records no list of moves.
+  composite (which may relate outcomes killed by the reduction).  A statement about a
+  *given* chain being permuted is not expressible here at all, since `Deriv` records no
+  list of moves.
 * **Certificate form** (the "conciser way to state" the consequence of Lemma 21, corrected
   per erratum D9): a Pareto-improving derivation from `Γ₀` to `Γs` exists iff there is a
   Pareto-improving isomorphism `reduce Γ₀ ≅ reduce Γs` (`exists_paretoImproving_deriv_iff`).
@@ -303,7 +302,6 @@ lemma ofElimStar_rev (hsub : Γ.IsSubsetGameOf Γ₀) {G : Game N 𝒜} (h : Γ.
     rw [← elimRel_inv_comp_partialId _ hã]
     exact (single (Step.unelim ih.isSubsetGameOf_left hã)).trans ih
 
-
 /-! ### The structure of derivations (Lemmas 21 and 22) -/
 
 section structure_theorem
@@ -510,27 +508,20 @@ may assign *different utilities* to the outcomes it keeps ("a subset game may as
 different utilities to outcomes than the original game", §2), so shifting every payoff of
 `reduce Γ` by `+1` produces a subset game whose full reduction is not equal to `reduce Γ`
 while the identity action map is an isomorphism between them, and is Pareto-improving
-with equality.  The clause is therefore satisfied by every game with at least one player.
-That empties the non-triviality clause of all three printed predicates, and it makes the
-plain and unilateral printed decision problems outright **constant-true**
-(`spiDecisionPrinted_of_nonempty`, and `unilateralSPIDecisionPrinted_of_reduced` on fully
-reduced games).  The *strict* printed variant is **not** among them: its item-4 clause asks a player to gain
-strictly at some surviving outcome, which the payoff-shift witness does not supply (it
-improves with *equality*), and which a game whose players have one action each cannot
-supply at all.  So the erratum empties the non-triviality clause of all three, but only the
-plain and unilateral printed predicates are thereby constant-true; the strict one retains
-content.  The
-defect is the paper's, not the
-rendering's (the witness was checked against the printed text);
-Appendix D's converse argument calls the identity action map *trivial*, which is what the
-intended clause is about.
+with equality.  The clause is therefore satisfied by every game with at least one player,
+which empties the non-triviality clause of all three printed predicates and makes the plain
+and unilateral ones outright **constant-true** (`spiDecisionPrinted_of_nonempty`, and
+`unilateralSPIDecisionPrinted_of_reduced` on fully reduced games).  The *strict* printed
+variant keeps its content: its item-4 clause asks a player to gain strictly at some
+surviving outcome, which the payoff-shift witness does not supply (it improves with
+*equality*), and which a game whose players have one action each cannot supply at all
+(`not_strictSPIDecisionPrinted_of_card_le_one`).  The defect is the paper's, not the
+rendering's: Appendix D's converse argument calls the identity action map *trivial*, which
+is what the intended clause is about.
 
-The predicates below render the printed clause verbatim, and
-`spiDecisionPrinted_of_nonempty` / `unilateralSPIDecisionPrinted_of_reduced` are the
-erratum's witnesses, and `not_strictSPIDecisionPrinted_of_card_le_one` is the carrier of
-the claim that the strict printed variant is *not* constant-true.  `SPIDecision`,
-`StrictSPIDecision` and `UnilateralSPIDecision`
-further below are the repaired predicates that the rest of the development uses. -/
+The predicates below render the printed clause verbatim; `SPIDecision`, `StrictSPIDecision`
+and `UnilateralSPIDecision` further below are the repaired predicates that the rest of the
+development uses. -/
 
 /-- **The SPI decision problem, exactly as printed** (Definition 5): does `Γ` have a
 subset game `Γs` such that (1) the full reductions of `Γs` and `Γ` are not equal (in the
@@ -665,8 +656,7 @@ lemma unilateralSPIDecisionPrinted_of_reduced {Γ : Game N 𝒜} (h : Γ.Reduced
 `Γs.reduce.S ≠ Γ.reduce.S`: the representatives are told to play a different set of
 actions.  This is the reading Appendix D's hardness argument uses when it calls the
 identity action map trivial (extraction l. 2710), and it is insensitive to the payoff
-relabelling that empties the printed clause.  Ruled by Anson, 2026-09-12 (erratum D13);
-see `notes/paper-errata.md`.
+relabelling that empties the printed clause (erratum D13; see `notes/paper-errata.md`).
 
 The repaired predicates are not constant: `not_spiDecision_of_card_le_one` gives a "no"
 instance, and each has a "yes" instance — the Demand Game for the plain and strict variants
@@ -675,10 +665,9 @@ instance, and each has a "yes" instance — the Demand Game for the plain and st
 (`Examples.complicatedTemptation_unilateralSPIDecision`), which is the paper's own
 unilateral example (§4.5).
 
-Note that the payoff-shift witnesses above (`shiftReduce`, `bumpPayoff`) do **not** serve
-the repaired predicates: they leave `reduce.S` unchanged and therefore fail the repaired
-non-triviality clause by construction.  They are exactly the erratum-D13 counterexamples
-and serve only the printed predicates. -/
+Note that the payoff-shift witnesses above (`shiftReduce`, `bumpPayoff`) leave `reduce.S`
+unchanged, so they fail the repaired non-triviality clause: they are erratum D13's
+counterexamples and serve only the printed predicates. -/
 
 /-- **The SPI decision problem** (Definition 5, non-triviality repaired per erratum D13):
 does `Γ` have a subset game `Γs` such that (1) the reduced action sets differ,
@@ -806,8 +795,7 @@ lemma not_strictSPIDecisionPrinted_of_card_le_one {Γ : Game N 𝒜} (h : ∀ i,
 repaired SPI decision problem: every subset game has the same (single) action sets, so no
 subset game can pass the repaired non-triviality clause.  The matching "yes" instance is
 `Examples.demandGame_spiDecision`; together the two show the repaired predicate is not
-constant in either direction.  (The payoff-shift witnesses above are *not* the "yes" half:
-they fail the repaired clause, being exactly the erratum-D13 counterexamples.) -/
+constant in either direction. -/
 lemma not_spiDecision_of_card_le_one {Γ : Game N 𝒜} (h : ∀ i, (Γ.S i).card ≤ 1) :
     ¬ Γ.SPIDecision := by
   have hred : ∀ G : Game N 𝒜, (∀ i, (G.S i).card ≤ 1) → G.Reduced := by

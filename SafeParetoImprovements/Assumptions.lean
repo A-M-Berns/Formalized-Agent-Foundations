@@ -114,15 +114,14 @@ payoff function is defined only on `A`, so `Π` cannot depend on off-domain payo
 whereas a `Play` family may distinguish two games that are equal in the paper's sense
 (`Game.EqOn`).  Every paper node here quantifies universally over the play family, so the
 larger class only *strengthens* those statements; and the phenomenon the extra freedom
-allows -- one presentation being a strict SPI on another -- is ruled out for
+allows — one presentation being a strict SPI on another — is ruled out for
 `EqOn`-equal **reduced** presentations, because every isomorphism between `EqOn`-equal
 games preserves payoffs (`GameIso.payoff_eq_of_eqOn`).
 
-The reducedness qualification is not decoration: Assumption 2 is a hypothesis *about
-games without strictly dominated actions* and says nothing whatever about a non-reduced
-`EqOn`-equal pair, on which a `Play` family may still exhibit the phenomenon.  Only one
-of the two reducedness hypotheses is taken, since `EqOn` transports it
-(`Game.EqOn.reduced_iff`).
+Reducedness is required: Assumption 2 is a hypothesis *about games without strictly
+dominated actions* and says nothing about a non-reduced `EqOn`-equal pair, on which a
+`Play` family may still exhibit the phenomenon.  Only one of the two reducedness
+hypotheses is taken, since `EqOn` transports it (`Game.EqOn.reduced_iff`).
 
 The book witness is `EqOn`-invariant in exactly this sense: it plays two `EqOn`-equal
 games through the same page, so no `EqOn`-difference is visible in payoff terms. -/

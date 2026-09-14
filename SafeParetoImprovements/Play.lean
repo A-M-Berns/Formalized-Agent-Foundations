@@ -22,8 +22,7 @@ and the paper's own instance, "with probability one" for a probability measure `
 the almost-everywhere filter `ae μ`, realized in `Representatives.lean`.  Other instances
 the paper's footnote 2 describes (dominance across a *set* of possible models, no
 probabilities: the top filter on the set of solvers) come by instantiation.  Paper-node
-statements at this level are therefore *strengthened* relative to the printed ones; the
-docstrings say so.
+statements at this level are therefore *strengthened* relative to the printed ones.
 
 The play family asks nothing of the representatives beyond returning an outcome of the
 game they are handed.  Assumptions 1 and 2 (§4.4) are separate predicates; "under

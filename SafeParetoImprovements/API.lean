@@ -66,7 +66,7 @@ EconCSLib's through the bridge `Game.toStrategic`, read back as the paper's sent
 Game isomorphisms (`dd:iso`, erratum D5) are `GameIso Γ Γ'`: per-player maps `toFun` that
 are bijections `Γ.S i → Γ'.S i` (`bijOn`) with strictly positive scales and shifts
 (`affine`); `GameIso.map`, `.symm`, `.trans`, `.refl`, `Game.Isomorphic`, and the exact
-relabelings `Game.ExactCopy` (scale `1`, shift `0`).  `GameIso.ParetoImproving` and
+relabellings `Game.ExactCopy` (scale `1`, shift `0`).  `GameIso.ParetoImproving` and
 `StrictlyParetoImproving` are Lemma 4's hypotheses.
 
 ## Representatives and SPIs (§3)
@@ -140,8 +140,8 @@ the checks `ParetoImproving`, `StrictlyParetoImproving`, `Nontrivial`, `Affine i
 `strictSPIDecision_iff_certificate`, `unilateralSPIDecision_iff_certificate`,
 `strictUnilateralSPIDecision_iff_certificate` (Propositions 23, 25) with the search bounds
 `Game.card_certificate_le` (`≤ m ^ l`) and `card_unilateralCertificate_le'` (the pairs
-(player, certificate) are also `≤ m ^ l`) — Propositions 24, 26, Proposition 10.  `Certificate.reducesToImage_of_dominated` is the practical way to
-discharge check 3.
+(player, certificate) are also `≤ m ^ l`) — Propositions 24, 26, Proposition 10.
+`Certificate.reducesToImage_of_dominated` is the practical way to discharge check 3.
 
 **Hardness** (Appendix D.3, namespace `Hardness`): `Graph n`, `SubgraphIso`,
 `SubgraphIsoProblem` (Definition 8), Table 9's `tableU₁`/`tableU₂` on

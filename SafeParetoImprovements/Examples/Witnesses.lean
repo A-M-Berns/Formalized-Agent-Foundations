@@ -11,15 +11,15 @@ import Mathlib.MeasureTheory.Measure.Dirac
 
 Propositions 5–8 are stated "under Assumptions 1 and 2" (and, for the strictness clause of
 Proposition 6, under a positive-probability hypothesis on the play of the Demand Game).
-The repository standard is that a statement is only honest if its hypotheses are
-satisfiable, so this file exhibits, for each of them, a play family over a one-point sample
-space at which every hypothesis holds — and hence the conclusion is actually reached.
+A statement is honest only if its hypotheses are satisfiable, so this file exhibits, for
+each of them, a play family over a one-point sample space at which every hypothesis holds —
+and hence the conclusion is actually reached.
 
 Nothing here is a paper node: these are witnesses, not claims of the paper.  The general
 constructions they use live where they belong — `exists_play_satisfiesA1_satisfiesA2` and
 `Book.prescribed` in `Book.lean`, `demandGame.reduce_eq` in `DemandGame.lean` — and this
-file only instantiates them.  It is imported by the aggregator and by
-`Examples/ProgramGameWitnesses.lean`, which builds the Appendix-A witnesses on top of it.
+file only instantiates them.  `Examples/ProgramGameWitnesses.lean` builds the Appendix-A
+witnesses on top of it.
 
 * Propositions 5, 7, 8 and the weak clause of 6 need only Assumptions 1 and 2, so the
   deterministic book (`Book.const`) discharges them.
@@ -31,9 +31,8 @@ file only instantiates them.  It is imported by the aggregator and by
 * `Representatives` — the probabilistic model of §3 — is inhabited by the deterministic
   book on `(Unit, δ)`.
 * The soundness result `Play.isStrictSPI_of_deriv` needs *every* surviving outcome to be
-  played with positive probability, which no play family over a one-point sample space can
-  do once the reduction has two outcomes; its witness therefore lives on the profile space
-  and uses the page-varying book (`Book.varying`).
+  played with positive probability, so its witness lives on the profile space and uses the
+  page-varying book (`Book.varying`).
 
 Each of the four "not vacuous" statements carries the Assumption 1 and 2 clauses of the
 proposition it witnesses inside its own statement: a bare `∃ X, <conclusion>` is
@@ -61,9 +60,7 @@ def prisonersDilemmaCooperate : Game Two PDUniverse where
 
 /-- **Proposition 5 is not vacuous**: some play family satisfies Assumptions 1 and 2 at a
 non-degenerate filter, and for it the cooperative subset game really is a strict SPI on the
-Prisoner's Dilemma.  The assumption clauses are part of the statement: without
-them the same conclusion is reachable by a hand-built play family that violates
-Assumption 1, and the witness would say nothing about the proposition's hypotheses. -/
+Prisoner's Dilemma. -/
 lemma prisonersDilemma_isStrictSPI_witnessed :
     ∃ X : Play Two PDUniverse Unit, X.SatisfiesA1 ⊤ ∧ X.SatisfiesA2 ⊤ ∧
       X.IsStrictSPI ⊤ prisonersDilemma prisonersDilemmaCooperate := by
@@ -121,9 +118,7 @@ lemma demandGame_isStrictSPI_witnessed :
 
 /-! ### "Yes" instances of the repaired Definition 5
 
-`Game.not_spiDecision_of_card_le_one` gives a "no" instance of the repaired SPI decision
-problem; these are the matching "yes" instances, without which the repaired predicates
-could be uniformly false.  The payoff-shift witnesses of erratum D13
+The payoff-shift witnesses of erratum D13
 (`Game.shiftReduce`, `Game.bumpPayoff`) do *not* serve here: they leave `reduce.S`
 unchanged and so fail the repaired non-triviality clause by construction. -/
 

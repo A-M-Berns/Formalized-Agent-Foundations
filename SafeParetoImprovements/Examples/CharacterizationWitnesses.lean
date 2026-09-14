@@ -12,7 +12,7 @@ conditional expectation is a genuine average rather than a point evaluation.
 * **Lemma 13 and Corollary 14 apply** to the conflict game of `TokenWitnesses.lean` with
   the fair-coin book representatives (`conflict_exists_reassignment`,
   `conflict_achievable_eq_improvementSum`, `conflict_isPolytope_achievable`), and to a
-  perfect-coordination SPI that is emphatically *not* already a copy of the game:
+  perfect-coordination SPI that is *not* already a copy of the game:
   `conflictThreeToken` has three actions per player where the base game has two, so it is
   not even isomorphic to the reduction (`conflictThreeToken_not_isomorphic`), and Lemma 13
   turns it into one that is an exact copy of `conflictGame` with the same expected payoff
@@ -20,7 +20,7 @@ conditional expectation is a genuine average rather than a point evaluation.
 * **`achievable` has at least two points** (`conflict_achievable_not_singleton`): the
   strict token game is worth `(1, 1)` and the plain one `(½, ½)`.  The latter value is not
   attained by any token game with a *constant* `uᵉ` (`conflict_plain_not_constant_ue`), so
-  Corollary 14's set is genuinely wider than the constant reassignments.
+  Corollary 14's set is wider than the constant reassignments.
 * **`condExp` is a genuine average** (`condExp_genuine_average`).  In the *book*
   models of this development the conditional expectation collapses to a point evaluation
   whenever the token game is isomorphic to the reduced base game (Lemma 13's case), because
@@ -338,10 +338,7 @@ lemma mixBase_mem_support : (pair 0 0 : ∀ i, MixUniverse i) ∈ mixRepresentat
 /-- **`condExp` is a genuine average, not a point mass**: on the supported fiber
 `Π(mixBase) = (0, 0)` — which is the whole sample space — the conditional expectation of the
 token payoff is `(½, ½)`, while the token payoff itself only ever takes the values `(0, 0)`
-and `(1, 1)`.  The book models of this development collapse `condExp` to a point
-evaluation whenever the token game is isomorphic to the reduced base game (pages are chosen
-per isomorphism class, so the token play is then a function of `Π(Γ)`); this hand-built
-family is the witness that the definition does not. -/
+and `(1, 1)`. -/
 lemma condExp_genuine_average (i : Two) :
     mixRepresentatives.condExp mixBase (pair 0 0)
       (fun ω => mixToken.ue (mixRepresentatives.play mixToken.game ω)) i = 2⁻¹ := by

@@ -122,9 +122,7 @@ lemma Corresponds.mono_rel' {Γ Γ' : Game N 𝒜} {Φ Ξ : SetRel (∀ i, 𝒜 
     (h : X.Corresponds L Γ Γ' Φ) (hΦΞ : Φ ⊆ Ξ) : X.Corresponds L Γ Γ' Ξ :=
   h.mono_rel fun _ _ _ hω => hΦΞ hω
 
-/-- Lemma 2.5, the **trivial correspondence**: `Γ ∼_{all_{A,A'}} Γ'` always.  This is the
-one item that uses `Π(Γ') ∈ A'` (item 1 uses the membership constraint too, but only for
-`Γ`; see the section note).
+/-- Lemma 2.5, the **trivial correspondence**: `Γ ∼_{all_{A,A'}} Γ'` always.
 
 Paper node: `Lemma 2` -/
 theorem corresponds_allRel (X : Play N 𝒜 Ω) (L : Filter Ω) (Γ Γ' : Game N 𝒜) :
@@ -166,11 +164,7 @@ relates only outcomes of `Γ` to outcomes of `Γs`.  (The printed definition wri
 The paper states the definition for a *subset game* `Γˢ` of `Γ`; since `u` is total on the
 universe (`dd:total-utility`), the structure makes sense for any target `Γs` and is stated
 so — the same generalization as Lemma 4's (erratum D2(b)) — with the subset-game clause
-supplied where a paper node needs it (Theorem 3 bundles it into `IsSPI`).  Theorem 3 and
-`paretoImprovingCorrespondence_of_iso` inhabit it on non-subset targets as well.
-
-`typed` is the *last* field so that the other two keep their order and meaning; an
-anonymous constructor must supply all three.
+supplied where a paper node needs it (Theorem 3 bundles it into `IsSPI`).  `paretoImprovingCorrespondence_of_iso` inhabits it on non-subset targets.
 
 Paper node: `Definition 4` -/
 structure ParetoImprovingCorrespondence (Γ Γs : Game N 𝒜)

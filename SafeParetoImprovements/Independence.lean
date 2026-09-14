@@ -25,16 +25,16 @@ Three ingredients make them stateable over the program-game interface:
 3. an **information stage** for FI: an instruction chosen as a function of a signal that
    may announce a counterpart's non-participation (`ProgramGame.Policy`).
 
-In the concrete language, `Prog.default` is "play `Πᵢ(Γ₀)`", the dove-ish instruction
+In the concrete language, `Prog.default` is "play `Πᵢ(Γ₀)`", the dove instruction
 `Prog.dove` (comply with the SPI when everybody does, otherwise fall back to the default)
 satisfies PI, and any instruction that punishes with a mixed action differing from the
 default play — Algorithm 2 whenever its minimax punishment differs from `Π(Γ₀)` — fails it.
 
-**What these execution-level notions are, and are not.**  Both compare *realised actions
+**What these execution-level notions are, and are not.**  Both compare *realized actions
 towards a non-participant*: PI says a player meets a drop-out with the baseline play
 rather than a punishment, which is the premise of the source's argument for PI ("the
 counterpart's bargaining position is no worse than if they'd refused the SPI"); FI says
-the realised action towards a drop-out does not depend on whether the drop-out was
+the realized action towards a drop-out does not depend on whether the drop-out was
 foreseen.  Neither constrains what a player *demands while everybody participates*: the
 source's definitions (DiGiovanni 2026, Appendix B.2) add **demand preservation** to both,
 and that clause lives at the level of program choice in `FullStrategy.lean`, not here.  An
@@ -103,9 +103,8 @@ def ForeknowledgeIndependent (D : P.DefaultInstr) (c : ∀ i, P.Instr i) {i : N}
       P.exec (Function.update (Function.update c j (D.default j)) i
         (π.policy (π.willNotParticipate j))) ω i
 
-/-- A policy that ignores its signal is foreknowledge independent.  This is the
-**degenerate** case and is worth nothing as a non-vacuity witness: both sides of
-`ForeknowledgeIndependent` are then literally the same term, so the predicate holds by
+/-- A policy that ignores its signal is foreknowledge independent.  The case is degenerate:
+both sides of `ForeknowledgeIndependent` are then the same term, so the predicate holds by
 `rfl` whatever the execution model does.  A witness with content needs a policy whose two
 signals select *different* instructions; `Examples.foreknowledgeIndependent_pd` is one. -/
 lemma foreknowledgeIndependent_of_const (D : P.DefaultInstr) (c : ∀ i, P.Instr i) {i : N}
@@ -133,12 +132,12 @@ lemma plays_default :
   rw [programGame_exec, default, execAt_delegate, Game.pureMixed_val]
 
 variable (Γ₀) in
-/-- `Prog.default` as the default instruction of the realised program game. -/
+/-- `Prog.default` as the default instruction of the realized program game. -/
 noncomputable def defaultInstr : (programGame Γ₀ R).DefaultInstr where
   default _ := default Γ₀
   plays_default := plays_default Γ₀ R
 
-/-- **The dove-ish instruction**: comply with the SPI `Γˢ` when everybody submits this
+/-- **The dove instruction**: comply with the SPI `Γˢ` when everybody submits this
 code, otherwise fall back to the default. -/
 noncomputable def dove (Γs : Game N 𝒜) (h : Γs.IsSubsetGameOf Γ₀) : Prog Γ₀ :=
   ifAllSame (delegate Γs h) fun _ => default Γ₀
@@ -161,7 +160,7 @@ lemma participationIndependent_of_punish_default (c : N → Prog Γ₀) (i : N) 
   rw [hexec]
   rfl
 
-/-- The dove-ish instruction is participation independent. -/
+/-- The dove instruction is participation independent. -/
 lemma participationIndependent_dove (Γs : Game N 𝒜) (h : Γs.IsSubsetGameOf Γ₀)
     (c : N → Prog Γ₀) (i : N) (hc : c i = dove Γs h) :
     (programGame Γ₀ R).ParticipationIndependent (defaultInstr Γ₀ R) c i :=
@@ -169,7 +168,7 @@ lemma participationIndependent_dove (Γs : Game N 𝒜) (h : Γs.IsSubsetGameOf 
 
 /-! ### The dove profile: participation-independent implementation of an SPI
 
-When everybody submits the dove-ish instruction for `Γˢ`, the execution is `Π(Γˢ)`
+When everybody submits the dove instruction for `Γˢ`, the execution is `Π(Γˢ)`
 (`plays_dove`); against a unilateral deviation every other player falls back to the
 baseline play `Πⱼ(Γ₀)` (`exec_update_dove`).  So the dove profile is participation
 independent for every player, and it is a program equilibrium whenever the SPI beats each
@@ -181,7 +180,7 @@ threat-point hypothesis and what makes it fail participation independence
 
 variable {Γs : Game N 𝒜} (h : Γs.IsSubsetGameOf Γ₀)
 
-/-- When everybody submits the dove-ish instruction, the execution is `Π(Γˢ)`. -/
+/-- When everybody submits the dove instruction, the execution is `Π(Γˢ)`. -/
 lemma plays_dove :
     (programGame Γ₀ R).Plays (fun _ => dove Γs h) fun ω => R.play Γs ω := by
   intro ω k b
@@ -245,7 +244,7 @@ lemma exec_default (i : N) (ω : R.Ω) :
 /-- **A participation-independent instruction, paired with the default as the informed
 choice, is foreknowledge independent**: if player `i`'s uninformed instruction `c i` is
 participation independent and her policy switches to the default instruction on learning
-that `j` will not participate, then her realised action once `j` has dropped out is the
+that `j` will not participate, then her realized action once `j` has dropped out is the
 baseline play either way.  This is the general form of `Examples.foreknowledgeIndependent_pd`
 and one way the two notions interact; it needs the informed branch to be the default. -/
 lemma foreknowledgeIndependent_of_participationIndependent (c : N → Prog Γ₀) {i : N}
@@ -286,9 +285,8 @@ lemma not_participationIndependent_of_punish_play (c : N → Prog Γ₀) (i : N)
 non-participating `j` — `i`'s coordinate of the minimax profile against `j` — differs
 from the default play at some sample point.  The hypothesis is satisfiable: it is
 discharged in the Demand Game by
-`Examples.demandGame_algorithm2_not_participationIndependent`.  It genuinely fails in the
-Prisoner's Dilemma, where the minimax punishment and
-the default play are both `Defect`. -/
+`Examples.demandGame_algorithm2_not_participationIndependent`.  It fails in the Prisoner's
+Dilemma, where the minimax punishment and the default play are both `Defect`. -/
 lemma not_participationIndependent_algorithm2 (Γs : Game N 𝒜) (h : Γs.IsSubsetGameOf Γ₀)
     (i : N) {j : N} (hj : j ≠ i)
     (hσ : ∃ ω, Γ₀.minimax j i ≠ Γ₀.pureMixed (R.play Γ₀ ω i) (R.toPlay.mem Γ₀ ω i)) :
@@ -320,8 +318,8 @@ lemma not_participationIndependent_algorithm2 (Γs : Game N 𝒜) (h : Γs.IsSub
 
 /-- A policy that switches to a punishing instruction on learning that `j` will not
 participate is *not* foreknowledge independent, as soon as the punishment differs from
-the uninformed behaviour: here the uninformed instruction is dove-ish and the informed one
-punishes with `σ`. -/
+the uninformed behaviour: here the uninformed instruction is the dove one and the
+informed one punishes with `σ`. -/
 lemma not_foreknowledgeIndependent_of_switch (Γs : Game N 𝒜) (h : Γs.IsSubsetGameOf Γ₀)
     (c : N → Prog Γ₀) (i : N) (σ : ∀ j, Γ₀.Mixed j) {j : N} (hj : j ≠ i)
     (π : (programGame Γ₀ R).Policy i) (hno : π.policy π.noInfo = dove Γs h)

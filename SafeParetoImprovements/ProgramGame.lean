@@ -22,10 +22,10 @@ concrete instruction language and its realization as a `ProgramGame` live in
 * **Threat point** (extraction l. 1977–1993): `vᵢ = min_{σ₋ᵢ} max_{σᵢ} uᵢ(σᵢ, σ₋ᵢ)`, over
   products of standard simplices.  Both extrema exist by compactness (`Game.threatPoint`,
   `Game.minimax`), not by linear programming; the paper's "consistent tie-breaking" of the
-  minimiser is one `Classical.choice` per player.
+  minimizer is one `Classical.choice` per player.
 * **A program game** (extraction l. 1957–1971, `dd:exec-kernel`): a set of instructions per
   player and an execution map.  Given the representatives' sample point `ω` — the one
-  source of randomness the paper's `Πᵢ(Γ′)` calls read — each program's realised action is
+  source of randomness the paper's `Πᵢ(Γ′)` calls read — each program's realized action is
   a mixed strategy of its own, and the players' actions are *independent*: `exec` returns a
   profile of mixed strategies, and the outcome distribution is their product.  This is
   what the paper leaves implicit when it lets a program "play `minimax(i, j)`" (a mixed
@@ -154,7 +154,7 @@ lemma exists_isMinOn_bestValue (i : N) : ∃ τ, IsMinOn (Γ.bestValue i) univ �
   obtain ⟨τ, -, hτ⟩ := isCompact_univ.exists_isMinOn univ_nonempty (Γ.continuous_bestValue i).continuousOn
   exact ⟨τ, hτ⟩
 
-/-- **The minimax profile against `i`** (extraction l. 1985–1993): a chosen minimiser of
+/-- **The minimax profile against `i`** (extraction l. 1985–1993): a chosen minimizer of
 `i`'s best-response value; `minimax i j` is the paper's `minimax(i, j) ∈ Δ(Aⱼ)`.  The choice
 is fixed once per player, which is the paper's "consistent tie-breaking". -/
 noncomputable def minimax (i : N) : ∀ j, Γ.Mixed j := (Γ.exists_isMinOn_bestValue i).choose
@@ -294,7 +294,7 @@ end Game
 
 /-- **A program game** on `Γ₀`, played by the representatives `R` (extraction l. 1957–1971;
 `dd:exec-kernel`).  `Instr i` is the paper's `PROGᵢ`; `exec c ω i` is the mixed action that
-player `i`'s program realises when everybody's code is `c` and the representatives' sample
+player `i`'s program realizes when everybody's code is `c` and the representatives' sample
 point is `ω` (the randomness every `Πⱼ(Γ′)` call reads).  The players' actions are
 independent given `ω`: each program's own randomness is private, so the outcome
 distribution is the product of the `exec c ω i`.  Fibers are measurable so that payoffs
@@ -304,7 +304,7 @@ structure ProgramGame (Γ₀ : Game N 𝒜) (R : Representatives.{u, v, w} N �
   Instr : N → Type x
   /-- Execution: everybody's code and the sample point give each player's mixed action. -/
   exec : (∀ i, Instr i) → R.Ω → ∀ i, Γ₀.Mixed i
-  /-- Each coordinate of the realised mixture is a measurable function of `ω`. -/
+  /-- Each coordinate of the realized mixture is a measurable function of `ω`. -/
   measurable_exec : ∀ (c : ∀ i, Instr i) (i : N) (b : Γ₀.S i), Measurable fun ω => (exec c ω i).val b
 
 namespace ProgramGame

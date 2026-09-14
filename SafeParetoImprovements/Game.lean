@@ -14,9 +14,9 @@ game a given set of representatives can be asked to play lives over one fixed
 *per-player action universe* `𝒜 : N → Type*` (`dd:universe`), and a game is a choice of
 a finite nonempty subset of each `𝒜 i` together with a payoff function.
 
-**Read this before comparing two games.**  `Game.u` is total on universe profiles, so
-Lean's `=` on `Game` is **not** the paper's equality of games: two `Game`s can differ only
-at profiles outside their common action sets and be the same game in the paper's sense.
+`Game.u` is total on universe profiles, so Lean's `=` on `Game` is *not* the paper's
+equality of games: two `Game`s can differ only at profiles outside their common action
+sets and be the same game in the paper's sense.
 The paper's own conventions force the "equal on the smaller game's profiles" reading —
 Definition 2 writes `uˢᵢ = uᵢ` for functions with *different* domains — so the paper's
 equality is `Game.EqOn`, defined below, and it is what every paper-facing statement uses
@@ -24,10 +24,9 @@ equality is `Game.EqOn`, defined below, and it is what every paper-facing statem
 
 The game-theoretic vocabulary of §2 (strict dominance, and later best response, Nash
 equilibrium, mixed strategies) is *not* re-defined here.  `Game.toStrategic` maps a game
-to EconCSLib's `StrategicGame` — the universe with the payoff forgotten is the ambient
-object, ours is a choice of finite subsets of it with its own payoff — and each notion is
-EconCSLib's notion on the bridged game, characterized by a lemma that reads as the paper's
-sentence (`strictlyDominates_iff`).
+to EconCSLib's `StrategicGame`, and each notion is EconCSLib's notion on the bridged
+game, characterized by a lemma that reads as the paper's sentence
+(`strictlyDominates_iff`).
 -/
 
 namespace SafeParetoImprovements
