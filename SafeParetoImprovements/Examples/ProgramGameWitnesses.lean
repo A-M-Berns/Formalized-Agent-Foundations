@@ -26,7 +26,7 @@ The threat-point hypothesis is not automatic: `demandBook_not_threatPoint_le` sh
 content in Theorem 1's statement.
 
 The same representatives witness that the participation- and foreknowledge-independence
-predicates are neither constant-true nor constant-false: the dove instruction is
+predicates are neither constant-true nor constant-false: the fallback instruction is
 participation independent, an instruction punishing with `Cooperate` is not (the default
 play is `Defect`), a policy that switches to punishment on learning of a non-participation
 is not foreknowledge independent, and a policy that switches between two *different*
@@ -260,13 +260,13 @@ lemma not_participationIndependent_pd (t : Prog prisonersDilemma) :
   not_participationIndependent_of_punish_play pdRepresentatives _ Two.one t pdCooperateMixed rfl
     (j := Two.two) (by decide) ⟨(), pdCooperateMixed_ne_defect Two.one ()⟩
 
-/-- **Participation independence is not constant-false**: the dove instruction for the
+/-- **Participation independence is not constant-false**: the fallback instruction for the
 cooperative subset game is participation independent. -/
 lemma participationIndependent_pd :
     (programGame prisonersDilemma pdRepresentatives).ParticipationIndependent
       (defaultInstr prisonersDilemma pdRepresentatives)
-      (fun _ => dove prisonersDilemmaCooperate prisonersDilemmaCooperate_isSubsetGameOf) Two.one :=
-  participationIndependent_dove pdRepresentatives _ _ _ Two.one rfl
+      (fun _ => fallback prisonersDilemmaCooperate prisonersDilemmaCooperate_isSubsetGameOf) Two.one :=
+  participationIndependent_fallback pdRepresentatives _ _ _ Two.one rfl
 
 /-! #### Algorithm 2 itself fails participation independence
 
@@ -333,7 +333,7 @@ noncomputable def pdSwitchPolicy : (programGame prisonersDilemma pdRepresentativ
   noInfo := none
   willNotParticipate := some
   policy
-    | none => dove prisonersDilemmaCooperate prisonersDilemmaCooperate_isSubsetGameOf
+    | none => fallback prisonersDilemmaCooperate prisonersDilemmaCooperate_isSubsetGameOf
     | some _ => play pdCooperateMixed
 
 /-- **Foreknowledge independence is not constant-true**: the switching policy is not
@@ -345,9 +345,9 @@ lemma not_foreknowledgeIndependent_pd (c : Two → Prog prisonersDilemma) :
     (j := Two.two) (by decide) pdSwitchPolicy rfl rfl ⟨(), pdCooperateMixed_ne_defect Two.one ()⟩
 
 /-- The policy for player 1 with an **informative** signal: uninformed she submits
-the dove SPI instruction, informed that a counterpart will not participate she submits
+the fallback SPI instruction, informed that a counterpart will not participate she submits
 the default instruction.  The two are *different programs*
-(`dove_ne_default`); what coincides is only their behaviour once the counterpart has in
+(`fallback_ne_default`); what coincides is only their behaviour once the counterpart has in
 fact dropped out, and that has to be proved through the execution model. -/
 noncomputable def pdFallbackPolicy :
     (programGame prisonersDilemma pdRepresentatives).Policy Two.one where
@@ -355,20 +355,20 @@ noncomputable def pdFallbackPolicy :
   noInfo := false
   willNotParticipate _ := true
   policy
-    | false => dove prisonersDilemmaCooperate prisonersDilemmaCooperate_isSubsetGameOf
+    | false => fallback prisonersDilemmaCooperate prisonersDilemmaCooperate_isSubsetGameOf
     | true => default prisonersDilemma
 
-lemma dove_ne_default :
-    dove prisonersDilemmaCooperate prisonersDilemmaCooperate_isSubsetGameOf ≠
+lemma fallback_ne_default :
+    fallback prisonersDilemmaCooperate prisonersDilemmaCooperate_isSubsetGameOf ≠
       default prisonersDilemma := by
   intro h
-  unfold dove Prog.default at h
+  unfold fallback Prog.default at h
   cases h
 
 /-- **Foreknowledge independence is not constant-false**, non-degenerately:
 `pdFallbackPolicy` reads its signal and chooses two syntactically different instructions,
 yet once player 2 has dropped out player 1's realized action is the same either way —
-the dove instruction's own fall-back branch is the default instruction. -/
+the fallback instruction's own fall-back branch is the default instruction. -/
 lemma foreknowledgeIndependent_pd (c : Two → Prog prisonersDilemma) :
     (programGame prisonersDilemma pdRepresentatives).ForeknowledgeIndependent
       (defaultInstr prisonersDilemma pdRepresentatives) c pdFallbackPolicy := by
@@ -379,23 +379,23 @@ lemma foreknowledgeIndependent_pd (c : Two → Prog prisonersDilemma) :
   simp only [Function.update_self]
   show execAt pdRepresentatives
       (Function.update (Function.update c Two.two (default prisonersDilemma)) Two.one
-        (dove prisonersDilemmaCooperate prisonersDilemmaCooperate_isSubsetGameOf))
-      Two.one (dove prisonersDilemmaCooperate prisonersDilemmaCooperate_isSubsetGameOf) ω = _
+        (fallback prisonersDilemmaCooperate prisonersDilemmaCooperate_isSubsetGameOf))
+      Two.one (fallback prisonersDilemmaCooperate prisonersDilemmaCooperate_isSubsetGameOf) ω = _
   set c' := Function.update (Function.update c Two.two (default prisonersDilemma)) Two.one
-        (dove prisonersDilemmaCooperate prisonersDilemmaCooperate_isSubsetGameOf) with hc'
+        (fallback prisonersDilemmaCooperate prisonersDilemmaCooperate_isSubsetGameOf) with hc'
   have hne : ¬ ∀ k, c' k = c' Two.one := by
     intro hall
     have h2 : c' Two.two = default prisonersDilemma := by
       rw [hc', Function.update_of_ne (show Two.two ≠ Two.one by decide), Function.update_self]
-    have h1 : c' Two.one = dove prisonersDilemmaCooperate prisonersDilemmaCooperate_isSubsetGameOf := by
+    have h1 : c' Two.one = fallback prisonersDilemmaCooperate prisonersDilemmaCooperate_isSubsetGameOf := by
       rw [hc', Function.update_self]
     have := hall Two.two
     rw [h1, h2] at this
-    exact dove_ne_default this.symm
+    exact fallback_ne_default this.symm
   obtain ⟨k, -, hk⟩ := execAt_ifAllSame_of_ne pdRepresentatives hne
     (delegate prisonersDilemmaCooperate prisonersDilemmaCooperate_isSubsetGameOf)
     (fun _ => default prisonersDilemma) ω
-  rw [show dove prisonersDilemmaCooperate prisonersDilemmaCooperate_isSubsetGameOf =
+  rw [show fallback prisonersDilemmaCooperate prisonersDilemmaCooperate_isSubsetGameOf =
         ifAllSame (delegate prisonersDilemmaCooperate prisonersDilemmaCooperate_isSubsetGameOf)
           (fun _ => default prisonersDilemma) from rfl, hk]
   rfl

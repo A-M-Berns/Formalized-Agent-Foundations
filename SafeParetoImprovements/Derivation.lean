@@ -39,8 +39,8 @@ false.  What is true, and what the paper uses:
   reductions, insert the isomorphism move and come back, which takes five.  (ii) The
   normal form has the *same endpoints* and a composite that is **contained in** the
   original one on the outcomes of `reduce Γ` — for each such outcome `a`, the original
-  composite relates `a` to `ψ.map a`, not necessarily only to it; it is not the original
-  composite (which may relate outcomes killed by the reduction).  A statement about a
+  composite relates `a` to `ψ.map a` and to nothing else (`Deriv.eq_of_rel`); it is not
+  the original composite, which may relate outcomes the reduction kills.  A statement about a
   *given* chain being permuted is not expressible here at all, since `Deriv` records no
   list of moves.
 * **Certificate form** (the "conciser way to state" the consequence of Lemma 21, corrected
@@ -472,13 +472,14 @@ As in the paper, the chain ends at `reduce Γs` rather than at `Γs` itself; tha
 lets the reverse eliminations be dropped.
 
 Paper node: `Lemma 22` -/
-theorem exists_paretoImproving_normalForm {Γ₀ Γs : Game N 𝒜} (hsub : Γs.IsSubsetGameOf Γ₀)
+theorem exists_paretoImproving_normalForm {Γ₀ Γs : Game N 𝒜}
     {Φ : SetRel (∀ i, 𝒜 i) (∀ i, 𝒜 i)} (d : Deriv Γ₀ Γ₀ Γs Φ)
     (hΦ : ParetoImprovingFor Γ₀ Φ) :
     ∃ ψ : GameIso Γ₀.reduce Γs.reduce, ψ.ParetoImproving ∧
       Γ₀.ElimStar Γ₀.reduce ∧ Step Γ₀ Γ₀.reduce Γs.reduce ψ.rel ∧
         Γ₀.reduce.partialId ○ ψ.rel = ψ.rel ∧
         Deriv Γ₀ Γ₀ Γs.reduce ψ.rel ∧ ParetoImprovingFor Γ₀ ψ.rel := by
+  have hsub : Γs.IsSubsetGameOf Γ₀ := d.isSubsetGameOf_right
   obtain ⟨ψ, hψ⟩ := (exists_paretoImproving_deriv_iff Γ₀ Γs hsub).1 ⟨Φ, d, hΦ⟩
   have hstep : Step Γ₀ Γ₀.reduce Γs.reduce ψ.rel :=
     Step.iso Γ₀.reduce_isSubsetGameOf (Γs.reduce_isSubsetGameOf.trans hsub)

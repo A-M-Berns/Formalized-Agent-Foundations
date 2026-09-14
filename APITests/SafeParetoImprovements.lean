@@ -240,7 +240,7 @@ lemma clientStrategy_demandPreserving : clientStrategy.DemandPreserving clientDe
 /-- Participation independence follows from simultaneity and demand preservation. -/
 example : clientStrategy.ParticipationIndependent clientDemands clientChoice :=
   clientStrategy.participationIndependent_of_simultaneous clientDemands clientChoice
-    (fun i _ _ => by cases i <;> rfl) clientStrategy_consistent
+    (fun i _ _ => by cases i <;> rfl) clientStrategy_consistent.chosenGivenUse
     clientStrategy_demandPreserving
 
 /-- Not foreknowledge independent: had agent 1 believed the counterpart would keep his

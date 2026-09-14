@@ -431,7 +431,7 @@ lemma rnStrategy_participationIndependent (p : Two → RnProg)
     (χ : ChoiceModel (fun _ : Two => RnProg)) (hsim : χ.Simultaneous)
     (hcons : (rnStrategy p).Consistent χ) :
     (rnStrategy p).ParticipationIndependent demands χ :=
-  (rnStrategy p).participationIndependent_of_simultaneous demands χ hsim hcons
+  (rnStrategy p).participationIndependent_of_simultaneous demands χ hsim hcons.chosenGivenUse
     (rnStrategy_demandPreserving p)
 
 /-- **The two levels together, on this example.**  Under a simultaneous choice model

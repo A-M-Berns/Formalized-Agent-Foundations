@@ -64,7 +64,7 @@ end Play
 /-! ### Exact copies
 
 Lemma 13 prints `û(â) = u(a)`: the token game it produces is not merely *isomorphic* to the
-reduced game, it is a relabelling that keeps the payoffs on the nose.  `Game.ExactCopy` is
+game, it is a relabelling that keeps the payoffs on the nose.  `Game.ExactCopy` is
 that stronger relation — an isomorphism with scale `1` and shift `0` — and it is what the
 §5.2/§5.3 constructions actually deliver, since they hand back `Game.tokenCopy` along
 `Game.tokenIso`. -/

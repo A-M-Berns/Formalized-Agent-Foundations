@@ -166,11 +166,11 @@ The concrete instruction language is `Prog Γ₀` (`play`, `delegate`, `ifAllSam
 `ProgramGame.isProgramEquilibrium_of_algorithm2`) and **Theorem 1**
 `Prog.exists_programEquilibrium_plays`.  Beyond the paper (RULING 9): default instructions
 `ProgramGame.DefaultInstr`, `ParticipationIndependent`, information stages `Policy` and
-`ForeknowledgeIndependent` (`Independence.lean`), with `Prog.default`, `Prog.dove`, the
+`ForeknowledgeIndependent` (`Independence.lean`), with `Prog.default`, `Prog.fallback`, the
 best-reply value `Game.bestReply` (`expected_le_bestReply`), the fall-back equilibrium
-criterion `ProgramGame.isProgramEquilibrium_of_fallback`, and the dove profile as a
-participation-independent program equilibrium (`Prog.plays_dove`,
-`participationIndependent_dove_all`, `dove_isProgramEquilibrium`,
+criterion `ProgramGame.isProgramEquilibrium_of_fallback`, and the fallback profile as a
+participation-independent program equilibrium (`Prog.plays_fallback`,
+`participationIndependent_fallback_all`, `fallback_isProgramEquilibrium`,
 `foreknowledgeIndependent_of_participationIndependent`).  The same two notions at the level
 of program *choice*, after DiGiovanni (2026, Appendix B.2), are `FullStrategy`,
 `ChoiceModel`, `FullStrategy.DemandPreserving`/`ParticipationIndependent`/

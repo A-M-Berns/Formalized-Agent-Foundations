@@ -296,8 +296,10 @@ section lemma4
 variable [Fintype N]
 
 /-- **Lemma 4**: if `Φ` and `Ψ` are isomorphisms between `Γ` and `Γ'` and `Φ` is
-Pareto-improving, so is `Ψ`.  (The lemma needs `Γ'` to be a subset game of `Γ` for
-"Pareto-improving" to be defined; the printed statement omits this — erratum D2(b).)
+Pareto-improving, so is `Ψ`.  The paper's "Pareto-improving" presupposes, through
+Definition 4, that `Γ'` is a subset game of `Γ`, a hypothesis the printed lemma omits
+(erratum D2(b)); since `Γ.u` is total on the universe the notion makes sense for any target
+(`GameIso.ParetoImproving`), and the lemma takes no subset-game hypothesis.
 
 Paper node: `Lemma 4` -/
 theorem paretoImproving_of_paretoImproving (φ ψ : GameIso Γ Γ') (hφ : φ.ParetoImproving) :

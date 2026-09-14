@@ -25,8 +25,8 @@ Three ingredients make them stateable over the program-game interface:
 3. an **information stage** for FI: an instruction chosen as a function of a signal that
    may announce a counterpart's non-participation (`ProgramGame.Policy`).
 
-In the concrete language, `Prog.default` is "play `Πᵢ(Γ₀)`", the dove instruction
-`Prog.dove` (comply with the SPI when everybody does, otherwise fall back to the default)
+In the concrete language, `Prog.default` is "play `Πᵢ(Γ₀)`", the fallback instruction
+`Prog.fallback` (comply with the SPI when everybody does, otherwise fall back to the default)
 satisfies PI, and any instruction that punishes with a mixed action differing from the
 default play — Algorithm 2 whenever its minimax punishment differs from `Π(Γ₀)` — fails it.
 
@@ -43,11 +43,11 @@ to the default otherwise, satisfies the execution-level PI below and is not
 demand-preserving.  The two levels are exhibited together on one example in
 `Examples/Renegotiation.lean`.
 
-**What is proved here beyond definitions and witnesses.**  The dove profile executes the
-SPI (`plays_dove`), is participation independent for every player
-(`participationIndependent_dove_all`), and is a program equilibrium whenever each player's
+**What is proved here beyond definitions and witnesses.**  The fallback profile executes the
+SPI (`plays_fallback`), is participation independent for every player
+(`participationIndependent_fallback_all`), and is a program equilibrium whenever each player's
 expected best reply to the baseline is at most her expected SPI payoff
-(`dove_isProgramEquilibrium`, a sufficient criterion); a participation-independent
+(`fallback_isProgramEquilibrium`, a sufficient criterion); a participation-independent
 instruction paired with the default as the informed choice is foreknowledge independent
 (`foreknowledgeIndependent_of_participationIndependent`).
 -/
@@ -137,9 +137,11 @@ noncomputable def defaultInstr : (programGame Γ₀ R).DefaultInstr where
   default _ := default Γ₀
   plays_default := plays_default Γ₀ R
 
-/-- **The dove instruction**: comply with the SPI `Γˢ` when everybody submits this
-code, otherwise fall back to the default. -/
-noncomputable def dove (Γs : Game N 𝒜) (h : Γs.IsSubsetGameOf Γ₀) : Prog Γ₀ :=
+/-- **The fallback instruction**: comply with the SPI `Γˢ` when everybody submits this
+code, otherwise fall back to the default.  This is not the paper's §6 "dove-ish"
+instruction, which goes along with *whatever* SPI the others demand; the fallback
+instruction commits to one `Γˢ` and complies only when everybody submits the same code. -/
+noncomputable def fallback (Γs : Game N 𝒜) (h : Γs.IsSubsetGameOf Γ₀) : Prog Γ₀ :=
   ifAllSame (delegate Γs h) fun _ => default Γ₀
 
 /-- Any instruction that falls back to the default when somebody's code differs is
@@ -160,17 +162,17 @@ lemma participationIndependent_of_punish_default (c : N → Prog Γ₀) (i : N) 
   rw [hexec]
   rfl
 
-/-- The dove instruction is participation independent. -/
-lemma participationIndependent_dove (Γs : Game N 𝒜) (h : Γs.IsSubsetGameOf Γ₀)
-    (c : N → Prog Γ₀) (i : N) (hc : c i = dove Γs h) :
+/-- The fallback instruction is participation independent. -/
+lemma participationIndependent_fallback (Γs : Game N 𝒜) (h : Γs.IsSubsetGameOf Γ₀)
+    (c : N → Prog Γ₀) (i : N) (hc : c i = fallback Γs h) :
     (programGame Γ₀ R).ParticipationIndependent (defaultInstr Γ₀ R) c i :=
   participationIndependent_of_punish_default R c i _ hc
 
-/-! ### The dove profile: participation-independent implementation of an SPI
+/-! ### The fallback profile: participation-independent implementation of an SPI
 
-When everybody submits the dove instruction for `Γˢ`, the execution is `Π(Γˢ)`
-(`plays_dove`); against a unilateral deviation every other player falls back to the
-baseline play `Πⱼ(Γ₀)` (`exec_update_dove`).  So the dove profile is participation
+When everybody submits the fallback instruction for `Γˢ`, the execution is `Π(Γˢ)`
+(`plays_fallback`); against a unilateral deviation every other player falls back to the
+baseline play `Πⱼ(Γ₀)` (`exec_update_fallback`).  So the fallback profile is participation
 independent for every player, and it is a program equilibrium whenever the SPI beats each
 player's expected best reply to the baseline (`ProgramGame.isProgramEquilibrium_of_fallback`).
 This is the participation-independent counterpart of Proposition 18: Algorithm 2 punishes
@@ -180,48 +182,48 @@ threat-point hypothesis and what makes it fail participation independence
 
 variable {Γs : Game N 𝒜} (h : Γs.IsSubsetGameOf Γ₀)
 
-/-- When everybody submits the dove instruction, the execution is `Π(Γˢ)`. -/
-lemma plays_dove :
-    (programGame Γ₀ R).Plays (fun _ => dove Γs h) fun ω => R.play Γs ω := by
+/-- When everybody submits the fallback instruction, the execution is `Π(Γˢ)`. -/
+lemma plays_fallback :
+    (programGame Γ₀ R).Plays (fun _ => fallback Γs h) fun ω => R.play Γs ω := by
   intro ω k b
-  rw [programGame_exec, dove, execAt_ifAllSame_of_all R (fun _ => rfl), execAt_delegate,
+  rw [programGame_exec, fallback, execAt_ifAllSame_of_all R (fun _ => rfl), execAt_delegate,
     Game.pureMixed_val]
 
-/-- Against a unilateral deviation by `i`, every other dove falls back to the baseline play
+/-- Against a unilateral deviation by `i`, every other fallback falls back to the baseline play
 `Πⱼ(Γ₀)`. -/
-lemma exec_update_dove (i : N) (c' : Prog Γ₀) (hc : c' ≠ dove Γs h) (ω : R.Ω) (j : N)
+lemma exec_update_fallback (i : N) (c' : Prog Γ₀) (hc : c' ≠ fallback Γs h) (ω : R.Ω) (j : N)
     (hj : j ≠ i) :
-    (programGame Γ₀ R).exec (Function.update (fun _ => dove Γs h) i c') ω j =
+    (programGame Γ₀ R).exec (Function.update (fun _ => fallback Γs h) i c') ω j =
       Γ₀.pureMixed (R.play Γ₀ ω j) (R.toPlay.mem Γ₀ ω j) := by
-  have hne : ¬ ∀ l, Function.update (fun _ : N => dove Γs h) i c' l =
-      Function.update (fun _ : N => dove Γs h) i c' j := fun hall => by
+  have hne : ¬ ∀ l, Function.update (fun _ : N => fallback Γs h) i c' l =
+      Function.update (fun _ : N => fallback Γs h) i c' j := fun hall => by
     have := hall i
     rw [Function.update_self, Function.update_of_ne hj] at this
     exact hc this
   rw [programGame_exec]
-  show execAt R (Function.update (fun _ : N => dove Γs h) i c') j
-    (Function.update (fun _ : N => dove Γs h) i c' j) ω = _
+  show execAt R (Function.update (fun _ : N => fallback Γs h) i c') j
+    (Function.update (fun _ : N => fallback Γs h) i c' j) ω = _
   rw [Function.update_of_ne hj]
   show execAt R _ j (ifAllSame (delegate Γs h) fun _ => default Γ₀) ω = _
   obtain ⟨l, -, hexec⟩ :=
     execAt_ifAllSame_of_ne R hne (delegate Γs h) (fun _ => default Γ₀) ω
   rw [hexec, default, execAt_delegate]
 
-/-- The dove profile is participation independent for every player. -/
-lemma participationIndependent_dove_all (i : N) :
-    (programGame Γ₀ R).ParticipationIndependent (defaultInstr Γ₀ R) (fun _ => dove Γs h) i :=
-  participationIndependent_dove R Γs h _ i rfl
+/-- The fallback profile is participation independent for every player. -/
+lemma participationIndependent_fallback_all (i : N) :
+    (programGame Γ₀ R).ParticipationIndependent (defaultInstr Γ₀ R) (fun _ => fallback Γs h) i :=
+  participationIndependent_fallback R Γs h _ i rfl
 
-/-- **The dove profile is a program equilibrium** as soon as, for every player, the expected
+/-- **The fallback profile is a program equilibrium** as soon as, for every player, the expected
 best reply to the baseline play `Π(Γ₀)` is at most the expected payoff of the SPI play
-`Π(Γˢ)`.  Together with `participationIndependent_dove_all` and `plays_dove`: under this
+`Π(Γˢ)`.  Together with `participationIndependent_fallback_all` and `plays_fallback`: under this
 criterion the SPI is implementable by a participation-independent program equilibrium, with
 no punishment at all. -/
-lemma dove_isProgramEquilibrium
+lemma fallback_isProgramEquilibrium
     (hcrit : ∀ i, ∫ ω, Γ₀.bestReply i (R.play Γ₀ ω) ∂R.μ ≤ ∫ ω, Γ₀.u (R.play Γs ω) i ∂R.μ) :
-    (programGame Γ₀ R).IsProgramEquilibrium (fun _ => dove Γs h) :=
-  (programGame Γ₀ R).isProgramEquilibrium_of_fallback h _ (plays_dove R h)
-    (fun i c' hc ω j hj => exec_update_dove R h i c' hc ω j hj) hcrit
+    (programGame Γ₀ R).IsProgramEquilibrium (fun _ => fallback Γs h) :=
+  (programGame Γ₀ R).isProgramEquilibrium_of_fallback h _ (plays_fallback R h)
+    (fun i c' hc ω j hj => exec_update_fallback R h i c' hc ω j hj) hcrit
 
 /-! ### Participation independence yields foreknowledge independence -/
 
@@ -318,11 +320,11 @@ lemma not_participationIndependent_algorithm2 (Γs : Game N 𝒜) (h : Γs.IsSub
 
 /-- A policy that switches to a punishing instruction on learning that `j` will not
 participate is *not* foreknowledge independent, as soon as the punishment differs from
-the uninformed behaviour: here the uninformed instruction is the dove one and the
+the uninformed behaviour: here the uninformed instruction is the fallback one and the
 informed one punishes with `σ`. -/
 lemma not_foreknowledgeIndependent_of_switch (Γs : Game N 𝒜) (h : Γs.IsSubsetGameOf Γ₀)
     (c : N → Prog Γ₀) (i : N) (σ : ∀ j, Γ₀.Mixed j) {j : N} (hj : j ≠ i)
-    (π : (programGame Γ₀ R).Policy i) (hno : π.policy π.noInfo = dove Γs h)
+    (π : (programGame Γ₀ R).Policy i) (hno : π.policy π.noInfo = fallback Γs h)
     (hyes : π.policy (π.willNotParticipate j) = play σ)
     (hσ : ∃ ω, σ i ≠ Γ₀.pureMixed (R.play Γ₀ ω i) (R.toPlay.mem Γ₀ ω i)) :
     ¬ (programGame Γ₀ R).ForeknowledgeIndependent (defaultInstr Γ₀ R) c π := by
@@ -335,15 +337,15 @@ lemma not_foreknowledgeIndependent_of_switch (Γs : Game N 𝒜) (h : Γs.IsSubs
       (Function.update (Function.update c j (default Γ₀)) i (π.policy (π.willNotParticipate j)) i) ω :=
     hfi j hj ω
   rw [hno, hyes, Function.update_self, Function.update_self] at this
-  have hne : ¬ ∀ l, Function.update (Function.update c j (default Γ₀)) i (dove Γs h) l =
-      Function.update (Function.update c j (default Γ₀)) i (dove Γs h) i := fun hall => by
+  have hne : ¬ ∀ l, Function.update (Function.update c j (default Γ₀)) i (fallback Γs h) l =
+      Function.update (Function.update c j (default Γ₀)) i (fallback Γs h) i := fun hall => by
     have := hall j
-    rw [Function.update_self, Function.update_of_ne hj, Function.update_self, default, dove] at this
+    rw [Function.update_self, Function.update_of_ne hj, Function.update_self, default, fallback] at this
     cases this
   obtain ⟨l, -, hexec⟩ := execAt_ifAllSame_of_ne R hne (delegate Γs h) (fun _ => default Γ₀) ω
-  have hexec' : execAt R (Function.update (Function.update c j (default Γ₀)) i (dove Γs h)) i
-      (dove Γs h) ω =
-      execAt R (Function.update (Function.update c j (default Γ₀)) i (dove Γs h)) i (default Γ₀) ω :=
+  have hexec' : execAt R (Function.update (Function.update c j (default Γ₀)) i (fallback Γs h)) i
+      (fallback Γs h) ω =
+      execAt R (Function.update (Function.update c j (default Γ₀)) i (fallback Γs h)) i (default Γ₀) ω :=
     hexec
   rw [hexec', default, execAt_delegate, execAt_play] at this
   exact hω this.symm

@@ -116,11 +116,17 @@ def counterfactualP (i : N) : P i := χ.ofParticipation i (others s.progs i)
 /-- `𝐩ᶠᵢ(𝐟)`: what `i` would have chosen had she believed the others would use `𝐩ⱼ`. -/
 def counterfactualF (i : N) : P i := χ.ofBelief i (others s.progs i)
 
+/-- `𝐩ᵢ` is what the choice model produces given the programs the others actually use,
+`𝐟(𝐩)ⱼ`. -/
+def ChosenGivenUse : Prop := ∀ i, χ.ofParticipation i (others s.used i) = s.progs i
+
 /-- The full strategy is what the choice model produces in the actual situation, where the
 others use (and are believed to use) `𝐟(𝐩)ⱼ`. -/
 def Consistent : Prop :=
   ∀ i, χ.ofParticipation i (others s.used i) = s.progs i ∧
     χ.ofBelief i (others s.used i) = s.progs i
+
+lemma Consistent.chosenGivenUse (h : s.Consistent χ) : s.ChosenGivenUse χ := fun i => (h i).1
 
 /-- **Demand-preserving**: `d(𝐟(𝐩)ᵢ) = d(𝐩ᵢ)` for each agent. -/
 def DemandPreserving : Prop := ∀ i, d i (s.used i) = d i (s.progs i)
@@ -133,13 +139,15 @@ def ParticipationIndependent : Prop :=
 def ForeknowledgeIndependent : Prop :=
   s.DemandPreserving d ∧ ∀ i, s.progs i = s.counterfactualF χ i
 
-/-- **B.2's example, in general form**: under simultaneous commitment, a consistent,
-demand-preserving full strategy is participation-independent — the program clause is
-immediate because `i`'s choice does not depend on what the others use. -/
+/-- **B.2's example, in general form**: under simultaneous commitment, a demand-preserving
+full strategy whose input programs are what the model chooses given the others' actual
+programs is participation-independent — the program clause is immediate because `i`'s
+choice does not depend on what the others use.  Only that half of `Consistent` is needed;
+the belief half plays no role in participation independence. -/
 lemma participationIndependent_of_simultaneous (hsim : χ.Simultaneous)
-    (hcons : s.Consistent χ) (hd : s.DemandPreserving d) :
+    (hcons : s.ChosenGivenUse χ) (hd : s.DemandPreserving d) :
     s.ParticipationIndependent d χ :=
-  ⟨hd, fun i => ((hcons i).1.symm.trans (hsim i _ _))⟩
+  ⟨hd, fun i => ((hcons i).symm.trans (hsim i _ _))⟩
 
 /-- An agent who would have made a *different demand* had she known the others would not
 participate breaks foreknowledge independence, whatever the transformation does. -/

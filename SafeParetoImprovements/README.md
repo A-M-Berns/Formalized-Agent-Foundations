@@ -482,18 +482,18 @@ realized towards a drop-out is the same whether the instruction was chosen uninf
 informed.  Both are equalities of conditional action distributions given the
 representatives' sample point (the execution kernel has no private seeds to couple);
 they compare behaviour *towards a non-participant* and say nothing about demands during
-participation.  What is proved: the **dove profile**
+participation.  What is proved: the **fallback profile**
 (comply with the SPI when everybody submits the same code, otherwise play the baseline)
 executes the SPI, is participation independent for every player, and is a program
 equilibrium whenever each player's expected *ex-post* best reply to the baseline — the
 best reply computed sample point by sample point, which a program need not be able to
-realize — is at most her expected SPI payoff (`Prog.dove_isProgramEquilibrium`, from the
+realize — is at most her expected SPI payoff (`Prog.fallback_isProgramEquilibrium`, from the
 interface-level `ProgramGame.isProgramEquilibrium_of_fallback`; a sufficient criterion
 only, and a demanding one — failing it says nothing); Algorithm 2 is *not*
 participation independent whenever its minimax punishment differs from the baseline, which
 it does in the Demand Game; a participation-independent instruction paired with the
 default as the informed choice is foreknowledge independent.  On the paper's own examples
-(`Examples/IndependenceExamples.lean`) the dove profile is a participation-independent
+(`Examples/IndependenceExamples.lean`) the fallback profile is a participation-independent
 program equilibrium in the Prisoner's Dilemma and in the Demand Game at the conflict
 outcome, where Proposition 18's threat-point hypothesis fails.
 
@@ -621,7 +621,7 @@ raised, 248 fixed and 4 refuted with a recorded reason; none is open.
 | `TwoPlayer.lean` | the player type `Two` and table-checking lemmas |
 | `ProgramGame.lean` | App. A: mixed strategies, threat points, the program-game interface, Proposition 18 over it, best replies |
 | `Instruction.lean` | App. A: the language `Prog`, Algorithm 2, Proposition 18, Theorem 1 |
-| `Independence.lean` | beyond the paper: default instructions, PI, information stages, FI, the dove profile |
+| `Independence.lean` | beyond the paper: default instructions, PI, information stages, FI, the fallback profile |
 | `FullStrategy.lean` | beyond the paper: DiGiovanni's B.1–B.2 at the level of program choice |
 | `Coordination.lean` | §5.1: `C(Γ)`, token games, Definition 6, room, Lemma 11 |
 | `PerfectCoordination.lean` | §5.2: Definition 7, the reassignment construction, Proposition 12 |

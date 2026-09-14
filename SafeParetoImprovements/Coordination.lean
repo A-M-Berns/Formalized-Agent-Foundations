@@ -285,10 +285,9 @@ variable (Γ : Game N 𝒜)
 
 /-- **Room for tokens outside `B`** (`dd:room`): each player's universe carries an
 injective copy of her action set that avoids `B i`.  The paper assumes fresh tokens exist;
-over a fixed universe this is a hypothesis, and the set to avoid must be given separately
-from the game being copied — every §5 construction tokenizes `Γ.reduce` (or a subset game)
-and hands the result back as a `TokenGame Γ`, whose `fresh` field demands disjointness from
-`Γ.S i`, not merely from `Γ.reduce.S i`. -/
+over a fixed universe this is a hypothesis, and the set to avoid is given separately from
+the game being copied: a token game for `Γ` must be fresh for all of `Γ.S i` (its `fresh`
+field), whatever subset game the tokens copy. -/
 def HasRoomOutside (B : ∀ i, Finset (𝒜 i)) : Prop :=
   ∀ i, ∃ t : 𝒜 i → 𝒜 i, InjOn t (Γ.S i) ∧ ∀ a ∈ Γ.S i, t a ∉ B i
 

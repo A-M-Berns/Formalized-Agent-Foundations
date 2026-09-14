@@ -16,28 +16,28 @@ does not name, are stateable over this formalization's program-game interface
   whether or not she knew in advance that he would not participate
   (`ProgramGame.ForeknowledgeIndependent`).
 
-This file works both out on the paper's two headline examples, using the *dove* profile
-`Prog.dove Γˢ` — "comply with `Γˢ` when everybody submits this code, otherwise play the
+This file works both out on the paper's two headline examples, using the *fallback* profile
+`Prog.fallback Γˢ` — "comply with `Γˢ` when everybody submits this code, otherwise play the
 baseline" — as the participation-independent alternative to Algorithm 2.
 
-* **Prisoner's Dilemma** (Proposition 5's SPI): the dove profile is participation
+* **Prisoner's Dilemma** (Proposition 5's SPI): the fallback profile is participation
   independent, executes the SPI, and is a program equilibrium
-  (`pd_dove_isProgramEquilibrium`): each player's best reply to the baseline `(D, D)` is
-  worth `2`, the SPI `(C, C)` is worth `3`.  A policy that submits the dove instruction when
+  (`pd_fallback_isProgramEquilibrium`): each player's best reply to the baseline `(D, D)` is
+  worth `2`, the SPI `(C, C)` is worth `3`.  A policy that submits the fallback instruction when
   uninformed and the baseline instruction when told the counterpart will not participate is
   foreknowledge independent (`pd_fallbackPolicy_foreknowledgeIndependent`, the general route
   through `Prog.foreknowledgeIndependent_of_participationIndependent`).
 * **Demand Game at the conflict outcome** (Proposition 6's SPI, representatives playing
   `(DM, DM)`): Proposition 18's threat-point hypothesis *fails* here
   (`demandBook_not_threatPoint_le`), so the paper's route to a program equilibrium is
-  unavailable — yet the dove profile is a participation-independent program equilibrium
-  executing the SPI (`demand_dove_isProgramEquilibrium`): the best reply to `(DM, DM)` is
+  unavailable — yet the fallback profile is a participation-independent program equilibrium
+  executing the SPI (`demand_fallback_isProgramEquilibrium`): the best reply to `(DM, DM)` is
   worth `0` to either player, and every outcome of Table 2 is worth at least `0`.  Algorithm
   2, by contrast, is not participation independent in the Demand Game
   (`demandGame_algorithm2_not_participationIndependent`).
 
-What is *not* claimed: that the dove profile is always an equilibrium.  The criterion
-`Prog.dove_isProgramEquilibrium` is sufficient only; with the fair-coin representatives of
+What is *not* claimed: that the fallback profile is always an equilibrium.  The criterion
+`Prog.fallback_isProgramEquilibrium` is sufficient only; with the fair-coin representatives of
 `demandRandomRepresentatives` the expected best reply to the baseline is `1` while the SPI
 play is worth less to player 1, so the criterion is silent there.
 -/
@@ -50,21 +50,21 @@ open Two MeasureTheory Prog
 
 /-! ### The Prisoner's Dilemma -/
 
-/-- The dove profile for the cooperative subset game. -/
-noncomputable def pdDove : Two → Prog prisonersDilemma :=
-  fun _ => dove prisonersDilemmaCooperate prisonersDilemmaCooperate_isSubsetGameOf
+/-- The fallback profile for the cooperative subset game. -/
+noncomputable def pdFallback : Two → Prog prisonersDilemma :=
+  fun _ => fallback prisonersDilemmaCooperate prisonersDilemmaCooperate_isSubsetGameOf
 
-/-- Everybody dove executes the SPI `Π(Γˢ)`. -/
-lemma pdDove_plays :
-    (programGame prisonersDilemma pdRepresentatives).Plays pdDove
+/-- Everybody fallback executes the SPI `Π(Γˢ)`. -/
+lemma pdFallback_plays :
+    (programGame prisonersDilemma pdRepresentatives).Plays pdFallback
       fun ω => pdRepresentatives.play prisonersDilemmaCooperate ω :=
-  plays_dove pdRepresentatives prisonersDilemmaCooperate_isSubsetGameOf
+  plays_fallback pdRepresentatives prisonersDilemmaCooperate_isSubsetGameOf
 
-/-- Both players' dove instructions are participation independent. -/
-lemma pdDove_participationIndependent (i : Two) :
+/-- Both players' fallback instructions are participation independent. -/
+lemma pdFallback_participationIndependent (i : Two) :
     (programGame prisonersDilemma pdRepresentatives).ParticipationIndependent
-      (defaultInstr prisonersDilemma pdRepresentatives) pdDove i :=
-  participationIndependent_dove_all pdRepresentatives prisonersDilemmaCooperate_isSubsetGameOf i
+      (defaultInstr prisonersDilemma pdRepresentatives) pdFallback i :=
+  participationIndependent_fallback_all pdRepresentatives prisonersDilemmaCooperate_isSubsetGameOf i
 
 /-- The cooperative subset game has the single outcome `(C, C)`, so that is what its play is. -/
 lemma pdRepresentatives_play_cooperate (ω : Unit) :
@@ -82,11 +82,11 @@ lemma pd_bestReply_defect_le (i : Two) :
   cases i <;> norm_num [prisonersDilemma, pdPayoff]
 
 /-- **The Prisoner's Dilemma's SPI is implementable by a participation-independent program
-equilibrium**: the dove profile is a program equilibrium, because the best reply to the
+equilibrium**: the fallback profile is a program equilibrium, because the best reply to the
 baseline `(D, D)` (worth `2`) is beaten by the SPI `(C, C)` (worth `3`). -/
-lemma pd_dove_isProgramEquilibrium :
-    (programGame prisonersDilemma pdRepresentatives).IsProgramEquilibrium pdDove := by
-  refine dove_isProgramEquilibrium pdRepresentatives prisonersDilemmaCooperate_isSubsetGameOf
+lemma pd_fallback_isProgramEquilibrium :
+    (programGame prisonersDilemma pdRepresentatives).IsProgramEquilibrium pdFallback := by
+  refine fallback_isProgramEquilibrium pdRepresentatives prisonersDilemmaCooperate_isSubsetGameOf
     fun i => ?_
   have hL : (fun ω => prisonersDilemma.bestReply i (pdRepresentatives.play prisonersDilemma ω)) =
       fun _ => prisonersDilemma.bestReply i fun _ => PD.defect := by
@@ -98,40 +98,40 @@ lemma pd_dove_isProgramEquilibrium :
   refine (pd_bestReply_defect_le i).trans ?_
   cases i <;> norm_num [prisonersDilemma, pdPayoff]
 
-/-- The three properties together: the dove profile executes the SPI, is participation
+/-- The three properties together: the fallback profile executes the SPI, is participation
 independent for both players, and is a program equilibrium. -/
-lemma pd_dove_spi_participationIndependent_equilibrium :
-    (programGame prisonersDilemma pdRepresentatives).Plays pdDove
+lemma pd_fallback_spi_participationIndependent_equilibrium :
+    (programGame prisonersDilemma pdRepresentatives).Plays pdFallback
         (fun ω => pdRepresentatives.play prisonersDilemmaCooperate ω) ∧
       (∀ i, (programGame prisonersDilemma pdRepresentatives).ParticipationIndependent
-        (defaultInstr prisonersDilemma pdRepresentatives) pdDove i) ∧
-      (programGame prisonersDilemma pdRepresentatives).IsProgramEquilibrium pdDove :=
-  ⟨pdDove_plays, pdDove_participationIndependent, pd_dove_isProgramEquilibrium⟩
+        (defaultInstr prisonersDilemma pdRepresentatives) pdFallback i) ∧
+      (programGame prisonersDilemma pdRepresentatives).IsProgramEquilibrium pdFallback :=
+  ⟨pdFallback_plays, pdFallback_participationIndependent, pd_fallback_isProgramEquilibrium⟩
 
 /-- Foreknowledge independence of `pdFallbackPolicy` by the general route: its uninformed
-instruction is the (participation-independent) dove, its informed one the baseline. -/
+instruction is the (participation-independent) fallback, its informed one the baseline. -/
 lemma pd_fallbackPolicy_foreknowledgeIndependent (c : Two → Prog prisonersDilemma)
-    (hc : c Two.one = dove prisonersDilemmaCooperate prisonersDilemmaCooperate_isSubsetGameOf) :
+    (hc : c Two.one = fallback prisonersDilemmaCooperate prisonersDilemmaCooperate_isSubsetGameOf) :
     (programGame prisonersDilemma pdRepresentatives).ForeknowledgeIndependent
       (defaultInstr prisonersDilemma pdRepresentatives) c pdFallbackPolicy :=
   foreknowledgeIndependent_of_participationIndependent pdRepresentatives c pdFallbackPolicy
-    hc.symm (fun _ => rfl) (participationIndependent_dove pdRepresentatives _ _ c Two.one hc)
+    hc.symm (fun _ => rfl) (participationIndependent_fallback pdRepresentatives _ _ c Two.one hc)
 
 /-! ### The Demand Game at the conflict outcome -/
 
-/-- The dove profile for Table 2. -/
-noncomputable def demandDove : Two → Prog demandGame :=
-  fun _ => dove demandSPI demandSPI.isSubsetGameOf
+/-- The fallback profile for Table 2. -/
+noncomputable def demandFallback : Two → Prog demandGame :=
+  fun _ => fallback demandSPI demandSPI.isSubsetGameOf
 
-lemma demandDove_plays :
-    (programGame demandGame demandRepresentatives).Plays demandDove
+lemma demandFallback_plays :
+    (programGame demandGame demandRepresentatives).Plays demandFallback
       fun ω => demandRepresentatives.play demandSPI ω :=
-  plays_dove demandRepresentatives demandSPI.isSubsetGameOf
+  plays_fallback demandRepresentatives demandSPI.isSubsetGameOf
 
-lemma demandDove_participationIndependent (i : Two) :
+lemma demandFallback_participationIndependent (i : Two) :
     (programGame demandGame demandRepresentatives).ParticipationIndependent
-      (defaultInstr demandGame demandRepresentatives) demandDove i :=
-  participationIndependent_dove_all demandRepresentatives demandSPI.isSubsetGameOf i
+      (defaultInstr demandGame demandRepresentatives) demandFallback i :=
+  participationIndependent_fallback_all demandRepresentatives demandSPI.isSubsetGameOf i
 
 /-- Against the conflict outcome `(DM, DM)`, neither player can do better than `0`. -/
 lemma demand_bestReply_conflict_le (i : Two) :
@@ -155,9 +155,9 @@ lemma demandSPI_u_nonneg (i : Two) {a : ∀ j, DUniverse j} (ha : a ∈ demandSP
 equilibrium at the conflict outcome**, where Proposition 18's threat-point route is
 unavailable (`demandBook_not_threatPoint_le`): the best reply to `(DM, DM)` is worth `0`,
 and every outcome of Table 2 is worth at least `0`. -/
-lemma demand_dove_isProgramEquilibrium :
-    (programGame demandGame demandRepresentatives).IsProgramEquilibrium demandDove := by
-  refine dove_isProgramEquilibrium demandRepresentatives demandSPI.isSubsetGameOf fun i => ?_
+lemma demand_fallback_isProgramEquilibrium :
+    (programGame demandGame demandRepresentatives).IsProgramEquilibrium demandFallback := by
+  refine fallback_isProgramEquilibrium demandRepresentatives demandSPI.isSubsetGameOf fun i => ?_
   have hL : (fun ω => demandGame.bestReply i (demandRepresentatives.play demandGame ω)) =
       fun _ => demandGame.bestReply i (pair DAct.DM DAct.DM) := by
     funext ω; rw [demandRepresentatives_play]
@@ -166,20 +166,20 @@ lemma demand_dove_isProgramEquilibrium :
   exact integral_nonneg fun ω => demandSPI_u_nonneg i (demandRepresentatives.toPlay.mem demandSPI ω)
 
 /-- The contrast in one statement: at the conflict outcome, Proposition 18's hypothesis
-fails while the dove profile executes the SPI, is participation independent for both
+fails while the fallback profile executes the SPI, is participation independent for both
 players, and is a program equilibrium. -/
-lemma demand_dove_where_algorithm2_is_uncertified :
+lemma demand_fallback_where_algorithm2_is_uncertified :
     ¬ (∀ i, demandGame.threatPoint i ≤
         ∫ ω, demandGame.u (demandRepresentatives.play demandGame ω) i ∂demandRepresentatives.μ) ∧
-      (programGame demandGame demandRepresentatives).Plays demandDove
+      (programGame demandGame demandRepresentatives).Plays demandFallback
         (fun ω => demandRepresentatives.play demandSPI ω) ∧
       (∀ i, (programGame demandGame demandRepresentatives).ParticipationIndependent
-        (defaultInstr demandGame demandRepresentatives) demandDove i) ∧
-      (programGame demandGame demandRepresentatives).IsProgramEquilibrium demandDove :=
-  ⟨demandBook_not_threatPoint_le, demandDove_plays, demandDove_participationIndependent,
-    demand_dove_isProgramEquilibrium⟩
+        (defaultInstr demandGame demandRepresentatives) demandFallback i) ∧
+      (programGame demandGame demandRepresentatives).IsProgramEquilibrium demandFallback :=
+  ⟨demandBook_not_threatPoint_le, demandFallback_plays, demandFallback_participationIndependent,
+    demand_fallback_isProgramEquilibrium⟩
 
-/-- A foreknowledge-independent policy for player 1 in the Demand Game: dove when
+/-- A foreknowledge-independent policy for player 1 in the Demand Game: fallback when
 uninformed, the baseline when told player 2 will not participate. -/
 noncomputable def demandFallbackPolicy :
     (programGame demandGame demandRepresentatives).Policy Two.one where
@@ -187,21 +187,21 @@ noncomputable def demandFallbackPolicy :
   noInfo := false
   willNotParticipate _ := true
   policy
-    | false => dove demandSPI demandSPI.isSubsetGameOf
+    | false => fallback demandSPI demandSPI.isSubsetGameOf
     | true => default demandGame
 
 lemma demandFallbackPolicy_foreknowledgeIndependent :
     (programGame demandGame demandRepresentatives).ForeknowledgeIndependent
-      (defaultInstr demandGame demandRepresentatives) demandDove demandFallbackPolicy :=
-  foreknowledgeIndependent_of_participationIndependent demandRepresentatives demandDove
-    demandFallbackPolicy rfl (fun _ => rfl) (demandDove_participationIndependent Two.one)
+      (defaultInstr demandGame demandRepresentatives) demandFallback demandFallbackPolicy :=
+  foreknowledgeIndependent_of_participationIndependent demandRepresentatives demandFallback
+    demandFallbackPolicy rfl (fun _ => rfl) (demandFallback_participationIndependent Two.one)
 
 /-! ### The criterion is silent for the random representatives
 
 With the fair coin (`demandRandomRepresentatives`, baseline `(RM, RM)` or `(RM, DM)`), the
-expected best reply of player 1 to the baseline is `(2 + 0)/2 = 1`.  Whether the dove
-profile is a program equilibrium there is not settled by `Prog.dove_isProgramEquilibrium`
-and is left as what it is: a question about which programs can exploit a dove-playing
+expected best reply of player 1 to the baseline is `(2 + 0)/2 = 1`.  Whether the fallback
+profile is a program equilibrium there is not settled by `Prog.fallback_isProgramEquilibrium`
+and is left as what it is: a question about which programs can exploit a fallback-playing
 counterpart. -/
 
 lemma demandRandom_bestReply_integral :

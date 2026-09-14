@@ -23,9 +23,9 @@ conditional expectation is a genuine average rather than a point evaluation.
   Corollary 14's set is wider than the constant reassignments.
 * **`condExp` is a genuine average** (`condExp_genuine_average`).  In the *book*
   models of this development the conditional expectation collapses to a point evaluation
-  whenever the token game is isomorphic to the reduced base game (Lemma 13's case), because
-  a `Book` page is chosen per isomorphism class and the token play is then a function of
-  `Π(Γ)`.  That is a property of the book construction, not of `Representatives.condExp`:
+  whenever the token game's reduction is isomorphic to the base game's (as it is for
+  Lemma 13's exact copy), because a `Book` page is chosen per isomorphism class and the
+  token play is then a function of `Π(Γ)`.  That is a property of the book construction, not of `Representatives.condExp`:
   the hand-built family `mixPlay` reads the *size* of the game
   it is handed, so on the (full-measure) fiber `Π(mixBase) = (0,0)` the token payoff still
   varies with `ω`, and `E[uᵉ(Π(Aˢ,uˢ)) | Π(Γ) = (0,0)] = (½, ½)` is a value the integrand

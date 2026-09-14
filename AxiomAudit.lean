@@ -4171,23 +4171,23 @@ blocks, a stale entry, a malformed line, a non-empty block once the paper is
   SafeParetoImprovements.ProgramGame.ParticipationIndependent
   SafeParetoImprovements.ProgramGame.Policy SafeParetoImprovements.ProgramGame.ForeknowledgeIndependent
   SafeParetoImprovements.ProgramGame.foreknowledgeIndependent_of_const
-  SafeParetoImprovements.Prog.default SafeParetoImprovements.Prog.defaultInstr SafeParetoImprovements.Prog.dove
+  SafeParetoImprovements.Prog.default SafeParetoImprovements.Prog.defaultInstr SafeParetoImprovements.Prog.fallback
   SafeParetoImprovements.Prog.plays_default
   SafeParetoImprovements.Prog.participationIndependent_of_punish_default
-  SafeParetoImprovements.Prog.participationIndependent_dove
+  SafeParetoImprovements.Prog.participationIndependent_fallback
   SafeParetoImprovements.Prog.not_participationIndependent_of_punish_play
   SafeParetoImprovements.Prog.not_participationIndependent_algorithm2
   SafeParetoImprovements.Prog.not_foreknowledgeIndependent_of_switch
-  -- The dove profile as a participation-independent implementation: best replies to a
+  -- The fallback profile as a participation-independent implementation: best replies to a
   -- pure profile, the fall-back equilibrium criterion over the interface, and its `Prog`
   -- instance; participation independence yields foreknowledge independence for the
   -- fall-back policy.
   SafeParetoImprovements.Game.bestReply SafeParetoImprovements.Game.u_update_le_bestReply
   SafeParetoImprovements.Game.bestReply_le SafeParetoImprovements.Game.expected_le_bestReply
   SafeParetoImprovements.ProgramGame.isProgramEquilibrium_of_fallback
-  SafeParetoImprovements.Prog.plays_dove SafeParetoImprovements.Prog.exec_update_dove
-  SafeParetoImprovements.Prog.participationIndependent_dove_all
-  SafeParetoImprovements.Prog.dove_isProgramEquilibrium
+  SafeParetoImprovements.Prog.plays_fallback SafeParetoImprovements.Prog.exec_update_fallback
+  SafeParetoImprovements.Prog.participationIndependent_fallback_all
+  SafeParetoImprovements.Prog.fallback_isProgramEquilibrium
   SafeParetoImprovements.Prog.exec_update_default SafeParetoImprovements.Prog.exec_default
   SafeParetoImprovements.Prog.foreknowledgeIndependent_of_participationIndependent
   SafeParetoImprovements.Two.other SafeParetoImprovements.Two.other_one
@@ -4204,6 +4204,8 @@ blocks, a stale entry, a malformed line, a non-empty block once the paper is
   SafeParetoImprovements.FullStrategy.used SafeParetoImprovements.FullStrategy.IsSPI
   SafeParetoImprovements.FullStrategy.counterfactualP
   SafeParetoImprovements.FullStrategy.counterfactualF SafeParetoImprovements.FullStrategy.Consistent
+  SafeParetoImprovements.FullStrategy.ChosenGivenUse
+  SafeParetoImprovements.FullStrategy.Consistent.chosenGivenUse
   SafeParetoImprovements.FullStrategy.DemandPreserving
   SafeParetoImprovements.FullStrategy.ParticipationIndependent
   SafeParetoImprovements.FullStrategy.ForeknowledgeIndependent
@@ -4241,24 +4243,24 @@ blocks, a stale entry, a malformed line, a non-empty block once the paper is
   SafeParetoImprovements.Examples.not_foreknowledgeIndependent_pd
   SafeParetoImprovements.Examples.pdFallbackPolicy
   SafeParetoImprovements.Examples.foreknowledgeIndependent_pd
-  -- The dove profile on the paper's own examples (SafeParetoImprovements/Examples/
+  -- The fallback profile on the paper's own examples (SafeParetoImprovements/Examples/
   -- IndependenceExamples.lean): a participation-independent program equilibrium executing
   -- the SPI in the Prisoner's Dilemma and in the Demand Game at the conflict outcome,
   -- where Proposition 18's threat-point hypothesis fails; the fall-back policies'
   -- foreknowledge independence; the random-coin case where the criterion is silent.
-  SafeParetoImprovements.Examples.pdDove SafeParetoImprovements.Examples.pdDove_plays
-  SafeParetoImprovements.Examples.pdDove_participationIndependent
+  SafeParetoImprovements.Examples.pdFallback SafeParetoImprovements.Examples.pdFallback_plays
+  SafeParetoImprovements.Examples.pdFallback_participationIndependent
   SafeParetoImprovements.Examples.pdRepresentatives_play_cooperate
   SafeParetoImprovements.Examples.pd_bestReply_defect_le
-  SafeParetoImprovements.Examples.pd_dove_isProgramEquilibrium
-  SafeParetoImprovements.Examples.pd_dove_spi_participationIndependent_equilibrium
+  SafeParetoImprovements.Examples.pd_fallback_isProgramEquilibrium
+  SafeParetoImprovements.Examples.pd_fallback_spi_participationIndependent_equilibrium
   SafeParetoImprovements.Examples.pd_fallbackPolicy_foreknowledgeIndependent
-  SafeParetoImprovements.Examples.demandDove SafeParetoImprovements.Examples.demandDove_plays
-  SafeParetoImprovements.Examples.demandDove_participationIndependent
+  SafeParetoImprovements.Examples.demandFallback SafeParetoImprovements.Examples.demandFallback_plays
+  SafeParetoImprovements.Examples.demandFallback_participationIndependent
   SafeParetoImprovements.Examples.demand_bestReply_conflict_le
   SafeParetoImprovements.Examples.demandSPI_u_nonneg
-  SafeParetoImprovements.Examples.demand_dove_isProgramEquilibrium
-  SafeParetoImprovements.Examples.demand_dove_where_algorithm2_is_uncertified
+  SafeParetoImprovements.Examples.demand_fallback_isProgramEquilibrium
+  SafeParetoImprovements.Examples.demand_fallback_where_algorithm2_is_uncertified
   SafeParetoImprovements.Examples.demandFallbackPolicy
   SafeParetoImprovements.Examples.demandFallbackPolicy_foreknowledgeIndependent
   SafeParetoImprovements.Examples.demandRandom_bestReply_integral
