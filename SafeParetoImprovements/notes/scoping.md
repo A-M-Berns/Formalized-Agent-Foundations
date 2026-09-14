@@ -678,6 +678,16 @@ C and E and the split "Theorem 17" header must be deduplicated by the parser).
   the conclusion as membership in `Representatives.achievable`, and reprove from the
   Minkowski formula.  The node is not load-bearing for the research layer.
 
+- RULING 6, confirmed (2026-09-14, Anson): the complexity nodes stay *qualified*.  The
+  dependency `complexitylib` would support an exact rendering (Turing machines over
+  bitstrings, `NP`/`NPHard`/`NPComplete`, polynomial-time reductions, `FP` with a Cobham
+  characterization, Cook–Levin for SAT), and the honest target would be "NP-complete modulo
+  Lemma 27": a rational-payoff encoding of games, the certificate verifier in `FP`, the
+  Table-9 map in `FP`, and Theorem 9 stated with subgraph isomorphism's NP-hardness as a
+  hypothesis (no axiom).  Estimated at 1.5–2.5 FFS units, dominated by the `FP` proofs;
+  the Karp chain for Lemma 27 itself would add 1.5–3 more.  Lemma 11's and Proposition 12's
+  polynomial-time clauses would stay qualified regardless.  Deferred.
+
 ## 9. Codex review, 2026-09-04
 
 Full findings in `codex-review-2026-09-04.md` (prompt alongside). Disposition:
