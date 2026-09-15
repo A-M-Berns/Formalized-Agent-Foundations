@@ -245,10 +245,13 @@ Lemma 28 follow Table 9 of the paper where it disagrees with the printed payoff 
 D21).
 
 **Defects found in the paper.** Twenty-four defects are recorded in
-`notes/paper-errata.md`, each with line numbers into the committed text extraction and,
-where the defect is a false claim, a counterexample. Twelve of them change a Lean
-statement relative to the print: D1, D2, D5, D8, D10, D12, D13, D15, D17, D18, D21 and
-D23.
+`notes/paper-errata.md`, grouped by seriousness, each with line numbers into the committed
+text extraction and, where the defect is a false claim, a counterexample. Five printed
+statements are false or empty as written (D12, D13, D14, D17, D18); three printed proofs
+do not establish their claim (D6, D8, D24); the rest are ambiguities resolved by ruling,
+missing hypotheses, typos and notational slips, and one false remark in prose. Twelve of
+the twenty-four change a Lean statement relative to the print: D1, D2, D5, D8, D10, D12,
+D13, D15, D17, D18, D21 and D23.
 
 ## Beyond the paper: participation and foreknowledge independence
 
