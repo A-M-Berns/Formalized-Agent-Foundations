@@ -165,7 +165,7 @@ formalization's modeling decisions are mentioned in this README where relevant.
 ## Future work
 
 * **Theorem 15** is not currently included in this formalization, because the This issue is Erratum D12. The following LLM-written paragraph provides concrete examples showing why the definition as written
-  does not work, and why the proof does not go through under the obvious repair.
+  does not work, and why the proof does not go through under the obvious statement repair.
   ```
   Let Γ be the two-player game whose outcomes pay (0,0), (1,0), (0,1), (1,1), so C(Γ) = [0,1]² and the strong Pareto frontier is the single point (1,1); if the
   representatives surely play the (0,0) outcome, then x₁ᵐⁱⁿ = x₁ᵐᵃˣ = 0 and Case A's premise holds, but L₁ needs π₁(0, PF(C(Γ))), a frontier point with first coordinate
