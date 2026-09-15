@@ -59,83 +59,131 @@ formalizations, see the SPI section of `docs/trust-surface.html`.
 
 ## Formalization choices
 
-Each modeling choice taken in this formalization corresponds to a tag of the form `dd:name`. 
-The tags are defined in one line each in `SafeParetoImprovements.lean` and argued at length (LLM writing) 
-in section 3 of `notes/scoping.md`
+Each modeling choice taken in this formalization corresponds to a tag of the form `dd:name`.
+The tags are defined in one line each in `SafeParetoImprovements.lean` and argued at length (LLM writing)
+in section 3 of `notes/scoping.md`.
 
-**Games** (`dd:universe`, `dd:total-utility`). A game is a finite nonempty subset of a fixed per-player
-action universe, with a payoff function defined on every profile of the universe. This makes subset games
-and isomorphisms first-class and every theorem over games stronger, at a cost: Lean's `=` on `Game` is not
-the paper's equality of games, since two presentations can differ off the game's profiles. The paper's
-equality is `Game.EqOn`, and every paper-facing statement uses it. Action sets are finite, which the paper
-assumes silently (erratum D23). Dominance, mixed strategies and Nash equilibrium come from EconCSLib
-through the bridge `Game.toStrategic`.
+**Games** (`dd:universe`, `dd:total-utility`). Every game lives inside a fixed universe of
+actions, one type per player. A game is a finite nonempty subset of each player's universe
+together with a payoff function, and the payoff function is defined on every profile of the
+universe, not only on the profiles of the game. Subset games and isomorphisms are then
+ordinary objects rather than side conditions, and every theorem quantified over games
+covers more games than the paper's. The price is that Lean's `=` on games is not the paper's
+equality: two games can have the same action sets and the same payoffs on all their own
+profiles and still differ at profiles neither of them contains. The paper's equality is
+`Game.EqOn`, and every paper-facing statement uses it. Action sets are finite, which the
+paper assumes without saying so (erratum D23). A game isomorphism is a bijection between
+action sets for each player together with a strictly positive rescaling of payoffs; the
+paper leaves both conditions implicit and needs both (erratum D5). Strict dominance, mixed
+strategies and Nash equilibrium are taken from EconCSLib through the bridge
+`Game.toStrategic`.
 
-**Representatives** (`dd:representatives`). The paper compares `Π(Γ)` with `Π(Γˢ)` at the same sample point,
-so the plays of all games must be jointly distributed: a sample point is a function from games to outcomes
-(`Play`), and `Representatives` adds a probability measure. No rationality is built in. Assumptions 1 and 2
-are separate predicates; Assumption 1 is the paper's outcome correspondence (removing a dominated action
-leaves the play unchanged), Assumption 2 the existence of an isomorphism along which the plays of isomorphic
-reduced games correspond.
+**Representatives** (`dd:representatives`, `dd:book`). The paper compares the play of `Γ`
+with the play of `Γˢ` at the same sample point, which only makes sense if the plays of all
+games are jointly distributed. So the representatives are modeled as a random function from
+games to outcomes: `Play` is one such function, a complete description of how the
+representatives would play every game, and `Representatives` is a probability space whose
+sample points each carry one. Nothing about rationality is built in. Assumptions 1 and 2
+are predicates on a play family that may or may not hold. Assumption 1 is stated as the
+paper states it, as an outcome correspondence: removing a strictly dominated action does
+not change what the representatives play. Assumption 2 says that for any two isomorphic
+reduced games there is some isomorphism along which their plays correspond. The paper's
+informal argument in §4.4.3 that the two assumptions can hold together is a theorem here:
+the book representatives, who look up each reduced game's isomorphism class in a book and
+play what its page says, satisfy both at every sample point.
 
-**Certainty is a filter** (`dd:certainty`). Sections 3–4 only ever use that certainty is preserved by
-weakening and by conjunction, which are the filter axioms. So Definitions 1–4, Lemma 2, Theorem 3, the
-assumptions and Propositions 5–8 are stated for an arbitrary filter `L`, with "with certainty" read as
-`∀ᶠ ω in L` and "with positive probability" as `∃ᶠ ω in L`; this strengthens every universally quantified
-node, and probability one is the instance `ae μ`, recovered by the realization lemmas. The catch is that at
-the trivial filter every "with certainty" statement is vacuous, so every subset game is an SPI and no
-strict SPI exists. Existence and strictness statements therefore carry their filter explicitly, as an `∃ᶠ`
-hypothesis where the paper states one and a non-triviality assumption on `L` where it does not.
+**Certainty is a filter** (`dd:certainty`). The paper's "with certainty" means "with
+probability one", but the arguments of §3 and §4 use only two properties of it: a certain
+statement stays certain when weakened, and two certain statements are certain together.
+Those are the axioms of a filter. Definitions 1–4, Lemma 2, Theorem 3, the two assumptions
+and Propositions 5–8 are therefore stated for an arbitrary filter `L` on the sample space,
+reading "with certainty" as `∀ᶠ ω in L` and "with positive probability" as `∃ᶠ ω in L`.
+Every universally quantified statement is then stronger than the printed one, and the
+printed one is recovered by taking `L` to be the almost-everywhere filter of the
+probability measure. One consequence needs care: at the trivial filter every "with
+certainty" claim holds vacuously, so every subset game is an SPI and no strict SPI exists.
+Existence and strictness statements are therefore never left at an unconstrained filter.
+They take a positive-probability hypothesis where the paper states one, and a
+non-triviality assumption on `L` where the paper's claim is unconditional.
 
-**Reduction and Definition 5** (`dd:derivation`, `dd:nontrivial`). Iterated strict elimination has a
-canonical normal form (Lemma 19, the diamond property of Lemma 20, Church–Rosser). Definition 5's chain
-of eliminations and isomorphisms is the inductive relation `Game.Deriv`; Lemma 21 is its normal form, minus
-the printed length bound, which is false (erratum D14); a soundness theorem turns a derivation into an SPI
-under Assumptions 1 and 2. The printed non-triviality clause, "the full reductions are not equal", is
-satisfied by any payoff shift, so the printed plain and unilateral problems are true of every game (erratum
-D13). The Lean problems require the reduced *action sets* to differ, which is what Appendix D's hardness
-proof uses; the printed versions are kept alongside with theorems showing they are constant.
+**Reduction and Definition 5** (`dd:derivation`, `dd:nontrivial`). Iterated elimination of
+strictly dominated actions has a unique end result, which follows from Lemma 19 through
+the diamond property of Lemma 20 and a standard confluence argument. Definition 5 asks
+whether a game can be turned into a subset game by a chain of eliminations, reverse
+eliminations and isomorphisms; that chain is the inductive relation `Game.Deriv`. Lemma 21
+gives its normal form, except that the bound the paper prints on the length of the normal
+form is false (erratum D14) and is left out. A soundness theorem shows that a derivation
+yields an SPI under Assumptions 1 and 2. The paper's non-triviality condition, "the full
+reductions are not equal", is satisfied by shifting the payoffs of any subset game, so the
+printed decision problem is true of every game (erratum D13). Our decision problems require
+instead that the reduced action sets differ, which is the condition the hardness proof in
+Appendix D actually relies on. The printed versions are kept alongside, with theorems
+showing that they are constant.
 
-**Program games** (`dd:program-game`, `dd:exec-kernel`, `dd:code-eq`). Appendix A's program game is an
-interface, `ProgramGame Γ₀ R`: an instruction type per player and an execution kernel that, given
-everybody's instructions and a sample point, gives each player a mixed action; program equilibrium is
-EconCSLib's Nash equilibrium of the induced game. Proposition 18 is proved once over the interface, from
-two semantic properties of Algorithm 2, and instantiated at the language `Prog`, where code equality is
-classical. Two corrections along the way: Algorithm 2's punishment index (erratum D15), and the deviator's
-payoff bounded by the threat point rather than equated with it (erratum D8). Threat points exist by
+**Program games** (`dd:program-game`, `dd:exec-kernel`, `dd:code-eq`). The program game of
+Appendix A is modeled as an interface, `ProgramGame Γ₀ R`: a type of instructions for each
+player, and an execution rule that, given everyone's instructions and a sample point of
+the representatives, gives each player a mixed action. Program equilibrium is Nash
+equilibrium of the induced game. Proposition 18 is proved once over this interface, from
+two properties of Algorithm 2 (when everyone runs it the SPI is played, and when one player
+deviates the others play their minimax strategies against her), and then instantiated at
+the concrete language `Prog`, in which equality of code is decided classically. Two slips
+in the paper are corrected on the way: Algorithm 2 names the wrong player's minimax
+strategy (erratum D15), and the proof of Proposition 18 equates a deviator's payoff with
+the threat point when it is only bounded by it (erratum D8). Threat points exist by
 compactness.
 
-**Coordination** (`dd:feasible`, `dd:room`). `C(Γ)` is the paper's formula, the payoffs of correlated
-strategies, proved equal to the convex hull of the pure payoffs. A token game carries the representatives'
-payoff `uˢ` and the original players' assignment `uᵉ ∈ C(Γ)`. Fresh token actions are a hypothesis,
-`Game.HasRoom`, satisfied over any universe with infinitely many spare actions; over a finite universe the
-class of token games can be empty, which is why Proposition 16's game lives over `CAct ⊕ ℕ` and is also
-stated without tokens. Definition 7 reads "strict" into its body (erratum D10). Lemma 13 copies the game
-itself, with `uᵉ` along whichever isomorphism Assumption 2 supplies; it needs Assumption 1 in addition to
-the printed "under Assumption 2", and is stated on the support of the play (erratum D7). Corollary 14 is
-carried as the characterization the paper omits: the achievable set is the weighted Minkowski sum
-`∑ₐ P(Π(Γ)=a) • {y ∈ C(Γ) | y ≥ u(a)}`, hence convex, compact and a polytope.
+**Coordination** (`dd:feasible`, `dd:room`). The feasible set `C(Γ)` is defined as in the
+paper, as the payoff vectors of correlated strategies, and then proved equal to the convex
+hull of the pure payoffs. A token game carries two payoff functions, as in the paper: the
+payoff `uˢ` handed to the representatives, and the assignment `uᵉ` of feasible payoff
+vectors to token outcomes, which is what the original players receive. The paper takes for
+granted that fresh token actions exist. Over a fixed universe that is a hypothesis,
+`Game.HasRoom`, which holds whenever the universe has infinitely many unused actions; over
+a finite universe there may be no token games at all, and an impossibility result about
+them would then say nothing. This is why Proposition 16's game is placed over the universe
+`CAct ⊕ ℕ`, and why the proposition is also stated in a form that does not mention tokens.
+Definition 7 is titled the strict decision problem but its body leaves strictness out; we
+read it in (erratum D10). Lemma 13 replaces a perfect-coordination SPI by an exact token
+copy of the game, with `uᵉ` defined along whichever isomorphism Assumption 2 provides. It
+needs Assumption 1 in addition to the paper's "under Assumption 2", and it is stated on
+the support of the play, because off the support the conditional expectations it speaks of
+are undefined (erratum D7). Corollary 14 is proved in the form the paper says it omits: the
+set of safely achievable expected payoffs is the weighted Minkowski sum
+`∑ₐ P(Π(Γ)=a) • {y ∈ C(Γ) | y ≥ u(a)}`, from which convexity, compactness and the polytope
+property follow.
 
-**Complexity** (`dd:complexity`). A certificate is a tuple of injections from the reduced action sets into
-the original ones. Propositions 23 and 25 say each decision problem holds iff some certificate passes the
-checks of Appendix D, with the non-triviality check the printed algorithms omit restored (erratum D17).
-Lemma 28's hardness games follow Table 9 where it disagrees with the printed formula (erratum D18) and
-assume `0 < ε` (erratum D21).
+**Complexity** (`dd:complexity`). A certificate for the decision problem is a tuple of
+injections from the reduced action sets into the original ones. Propositions 23 and 25 are
+proved as characterizations: a game is a yes-instance exactly when some certificate passes
+the checks of Appendix D. One check is added that the printed algorithms lack, the
+non-triviality check; without it the identity certificate makes every game a yes-instance
+(erratum D17). The hardness games of Lemma 28 follow Table 9 where it disagrees with the
+printed payoff formula (erratum D18), and they assume `0 < ε`, which the paper needs and
+does not state (erratum D21). What is and is not proved about complexity classes is set
+out under Future work.
 
-**Participation and foreknowledge independence** (`dd:default-instr`). The CLR agenda asks that a player
-who declines an SPI scheme be met with the baseline play rather than a punishment (participation
-independence), and that a player behave the same towards a non-participant whether or not she knew in
-advance (foreknowledge independence). Both are defined at two levels. At the execution level
-(`Independence.lean`), over any `ProgramGame`, a default instruction executes as `Π(Γ₀)` and the two
-notions compare the mixed action realized towards a player who dropped out. The *fallback* profile (comply
-with `Γˢ` if everybody submitted the same code, else play the baseline) executes the SPI, is participation
-independent, and is a program equilibrium whenever each player's expected sample-point-wise best reply to
-the baseline is at most her SPI payoff; Algorithm 2 is not participation independent in the Demand Game.
-At the level of program choice (`FullStrategy.lean`, after Appendix B of DiGiovanni's agenda), an SPI is a
-transformation of program profiles and the two notions are defined through counterfactual program
-choices, rendered as a choice model over the other agents' programs. DiGiovanni's renegotiation example is
-worked in `Examples/Renegotiation.lean`. Not covered: surrogate goals (B.3), and any general relation
-between the two levels.
+**Participation and foreknowledge independence** (`dd:default-instr`). These two notions
+come from the CLR research agenda rather than from the paper. An SPI implementation is
+participation independent if a player who declines to take part is met with the baseline
+play rather than a punishment, and foreknowledge independent if a player treats a
+non-participant the same way whether or not she knew in advance that they would not
+participate. Both are defined at two levels. At the level of execution
+(`Independence.lean`), each player has a default instruction that executes as the baseline
+play, and the two notions compare the mixed action a player ends up realizing towards
+someone who has dropped out. The fallback profile, in which each player complies with the
+SPI if everyone submitted the same code and otherwise plays the baseline, executes the
+SPI, is participation independent, and is a program equilibrium whenever each player's
+expected best reply to the baseline, computed sample point by sample point, is at most her
+expected payoff under the SPI. Algorithm 2, by contrast, is not participation independent
+in the Demand Game. At the level of program choice (`FullStrategy.lean`), following
+Appendix B of DiGiovanni's research agenda, an SPI is a transformation of program profiles,
+and the two notions compare the program an agent chose with the one she would have chosen
+under a counterfactual; the counterfactual choices are supplied by a choice model, a
+function of the other agents' programs. DiGiovanni's renegotiation example is worked out in
+`Examples/Renegotiation.lean`, including his agent who is participation independent but
+not foreknowledge independent. Surrogate goals (his Appendix B.3) are not covered, and
+nothing general is proved about how the two levels relate.
 
 **Paper errata.** Twenty-four defects are recorded in
 `notes/paper-errata.md`, grouped by seriousness. Each is presented with an explanation
