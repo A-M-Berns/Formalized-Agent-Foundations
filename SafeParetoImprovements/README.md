@@ -1,60 +1,18 @@
 # Safe Pareto Improvements for Delegated Game Playing — Lean formalization
 
-This directory is a Lean 4 formalization of the paper *Safe Pareto Improvements for
+This directory is a Lean 4 formalization of  *Safe Pareto Improvements for
 Delegated Game Playing* by Caspar Oesterheld and Vincent Conitzer (Autonomous Agents and
 Multi-Agent Systems, 2022, doi
-[10.1007/s10458-022-09574-6](https://doi.org/10.1007/s10458-022-09574-6)). It is built on
-Mathlib and on the game-theory library EconCSLib. It also contains a layer that goes beyond
-the paper: definitions and worked examples for participation independence and
-foreknowledge independence, two properties of SPI implementations that the CLR research
-agenda asks about.
+[10.1007/s10458-022-09574-6](https://doi.org/10.1007/s10458-022-09574-6)). Its purpose is to
+harden trust in the original SPI formulation, and develop a reusable formal framework for future
+SPI research, especially semi-automated research conducted by LLMs
 
-**Status.** The paper has 37 numbered nodes (definitions, assumptions, lemmas,
-propositions, theorems and one corollary). 35 of them have a proved Lean statement whose
-docstring names that node. The two that do not are Theorem 15, which has been deferred by
-ruling and will stay deferred, and Lemma 27, which is Cook's theorem: the paper cites it
-and so do we, without re-proving it and without assuming it as an axiom. There is no
-`sorry` anywhere in the library, and no axiom beyond Lean's three standard ones. All 854
-public declarations are named on the axiom gate. The registry status stays `in-progress`
-until the human read-through of the statement surface has been done.
+## Formalization layout
 
-## The paper
-
-Two principals each delegate the playing of a normal-form game `Γ` to a representative.
-The principals cannot predict how the representatives will play, but they can constrain
-it: each principal may instruct their representative to play a *subset game* `Γˢ` instead,
-meaning a game with restricted action sets and possibly different payoffs. The subset game
-`Γˢ` is a **safe Pareto improvement** (SPI) on `Γ` if the outcome of playing `Γˢ` is at least
-as good for every principal as the outcome of playing `Γ`, with certainty, where "good" is
-measured by the original payoff `u` and `Π(Γ)` denotes whatever the representatives would
-play in `Γ`.
-
-* Section 3 defines SPIs, strict SPIs and unilateral SPIs (Definitions 1 and 2) and shows
-  that every SPI is played in some program equilibrium of the delegation game (Theorem 1,
-  proved in Appendix A).
-* Section 4 introduces outcome correspondences between games (Definition 3 and Lemma 2)
-  and proves the central result, Theorem 3: `Γˢ` is an SPI on `Γ` exactly when there is a
-  Pareto-improving outcome correspondence from `Γ` to `Γˢ` (Definition 4). It then states
-  two behavioural assumptions about the representatives, namely that they never play
-  strictly dominated actions (Assumption 1) and that they play isomorphic games
-  isomorphically (Assumption 2), under which SPIs can be derived (Lemma 4 and the worked
-  examples in Propositions 5 to 8). It closes with the SPI decision problem (Definition
-  5), which is NP-complete (Theorem 9, proved in Appendix D) and has a search bound
-  (Proposition 10).
-* Section 5 studies SPIs under improved coordination: token games and perfect-coordination
-  SPIs (Definitions 6 and 7), Algorithm 1 for finding them (Lemma 11 and Proposition 12),
-  the structure of the expected payoffs that can be safely achieved (Lemma 13 and
-  Corollary 14), a geometric characterization for two players (Theorem 15), and an example
-  showing the limits of the approach (Proposition 16).
-* Section 6 discusses the SPI selection problem in prose and contains no numbered results.
-
-## What is formalized
-
-The table lists every Lean file in the library, in the order in which its contents are
-built up. For a file that carries paper nodes, the middle column names them and the right
-column names the Lean declarations that state them. For a file that carries no node, the
-middle column says which part of the paper it supports, and the right column describes
-its contents.
+The following table lists every Lean file in the library and their contents. The initial section of the table includes
+files that directly formalize content from the paper, while the final section lists auxiliary files that do not directly
+formalize paper results. For example, these auxiliary files demonstrate witnesses for the joint satisfiability of hypotheses,
+and extensions beyond the paper into further SPI results such as participation independence and foreknowledge independence.
 
 | file | paper nodes | Lean |
 |---|---|---|
@@ -95,50 +53,15 @@ its contents.
 | `Examples/CharacterizationWitnesses.lean` | none | Lemma 13 and Corollary 14 applied with every hypothesis satisfied, and a hand-built play family on which the conditional expectation `condExp` is a genuine average rather than the value at a single point. |
 | `Examples/ComplexityWitnesses.lean` | none | Certificates that pass the checks of Propositions 23 and 25 and certificates that fail a specific check; the count of 144 certificates for the Demand Game against the bound of 4096; and Lemma 28 carried through to a yes-instance and a no-instance of the decision problem. |
 
-Every declaration that carries a paper node has a docstring whose last line reads
-`Paper node:` followed by the printed node. The script
-`scripts/check-safe-pareto-improvements-nodes.py` checks this in both directions: every
-cited node is one the paper prints, and every annotated declaration is on the axiom gate.
-The docstring also says, in one or two sentences, what the Lean statement changes relative
-to the printed one.
-
-## What is not claimed
-
-* **Theorem 15** has no Lean statement. As printed, it projects points onto the strong
-  Pareto frontier of the feasible set, and that projection need not exist (this is erratum
-  D12). The proof in Appendix E is a sketch, and one of its steps is not a general fact. The
-  theorem has been deferred by ruling (RULING 16), and the deferral is the final scope of
-  this formalization.
-* **No complexity classes and no running times** are proved anywhere. Theorem 9,
-  Proposition 10, Lemma 11, Proposition 12, Propositions 23 to 26 and Lemma 28 are carried
-  as *qualified* nodes. That means the exact mathematical content of each statement is
-  proved: the certificate characterizations of the decision problems, the search bound
-  `card ≤ m^l` where `m` is the total number of actions in the game and `l` the total
-  number in its full reduction, the linear program of Lemma 11, the correctness of
-  Algorithm 1 as an if-and-only-if, and the reductions from subgraph isomorphism. What is
-  not proved is anything the paper phrases as "NP-complete", "in polynomial time", "in
-  `O(m^l)`" or "in linear time".
-* **Two cited results are neither re-proved nor assumed.** Theorem 17 is Tennenholtz's
-  folk theorem for program equilibrium, and Lemma 27 is Cook's theorem. The paper cites
-  both; the Lean neither proves them nor adds them as axioms.
-* **Theorem 1 is proved for one programming language.** The paper states it for "any
-  programming language such as Lisp". The Lean proves it for the program game whose
-  instructions are the three-instruction language `Prog`: play a mixed action, delegate a
-  subset game to the representatives, or test whether everybody submitted the same code
-  and punish otherwise. In addition, the execution of a program game returns each player a
-  mixed action that is independent of the other players' actions once the representatives'
-  sample point is fixed.
-* **Nothing is executable.** Algorithms 1 and 2 are present as correctness statements about
-  what they compute, not as programs that can be run.
+Every declaration that carries a paper node (i.e. a direct result from the paper) has a docstring whose last line reads
+`Paper node:` followed by the printed node. For a deeper comparison between the paper results and their corresponding
+formalizations, see the SPI section of `docs/trust-surface.html`.
 
 ## Formalization choices
 
-Every choice below has a tag of the form `dd:name`. The tags are defined in one line each
-in `SafeParetoImprovements.lean` and argued at length in section 3 of `notes/scoping.md`;
-the rulings that fixed them are recorded in section 8 of the same note. One rule governs
-all of them: where the paper is ambiguous or defective, take the reading under which the
-paper's own proofs go through, keep the printed reading alongside it wherever the printed
-reading still has content, and say in the docstring what was done.
+Each modeling choice taken in this formalization corresponds to a tag of the form `dd:name`. 
+The tags are defined in one line each in `SafeParetoImprovements.lean` and argued at length (LLM writing) 
+in section 3 of `notes/scoping.md`
 
 **Games** (`dd:universe`, `dd:total-utility`). A game is a finite nonempty subset `S i` of
 a fixed per-player universe of actions `𝒜 i`, together with a payoff function that is
@@ -177,18 +100,6 @@ subset game is an SPI there and no strict SPI exists. For that reason every exis
 statement and every strictness statement carries its filter explicitly, as an `∃ᶠ`
 hypothesis where the paper states one and as a non-triviality assumption on the filter
 where the paper's claim is unconditional.
-
-**Isomorphisms** (`dd:iso`). A game isomorphism is a family of bijections between action
-sets, one per player, together with a strictly positive scaling of the payoffs. The paper
-leaves both the bijectivity and the strict positivity unstated, and its later results
-need both (erratum D5).
-
-**The book** (`dd:book`). Section 4.4.3 sketches an argument that Assumptions 1 and 2 can
-be satisfied together: representatives who look up each reduced game's isomorphism class
-in a book and play what the book says. This sketch is a theorem in `Book.lean`. The book
-representatives satisfy both assumptions at every sample point, and the distribution of
-the book's pages is a parameter, so the same construction supplies the representatives
-each example needs.
 
 **Reduction and Definition 5** (`dd:derivation`, `dd:nontrivial`). Iterated elimination
 of strictly dominated actions has a canonical normal form, proved from Lemma 19 through
@@ -244,49 +155,48 @@ Lemma 28 follow Table 9 of the paper where it disagrees with the printed payoff 
 (erratum D18), and they assume `0 < ε`, which the paper needs and does not state (erratum
 D21).
 
-**Defects found in the paper.** Twenty-four defects are recorded in
-`notes/paper-errata.md`, grouped by seriousness, each with line numbers into the committed
-text extraction and, where the defect is a false claim, a counterexample. Five printed
-statements are false or empty as written (D12, D13, D14, D17, D18); three printed proofs
-do not establish their claim (D6, D8, D24); the rest are ambiguities resolved by ruling,
-missing hypotheses, typos and notational slips, and one false remark in prose. Twelve of
-the twenty-four change a Lean statement relative to the print: D1, D2, D5, D8, D10, D12,
-D13, D15, D17, D18, D21 and D23.
+**Participation and foreknowledge independence**
 
-## Beyond the paper: participation and foreknowledge independence
+**Paper errata.** Twenty-four defects are recorded in
+`notes/paper-errata.md`, grouped by seriousness. Each is presented with an explanation
+and, where the defect is a false claim, a counterexample. Errata affecting the
+formalization's modeling decisions are mentioned in this README where relevant.
 
-The CLR research agenda asks two things of an SPI implementation that the paper does not
-name. A player who declines to take part in the scheme should be met with the baseline
-play rather than with a punishment; this is participation independence. And a player
-should behave the same way towards a non-participant whether or not she knew in advance
-that they would not participate; this is foreknowledge independence.
+## Future work
 
-* **At the level of execution** (`Independence.lean`, `dd:default-instr`). Over any
-  program game, a default instruction per player executes as the paper's baseline play
-  `Π(Γ₀)`. Participation independence and foreknowledge independence then compare the
-  mixed action a player realizes towards a player who has dropped out. The *fallback*
-  profile, in which every player complies with `Γˢ` when everybody has submitted the same
-  code and plays the baseline otherwise, executes the SPI, is participation independent,
-  and is a program equilibrium whenever each player's expected best reply to the baseline,
-  computed sample point by sample point, is at most her expected payoff from the SPI. That
-  criterion is sufficient, not necessary. Algorithm 2, by contrast, is not participation
-  independent in the Demand Game.
-* **At the level of program choice** (`FullStrategy.lean`), following Appendix B of
-  DiGiovanni's agenda. An SPI is a transformation of program profiles; a full strategy is
-  such a transformation together with the programs it is applied to; demand preservation,
-  participation independence and foreknowledge independence are defined through two
-  counterfactual program choices, which are rendered as a *choice model* giving each
-  agent's program as a function of the other agents' programs. DiGiovanni's renegotiation
-  example from Appendix B.4 is worked out in `Examples/Renegotiation.lean`, with his
-  pseudocode as the execution model, including the agent who is participation independent
-  but not foreknowledge independent.
-* Not rendered: surrogate goals (Appendix B.3 of the agenda), and any general relation
-  between the two levels beyond their coincidence on the worked example.
+* **Theorem 15** is not currently included in this formalization, because the This issue is Erratum D12. The following LLM-written paragraph provides concrete examples showing why the definition as written
+  does not work, and why the proof does not go through under the obvious repair.
+  ```
+  Let Γ be the two-player game whose outcomes pay (0,0), (1,0), (0,1), (1,1), so C(Γ) = [0,1]² and the strong Pareto frontier is the single point (1,1); if the
+  representatives surely play the (0,0) outcome, then x₁ᵐⁱⁿ = x₁ᵐᵃˣ = 0 and Case A's premise holds, but L₁ needs π₁(0, PF(C(Γ))), a frontier point with first coordinate
+   0, and none exists, so the theorem cannot even be stated although all its hypotheses hold; the repair the figures and the paper's own existence remark describe is to
+   project onto C(Γ) instead, giving π₁(0, C(Γ)) = (0,1). Under that repair the proof in Appendix E still fails: Case A reassigns each outcome a to its northward
+   projection π₁(u(a), L₁), justified by "all outcomes lie below the line L₁, so π₁ is linear", but for the game whose outcomes pay (0,0), (2,0), (1,1), (2,1) with
+  support {(0,0), (2,0), (1,1)}, L₁ is the segment from (0,0) to (2,1), the premise of Case A holds since (2,1) dominates the support, yet the support point (1,1) lies
+   strictly above L₁, and the proof's reassignment sends it to (1, ½), which is worse for player 2, so the token game the proof constructs is not an SPI. The theorem's
+   conclusion happens to hold here by another reassignment, so the example refutes the printed argument rather than the repaired statement, but a proof would have to be
+   built afresh from Corollary 14's characterization, and none has been.
+  ```
+* Memberships in **complexity classes** are not proved in full here. Theorem 9,
+  Proposition 10, Lemma 11, Proposition 12, Propositions 23 to 26 and Lemma 28 are carried
+  as *qualified* nodes. That means the exact mathematical content of each statement is
+  proved: the certificate characterizations of the decision problems, the search bound
+  `card ≤ m^l` where `m` is the total number of actions in the game and `l` the total
+  number in its full reduction, the linear program of Lemma 11, the correctness of
+  Algorithm 1 as an if-and-only-if, and the reductions from subgraph isomorphism. What is
+  not proved is anything the paper phrases as "NP-complete", "in polynomial time", "in
+  `O(m^l)`" or "in linear time". 
+* **Two prior results** that the paper cites are currently absent from the formalization. Theorem 17 is Tennenholtz's
+  folk theorem for program equilibrium, and Lemma 27 is Cook's theorem. These are currently neither
+  proved nor assumed in Lean.
+* **Languages for program games** are currently limited to general interface claims, with only a single
+  toy instantiation using the three-instruction language `Prog` (see `Instruction.lean` and `ProgramGames.lean`.) Thus,
+  paper claims about languages like LISP are currently unformalized.
 
-## Verifying and reading
+## Mechanical verification
 
-The following commands, run from the repository root, check everything that can be
-checked mechanically:
+The following commands perform mechanistic checks that the formalization builds correctly, 
+is free of axioms and sorry, and that the API and scope are as intended.
 
 ```
 lake build SafeParetoImprovements APITests AxiomAudit
@@ -294,23 +204,3 @@ python3 scripts/check-safe-pareto-improvements-nodes.py
 python3 scripts/lint_paper_labels.py
 python3 scripts/check_paper_wiring.py
 ```
-
-The first command elaborates the library, the client tests and the axiom gate. The block
-`SPI-INVENTORY` of `AxiomAudit.lean` names every public declaration of the library under
-`#assert_axioms_clean`, which fails the build if any of them depends on `sorry` or on an
-axiom beyond the standard three, and it freezes the field names of the boundary
-structures so that a hypothesis cannot be added to one of them unnoticed. The node
-checker reports which numbered nodes have no annotated carrier; at present those are
-Theorem 15 and Lemma 27. The statements were audited in nine rounds by fresh-context
-adversarial readers drawn from two independent model families, and the pre-publication
-round was run without access to this project's own conclusions.
-
-| where | what |
-|---|---|
-| `SafeParetoImprovements/API.lean` | The consumer import. It maps the paper's vocabulary to the supported Lean names. |
-| `APITests/SafeParetoImprovements.lean` | Client-style tests that use only the consumer import. |
-| `SafeParetoImprovements.lean` | The root import, with the one-line glossary of every `dd:` tag and a file map. |
-| `KNOWLEDGE.md` | The correspondence table, the settled decisions and the pitfalls, written for whoever maintains the code. |
-| `notes/scoping.md` | The rationale for every choice, in section 3, and the rulings that fixed them, in section 8. |
-| `notes/paper-errata.md` | The twenty-four defects found in the paper. |
-| `docs/trust-surface.html` | The generated read-through page, one section per paper in the repository. |
