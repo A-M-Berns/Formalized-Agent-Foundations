@@ -59,39 +59,18 @@ formalizations, see the SPI section of `docs/trust-surface.html`.
 
 ## Formalization choices
 
-Each modeling choice taken in this formalization corresponds to a tag of the form `dd:name`.
+Each modeling choice taken in this formalization is recorded with a corresponding tag notated `dd:name`.
 The tags are defined in one line each in `SafeParetoImprovements.lean` and argued at length (LLM writing)
 in section 3 of `notes/scoping.md`.
 
-**Games** (§2; `dd:universe`, `dd:total-utility`). Every game lives inside a fixed universe
-of actions, one type per player. A game is a finite nonempty subset of each player's
-universe together with a payoff function, and the payoff function is defined on every
-profile of the universe, not only on the profiles of the game. Subset games and
-isomorphisms are then ordinary objects rather than side conditions, and a theorem about
-all games applies to every game over the universe at once. The price is that Lean's `=` on
-games is not the paper's equality: two games can have the same action sets and the same
-payoffs on all their own profiles and still differ at profiles neither of them contains.
-The paper's equality is `Game.EqOn`, and every paper-facing statement uses it. Action sets
-are finite, which the paper assumes without saying so (erratum D23). A game isomorphism is
-a bijection between action sets for each player together with a strictly positive
-rescaling of payoffs; the paper leaves both conditions implicit and needs both (erratum
-D5). Strict dominance, mixed strategies and Nash equilibrium are taken from EconCSLib
-through the bridge `Game.toStrategic`.
-
-**Representatives** (§3, §4.4; `dd:representatives`, `dd:book`). The paper compares the
-play of `Γ` with the play of `Γˢ` at the same sample point, which only makes sense if the
-plays of all games are jointly distributed. So the representatives are modeled as a random
-function from games to outcomes: `Play` is one such function, a complete description of
-how the representatives would play every game, and `Representatives` is a probability
-space whose sample points each carry one. Nothing about rationality is built in.
-Assumptions 1 and 2 are predicates on a play family that may or may not hold. Assumption 1
-is stated as the paper states it, as an outcome correspondence: removing a strictly
-dominated action does not change what the representatives play. Assumption 2 says that
-for any two isomorphic reduced games there is some isomorphism along which their plays
-correspond. The paper argues informally in §4.4.3 that the two assumptions can hold
-together; here that is a theorem. The book representatives, who look up each reduced
-game's isomorphism class in a book and play what its page says, satisfy both assumptions
-at every sample point.
+**Games** (§2; `dd:universe`, `dd:total-utility`, `dd:representatives`). We want different games 
+to be comparable, meaning that actions across all games must live in a single shared universe, 
+with a unique type per player. This choice makes the SPI criterion u(Π(Γˢ)) ≥ u(Π(Γ)) well defined, 
+since the shared universe means we can apply Γ's payoff to a profile of Γˢ. Likewise, the representatives are 
+modeled as a single random function from games to outcomes (dd:representatives), so that Π(Γ) and Π(Γˢ) can be compared 
+at every sample point rather than only in distribution. The game objec here is connected to `StrategicGame` from 
+EconCSLib through `Game.toStrategic`, allowing for the use of their pre-existing formalizations of strict dominance, 
+mixed strategies, and Nash equilibrium.
 
 **Certainty** (§3; `dd:certainty`). The paper's "with certainty" means "with probability
 one", but the arguments of §3 and §4 use only two properties of it: a certain statement
@@ -164,7 +143,7 @@ follow Table 9 where it disagrees with the printed payoff formula (erratum D18),
 assume `0 < ε`, which the paper needs and does not state (erratum D21). Nothing is proved
 about complexity classes or running times; see Future work.
 
-## Beyond the paper: participation and foreknowledge independence
+## BParticipation and foreknowledge independence
 
 These two notions come from the CLR research agenda rather than from the paper. An SPI
 implementation is participation independent if a player who declines to take part is met
