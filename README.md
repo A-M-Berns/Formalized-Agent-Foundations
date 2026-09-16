@@ -86,7 +86,8 @@ notes, because it has a machine-checked strength classification; *Cartesian Fram
 *ModalAgents* and *Finite Factored Sets* have no such classification, so their sections are correspondence views
 carrying only what genuinely exists (the Cartesian Frames errata and the Claim 35 ruling;
 the ModalAgents scope boundaries and its deliberately unannotated endpoints). No tier is
-invented for a paper that does not have one. Regenerate with
+invented for a paper that does not have one. Install the pinned generator dependency with
+`python3 -m pip install -r requirements-docs.txt`, then regenerate with
 `python3 scripts/gen-trust-surface.py`; the page's freshness and its coverage of every
 registered paper are both blocking CI checks.
 
@@ -136,7 +137,24 @@ python3 scripts/check_endpoint_coverage.py   # every annotated label has an inve
 python3 scripts/lint_paper_labels.py         # every paper-facing theorem carries a label
 python3 scripts/check_trust_surface.py       # docs/trust-surface.html is not stale
 python3 scripts/check_paper_wiring.py        # every registered paper is fully wired up
+python3 scripts/lean_gates.py --self-test    # the two gates below, and their scope classification
 ```
+
+Two further gates read the *compiled* environment and so need a build. They do not run on
+pull requests — they run on push to a listed branch and on a nightly schedule:
+
+```sh
+python3 scripts/lean_gates.py --replay   # replay every built module through the kernel
+python3 scripts/lean_gates.py --audit    # every declaration, against the standard three axioms
+```
+
+They are second opinions, not replacements. `AxiomAudit.lean` is an *enumerated* inventory
+and says so; the blanket audit asks the same question of every declaration under each
+audited root, and catches what no `grep` can — `native_decide` mints its axiom during
+compilation and appears in no source file. And every axiom check reads the environment
+`lake build` produced; kernel replay re-derives it, so a declaration that entered the
+environment without the kernel checking it is caught there and nowhere else. Which
+libraries are covered, which are not, and why, is in `scripts/lean_gates.py`.
 
 Budget a few hours for the first build: Mathlib arrives prebuilt from the cache, but the
 Foundation dependency (~580 modules) and this repo (~110 modules, some with heavy
