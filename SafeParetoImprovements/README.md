@@ -59,6 +59,7 @@ formalizations, see the SPI section of `docs/trust-surface.html`.
 
 ## Formalization choices
 
+ 
 Each modeling choice taken in this formalization is recorded with a corresponding tag notated `dd:name`.
 The tags are defined in one line each in `SafeParetoImprovements.lean` and argued at length (LLM writing)
 in section 3 of `notes/scoping.md`.
@@ -71,6 +72,8 @@ modeled as a single random function from games to outcomes (`dd:representatives`
 at every sample point rather than only in distribution. The game object here is connected to `StrategicGame` from 
 EconCSLib through `Game.toStrategic`, allowing for the use of their pre-existing formalizations of strict dominance, 
 mixed strategies, and Nash equilibrium.
+
+ [Temporarily LLM]
 
 **Certainty** (§3; `dd:certainty`). The paper's "with certainty" means probability one, but its 
 arguments only use that certainty survives weakening and conjunction, which are the axioms of a filter. 
@@ -139,12 +142,14 @@ agent that is participation independent but not foreknowledge independent, is wo
 `Examples/Renegotiation.lean`. Surrogate goals (B.3) and any general relation between the two levels 
 are not covered.
 
+[/LLM]
+
 ## Paper errata
 
-Twenty-four defects are recorded in `notes/paper-errata.md`, grouped by seriousness. Each
-is presented with an explanation and, where the defect is a false claim, a counterexample.
-Errata affecting the formalization's modeling decisions are mentioned in this README where
-relevant.
+Twenty-four issues are recorded in `notes/paper-errata.md`, grouped by seriousness. Each
+is presented with an explanation of the content and implications of the issue and, where relevant,
+a counterexample. Errata affecting the formalization's modeling decisions are mentioned in this 
+README where relevant.
 
 ## Future work
 
@@ -167,15 +172,12 @@ relevant.
   refutes the printed argument rather than the repaired statement, but a proof would have to be built
   afresh from Corollary 14's characterization, and none has been.
   ```
-* Memberships in **complexity classes** are not proved in full here. Theorem 9,
-  Proposition 10, Lemma 11, Proposition 12, Propositions 23 to 26 and Lemma 28 are carried
-  as *qualified* nodes. That means the exact mathematical content of each statement is
-  proved: the certificate characterizations of the decision problems, the search bound
-  `card ≤ m^l` where `m` is the total number of actions in the game and `l` the total
-  number in its full reduction, the linear program of Lemma 11, the correctness of
-  Algorithm 1 as an if-and-only-if, and the reductions from subgraph isomorphism. What is
-  not proved is anything the paper phrases as "NP-complete", "in polynomial time", "in
-  `O(m^l)`" or "in linear time". 
+* Memberships in **complexity classes** are not proved in full here. This affects Theorem 9,
+  Proposition 10, Lemma 11, Proposition 12, Propositions 23 to 26 and Lemma 28. See above in the "certificates
+  and hardness" section for an explanation of what is proved in terms of the math underlying the complexity results.
+  In the formalization of Logical Induction (2016) in this repo, we make use of complexitylib as a substrate
+  for complexity-theoretic results, i.e., there is an existing library including concepts like P and NP that could be
+  used for this paper's results. This would be a substantial original project bridging the two libraries, however.
 * **Two prior results** that the paper cites are currently absent from the formalization. Theorem 17 is Tennenholtz's
   folk theorem for program equilibrium, and Lemma 27 is Cook's theorem. These are currently neither
   proved nor assumed in Lean.
