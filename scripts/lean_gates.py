@@ -89,6 +89,7 @@ AUDITED = {
     "CartesianFrames": "paper library",
     "FiniteFactoredSets": "paper library",
     "FactoredSpaces": "paper library",
+    "SafeParetoImprovements": "paper library",
     "Condensation": "paper library (in-progress; its `sorry` ledger is "
                     "scripts/check_sorry_ledger.py, and the pending block is empty)",
     "ShannonInformation": "shared paper-neutral infrastructure over the vendored PFR "
@@ -122,26 +123,9 @@ PARTIAL = {
 # not a finding. This list is what stops "the build did not produce it" from being
 # an excuse: a module that is neither built nor named here fails the gate, and a
 # module named here that *is* built fails it too, so an entry cannot outlive the
-# situation it describes.
-#
-# The first two say of themselves that they are spikes. The third does not, and is
-# recorded as debt rather than as scratch: it is machine-reading content that
-# `Framework/RpnEmission.lean` points at in prose and that no module imports, so
-# nothing compiles it and no gate here or elsewhere has ever looked at it.
-UNBUILT = {
-    "LogicalInduction.Construction.Machine.TimedRespectsProbe":
-        "scratch — a Stage-0 de-risk spike; the file's own header says it is not part "
-        "of the formalization, is imported by nothing, and carries no paper node",
-    "LogicalInduction.Framework.FirstOrderSubstrateProbe":
-        "scratch — a read-only feasibility probe for a scoping note; the file's own "
-        "header says it is not part of the build and is excluded from AxiomAudit",
-    "LogicalInduction.Framework.Machine.SentenceCodes":
-        "DEBT, not scratch — it claims to be content (`RpnSentenceCodes.toMachine`, "
-        "cited from Framework/RpnEmission.lean) and nothing imports it, so nothing "
-        "compiles it. Wiring it in, or retiring it, is a decision for the "
-        "LogicalInduction line rather than for this gate; recorded here so it stops "
-        "being invisible",
-}
+# situation it describes. It is empty: every committed module under an audited
+# root is reached by its library's build.
+UNBUILT: dict[str, str] = {}
 
 # Every library deliberately out of scope, and why. A library is excluded only
 # when a reason survives being written down.
@@ -150,17 +134,11 @@ EXCLUDED = {
                   "there are no oleans to check. Excluding it is a statement about "
                   "what was built, not a judgement about the code; `assert_scope` "
                   "below fails if it ever becomes a default target.",
-    "MachineExec": "not a separate module tree: its `roots` is "
-                   "`LogicalInduction.Construction.Machine`, so its modules carry the "
-                   "`LogicalInduction` prefix and are already replayed and audited "
-                   "under that root. A second root here would double the work and "
-                   "audit nothing new.",
 }
 
 REPLAYING = re.compile(r"^replaying (\S+)$", re.M)
 LEAN_LIB = re.compile(r"^lean_lib\s+(\w+)", re.M)
 DEFAULT_TARGET = re.compile(r"@\[default_target\]\s*\nlean_lib\s+(\w+)", re.M)
-MACHINE_EXEC_ROOTS = re.compile(r"lean_lib\s+MachineExec\b.*?roots\s*:=\s*#\[`([\w.]+)\]", re.S)
 # `globs := #[.submodules `X]` builds X's submodules and *not* `X.lean`;
 # `.andSubmodules` builds both. A library with no `globs` builds its root module.
 SUBMODULES_ONLY = re.compile(
@@ -217,16 +195,6 @@ def assert_scope(lakefile: str) -> list[str]:
                             "so recording it excuses nothing")
         elif not UNBUILT[module].strip():
             problems.append(f"UNBUILT names {module!r} with no reason")
-    machine = MACHINE_EXEC_ROOTS.search(lakefile)
-    if "MachineExec" in declared:
-        if not machine:
-            problems.append("MachineExec is excluded because its modules sit under an "
-                            "audited root, and its `roots :=` could not be read to "
-                            "confirm that")
-        elif not any(machine.group(1).startswith(root + ".") or machine.group(1) == root
-                     for root in AUDITED):
-            problems.append(f"MachineExec's root {machine.group(1)!r} is under no audited "
-                            "prefix, so excluding it leaves its modules unchecked")
     return problems
 
 
