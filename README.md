@@ -86,7 +86,8 @@ notes, because it has a machine-checked strength classification; *Cartesian Fram
 *ModalAgents* and *Finite Factored Sets* have no such classification, so their sections are correspondence views
 carrying only what genuinely exists (the Cartesian Frames errata and the Claim 35 ruling;
 the ModalAgents scope boundaries and its deliberately unannotated endpoints). No tier is
-invented for a paper that does not have one. Regenerate with
+invented for a paper that does not have one. Install the pinned generator dependency with
+`python3 -m pip install -r requirements-docs.txt`, then regenerate with
 `python3 scripts/gen-trust-surface.py`; the page's freshness and its coverage of every
 registered paper are both blocking CI checks.
 
