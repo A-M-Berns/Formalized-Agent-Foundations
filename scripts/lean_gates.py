@@ -68,6 +68,7 @@ import subprocess
 import sys
 import tempfile
 import time
+import os
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 LAKEFILE = ROOT / "lakefile.lean"
@@ -78,6 +79,18 @@ ALLOWED = ("propext", "Classical.choice", "Quot.sound")
 REPO = "https://github.com/leanprover-community/axiom-audit.git"
 PINNED_REF = "v0.1.2"
 PINNED_SHA = "46024e005996495c65ef609368e11ab39c4222e3"
+
+# Thread cap for the two environment-loading modes. Lean's default is one worker per
+# core, which is what makes a Mathlib-sized replay swap on a small runner or a busy
+# laptop; the workflow sets LEAN_NUM_THREADS explicitly and a local run inherits
+# this default unless the caller sets it.
+DEFAULT_THREADS = 4
+
+
+def lean_env() -> dict[str, str]:
+    env = dict(os.environ)
+    env.setdefault("LEAN_NUM_THREADS", str(DEFAULT_THREADS))
+    return env
 
 # Every library whose declarations are replayed and audited, and why it is in
 # scope. Vendored dependency code is included deliberately: it is compiled into
@@ -363,7 +376,7 @@ def run_replay() -> int:
         return 1
     started = time.monotonic()
     proc = subprocess.run(["lake", "env", "leanchecker", "-v", *audited_roots()],
-                          cwd=ROOT, capture_output=True, text=True)
+                          cwd=ROOT, capture_output=True, text=True, env=lean_env())
     elapsed = time.monotonic() - started
     output = proc.stdout + proc.stderr
     got = sorted(set(REPLAYING.findall(output)))
@@ -418,7 +431,7 @@ def run_audit() -> int:
             proc = subprocess.run(
                 ["lake", "env", str(binary), "--root", root,
                  "--modules", ",".join(modules), "--json"],
-                cwd=ROOT, capture_output=True, text=True)
+                cwd=ROOT, capture_output=True, text=True, env=lean_env())
             elapsed = time.monotonic() - started
             here, report = audit_verdict(root, proc.returncode, proc.stdout)
             findings += here
@@ -592,7 +605,14 @@ def main(argv: list[str]) -> int:
     if "--audit" in argv:
         return run_audit()
     print(__doc__)
-    print("usage: lean_gates.py (--self-test | --replay | --audit)", file=sys.stderr)
+    print("usage: lean_gates.py (--self-test | --replay | --audit)\n"
+          "  --self-test needs neither a build nor Lean and runs on every pull request.\n"
+          "  --replay and --audit are CI jobs (push to a listed branch, nightly). Run\n"
+          "  locally only on a quiet machine with ~4 GB free: each loads the whole\n"
+          "  compiled environment (Mathlib and Foundation included) into one process,\n"
+          "  and on a laptop that is already busy it swaps the machine to a crawl.\n"
+          f"  Threads default to {DEFAULT_THREADS} unless LEAN_NUM_THREADS is set.",
+          file=sys.stderr)
     return 2
 
 
