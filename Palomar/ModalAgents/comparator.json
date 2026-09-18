@@ -1,0 +1,12 @@
+{
+  "challenge_module": "Palomar.ModalAgents.Challenge",
+  "solution_module": "Palomar.ModalAgents.Solution",
+  "theorem_names": [
+    "TODO.fill_in_challenge_theorem_names"
+  ],
+  "permitted_axioms": [
+    "propext",
+    "Quot.sound",
+    "Classical.choice"
+  ]
+}

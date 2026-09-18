@@ -1,0 +1,97 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/mathlib-initiative/formalization.yaml/main/schema/formalization.schema.json
+# formalization.yaml (v0.4) for the Palomar entry `LogicalInductionMachine`.
+#
+# SCAFFOLDING SKELETON.  Every field below that could be determined mechanically from
+# the repository is filled in.  Every field requiring Anson's editorial judgement is
+# left empty with a TODO.  Nothing here is a settled decision.
+
+version: "v0.4"
+
+project:
+  name: "Logical Induction (counted-step machine model)"
+  # TODO(Anson): public abstract, shown in the registry.  Max 10,000 characters.
+  # Must identify the subject and the principal result families of *this entry*.
+  description: ""
+  authors:
+    - "Anson Berns"
+  responsible_maintainers:
+    - "Anson Berns"
+  license: "Apache-2.0"
+
+sources:
+  - title: "Logical Induction"
+    authors:
+      - "Scott Garrabrant"
+      - "Tsvi Benson-Tilsen"
+      - "Andrew Critch"
+      - "Nate Soares"
+      - "Jessica Taylor"
+    id: "arXiv:1609.03543"
+    type: "article"
+    location: ""          # TODO(Anson): theorem/section locator for this entry's scope
+    relationship: "formalizes"
+    note: "Entry deferred; scaffolding only."
+
+related_formalizations: []
+
+# PROPOSED — chosen from the PalomarSubmission taxonomy snapshots and verified to
+# exist, but NOT settled.  TODO(Anson): confirm or replace.  Classify the
+# mathematics, not the tooling.
+classification:
+  arxiv:
+    - "cs.LO"
+    - "cs.AI"
+  msc2020:
+    - "03B48"
+    - "68Q05"
+
+status:
+  scope: ""             # TODO(Anson): what this entry does and does not cover
+  sorry_count: 0
+  sorry_in_definitions: 0
+  axioms:
+    - "propext"
+    - "Quot.sound"
+    - "Classical.choice"
+  main_results:
+    - declaration: ""   # TODO: fill alongside comparator.json `theorem_names`
+      file: ""
+      sorry_count: 0
+      axioms:
+        - "propext"
+        - "Quot.sound"
+        - "Classical.choice"
+      comparator_config: "Palomar/LogicalInductionMachine/comparator.json"
+
+automation:
+  methods:
+    - method: "agent"
+      models: []            # TODO(Anson)
+      framework: ""         # TODO(Anson)
+      tool_setup: ""        # TODO(Anson)
+      prompting_notes: ""   # TODO(Anson)
+    - method: "autonomous"
+      models: []            # TODO(Anson)
+      framework: ""         # TODO(Anson)
+      tool_setup: ""        # TODO(Anson)
+      prompting_notes: ""   # TODO(Anson)
+  spend_usd: ""             # TODO(Anson)
+  notes: >-
+    The formalization is produced by orchestrated AI agents — parallel
+    prover/auditor/fixer agents under adversarial cross-checking — with human
+    direction and review.  TODO(Anson): expand, and name the models and harness in
+    the `methods` entries above.
+
+fidelity:
+  divergences: ""       # TODO(Anson): see the paper README's disclosed substitutions
+
+review:
+  status: ""            # TODO(Anson): unchecked | agent-reviewed | self-assessed | ...
+  reviewers: []
+  notes: ""
+
+alignment:
+  namespace: ""
+  statements: []
+
+acknowledgements: ""
