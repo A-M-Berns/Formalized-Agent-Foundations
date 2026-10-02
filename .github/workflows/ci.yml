@@ -11,6 +11,18 @@ on:
   schedule:
     - cron: "17 6 * * *"
   workflow_dispatch:
+  # Callable, so pin-bump.yml validates a proposed pin bump with *this* job rather
+  # than a copy of it. The caller names a run artifact holding the three bumped pin
+  # files; they are overlaid onto the checkout before the first step. The caller's
+  # event (schedule or workflow_dispatch) is what `github.event_name` reads below,
+  # so the second-opinion gates run on a pin-bump trial exactly as on a nightly.
+  workflow_call:
+    inputs:
+      pins_artifact:
+        description: Name of a run artifact containing lakefile.lean, lake-manifest.json and lean-toolchain to overlay
+        type: string
+        required: false
+        default: ""
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -22,6 +34,16 @@ jobs:
     timeout-minutes: 300
     steps:
       - uses: actions/checkout@v4
+
+      # Pin-bump trial only (see `workflow_call` above): overlay the proposed
+      # lakefile.lean, lake-manifest.json and lean-toolchain so every step below,
+      # the build included, runs against the bumped tree. Absent on every other event.
+      - name: Overlay proposed pins (pin-bump trial only)
+        if: ${{ inputs.pins_artifact }}
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ inputs.pins_artifact }}
+          path: .
 
       # Blocking, and first: the unit tests for scripts/paper_nodes.py, the shared
       # reader that every node checker below depends on. Needs neither Lean nor network.

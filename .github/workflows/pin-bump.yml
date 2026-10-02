@@ -1,0 +1,128 @@
+name: Pin bump
+
+# Monthly: propose moving the three sha-pinned `require`s in lakefile.lean (and the
+# toolchain with them) to their upstream heads — or report why that cannot be done.
+# This workflow never fixes breakage and never touches `main`: green ends in a pull
+# request on its own branch, red ends in an issue. Logic lives in scripts/pin_bump.py.
+#
+# Never on pull_request: the only job with write scope is `publish`, and a job that
+# can open pull requests and issues must not be reachable from a fork's code.
+on:
+  schedule:
+    - cron: "41 5 1 * *"
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: pin-bump
+  cancel-in-progress: false
+
+jobs:
+  # Read-only. Step 1 (preflight) is pure GitHub API: resolve each upstream's tracked
+  # head and read its lean-toolchain and Mathlib pin — no toolchain, no build. Only if
+  # the heads agree does step 2 install elan and run `lake update` over the rewritten
+  # pins. The three bumped files leave as an artifact; the report always does.
+  prepare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    outputs:
+      status: ${{ steps.preflight.outputs.status }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Preflight — resolve upstream heads, toolchains and Mathlib pins (no build)
+        id: preflight
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/pin_bump.py preflight --out pin-bump
+
+      - name: Rewrite pins and toolchain
+        if: steps.preflight.outputs.status == 'ok'
+        run: python3 scripts/pin_bump.py rewrite --report pin-bump/report.json
+
+      - name: Install elan at the agreed toolchain
+        if: steps.preflight.outputs.status == 'ok'
+        run: |
+          curl -sSfL https://github.com/leanprover/elan/releases/latest/download/elan-x86_64-unknown-linux-gnu.tar.gz | tar xz
+          ./elan-init -y --default-toolchain "$(cat lean-toolchain)"
+          echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
+
+      - name: lake update
+        if: steps.preflight.outputs.status == 'ok'
+        run: |
+          set -o pipefail
+          lake update 2>&1 | tee pin-bump/lake-update.log
+
+      - name: Upload bumped pin files
+        if: steps.preflight.outputs.status == 'ok'
+        uses: actions/upload-artifact@v4
+        with:
+          name: pin-bump-pins
+          path: |
+            lakefile.lean
+            lake-manifest.json
+            lean-toolchain
+          if-no-files-found: error
+
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pin-bump-report
+          path: pin-bump/
+          if-no-files-found: ignore
+
+  # Read-only. The validation IS ci.yml's `build` job, called as a reusable workflow
+  # with the bumped files overlaid onto the checkout before its first step. Because the
+  # caller's event is `schedule` or `workflow_dispatch`, the two second-opinion gates
+  # (blanket axiom audit, kernel replay) run exactly as on a scheduled CI run.
+  validate:
+    needs: prepare
+    if: needs.prepare.outputs.status == 'ok'
+    permissions:
+      contents: read
+    uses: ./.github/workflows/ci.yml
+    with:
+      pins_artifact: pin-bump-pins
+
+  # The only job with write scope, and it installs no Lean: it reads the artifacts and
+  # this run's job list as data, then opens the pull request (green) or opens/updates
+  # the `pin-bump` issue (red). `actions: read` is for pulling the failed job's log into
+  # the issue. No stored secrets — the run token only.
+  publish:
+    needs: [prepare, validate]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+      actions: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: pin-bump-report
+          path: pin-bump
+        continue-on-error: true
+
+      - uses: actions/download-artifact@v4
+        if: needs.prepare.outputs.status == 'ok'
+        with:
+          name: pin-bump-pins
+          path: pins
+        continue-on-error: true
+
+      - name: Open pull request or issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 scripts/pin_bump.py publish \
+            --report-dir pin-bump --pins-dir pins \
+            --prepare-result "${{ needs.prepare.result }}" \
+            --validate-result "${{ needs.validate.result }}"
