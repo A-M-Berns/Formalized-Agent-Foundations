@@ -25,7 +25,8 @@ VERIFY=0
 
 echo "== 1. upstream checkout: teorth/pfr @ $PFR_REV =="
 mkdir -p $TMP
-[[ -d $TMP/pfr ]] || git clone --quiet $PFR_REPO $TMP/pfr
+# a half-made clone (interrupted run) is discarded rather than trusted
+[[ -d $TMP/pfr/.git ]] || { rm -rf $TMP/pfr; git clone --quiet $PFR_REPO $TMP/pfr; }
 git -C $TMP/pfr fetch --quiet origin
 rm -rf $TMP/src
 git -C $TMP/pfr worktree prune
@@ -44,8 +45,9 @@ echo "== 2. import closure =="
 SRC=$TMP/src DST=$DEST python3 $ROOT/ShannonInformation/vendor/closure.py
 
 echo "== 3. compatibility patches =="
-if ls $ROOT/ShannonInformation/vendor/patches/*.patch > /dev/null 2>&1; then
-  for p in $ROOT/ShannonInformation/vendor/patches/*.patch; do
+patches=($ROOT/ShannonInformation/vendor/patches/*.patch(N))
+if (( ${#patches} )); then
+  for p in $patches; do
     echo "   applying ${p:t}"
     ( cd $DEST && git apply --unsafe-paths --directory=. "$p" )
   done

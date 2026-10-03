@@ -2136,8 +2136,8 @@ code.fld { font-size: 10.5px; margin: 0 2px 2px 0; display: inline-block; }
       <div class="pane-tag">Lean · statement only (proof body is kernel-checked)</div>
       <div class="ep-nav"><button class="ep-prev" aria-label="previous endpoint">&#8249;</button><span class="ep-count" data-total="3">1 / 3</span><button class="ep-next" aria-label="next endpoint">&#8250;</button><span class="ep-nav-hint">inventory endpoints for this node</span></div><div class="ep-slide"><div class="ep-head"><code class="ep-name">PaperLUV</code><span class="ep-role">(the literal object)</span><span class="ep-file">LogicalInduction/Construction/LUV/PaperLUV.lean</span></div><pre class="sig">structure PaperLUV (T : ArithmeticTheory) [T.Δ₁] where
   formula : ArithmeticSemisentence 1
-  unique : T ⊢ ∃⁰! formula
-  unit : T ⊢ ∀⁰ (formula 🡒 paperRatUnitDef)</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">LUV</code><span class="ep-role">(the abstract threshold carrier)</span><span class="ep-file">LogicalInduction/Framework/Expectations.lean</span></div><pre class="sig">structure LUV where
+  unique : T ⊢ ∃¹! formula
+  unit : T ⊢ ∀¹ (formula 🡒 paperRatUnitDef)</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">LUV</code><span class="ep-role">(the abstract threshold carrier)</span><span class="ep-file">LogicalInduction/Framework/Expectations.lean</span></div><pre class="sig">structure LUV where
   /-- The sentence `⌜X &gt; r⌝`, for a rational threshold `r`. -/
   gt : ℚ → Sentence</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">unitFracPaperLUVSeq</code><span class="ep-role">(non-vacuity witness)</span><span class="ep-file">LogicalInduction/Construction/LUV/ArithmeticSource.lean</span></div><pre class="sig">def unitFracPaperLUVSeq (T : ArithmeticTheory) [T.Δ₁] [𝗜𝚺₁ ⪯ T] : PaperLUVSeq T</pre></div><div class="ep-other"><b>26 further axiom-checked declarations</b> carry this node and are deliberately not in the canonical public set (internal construction machinery, compatibility carriers, supporting lemmas): <code>ordinaryLUVCombinationSyntax</code>, <code>PaperLUV.toLUV</code>, <code>PaperLUVSeq.source_valued_and_machineThresholdCodeSeq</code>, <code>invPaperLUV</code>, <code>unitFracPaperLUVSeq_frontend</code>, <code>dyadicPaperLUVSeq</code>, <code>dyadicPaperLUVSeq_frontend</code>, <code>iffPaperLUVSeq</code>, <code>iffPaperLUVSeq_frontend</code>, <code>PCWorld.ValuesAt.eq</code>, <code>PaperLUV.paperProductPaperLUV</code>, <code>PaperLUV.paperProductPaperLUV_valuesAt</code>, <code>representedPairPaperLUV</code>, <code>representedPairPaperLUV_valuesAt</code>, <code>representedPairPaperLUVSeq</code>, <code>deferredWeightPaperLUVSeq</code>, <code>deferredWeightPaperLUVSeq_valuesAt</code>, <code>PaperLUVSeq</code>, <code>iffPaperLUV</code>, <code>invPaperLUVWith</code>, <code>ComputableLUV</code>, <code>ComputableLUV.toLUV</code>, <code>ArithmeticLUVPresentation</code>, <code>LUVCombinationSyntax</code>, <code>LUVCombination</code>, <code>LUVCombination.ExactTheoryPresentation</code></div>
     </section>
@@ -4453,7 +4453,7 @@ That is, the following diagrams commute:</p>
     claim no numbered node, because the fact each proves is unnumbered paper prose or a step
     inside a proof. The list is computed from the inventory; each reason is quoted from
     <code>ModalAgents/README.md</code>.</p>
-    <div style="overflow-x:auto"><table class="t2"><tr><td><code>Agent</code></td><td>the §2 and §4 <em>definitions</em>; that paper&#x27;s <code>definition</code> environment is uncounted, so there is no node to cite</td></tr><tr><td><code>Agent.app</code></td><td>the §2 and §4 <em>definitions</em>; that paper&#x27;s <code>definition</code> environment is uncounted, so there is no node to cite</td></tr><tr><td><code>BehaviorallyEquivalent</code></td><td>the §2 and §4 <em>definitions</em>; that paper&#x27;s <code>definition</code> environment is uncounted, so there is no node to cite</td></tr><tr><td><code>IsBehavioral</code></td><td>the §2 and §4 <em>definitions</em>; that paper&#x27;s <code>definition</code> environment is uncounted, so there is no node to cite</td></tr><tr><td><code>IsModalAgent</code></td><td>the §2 and §4 <em>definitions</em>; that paper&#x27;s <code>definition</code> environment is uncounted, so there is no node to cite</td></tr><tr><td><code>IsModalAgentOfRank</code></td><td>the §2 and §4 <em>definitions</em>; that paper&#x27;s <code>definition</code> environment is uncounted, so there is no node to cite</td></tr><tr><td><code>ProvablyDefects.defects</code></td><td>this development&#x27;s own accounting of how far defection can be strengthened — see <em>Modeling boundary</em> below</td></tr><tr><td><code>Realization.update</code></td><td>the definitions the arithmetic statements are phrased in — statement surface, not nodes</td></tr><tr><td><code>arithInterp</code></td><td>the definitions the arithmetic statements are phrased in — statement surface, not nodes</td></tr><tr><td><code>cliqueBot</code></td><td>the §2 and §4 <em>definitions</em>; that paper&#x27;s <code>definition</code> environment is uncounted, so there is no node to cite</td></tr><tr><td><code>cliqueBotSpec</code></td><td>the §2 and §4 <em>definitions</em>; that paper&#x27;s <code>definition</code> environment is uncounted, so there is no node to cite</td></tr><tr><td><code>cliqueBotVariant</code></td><td>the §2 and §4 <em>definitions</em>; that paper&#x27;s <code>definition</code> environment is uncounted, so there is no node to cite</td></tr><tr><td><code>cliqueBotVariant_ne</code></td><td>the clauses of Cor 4.9&#x27;s one-sentence printed proof; inventoried because a negative result is only as strong as the objects it separates</td></tr><tr><td><code>cliqueBot_app</code></td><td>the clauses of Cor 4.9&#x27;s one-sentence printed proof; inventoried because a negative result is only as strong as the objects it separates</td></tr><tr><td><code>cliqueBot_behaviorallyEquivalent_variant</code></td><td>the clauses of Cor 4.9&#x27;s one-sentence printed proof; inventoried because a negative result is only as strong as the objects it separates</td></tr><tr><td><code>cliqueBot_cooperates_self</code></td><td>the clauses of Cor 4.9&#x27;s one-sentence printed proof; inventoried because a negative result is only as strong as the objects it separates</td></tr><tr><td><code>cliqueBot_defects_variant</code></td><td>the clauses of Cor 4.9&#x27;s one-sentence printed proof; inventoried because a negative result is only as strong as the objects it separates</td></tr><tr><td><code>cliqueBot_not_isBehavioral</code></td><td>the clauses of Cor 4.9&#x27;s one-sentence printed proof; inventoried because a negative result is only as strong as the objects it separates</td></tr><tr><td><code>cooperateBot_cooperates</code></td><td>§2 prose in an unnumbered <code>remark</code> (<code>PA ⊢ [DB(X)=D]</code>, <code>PA ⊢ [CB(X)=C]</code>)</td></tr><tr><td><code>cooperateBot_isModalAgentOfRank_zero</code></td><td>the non-vacuity witness for <code>IsModalAgentOfRank</code> — CooperateBot is a rank-0 modal agent, so Thm 4.8 is not about an empty class</td></tr><tr><td><code>defectBot_defects</code></td><td>§2 prose in an unnumbered <code>remark</code> (<code>PA ⊢ [DB(X)=D]</code>, <code>PA ⊢ [CB(X)=C]</code>)</td></tr><tr><td><code>defectBot_provably_defects</code></td><td>§2 prose in an unnumbered <code>remark</code> (<code>PA ⊢ [DB(X)=D]</code>, <code>PA ⊢ [CB(X)=C]</code>)</td></tr><tr><td><code>fairBot_not_provably_defects_defectBot</code></td><td><em class="unrecorded">no reason recorded</em></td></tr><tr><td><code>fairBot_unexploitable</code></td><td>§3 prose on FairBot&#x27;s unexploitability &quot;by inspection&quot; and its waste against CooperateBot</td></tr><tr><td><code>fairBot_vs_cooperateBot</code></td><td>§3 prose on FairBot&#x27;s unexploitability &quot;by inspection&quot; and its waste against CooperateBot</td></tr><tr><td><code>fairBot_vs_defectBot</code></td><td>§3 prose on FairBot&#x27;s unexploitability &quot;by inspection&quot; and its waste against CooperateBot</td></tr><tr><td><code>glFixedPoint_uniqueness</code></td><td>the <em>rule</em> form of Thm 4.3, got from the printed internal form <code>glFixedPoint_uniqueness_internal</code> by necessitation</td></tr><tr><td><code>opponentRealization</code></td><td>the §2 and §4 <em>definitions</em>; that paper&#x27;s <code>definition</code> environment is uncounted, so there is no node to cite</td></tr><tr><td><code>outcome_fairBot_defectBot</code></td><td><em class="unrecorded">no reason recorded</em></td></tr><tr><td><code>outcome_prudentBot_cooperateBot</code></td><td><em class="unrecorded">no reason recorded</em></td></tr><tr><td><code>outcome_prudentBot_defectBot</code></td><td><em class="unrecorded">no reason recorded</em></td></tr><tr><td><code>prudentBot_not_provably_defects_cooperateBot</code></td><td><em class="unrecorded">no reason recorded</em></td></tr><tr><td><code>prudentBot_not_provably_defects_defectBot</code></td><td><em class="unrecorded">no reason recorded</em></td></tr><tr><td><code>prudentBot_vs_defectBot</code></td><td>the &quot;in particular, <code>PA+1 ⊢ [PB(DB)=D]</code>&quot; step <em>inside</em> the proof of Thm 3.2, not one of its conjuncts</td></tr><tr><td><code>subst_congr</code></td><td>GL-level substitution congruence; Lemma 4.5 is the <em>arithmetic</em> statement, carried by <code>arithmetic_modal_substitution</code></td></tr></table></div>
+    <div style="overflow-x:auto"><table class="t2"><tr><td><code>Agent</code></td><td>the §2 and §4 <em>definitions</em>; that paper&#x27;s <code>definition</code> environment is uncounted, so there is no node to cite</td></tr><tr><td><code>Agent.app</code></td><td>the §2 and §4 <em>definitions</em>; that paper&#x27;s <code>definition</code> environment is uncounted, so there is no node to cite</td></tr><tr><td><code>BehaviorallyEquivalent</code></td><td>the §2 and §4 <em>definitions</em>; that paper&#x27;s <code>definition</code> environment is uncounted, so there is no node to cite</td></tr><tr><td><code>IsBehavioral</code></td><td>the §2 and §4 <em>definitions</em>; that paper&#x27;s <code>definition</code> environment is uncounted, so there is no node to cite</td></tr><tr><td><code>IsModalAgent</code></td><td>the §2 and §4 <em>definitions</em>; that paper&#x27;s <code>definition</code> environment is uncounted, so there is no node to cite</td></tr><tr><td><code>IsModalAgentOfRank</code></td><td>the §2 and §4 <em>definitions</em>; that paper&#x27;s <code>definition</code> environment is uncounted, so there is no node to cite</td></tr><tr><td><code>ProvablyDefects.defects</code></td><td>this development&#x27;s own accounting of how far defection can be strengthened — see <em>Modeling boundary</em> below</td></tr><tr><td><code>Realization.update</code></td><td>the definition the arithmetic statements are phrased in (rebinding the diagonal variable of a realization) — statement surface, not a node</td></tr><tr><td><code>cliqueBot</code></td><td>the §2 and §4 <em>definitions</em>; that paper&#x27;s <code>definition</code> environment is uncounted, so there is no node to cite</td></tr><tr><td><code>cliqueBotSpec</code></td><td>the §2 and §4 <em>definitions</em>; that paper&#x27;s <code>definition</code> environment is uncounted, so there is no node to cite</td></tr><tr><td><code>cliqueBotVariant</code></td><td>the §2 and §4 <em>definitions</em>; that paper&#x27;s <code>definition</code> environment is uncounted, so there is no node to cite</td></tr><tr><td><code>cliqueBotVariant_ne</code></td><td>the clauses of Cor 4.9&#x27;s one-sentence printed proof; inventoried because a negative result is only as strong as the objects it separates</td></tr><tr><td><code>cliqueBot_app</code></td><td>the clauses of Cor 4.9&#x27;s one-sentence printed proof; inventoried because a negative result is only as strong as the objects it separates</td></tr><tr><td><code>cliqueBot_behaviorallyEquivalent_variant</code></td><td>the clauses of Cor 4.9&#x27;s one-sentence printed proof; inventoried because a negative result is only as strong as the objects it separates</td></tr><tr><td><code>cliqueBot_cooperates_self</code></td><td>the clauses of Cor 4.9&#x27;s one-sentence printed proof; inventoried because a negative result is only as strong as the objects it separates</td></tr><tr><td><code>cliqueBot_defects_variant</code></td><td>the clauses of Cor 4.9&#x27;s one-sentence printed proof; inventoried because a negative result is only as strong as the objects it separates</td></tr><tr><td><code>cliqueBot_not_isBehavioral</code></td><td>the clauses of Cor 4.9&#x27;s one-sentence printed proof; inventoried because a negative result is only as strong as the objects it separates</td></tr><tr><td><code>cooperateBot_cooperates</code></td><td>§2 prose in an unnumbered <code>remark</code> (<code>PA ⊢ [DB(X)=D]</code>, <code>PA ⊢ [CB(X)=C]</code>)</td></tr><tr><td><code>cooperateBot_isModalAgentOfRank_zero</code></td><td>the non-vacuity witness for <code>IsModalAgentOfRank</code> — CooperateBot is a rank-0 modal agent, so Thm 4.8 is not about an empty class</td></tr><tr><td><code>defectBot_defects</code></td><td>§2 prose in an unnumbered <code>remark</code> (<code>PA ⊢ [DB(X)=D]</code>, <code>PA ⊢ [CB(X)=C]</code>)</td></tr><tr><td><code>defectBot_provably_defects</code></td><td>§2 prose in an unnumbered <code>remark</code> (<code>PA ⊢ [DB(X)=D]</code>, <code>PA ⊢ [CB(X)=C]</code>)</td></tr><tr><td><code>fairBot_not_provably_defects_defectBot</code></td><td><em class="unrecorded">no reason recorded</em></td></tr><tr><td><code>fairBot_unexploitable</code></td><td>§3 prose on FairBot&#x27;s unexploitability &quot;by inspection&quot; and its waste against CooperateBot</td></tr><tr><td><code>fairBot_vs_cooperateBot</code></td><td>§3 prose on FairBot&#x27;s unexploitability &quot;by inspection&quot; and its waste against CooperateBot</td></tr><tr><td><code>fairBot_vs_defectBot</code></td><td>§3 prose on FairBot&#x27;s unexploitability &quot;by inspection&quot; and its waste against CooperateBot</td></tr><tr><td><code>glFixedPoint_uniqueness</code></td><td>the <em>rule</em> form of Thm 4.3, got from the printed internal form <code>glFixedPoint_uniqueness_internal</code> by necessitation</td></tr><tr><td><code>opponentRealization</code></td><td>the §2 and §4 <em>definitions</em>; that paper&#x27;s <code>definition</code> environment is uncounted, so there is no node to cite</td></tr><tr><td><code>outcome_fairBot_defectBot</code></td><td><em class="unrecorded">no reason recorded</em></td></tr><tr><td><code>outcome_prudentBot_cooperateBot</code></td><td><em class="unrecorded">no reason recorded</em></td></tr><tr><td><code>outcome_prudentBot_defectBot</code></td><td><em class="unrecorded">no reason recorded</em></td></tr><tr><td><code>prudentBot_not_provably_defects_cooperateBot</code></td><td><em class="unrecorded">no reason recorded</em></td></tr><tr><td><code>prudentBot_not_provably_defects_defectBot</code></td><td><em class="unrecorded">no reason recorded</em></td></tr><tr><td><code>prudentBot_vs_defectBot</code></td><td>the &quot;in particular, <code>PA+1 ⊢ [PB(DB)=D]</code>&quot; step <em>inside</em> the proof of Thm 3.2, not one of its conjuncts</td></tr><tr><td><code>subst_congr</code></td><td>GL-level substitution congruence; Lemma 4.5 is the <em>arithmetic</em> statement, carried by <code>arithmetic_modal_substitution</code></td></tr></table></div>
 
     <h3>One dependency, cited rather than read</h3>
     <p>The GL fixed-point theorem behind these results is <em>proved</em>, not axiomatized, but
@@ -4541,17 +4541,17 @@ That is, the following diagrams commute:</p>
     </section>
     <section class="lean-pane">
       <div class="pane-tag">Lean · statement only (proof body is kernel-checked)</div>
-      <div class="ep-nav"><button class="ep-prev" aria-label="previous endpoint">&#8249;</button><span class="ep-count" data-total="2">1 / 2</span><button class="ep-next" aria-label="next endpoint">&#8250;</button><span class="ep-nav-hint">inventory endpoints for this node</span></div><div class="ep-slide"><div class="ep-head"><code class="ep-name">Cooperates.arithmeticLift</code><span class="ep-file">ModalAgents/Cooperation.lean</span></div><pre class="sig">theorem Cooperates.arithmeticLift {X Y : ModalAgent} (h : Cooperates X Y)
+      <div class="ep-nav"><button class="ep-prev" aria-label="previous endpoint">&#8249;</button><span class="ep-count" data-total="2">1 / 2</span><button class="ep-next" aria-label="next endpoint">&#8250;</button><span class="ep-nav-hint">inventory endpoints for this node</span></div><div class="ep-slide"><div class="ep-head"><code class="ep-name">Cooperates.arithmeticLift</code><span class="ep-file">ModalAgents/Arithmetic.lean</span></div><pre class="sig">theorem Cooperates.arithmeticLift {X Y : ModalAgent} (h : Cooperates X Y)
     {L : FirstOrder.Language} [L.ReferenceableBy L] [L.DecidableEq]
-    {T U : FirstOrder.Theory L} [FirstOrder.ProvabilityAbstraction.Diagonalization T]
-    [T ⪯ U] {𝔅 : FirstOrder.ProvabilityAbstraction.Provability T U} [𝔅.HBL]
-    {f : _root_.Realization ℕ 𝔅} :
-    U ⊢ f (GlFixedPointBridge.toSeq (outcome X Y))</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">ProvablyDefects.arithmeticLift</code><span class="ep-file">ModalAgents/Cooperation.lean</span></div><pre class="sig">theorem ProvablyDefects.arithmeticLift {X Y : ModalAgent} (h : ProvablyDefects X Y)
+    {T U : FirstOrder.Theory L} [Diagonalization T]
+    [T ⪯ U] {𝔅 : Provability T U} [𝔅.HBL]
+    {f : _root_.Realization ℕ L} :
+    U ⊢ (outcome X Y).interpret f 𝔅</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">ProvablyDefects.arithmeticLift</code><span class="ep-file">ModalAgents/Arithmetic.lean</span></div><pre class="sig">theorem ProvablyDefects.arithmeticLift {X Y : ModalAgent} (h : ProvablyDefects X Y)
     {L : FirstOrder.Language} [L.ReferenceableBy L] [L.DecidableEq]
-    {T U : FirstOrder.Theory L} [FirstOrder.ProvabilityAbstraction.Diagonalization T]
-    [T ⪯ U] {𝔅 : FirstOrder.ProvabilityAbstraction.Provability T U} [𝔅.HBL]
-    {f : _root_.Realization ℕ 𝔅} :
-    U ⊢ f (GlFixedPointBridge.toSeq (∼(outcome X Y)))</pre></div>
+    {T U : FirstOrder.Theory L} [Diagonalization T]
+    [T ⪯ U] {𝔅 : Provability T U} [𝔅.HBL]
+    {f : _root_.Realization ℕ L} :
+    U ⊢ (∼(outcome X Y)).interpret f 𝔅</pre></div>
     </section>
   </div>
 </article>
@@ -4572,11 +4572,11 @@ Moreover, if <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><
     </section>
     <section class="lean-pane">
       <div class="pane-tag">Lean · statement only (proof body is kernel-checked)</div>
-      <div class="ep-nav"><button class="ep-prev" aria-label="previous endpoint">&#8249;</button><span class="ep-count" data-total="2">1 / 2</span><button class="ep-next" aria-label="next endpoint">&#8250;</button><span class="ep-nav-hint">inventory endpoints for this node</span></div><div class="ep-slide"><div class="ep-head"><code class="ep-name">glFixedPoint_thm42</code><span class="ep-file">ModalAgents/FixedPoint.lean</span></div><pre class="sig">theorem glFixedPoint_thm42 {p : ℕ} {φ : Modal.Formula ℕ} (h : Modalized p φ) :
-    ∃ ψ : Modal.Formula ℕ,
-      (Modal.GL ⊢ ψ 🡘 φ⟦diag p ψ⟧) ∧
-      (∀ a, a ∈ ψ.atoms → a ∈ φ.atoms ∧ a ≠ p)</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">glFixedPoint_spec</code><span class="ep-file">ModalAgents/FixedPoint.lean</span></div><pre class="sig">theorem glFixedPoint_spec {p : ℕ} {φ : Modal.Formula ℕ} (h : Modalized p φ) :
-    Modal.GL ⊢ glFixedPoint p φ 🡘 φ⟦diag p (glFixedPoint p φ)⟧</pre></div>
+      <div class="ep-nav"><button class="ep-prev" aria-label="previous endpoint">&#8249;</button><span class="ep-count" data-total="2">1 / 2</span><button class="ep-next" aria-label="next endpoint">&#8250;</button><span class="ep-nav-hint">inventory endpoints for this node</span></div><div class="ep-slide"><div class="ep-head"><code class="ep-name">glFixedPoint_thm42</code><span class="ep-file">ModalAgents/FixedPoint.lean</span></div><pre class="sig">theorem glFixedPoint_thm42 {p : ℕ} {φ : Formula ℕ} (h : Modalized p φ) :
+    ∃ ψ : Formula ℕ,
+      ((ψ 🡘 φ⟦diag p ψ⟧) ∈ (LogicGL : Logic ℕ)) ∧
+      (∀ a, a ∈ ψ.atoms → a ∈ φ.atoms ∧ a ≠ p)</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">glFixedPoint_spec</code><span class="ep-file">ModalAgents/FixedPoint.lean</span></div><pre class="sig">theorem glFixedPoint_spec {p : ℕ} {φ : Formula ℕ} (h : Modalized p φ) :
+    (glFixedPoint p φ 🡘 φ⟦diag p (glFixedPoint p φ)⟧) ∈ (LogicGL : Logic ℕ)</pre></div>
     </section>
   </div>
 </article>
@@ -4596,9 +4596,9 @@ Moreover, if <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><
     </section>
     <section class="lean-pane">
       <div class="pane-tag">Lean · statement only (proof body is kernel-checked)</div>
-      <div class="ep-slide"><div class="ep-head"><code class="ep-name">glFixedPoint_uniqueness_internal</code><span class="ep-file">ModalAgents/FixedPoint.lean</span></div><pre class="sig">theorem glFixedPoint_uniqueness_internal {p : ℕ} {φ : Modal.Formula ℕ}
-    (hmod : Modalized p φ) (χ χ&#x27; : Modal.Formula ℕ) :
-    Modal.GL ⊢ ⊡(χ 🡘 φ⟦diag p χ⟧) ⋏ ⊡(χ&#x27; 🡘 φ⟦diag p χ&#x27;⟧) 🡒 (χ 🡘 χ&#x27;)</pre></div>
+      <div class="ep-slide"><div class="ep-head"><code class="ep-name">glFixedPoint_uniqueness_internal</code><span class="ep-file">ModalAgents/FixedPoint.lean</span></div><pre class="sig">theorem glFixedPoint_uniqueness_internal {p : ℕ} {φ : Formula ℕ}
+    (hmod : Modalized p φ) (χ χ&#x27; : Formula ℕ) :
+    ((⊡(χ 🡘 φ⟦diag p χ⟧) ⋏ ⊡(χ&#x27; 🡘 φ⟦diag p χ&#x27;⟧)) 🡒 (χ 🡘 χ&#x27;)) ∈ (LogicGL : Logic ℕ)</pre></div>
     </section>
   </div>
 </article>
@@ -4619,11 +4619,11 @@ then <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mr
     </section>
     <section class="lean-pane">
       <div class="pane-tag">Lean · statement only (proof body is kernel-checked)</div>
-      <div class="ep-slide"><div class="ep-head"><code class="ep-name">arithmetic_fixedPoint_uniqueness</code><span class="ep-file">ModalAgents/Arithmetic.lean</span></div><pre class="sig">theorem arithmetic_fixedPoint_uniqueness {p : ℕ} {φ : Modal.Formula ℕ}
-    (hmod : Modalized p φ) (f : _root_.Realization ℕ 𝔅)
+      <div class="ep-slide"><div class="ep-head"><code class="ep-name">arithmetic_fixedPoint_uniqueness</code><span class="ep-file">ModalAgents/Arithmetic.lean</span></div><pre class="sig">theorem arithmetic_fixedPoint_uniqueness {p : ℕ} {φ : _root_.Formula ℕ}
+    (hmod : Modalized p φ) (f : _root_.Realization ℕ L)
     {ψ ψ&#x27; : FirstOrder.Sentence L}
-    (hfix : U ⊢ ψ 🡘 arithInterp (f.update p ψ) φ)
-    (hfix&#x27; : U ⊢ ψ&#x27; 🡘 arithInterp (f.update p ψ&#x27;) φ) :
+    (hfix : U ⊢ ψ 🡘 φ.interpret (f.update p ψ) 𝔅)
+    (hfix&#x27; : U ⊢ ψ&#x27; 🡘 φ.interpret (f.update p ψ&#x27;) 𝔅) :
     U ⊢ ψ 🡘 ψ&#x27;</pre></div>
     </section>
   </div>
@@ -4643,9 +4643,9 @@ then <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mr
     </section>
     <section class="lean-pane">
       <div class="pane-tag">Lean · statement only (proof body is kernel-checked)</div>
-      <div class="ep-slide"><div class="ep-head"><code class="ep-name">arithmetic_modal_substitution</code><span class="ep-file">ModalAgents/Arithmetic.lean</span></div><pre class="sig">theorem arithmetic_modal_substitution {f₁ f₂ : _root_.Realization ℕ 𝔅}
-    (h : ∀ a, T ⊢ f₁.val a 🡘 f₂.val a) (φ : Modal.Formula ℕ) :
-    T ⊢ arithInterp f₁ φ 🡘 arithInterp f₂ φ</pre></div>
+      <div class="ep-slide"><div class="ep-head"><code class="ep-name">arithmetic_modal_substitution</code><span class="ep-file">ModalAgents/Arithmetic.lean</span></div><pre class="sig">theorem arithmetic_modal_substitution {f₁ f₂ : _root_.Realization ℕ L}
+    (h : ∀ a, T ⊢ f₁.val a 🡘 f₂.val a) (φ : _root_.Formula ℕ) :
+    T ⊢ φ.interpret f₁ 𝔅 🡘 φ.interpret f₂ 𝔅</pre></div>
     </section>
   </div>
 </article>
@@ -4668,9 +4668,9 @@ Then
     <section class="lean-pane">
       <div class="pane-tag">Lean · statement only (proof body is kernel-checked)</div>
       <div class="ep-slide"><div class="ep-head"><code class="ep-name">outcome_fixed_point</code><span class="ep-file">ModalAgents/Cooperation.lean</span></div><pre class="sig">theorem outcome_fixed_point (X Y : ModalAgent) :
-    Modal.GL ⊢ outcome X Y 🡘
+    (outcome X Y 🡘
       X.formula⟦substFull (outcome Y X)
-        (fun j : Fin X.arity =&gt; outcome Y (X.references j))⟧</pre></div>
+        (fun j : Fin X.arity =&gt; outcome Y (X.references j))⟧) ∈ (LogicGL : Logic ℕ)</pre></div>
     </section>
   </div>
 </article>
@@ -4691,7 +4691,7 @@ Then
       <div class="pane-tag">Lean · statement only (proof body is kernel-checked)</div>
       <div class="ep-nav"><button class="ep-prev" aria-label="previous endpoint">&#8249;</button><span class="ep-count" data-total="2">1 / 2</span><button class="ep-next" aria-label="next endpoint">&#8250;</button><span class="ep-nav-hint">inventory endpoints for this node</span></div><div class="ep-slide"><div class="ep-head"><code class="ep-name">modalAgent_isBehavioral</code><span class="ep-file">ModalAgents/ArithmeticAgent.lean</span></div><pre class="sig">theorem modalAgent_isBehavioral {k : ℕ} {X : Agent}
     (hX : IsModalAgentOfRank T k X) : IsBehavioral T X</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">modalAgent_behavioral</code><span class="ep-file">ModalAgents/Behavioral.lean</span></div><pre class="sig">theorem modalAgent_behavioral (X : ModalAgent) {Y Z : ModalAgent} (h : Y ≈ Z) :
-    Modal.GL ⊢ outcome X Y 🡘 outcome X Z</pre></div>
+    (outcome X Y 🡘 outcome X Z) ∈ (LogicGL : Logic ℕ)</pre></div>
     </section>
   </div>
 </article>
@@ -10624,4 +10624,4 @@ Pareto improvement problem for two players. As a consequence, the (strict)
 
 <!-- trust-surface-papers: logical-induction=67 cartesian-frames=60 modal-agents=12 finite-factored-sets=88 factored-space-models=50 condensation=39 safe-pareto-improvements=35 -->
 
-<!-- trust-surface-sources: bad8b83fa52943ec03bb8250f7e35bf63d34670dd0df5ade11186a05c60b532d -->
+<!-- trust-surface-sources: 720a4093260f26937c924c4845eefb138464dea8169f0d77ca1bbffa7b29cab8 -->

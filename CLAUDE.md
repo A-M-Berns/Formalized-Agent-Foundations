@@ -299,7 +299,7 @@ it before starting deep `Primrec`/`PolyFueled` work.
   **limiting** form; add the finite-stage form only where needed.
 - Foundation supplies the propositional substrate: `Formula α` (with
   `Encodable (Formula α)` for `[Encodable α]` → computable sentence codes),
-  `LO.Entailment` (`⊢`, `⊬`, `Consistent`), and `Propositional.Cl`. Wrap what we use
+  `FFL.Entailment` (`⊢`, `⊬`, `Consistent`), and `Propositional.Cl`. Wrap what we use
   behind the thin `LogicalInduction.Sentence` interface; don't scatter Foundation
   internals.
 - Commit messages: no Claude/AI co-authorship lines. Push to `origin` freely; ask

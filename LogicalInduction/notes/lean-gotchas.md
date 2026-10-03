@@ -392,7 +392,7 @@ the settled design decisions and the correspondence table, and points here for p
 - **Foundation has no `Semiformula.Evalm`.** Use `Semiformula.Eval b f φ` / `Evalf`/`Evalb`;
   `eval_all`/`eval_ex` are `of_eq rfl`, so finish with `forall_congr'`/`exists_congr`, not simp.
 - **Foundation tokens:** biconditional `🡘`, implication `🡒`, universal `∀⁰`; `⭤`/`➝`/`∀'` do not parse.
-  External ∀-instantiation is `LO.FirstOrder.Theory.Proof.specialize … ⨀`; there is NO external
+  External ∀-instantiation is `FFL.FirstOrder.Theory.Proof.specialize … ⨀`; there is NO external
   ∃-introduction for `T ⊢` (`Bootstrapping…ex_intro!` is the internal predicate). `T ⊢ n̄ ≠ m̄` is
   `weakening h (Entailment.by_axm (R0.Ω₃ n m hnm))`. Nested substitution normalizes with
   `simp only [Semiformula.subst, ← TransitiveRewriting.comp_app, Rew.subst_comp_subst]` + `congrArg`
