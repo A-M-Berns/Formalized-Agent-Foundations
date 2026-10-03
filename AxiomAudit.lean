@@ -2992,7 +2992,7 @@ a regression would fail the build. At the pinned Foundation revision it costs no
 `axiom`s that formerly sat in `Examples.lean`. The instantiation below is therefore
 asserted under ordinary `#assert_axioms_clean`. -/
 
-open LO FFL.FirstOrder FFL.FirstOrder.Arithmetic in
+open FFL FFL.FirstOrder FFL.FirstOrder.Arithmetic in
 /-- `thm:ceu` at the concrete theory `𝗜𝚺₁`. -/
 noncomputable def concreteArithmeticInstantiation :=
   @LogicalInduction.lic_no_expected_net_update_closed 𝗜𝚺₁ inferInstance inferInstance
@@ -3012,11 +3012,11 @@ typecheck.  The corresponding `grep` is
 `grep -rn SoundOnHierarchy LogicalInduction/ | grep -v loopsTheory`, which finds prose
 only. -/
 
-open LO FFL.FirstOrder FFL.FirstOrder.Arithmetic in
+open FFL FFL.FirstOrder FFL.FirstOrder.Arithmetic in
 /-- `thm:ref` at the concrete theory `𝗜𝚺₁`, soundness-free. -/
 example := @LogicalInduction.lic_introspection_closed 𝗜𝚺₁ inferInstance inferInstance inferInstance
 
-open LO FFL.FirstOrder FFL.FirstOrder.Arithmetic in
+open FFL FFL.FirstOrder FFL.FirstOrder.Arithmetic in
 /-- `thm:lp` at the concrete theory `𝗜𝚺₁`, soundness-free. -/
 example :=
   @LogicalInduction.lic_paradox_resistance_ofDiagonal_unconditional 𝗜𝚺₁
@@ -3031,12 +3031,12 @@ anywhere in the elaboration.  Any step of the lane that acquired one, whether di
 through a `QuotationTheoryPresentation` field, would break this term.  The `𝗣𝗔`
 instantiation is the same statement at the theory the paper actually cares about. -/
 
-open LO FFL.FirstOrder FFL.FirstOrder.Arithmetic in
+open FFL FFL.FirstOrder FFL.FirstOrder.Arithmetic in
 /-- `thm:ref` at `𝗣𝗔⁻`, with no `𝗜𝚺₁ ⪯ ·` instance in scope. -/
 example :=
   @LogicalInduction.lic_introspection_closed 𝗣𝗔⁻ inferInstance inferInstance inferInstance
 
-open LO FFL.FirstOrder FFL.FirstOrder.Arithmetic in
+open FFL FFL.FirstOrder FFL.FirstOrder.Arithmetic in
 /-- `thm:ref` at the concrete theory `𝗣𝗔`. -/
 example :=
   @LogicalInduction.lic_introspection_closed 𝗣𝗔 inferInstance inferInstance inferInstance

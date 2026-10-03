@@ -53,7 +53,7 @@ explicitly typed `have` — its autoparams do not elaborate in term position. -/
 example {S : Type u} (F : FactoredSet S) [Finite F.B] {C : Set (Setoid S)} (hC : C ⊆ F.B)
     (X : Setoid S) (h : ∀ x ∈ X.classes, F.chimeraImage C x Set.univ ⊆ x) :
     F.history X ⊆ C := by
-  have h7 : commonRefinement C ≤ X := ((F.generates_tfae hC X).out 2 6).1 h
+  have h7 : commonRefinement C ≤ X := ((F.generates_tfae hC X).out 3 7).1 h
   exact (F.le_iff_history_subset hC X).1 h7
 
 /-- The history of a common *refinement* contains each history: `X ⊓ Y` is the paper's
