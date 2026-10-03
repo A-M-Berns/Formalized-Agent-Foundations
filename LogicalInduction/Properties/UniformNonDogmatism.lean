@@ -112,7 +112,7 @@ lemma obuTrader_exploits
     linarith
   · intro v hv j n hj hpos
     have hprice := obuBuySig_pos_imp φ P hj hpos
-    have hpay : v.payout (φ n) = 1 := by rw [PCWorld.payout, if_pos (hv n)]
+    have hpay : v.payout (φ n) = 1 := by rw [PCWorld.payout, ite_eq_left (hv n)]
     rw [hpay]
     linarith
   · intro j hj

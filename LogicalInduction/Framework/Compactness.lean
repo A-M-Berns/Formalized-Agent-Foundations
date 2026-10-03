@@ -53,9 +53,9 @@ lemma exists_bits (v : PCWorld) :
   refine ⟨fun i => decide (v i), fun φ => ?_⟩
   have hatom : ∀ {a : ℕ}, (ofBits (fun i => decide (v i))) a ↔ v a := by
     intro a; simp [ofBits]
-  have := Formula.Boolean.eq_fml_of_eq_atom
+  have := Formula.eq_fml_of_eq_atom
     (v := ofBits (fun i => decide (v i))) (u := v) hatom (φ := φ)
-  simpa [Holds, Formula.Boolean.models_iff_val] using this
+  simpa [Holds, Formula.models_iff_val] using this
 
 /-! ## Truth sets are clopen -/
 
@@ -67,29 +67,29 @@ lemma isClopen_setOf_holds (φ : Sentence) :
   | atom a =>
       have hset : {b : ℕ → Bool | (ofBits b).Holds (Formula.atom a)}
           = (fun b : ℕ → Bool => b a) ⁻¹' {true} := by
-        ext b; simp [Holds, ofBits, Formula.Boolean.val]
+        ext b; simp [Holds, ofBits, Formula.val]
       rw [hset]
       exact (isClopen_discrete _).preimage (continuous_apply a)
   | falsum =>
       have hset : {b : ℕ → Bool | (ofBits b).Holds Formula.falsum} = (∅ : Set (ℕ → Bool)) := by
-        ext b; simp [Holds, Formula.Boolean.val]
+        ext b; simp [Holds, Formula.val]
       rw [hset]; exact isClopen_empty
   | imp φ ψ ihφ ihψ =>
       have hset : {b : ℕ → Bool | (ofBits b).Holds (φ.imp ψ)}
           = {b : ℕ → Bool | (ofBits b).Holds φ}ᶜ ∪ {b : ℕ → Bool | (ofBits b).Holds ψ} := by
         ext b; simp only [Set.mem_setOf_eq, Set.mem_union, Set.mem_compl_iff, Holds,
-          Formula.Boolean.val]
+          Formula.val]
         tauto
       rw [hset]; exact ihφ.compl.union ihψ
   | and φ ψ ihφ ihψ =>
       have hset : {b : ℕ → Bool | (ofBits b).Holds (φ.and ψ)}
           = {b : ℕ → Bool | (ofBits b).Holds φ} ∩ {b : ℕ → Bool | (ofBits b).Holds ψ} := by
-        ext b; simp [Holds, Formula.Boolean.val]
+        ext b; simp [Holds, Formula.val]
       rw [hset]; exact ihφ.inter ihψ
   | or φ ψ ihφ ihψ =>
       have hset : {b : ℕ → Bool | (ofBits b).Holds (φ.or ψ)}
           = {b : ℕ → Bool | (ofBits b).Holds φ} ∪ {b : ℕ → Bool | (ofBits b).Holds ψ} := by
-        ext b; simp [Holds, Formula.Boolean.val]
+        ext b; simp [Holds, Formula.val]
       rw [hset]; exact ihφ.union ihψ
 
 /-- A stage's consistency set is closed: a finite intersection of the clopen truth sets. -/

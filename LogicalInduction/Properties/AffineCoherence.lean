@@ -170,7 +170,7 @@ lemma PolySequence.affine_provind {As : ℕ → AffineCombination}
     intro n hn
     have hs : start ≤ n := hn.2
     have hone : (entry n).denote P = 1 := by
-      simp only [entry, gateFeature, hs, if_true, gradualEntry]
+      simp only [entry, gateFeature, hs, ite_true, gradualEntry]
       apply buyIndF_eq_one hδ
       rw [(As n).priceFeature_denote]
       linarith [hn.1]
@@ -295,7 +295,7 @@ noncomputable def PolySequence.eventualMember {As : ℕ → AffineCombination}
     terms_eq := by
       intro n
       by_cases hin : i ≤ n
-      · simp only [AffineCombination.eventualMember, hin, if_true, not_lt.mpr hin]
+      · simp only [AffineCombination.eventualMember, hin, ite_true, not_lt.mpr hin]
         rw [h.terms_eq]
         apply List.map_congr_left
         intro j hj

@@ -972,13 +972,13 @@ lemma encodeArithmeticTermSymbols_numeralConst {k : ℕ} (v : ℕ) :
       numeralEnc v := by
   by_cases h : v = 0
   · subst h; rfl
-  · rw [numeralEnc, if_neg h, encodeArithmeticTermSymbols_numeral v h]
+  · rw [numeralEnc, ite_eq_right h, encodeArithmeticTermSymbols_numeral v h]
 
 private lemma enc_paperRatGtDef (r : ℚ) (hr : ¬ r < 0) :
     encodeArithmeticFormulaSymbols
       ((paperRatGtDef r : ArithmeticSemisentence 1) : ArithmeticSemiformula ℕ 1) =
       ratGtPre ++ numeralEnc r.num.natAbs ++ ratGtMid ++ numeralEnc r.den := by
-  rw [paperRatGtDef, if_neg hr,
+  rw [paperRatGtDef, ite_eq_right hr,
     ← encodeArithmeticTermSymbols_numeralConst (k := 3) r.num.natAbs,
     ← encodeArithmeticTermSymbols_numeralConst (k := 3) r.den]
   simp [pairDef, encodeArithmeticFormulaSymbols, encodeArithmeticTermSymbols,
@@ -1001,8 +1001,8 @@ lemma numeralEnc_polySegStream {cv : Code} {v : ℕ → ℕ} (hv : PolyFueled cv
     (PolySegStream.repeatTag 7 hpred).append (PolySegStream.repeatTag 6 hv)
   refine ((PolySegStream.constList [5]).ifZero hpos hv).of_eq fun n => ?_
   by_cases h : v n = 0
-  · rw [if_pos h, numeralEnc, if_pos h]
-  · rw [if_neg h, numeralEnc, if_neg h]
+  · rw [ite_eq_left h, numeralEnc, ite_eq_left h]
+  · rw [ite_eq_right h, numeralEnc, ite_eq_right h]
 
 /-- The threshold rational named by a `RpnThresholdCodeSeq` query index `⟨n, ⟨k, i⟩⟩`. -/
 def queryRat (m : ℕ) : ℚ :=
@@ -1025,9 +1025,9 @@ lemma queryNum_polyFueled :
     (((PolyFueled.const 0).pair numPF).pair hk)).of_eq fun m => ?_⟩
   simp only [Nat.unpair_pair, ifzSelFn]
   by_cases hk0 : m.unpair.2.unpair.1 = 0
-  · rw [if_pos hk0, queryRat, hk0]
+  · rw [ite_eq_left hk0, queryRat, hk0]
     simp
-  · rw [if_neg hk0, queryRat]
+  · rw [ite_eq_right hk0, queryRat]
     have hg : 0 < Nat.gcd m.unpair.2.unpair.2 m.unpair.2.unpair.1 :=
       Nat.gcd_pos_of_pos_right _ (Nat.pos_of_ne_zero hk0)
     have hg1 : (Nat.gcd m.unpair.2.unpair.2 m.unpair.2.unpair.1).pred + 1 =
@@ -1048,9 +1048,9 @@ lemma queryDen_polyFueled :
     (((PolyFueled.const 1).pair denPF).pair hk)).of_eq fun m => ?_⟩
   simp only [Nat.unpair_pair, ifzSelFn]
   by_cases hk0 : m.unpair.2.unpair.1 = 0
-  · rw [if_pos hk0, queryRat, hk0]
+  · rw [ite_eq_left hk0, queryRat, hk0]
     simp
-  · rw [if_neg hk0, queryRat]
+  · rw [ite_eq_right hk0, queryRat]
     have hg : 0 < Nat.gcd m.unpair.2.unpair.2 m.unpair.2.unpair.1 :=
       Nat.gcd_pos_of_pos_right _ (Nat.pos_of_ne_zero hk0)
     have hg1 : (Nat.gcd m.unpair.2.unpair.2 m.unpair.2.unpair.1).pred + 1 =

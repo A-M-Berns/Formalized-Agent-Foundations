@@ -230,9 +230,9 @@ lemma functionOf_jointOn_union (N : RVModel J) (F G : Set J) :
   refine ⟨fun p B => if h : (B : J) ∈ F then p.1 ⟨B, h⟩ else p.2 ⟨B, B.2.resolve_left h⟩,
     measurable_pi_iff.mpr fun B => ?_, fun ω => ?_⟩
   · by_cases h : (B : J) ∈ F
-    · simp only [dif_pos h]
+    · simp only [dite_eq_left h]
       exact (measurable_pi_apply _).comp measurable_fst
-    · simp only [dif_neg h]
+    · simp only [dite_eq_right h]
       exact (measurable_pi_apply _).comp measurable_snd
   · funext B
     by_cases h : (B : J) ∈ F <;> simp [h, RVModel.jointOn]

@@ -281,7 +281,7 @@ lemma poly_ne_zero [Finite S] (C : Set (Setoid S)) {E : Set S} (hE : E.Nonempty)
   obtain ⟨s, hs⟩ := hE
   intro h
   have hco := coeff_poly_monoExp C E (monoExp C s)
-  rw [h, if_pos ⟨s, hs, rfl⟩] at hco
+  rw [h, ite_eq_left ⟨s, hs, rfl⟩] at hco
   simp at hco
 
 private lemma monos_eq_image_support [Finite S] (C : Set (Setoid S)) (E : Set S) :
@@ -333,14 +333,14 @@ private lemma monoExp_apply {C : Set (Setoid S)} (hCfin : C.Finite) (hC : C ⊆ 
   split_ifs with h
   · obtain ⟨b₀, hb₀C, hb₀⟩ := h
     rw [Finset.sum_eq_single b₀]
-    · rw [if_pos hb₀]
+    · rw [ite_eq_left hb₀]
     · intro b hb hne
-      rw [if_neg]
+      rw [ite_eq_right]
       intro hbv
       exact hne (F.eq_of_part_eq (hC (by simpa using hb)) (hC hb₀C) (hbv.trans hb₀.symm))
     · intro hb₀f
       exact absurd (by simpa using hb₀C) hb₀f
-  · exact Finset.sum_eq_zero fun b hb => if_neg fun hbv => h ⟨b, by simpa using hb, hbv⟩
+  · exact Finset.sum_eq_zero fun b hb => ite_eq_right fun hbv => h ⟨b, by simpa using hb, hbv⟩
 
 private lemma monoExp_ne_zero_iff [Finite F.B] {C : Set (Setoid S)} (hC : C ⊆ F.B) (s : S)
     (v : Set S) : monoExp C s v ≠ 0 ↔ ∃ b ∈ C, part b s = v := by
@@ -357,13 +357,13 @@ lemma mono_eq_iff [Finite F.B] {C : Set (Setoid S)} (hC : C ⊆ F.B) {s t : S} :
   rw [mono_eq_monomial hCfin, mono_eq_monomial hCfin] at h
   have hexp : monoExp C s = monoExp C t := monomial_left_injective one_ne_zero h
   have hv : monoExp C s (part b s) = monoExp C t (part b s) := by rw [hexp]
-  rw [F.monoExp_apply hCfin hC s, F.monoExp_apply hCfin hC t, if_pos ⟨b, hb, rfl⟩] at hv
+  rw [F.monoExp_apply hCfin hC s, F.monoExp_apply hCfin hC t, ite_eq_left ⟨b, hb, rfl⟩] at hv
   by_cases hex : ∃ b' ∈ C, part b' t = part b s
   · obtain ⟨b', hb'C, hb'⟩ := hex
     have hbb : b' = b := F.eq_of_part_eq (hC hb'C) (hC hb) hb'
     rw [hbb] at hb'
     exact hb'.symm
-  · rw [if_neg hex] at hv
+  · rw [ite_eq_right hex] at hv
     exact absurd hv one_ne_zero
 
 /-- Every variable has degree at most one in `mono^F_C(s)` for `C ⊆ B` — Corollary 1 says
@@ -452,7 +452,7 @@ coefficients is `0` or `1`.  Proposition 28 runs entirely on these two lemmas. -
 
 private lemma coeff_Q_monoExp [Finite S] {E : Set S} {s : S} (hs : s ∈ E) :
     (F.Q E).coeff (monoExp F.B s) = 1 := by
-  rw [F.Q_eq_poly E, coeff_poly_monoExp, if_pos ⟨s, hs, rfl⟩]
+  rw [F.Q_eq_poly E, coeff_poly_monoExp, ite_eq_left ⟨s, hs, rfl⟩]
 
 private lemma exists_of_coeff_Q_ne_zero [Finite S] {E : Set S} {a : (Set S) →₀ ℕ}
     (h : (F.Q E).coeff a ≠ 0) : ∃ s ∈ E, monoExp F.B s = a := by
@@ -607,9 +607,9 @@ theorem eq_C_mul_poly_of_dvd_Q [Finite S] {E : Set S} (hE : E.Nonempty) {p : Pol
     by_contra hbt
     obtain ⟨u, hu, hueq⟩ := hA _ (hCsplit s hs).1 _ (hCsplit t ht).2
     have hes : monoExp F.B s (part b s) = 1 := by
-      rw [F.monoExp_apply hBfin le_rfl, if_pos ⟨b, hbB, rfl⟩]
+      rw [F.monoExp_apply hBfin le_rfl, ite_eq_left ⟨b, hbB, rfl⟩]
     have het : monoExp F.B t (part b t) = 1 := by
-      rw [F.monoExp_apply hBfin le_rfl, if_pos ⟨b, hbB, rfl⟩]
+      rw [F.monoExp_apply hBfin le_rfl, ite_eq_left ⟨b, hbB, rfl⟩]
     have hvs : ((monoExp F.B s).filter (· ∈ p.vars)) (part b s) = 1 := by
       rw [Finsupp.filter_apply]; simp [hbs, hes]
     have hvt : ((monoExp F.B t).filter (fun v => v ∉ p.vars)) (part b t) = 1 := by
@@ -638,7 +638,7 @@ theorem eq_C_mul_poly_of_dvd_Q [Finite S] {E : Set S} (hE : E.Nonempty) {p : Pol
     rw [Finsupp.filter_apply, F.monoExp_apply hBfin le_rfl,
       F.monoExp_apply (hBfin.subset hCsub) hCsub]
     by_cases hv : v ∈ p.vars
-    · rw [if_pos hv]
+    · rw [ite_eq_left hv]
       refine if_congr ⟨?_, ?_⟩ rfl rfl
       · rintro ⟨b, hbB, hbv⟩
         exact ⟨b, (hmemC b hbB s hs).1 (hbv ▸ hv), hbv⟩
@@ -647,7 +647,7 @@ theorem eq_C_mul_poly_of_dvd_Q [Finite S] {E : Set S} (hE : E.Nonempty) {p : Pol
     · have hnot : ¬ ∃ b ∈ C, part b s = v := by
         rintro ⟨b, hbC, rfl⟩
         exact hv ((hmemC b (hCsub hbC) s hs).2 hbC)
-      rw [if_neg hv, if_neg hnot]
+      rw [ite_eq_right hv, ite_eq_right hnot]
   -- (B) all coefficients of `p` are the same real.
   obtain ⟨a₀, ha₀⟩ := support_nonempty.2 hp0
   obtain ⟨b₀, hb₀⟩ := support_nonempty.2 hq0

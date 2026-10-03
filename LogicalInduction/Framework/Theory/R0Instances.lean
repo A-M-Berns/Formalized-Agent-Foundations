@@ -123,7 +123,7 @@ private lemma models_repr_sentence {M : Type*} [ORingStructure M] [M↓[ℒₒ�
   intro x
   have h := eval_code_iff (M := M) hc hy x
   simpa [Matrix.comp_vecCons', Function.comp_def, Matrix.constant_eq_singleton,
-    Matrix.empty_eq, Structure.numeral_eq_numeral] using h
+    Matrix.empty_eq, Tarski.Structure.numeral_eq_numeral] using h
 
 /-- **Every `ℕ`-sound extension of `𝗣𝗔⁻` represents computations.**
 
@@ -169,7 +169,7 @@ lemma representsComputations_of_peanoMinus (U : ArithmeticTheory)
     have h1 := hN (f n)
     have h3 : Semiformula.Evalb (M := ℕ) ![f n, n] (code c) ↔ f n = y := by
       simpa [Matrix.comp_vecCons', Function.comp_def, Matrix.constant_eq_singleton,
-        Matrix.empty_eq, Structure.numeral_eq_numeral] using h1
+        Matrix.empty_eq, Tarski.Structure.numeral_eq_numeral] using h1
     exact (h3.mp h2).symm
 
 end Representation

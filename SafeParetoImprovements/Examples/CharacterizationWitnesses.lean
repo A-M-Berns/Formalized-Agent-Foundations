@@ -246,8 +246,8 @@ def mixPlay : Play Two MixUniverse Bool where
                 else (G.S i).min' (G.nonempty i)
   mem G ω i := by
     by_cases h : 3 ≤ (G.S i).card ∧ ω = true
-    · simp only [if_pos h]; exact Finset.max'_mem _ _
-    · simp only [if_neg h]; exact Finset.min'_mem _ _
+    · simp only [ite_eq_left h]; exact Finset.max'_mem _ _
+    · simp only [ite_eq_right h]; exact Finset.min'_mem _ _
 
 /-- `mixPlay` on the fair coin. -/
 noncomputable def mixRepresentatives : Representatives.{0, 0, 0} Two MixUniverse where
@@ -261,21 +261,21 @@ lemma mixRepresentatives_play_base (ω : Bool) :
   funext i
   show (if 3 ≤ (mixBase.S i).card ∧ ω = true then (mixBase.S i).max' (mixBase.nonempty i)
         else (mixBase.S i).min' (mixBase.nonempty i)) = pair 0 0 i
-  rw [if_neg (by rintro ⟨h, -⟩; revert h; cases i <;> decide)]
+  rw [ite_eq_right (by rintro ⟨h, -⟩; revert h; cases i <;> decide)]
   cases i <;> rfl
 
 lemma mixRepresentatives_play_tok_true : mixRepresentatives.play mixTok true = pair 4 4 := by
   funext i
   show (if 3 ≤ (mixTok.S i).card ∧ true = true then (mixTok.S i).max' (mixTok.nonempty i)
         else (mixTok.S i).min' (mixTok.nonempty i)) = pair 4 4 i
-  rw [if_pos (by refine ⟨?_, rfl⟩; cases i <;> decide)]
+  rw [ite_eq_left (by refine ⟨?_, rfl⟩; cases i <;> decide)]
   cases i <;> rfl
 
 lemma mixRepresentatives_play_tok_false : mixRepresentatives.play mixTok false = pair 2 2 := by
   funext i
   show (if 3 ≤ (mixTok.S i).card ∧ false = true then (mixTok.S i).max' (mixTok.nonempty i)
         else (mixTok.S i).min' (mixTok.nonempty i)) = pair 2 2 i
-  rw [if_neg (by rintro ⟨-, h⟩; exact Bool.noConfusion h)]
+  rw [ite_eq_right (by rintro ⟨-, h⟩; exact Bool.noConfusion h)]
   cases i <;> rfl
 
 lemma mixBase_mem (a x : ℕ) (ha : a = 0 ∨ a = 1) (hx : x = 0 ∨ x = 1) :
@@ -295,21 +295,21 @@ noncomputable def mixToken : TokenGame mixBase where
   ue b := if b .one = 4 then mixBase.u (pair 1 1) else mixBase.u (pair 0 0)
   ue_mem b _ := by
     by_cases h : b .one = 4
-    · rw [if_pos h]; exact mixBase.u_mem_feasible (mixBase_mem 1 1 (Or.inr rfl) (Or.inr rfl))
-    · rw [if_neg h]; exact mixBase.u_mem_feasible (mixBase_mem 0 0 (Or.inl rfl) (Or.inl rfl))
+    · rw [ite_eq_left h]; exact mixBase.u_mem_feasible (mixBase_mem 1 1 (Or.inr rfl) (Or.inr rfl))
+    · rw [ite_eq_right h]; exact mixBase.u_mem_feasible (mixBase_mem 0 0 (Or.inl rfl) (Or.inl rfl))
 
 lemma mixToken_ue_true :
     mixToken.ue (mixRepresentatives.play mixToken.game true) = mixBase.u (pair 1 1) := by
   show (if (mixRepresentatives.play mixTok true) .one = 4 then mixBase.u (pair 1 1)
         else mixBase.u (pair 0 0)) = mixBase.u (pair 1 1)
   rw [mixRepresentatives_play_tok_true,
-    if_pos (show (pair 4 4 : ∀ i, MixUniverse i) Two.one = 4 from rfl)]
+    ite_eq_left (show (pair 4 4 : ∀ i, MixUniverse i) Two.one = 4 from rfl)]
 
 lemma mixToken_ue_false :
     mixToken.ue (mixRepresentatives.play mixToken.game false) = mixBase.u (pair 0 0) := by
   show (if (mixRepresentatives.play mixTok false) .one = 4 then mixBase.u (pair 1 1)
         else mixBase.u (pair 0 0)) = mixBase.u (pair 0 0)
-  rw [mixRepresentatives_play_tok_false, if_neg (by decide)]
+  rw [mixRepresentatives_play_tok_false, ite_eq_right (by decide)]
 
 /-- `mixToken` is a perfect-coordination SPI (Definition 6). -/
 lemma mixToken_isSPI : mixToken.IsSPI mixRepresentatives.toPlay mixRepresentatives.certainty := by

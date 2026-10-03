@@ -176,7 +176,7 @@ lemma admissibleName_sourceNat {s : ArithSource 0} {σ : ArithmeticSentence}
 lemma gateName_sourceNat {s : ArithSource 0} {σ : ArithmeticSentence}
     (hc : ArithSource.compile s = (↑σ : ArithmeticSemiformula ℕ 0)) :
     gateName (ArithSource.sourceNat s) = ArithSource.sourceNat s :=
-  if_pos (admissibleName_sourceNat hc)
+  ite_eq_left (admissibleName_sourceNat hc)
 
 @[simp] lemma compile_leaf_verum :
     ArithSource.compile (ArithSource.leaf (⊤ : ArithmeticSemiformula ℕ 0))
@@ -192,9 +192,9 @@ lemma exists_source_gateName (v : ℕ) :
       ArithSource.sourceNat s = gateName v ∧
         ArithSource.compile s = (↑σ : ArithmeticSemiformula ℕ 0) := by
   by_cases h : AdmissibleName v
-  · rw [gateName, if_pos h]; exact exists_source_of_admissibleName h
+  · rw [gateName, ite_eq_left h]; exact exists_source_of_admissibleName h
   · exact ⟨ArithSource.leaf (⊤ : ArithmeticSemiformula ℕ 0), ⊤,
-      by rw [gateName, if_neg h]; rfl, compile_leaf_verum⟩
+      by rw [gateName, ite_eq_right h]; rfl, compile_leaf_verum⟩
 
 /-! ## The day's axiom window -/
 
@@ -253,15 +253,15 @@ lemma exists_sources_axiomWindow (z w : ℕ) :
           · left
             rw [hev] at hname hadm
             simp only [Option.getD_none] at hname hadm
-            rw [gateName, if_pos hadm] at hname
+            rw [gateName, ite_eq_left hadm] at hname
             exact eq_verum_of_sourceNat_eq_verum hc hname
           · right
             rw [hev] at hname hadm
             simp only [Option.getD_some] at hname hadm
-            rw [gateName, if_pos hadm] at hname
+            rw [gateName, ite_eq_left hadm] at hname
             exact ⟨i, by rw [hev, hname]⟩
         · left
-          rw [gateName, if_neg hadm] at hname
+          rw [gateName, ite_eq_right hadm] at hname
           exact eq_verum_of_sourceNat_eq_verum hc hname
       · exact hall t ht'
 

@@ -158,8 +158,8 @@ lemma UnaryRuler.ifZero {t a b : ℕ → ℕ} (ht : UnaryRuler t) (ha : UnaryRul
         List.replicate (if t z.length = 0 then a z.length else b z.length) false := by
     funext z
     by_cases hz : t z.length = 0
-    · rw [if_pos (by simp [hz]), if_pos hz]
-    · rw [if_neg (by simpa using hz), if_neg hz]
+    · rw [ite_eq_left (by simp [hz]), ite_eq_left hz]
+    · rw [ite_eq_right (by simpa using hz), ite_eq_right hz]
   rwa [heq] at h
 
 /-- **Equality of two counts**, as the symmetric difference tested against zero: the two
@@ -187,8 +187,8 @@ lemma UnaryRuler.ite_lt_const (i a b : ℕ) :
           = fun z : List Bool => List.replicate (if z.length < i + 1 then a else b) false := by
         funext z
         by_cases hz : z.length ≤ i
-        · rw [if_pos hz, if_pos (by omega)]
-        · rw [if_neg hz, if_neg (by omega)]
+        · rw [ite_eq_left hz, ite_eq_left (by omega)]
+        · rw [ite_eq_right hz, ite_eq_right (by omega)]
       rwa [heq] at h
 
 /-! ### Unpairing
@@ -311,7 +311,7 @@ private lemma segLocate_count_eq_self (lenFn : ℕ → ℕ) (n i : ℕ) : ∀ k 
       have hprev : LogicalInduction.segPrefix lenFn n k ≤ i :=
         le_trans (segPrefix_mono lenFn n (Nat.le_succ k)) hk
       rw [List.range_succ, List.flatMap_append, List.flatMap_singleton, List.length_append,
-        segLocate_count_eq_self lenFn n i k hprev, if_pos hk]
+        segLocate_count_eq_self lenFn n i k hprev, ite_eq_left hk]
       simp
 
 /-- **The locator is a count.** Marking each block `j + 1 ≤ k` whose prefix sum still fits
@@ -327,11 +327,11 @@ private lemma segLocate_eq_count (lenFn : ℕ → ℕ) (n i : ℕ) : ∀ k : ℕ
       rw [List.range_succ, List.flatMap_append, List.flatMap_singleton, List.length_append,
         LogicalInduction.segLocate]
       by_cases hk : LogicalInduction.segPrefix lenFn n (k + 1) ≤ i
-      · rw [if_pos hk, if_pos hk,
+      · rw [ite_eq_left hk, ite_eq_left hk,
           segLocate_count_eq_self lenFn n i k
             (le_trans (segPrefix_mono lenFn n (Nat.le_succ k)) hk)]
         simp
-      · rw [if_neg hk, if_neg hk, segLocate_eq_count lenFn n i k]
+      · rw [ite_eq_right hk, ite_eq_right hk, segLocate_eq_count lenFn n i k]
         simp
 
 /-- **The prefix sum of a ruler-metered segment length is a ruler.** The machine twin of
@@ -447,21 +447,21 @@ only over the intended trajectory.  The truncation is written as `drop` twice
 
 Length side condition: the cap must be positive, since the loop starts from one mark. -/
 
-/-- One capped doubling step, reading the cap from `fstBlock` and the state from `sndBlock`
+/-- One capped doubling step, reading the cap from `pairFst` and the state from `pairSnd`
 exactly as `FPFold.foldlBits` packages them. -/
 private def capDoubleStep (w : List Bool) : List Bool :=
-  (sndBlock w ++ sndBlock w).drop
-    (((sndBlock w ++ sndBlock w).drop (fstBlock w).length).length)
+  (pairSnd w ++ pairSnd w).drop
+    (((pairSnd w ++ pairSnd w).drop (pairFst w).length).length)
 
 private lemma capDoubleStep_mem_FP : capDoubleStep ∈ Complexity.FP := by
-  have hs : (fun w : List Bool => sndBlock w ++ sndBlock w) ∈ Complexity.FP :=
+  have hs : (fun w : List Bool => pairSnd w ++ pairSnd w) ∈ Complexity.FP :=
     Complexity.Cobham.appendFn_mem_FP sndBlock_mem_FP sndBlock_mem_FP
   exact TokenFold.dropLenFn_mem_FP (TokenFold.dropLenFn_mem_FP fstBlock_mem_FP hs) hs
 
 private lemma capDoubleStep_length (W st : List Bool) :
     (capDoubleStep (Complexity.pair W st)).length
       = min W.length (st.length + st.length) := by
-  simp only [capDoubleStep, fstBlock_pair, sndBlock_pair, List.length_drop,
+  simp only [capDoubleStep, pairFst_pair, pairSnd_pair, List.length_drop,
     List.length_append]
   omega
 
@@ -470,7 +470,7 @@ private lemma capDoubleStep_replicate (W : List Bool) (a : ℕ) :
       = List.replicate (min W.length (a + a)) false := by
   have hcat : List.replicate a false ++ List.replicate a false
       = List.replicate (a + a) false := (List.replicate_add a a false).symm
-  simp only [capDoubleStep, fstBlock_pair, sndBlock_pair, hcat, List.drop_replicate,
+  simp only [capDoubleStep, pairFst_pair, pairSnd_pair, hcat, List.drop_replicate,
     List.length_replicate]
   congr 1
   omega

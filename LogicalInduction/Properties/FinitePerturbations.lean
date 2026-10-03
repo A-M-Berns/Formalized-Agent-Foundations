@@ -230,12 +230,12 @@ lemma freezeBefore_netWorth_difference_le
         if day < cutoff then g day else 0 := by
     intro day
     by_cases hday : day < cutoff
-    · rw [if_pos hday]
+    · rw [ite_eq_left hday]
       exact (abs_sub _ _).trans (add_le_add
         (Strategy.abs_value_le_magnitude (Tr.strat day) P v.payout hw (hP day))
         (Strategy.abs_value_le_magnitude
           ((Tr.freezeBefore quote cutoff).strat day) P' v.payout hw (hP' day)))
-    · rw [if_neg hday]
+    · rw [ite_eq_right hday]
       have heq := Tr.freezeBefore_value_tail quote cutoff P P' v.payout
         hprefix htail (Nat.le_of_not_gt hday)
       rw [heq]
@@ -304,12 +304,12 @@ lemma freezeOn_netWorth_difference_le (Tr : Trader) (quote : ℕ → Sentence �
         if day ∈ D then g day else 0 := by
     intro day
     by_cases hday : day ∈ D
-    · rw [if_pos hday]
+    · rw [ite_eq_left hday]
       exact (abs_sub _ _).trans (add_le_add
         (Strategy.abs_value_le_magnitude (Tr.strat day) P v.payout hw (hP day))
         (Strategy.abs_value_le_magnitude
           ((Tr.freezeOn quote sel).strat day) P' v.payout hw (hP' day)))
-    · rw [if_neg hday]
+    · rw [ite_eq_right hday]
       have heq := (Tr.strat day).freezeOn_value quote sel P P' v.payout hin hout
         (hD day hday)
       change |(Tr.strat day).value P v.payout -
@@ -490,7 +490,7 @@ lemma tailAgree_not_finiteSupport :
   refine ⟨fun _ _ => 0, fun d _ => if d = 0 then 1 else 0, ?_, ?_⟩
   · intro d hd _
     show (0 : ℝ) = if d = 0 then 1 else 0
-    rw [if_neg (by omega)]
+    rw [ite_eq_right (by omega)]
   · rintro ⟨S, hS⟩
     obtain ⟨φ, hφ⟩ := Infinite.exists_notMem_finset (S.image Prod.snd)
     have hmem : (0, φ) ∉ S := fun hc => hφ (Finset.mem_image.mpr ⟨(0, φ), hc, rfl⟩)

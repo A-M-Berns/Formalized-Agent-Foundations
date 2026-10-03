@@ -273,14 +273,14 @@ lemma semanticValuedDiagonalLUVSeq_isIndicator (DP : DeductiveProcess) (n : ℕ)
   have hr0 : ((r : ℝ) < 0) ↔ r < 0 := by exact_mod_cast Iff.rfl
   have hr1 : ((r : ℝ) < 1) ↔ r < 1 := by exact_mod_cast Iff.rfl
   refine ⟨fun h => ?_, fun hlo hhi => ?_, fun h => ?_⟩
-  · rw [semanticValuedDiagonalLUVSeq_gt, if_pos (hr0.mp h)]
+  · rw [semanticValuedDiagonalLUVSeq_gt, ite_eq_left (hr0.mp h)]
     exact PCWorld.holds_top v
   · have hn0 : ¬ r < 0 := fun h => (not_lt.mpr hlo) (hr0.mpr h)
-    rw [semanticValuedDiagonalLUVSeq_gt, if_neg hn0, if_pos (hr1.mp hhi)]
+    rw [semanticValuedDiagonalLUVSeq_gt, ite_eq_right hn0, ite_eq_left (hr1.mp hhi)]
   · have hn1 : ¬ r < 1 := fun h' => (not_lt.mpr h) (hr1.mpr h')
     have hn0 : ¬ r < 0 := fun h' => hn1 (h'.trans (by norm_num))
     simp [semanticValuedDiagonalLUVSeq_gt, hn0, hn1, PCWorld.Holds,
-      FFL.Propositional.Formula.Boolean.val]
+      FFL.Propositional.Formula.val]
 
 /-- Hence the valued diagonal satisfies the closed CCEE `source_valued` premise for every
 process, at the Boolean value of its defining indicator proposition. -/
@@ -337,7 +337,7 @@ lemma semanticValuedDiagonalLUVSeq_machineThresholdCodeSeq :
   have hnonneg : ¬ ((m.unpair.2.unpair.2 : ℚ) /
       (m.unpair.2.unpair.1 : ℚ)) < 0 :=
     not_lt.mpr (div_nonneg (by positivity) (by positivity))
-  rw [if_neg hnonneg]
+  rw [ite_eq_right hnonneg]
   by_cases hk0 : m.unpair.2.unpair.1 = 0
   · simp [semanticValuedDiagonalMeshSelector, hk0, ifzSelFn]
   · by_cases hi : m.unpair.2.unpair.2 < m.unpair.2.unpair.1
@@ -362,7 +362,7 @@ lemma semanticValuedDiagonal_not_reflected (DP : DeductiveProcess)
       ∀ n r, v.Holds ((Xhat.toLUV n).gt r) ↔
         v.Holds ((semanticValuedDiagonalLUVSeq n).gt r)) :=
   not_reflected_of_negates_own_schema DP Xhat (fun n => by
-    rw [semanticValuedDiagonalLUVSeq_gt, if_neg (by norm_num), if_pos (by norm_num),
+    rw [semanticValuedDiagonalLUVSeq_gt, ite_eq_right (by norm_num), ite_eq_left (by norm_num),
       semanticValuedDiagonalProp])
 
 /-- Strengthened obstruction: even restricting the universal bridge to source families

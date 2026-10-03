@@ -404,6 +404,8 @@ def unpairSlot : Fin 9 ↪ Fin 16 :=
     have : a.val + 6 = b.val + 6 := congrArg Fin.val h
     exact Fin.ext (by omega)⟩
 
+@[simp] lemma unpairSlot_val (j : Fin 9) : (unpairSlot j).val = j.val + 6 := rfl
+
 @[simp] lemma unpairSlot_zero : unpairSlot 0 = (6 : Fin 16) := by decide
 @[simp] lemma unpairSlot_one : unpairSlot 1 = (7 : Fin 16) := by decide
 
@@ -516,7 +518,7 @@ lemma projVals_lt (v : Fin 16 → ℕ) (wj : Fin 9) (B : ℕ) (hB2 : 2 ≤ B)
   have hw := hau (unpairSlot wj)
   have hk := hau k
   simp only [projVals, Function.update_apply]
-  by_cases hg : v 0 < v 1 <;> simp only [hg, if_true, if_false] <;> split_ifs <;> omega
+  by_cases hg : v 0 < v 1 <;> simp only [hg, ite_true, ite_false] <;> split_ifs <;> omega
 
 end BaseBound
 
@@ -554,7 +556,7 @@ lemma compileProj_hoareTime (r : CodeRegs n) (wj : Fin 9) (v : Fin 16 → ℕ) (
     refine Regs.ne r ?_
     intro e
     have := congrArg Fin.val e
-    simp [unpairSlot] at this
+    simp [unpairSlot_val] at this
   have h2 := unpairTM_hoareTime_arith (unpairSlot.trans r) (r 0) hctr
       (fun j => afterGuard v (unpairSlot j)) (v 0) B inp₀
       (regsWork r w₀ (afterGuard v)) ys hinp₀ (hpv (afterGuard v))
@@ -599,16 +601,16 @@ lemma compileProj_hoareTime (r : CodeRegs n) (wj : Fin 9) (v : Fin 16 → ℕ) (
   have g4_w : V4 (unpairSlot wj) = afterUnpair v (unpairSlot wj) := by
     rw [hV4, hV3]
     have h2' : unpairSlot wj ≠ (2 : Fin 16) := by
-      intro e; have := congrArg Fin.val e; simp [unpairSlot] at this
+      intro e; have := congrArg Fin.val e; simp [unpairSlot_val] at this
     have h3' : unpairSlot wj ≠ (3 : Fin 16) := by
-      intro e; have := congrArg Fin.val e; simp [unpairSlot] at this
+      intro e; have := congrArg Fin.val e; simp [unpairSlot_val] at this
     simp [h2', h3']
   have g4_3 : V4 3 = 0 := by rw [hV4]; simp
   -- S5: val := gflag * projection
   have h5 := mulAddIntoTM_hoareTime (r 4) (r (unpairSlot wj)) (r 3)
-      (r.ne (by intro e; have := congrArg Fin.val e; simp [unpairSlot] at this))
+      (r.ne (by intro e; have := congrArg Fin.val e; simp [unpairSlot_val] at this))
       (r.ne (by decide))
-      (r.ne (by intro e; have := congrArg Fin.val e; simp [unpairSlot] at this))
+      (r.ne (by intro e; have := congrArg Fin.val e; simp [unpairSlot_val] at this))
       (if v 0 < v 1 then 1 else 0) (afterUnpair v (unpairSlot wj)) 0 inp₀
       (regsWork r w₀ V4) ys hinp₀ (fun i _ => hpv V4 i)
       (by rw [regsWork_apply, g4_4]) (by rw [regsWork_apply, g4_w])
@@ -1125,16 +1127,16 @@ lemma binSelf_update_apply (i j : Fin 16) (X : Fin (16 + af + ag) → ℕ) (x : 
     Function.update X (binSelf af ag j) x (binSelf af ag i)
       = if (i : ℕ) = (j : ℕ) then x else X (binSelf af ag i) := by
   by_cases h : (i : ℕ) = (j : ℕ)
-  · rw [if_pos h, Fin.ext h, Function.update_self]
-  · rw [if_neg h, Function.update_of_ne (binSelf_ne_self i j h)]
+  · rw [ite_eq_left h, Fin.ext h, Function.update_self]
+  · rw [ite_eq_right h, Function.update_of_ne (binSelf_ne_self i j h)]
 
 lemma binLeftLoc_update_apply (haf : 16 ≤ af) (i j : Fin 16)
     (X : Fin (16 + af + ag) → ℕ) (x : ℕ) :
     Function.update X (binLeftLoc af ag haf j) x (binLeftLoc af ag haf i)
       = if (i : ℕ) = (j : ℕ) then x else X (binLeftLoc af ag haf i) := by
   by_cases h : (i : ℕ) = (j : ℕ)
-  · rw [if_pos h, Fin.ext h, Function.update_self]
-  · rw [if_neg h, Function.update_of_ne (fun e => h (by
+  · rw [ite_eq_left h, Fin.ext h, Function.update_self]
+  · rw [ite_eq_right h, Function.update_of_ne (fun e => h (by
       have := congrArg (Fin.val) e
       simpa [binLeftLoc, shiftEmb_val] using this))]
 
@@ -1143,8 +1145,8 @@ lemma binRightLoc_update_apply (hag : 16 ≤ ag) (i j : Fin 16)
     Function.update X (binRightLoc af ag hag j) x (binRightLoc af ag hag i)
       = if (i : ℕ) = (j : ℕ) then x else X (binRightLoc af ag hag i) := by
   by_cases h : (i : ℕ) = (j : ℕ)
-  · rw [if_pos h, Fin.ext h, Function.update_self]
-  · rw [if_neg h, Function.update_of_ne (fun e => h (by
+  · rw [ite_eq_left h, Fin.ext h, Function.update_self]
+  · rw [ite_eq_right h, Function.update_of_ne (fun e => h (by
       have := congrArg (Fin.val) e
       simpa [binRightLoc, shiftEmb_val] using this))]
 
@@ -1236,13 +1238,13 @@ lemma pairWin_self_apply (i : Fin 16) (X : Fin (16 + af + ag) → ℕ) (u : Fin 
       = if h : 6 ≤ (i : ℕ) ∧ (i : ℕ) < 14 then u ⟨(i : ℕ) - 6, by omega⟩
         else X (binSelf af ag i) := by
   by_cases h : 6 ≤ (i : ℕ) ∧ (i : ℕ) < 14
-  · rw [dif_pos h]
+  · rw [dite_eq_left h]
     have hid : (pairSlot.trans (binSelf af ag)) ⟨(i : ℕ) - 6, by omega⟩ = binSelf af ag i := by
       apply Fin.ext
       simp [pairSlot, binSelf, shiftEmb_val]
       omega
     rw [← hid, writeWindow_apply]
-  · rw [dif_neg h, pairAmb_eq]
+  · rw [dite_eq_right h, pairAmb_eq]
     refine writeWindow_of_ne _ _ _ (fun t => pairAmb_ne_self t i ?_)
     have := t.isLt
     simp at h ⊢
@@ -2140,9 +2142,9 @@ lemma precRunG_eq_precRun (cf cg : Nat.Partrec.Code) (a m f : ℕ)
     (hout : Nat.pair a m < f + m) : ∀ j, j ≤ m →
     precRunG cf cg a f j = precRun cf cg a f j
   | 0, _ => by
-      rw [precRunG, precRun, if_pos (by simpa using level_guard a m f 0 (Nat.zero_le _) hout)]
+      rw [precRunG, precRun, ite_eq_left (by simpa using level_guard a m f 0 (Nat.zero_le _) hout)]
   | j + 1, hj => by
-      rw [precRunG, precRun, if_pos (level_guard a m f (j + 1) hj hout),
+      rw [precRunG, precRun, ite_eq_left (level_guard a m f (j + 1) hj hout),
         precRunG_eq_precRun cf cg a m f hout j (by omega)]
 
 /-! ### The guard-free step masks, and closure against `evaln`
@@ -2350,16 +2352,16 @@ lemma precSelf_update_apply (i j : Fin 32) (X : Fin (32 + af + ag) → ℕ) (x :
     Function.update X (precSelf af ag j) x (precSelf af ag i)
       = if (i : ℕ) = (j : ℕ) then x else X (precSelf af ag i) := by
   by_cases h : (i : ℕ) = (j : ℕ)
-  · rw [if_pos h, Fin.ext h, Function.update_self]
-  · rw [if_neg h, Function.update_of_ne (precSelf_ne_self i j h)]
+  · rw [ite_eq_left h, Fin.ext h, Function.update_self]
+  · rw [ite_eq_right h, Function.update_of_ne (precSelf_ne_self i j h)]
 
 lemma precLeftLoc_update_apply (haf : 16 ≤ af) (i j : Fin 16)
     (X : Fin (32 + af + ag) → ℕ) (x : ℕ) :
     Function.update X (precLeftLoc af ag haf j) x (precLeftLoc af ag haf i)
       = if (i : ℕ) = (j : ℕ) then x else X (precLeftLoc af ag haf i) := by
   by_cases h : (i : ℕ) = (j : ℕ)
-  · rw [if_pos h, Fin.ext h, Function.update_self]
-  · rw [if_neg h, Function.update_of_ne (fun e => h (by
+  · rw [ite_eq_left h, Fin.ext h, Function.update_self]
+  · rw [ite_eq_right h, Function.update_of_ne (fun e => h (by
       have := congrArg (Fin.val) e
       simpa [precLeftLoc, shiftEmb_val] using this))]
 
@@ -2368,8 +2370,8 @@ lemma precRightLoc_update_apply (hag : 16 ≤ ag) (i j : Fin 16)
     Function.update X (precRightLoc af ag hag j) x (precRightLoc af ag hag i)
       = if (i : ℕ) = (j : ℕ) then x else X (precRightLoc af ag hag i) := by
   by_cases h : (i : ℕ) = (j : ℕ)
-  · rw [if_pos h, Fin.ext h, Function.update_self]
-  · rw [if_neg h, Function.update_of_ne (fun e => h (by
+  · rw [ite_eq_left h, Fin.ext h, Function.update_self]
+  · rw [ite_eq_right h, Function.update_of_ne (fun e => h (by
       have := congrArg (Fin.val) e
       simpa [precRightLoc, shiftEmb_val] using this))]
 
@@ -2416,13 +2418,13 @@ lemma precPairWin_self_apply (i : Fin 32) (X : Fin (32 + af + ag) → ℕ) (u : 
       = if h : 16 ≤ (i : ℕ) ∧ (i : ℕ) < 24 then u ⟨(i : ℕ) - 16, by omega⟩
         else X (precSelf af ag i) := by
   by_cases h : 16 ≤ (i : ℕ) ∧ (i : ℕ) < 24
-  · rw [dif_pos h]
+  · rw [dite_eq_left h]
     have hid : precPairW af ag ⟨(i : ℕ) - 16, by omega⟩ = precSelf af ag i := by
       apply Fin.ext
       simp [precPairW, precSelf, shiftEmb_val]
       omega
     rw [← hid, writeWindow_apply]
-  · rw [dif_neg h]
+  · rw [dite_eq_right h]
     refine writeWindow_of_ne _ _ _ (fun t => precPairW_ne_self t i ?_)
     have := t.isLt
     simp at h ⊢
@@ -2434,13 +2436,13 @@ lemma precUnpairWin_self_apply (i : Fin 32) (X : Fin (32 + af + ag) → ℕ)
       = if h : 16 ≤ (i : ℕ) ∧ (i : ℕ) < 25 then u ⟨(i : ℕ) - 16, by omega⟩
         else X (precSelf af ag i) := by
   by_cases h : 16 ≤ (i : ℕ) ∧ (i : ℕ) < 25
-  · rw [dif_pos h]
+  · rw [dite_eq_left h]
     have hid : precUnpairW af ag ⟨(i : ℕ) - 16, by omega⟩ = precSelf af ag i := by
       apply Fin.ext
       simp [precUnpairW, precSelf, shiftEmb_val]
       omega
     rw [← hid, writeWindow_apply]
-  · rw [dif_neg h]
+  · rw [dite_eq_right h]
     refine writeWindow_of_ne _ _ _ (fun t => precUnpairW_ne_self t i ?_)
     have := t.isLt
     simp at h ⊢
@@ -2986,7 +2988,7 @@ lemma precBodyPre_self (haf : 16 ≤ af) (hag : 16 ≤ ag) (V : Fin (32 + af + a
     (h12 : (i : ℕ) ≠ 12) :
     precBodyPre af ag hag V (precSelf af ag i) = V (precSelf af ag i) := by
   simp only [precBodyPre, precSelf_update_apply, precSelf_rightLoc_upd hag haf,
-    precPairWin_self_apply, dif_neg hw]
+    precPairWin_self_apply, dite_eq_right hw]
   have h16 : (i : ℕ) ≠ 16 := by omega
   have h17 : (i : ℕ) ≠ 17 := by omega
   norm_num [h9, h12, h16, h17]
@@ -3888,7 +3890,7 @@ lemma precSetupPre_self (haf : 16 ≤ af) (V : Fin (32 + af + ag) → ℕ)
     (h7 : (i : ℕ) ≠ 7) (h8 : (i : ℕ) ≠ 8) :
     precSetupPre af ag haf V (precSelf af ag i) = V (precSelf af ag i) := by
   simp only [precSetupPre, precSelf_update_apply, precSelf_leftLoc_upd haf,
-    precUnpairWin_self_apply, dif_neg hw]
+    precUnpairWin_self_apply, dite_eq_right hw]
   norm_num [h6, h7, h8]
 
 lemma precSetupPre_childIn_zero (haf : 16 ≤ af)
@@ -4154,13 +4156,13 @@ lemma precVals_encodes (haf : 16 ≤ af) (hag : 16 ≤ ag) (cf cg : Nat.Partrec.
       (Nat.unpair (V (precSelf af ag 0))).2 (V (precSelf af ag 1)) hout
     rw [hpair] at heq
     refine ⟨?_, ?_⟩
-    · rw [htag, if_pos hg, heq]; omega
-    · rw [hval, htag, if_pos hg, heq]; simp
+    · rw [htag, ite_eq_left hg, heq]; omega
+    · rw [hval, htag, ite_eq_left hg, heq]; simp
   · have hnone := evaln_eq_none_of_not_guard (V (precSelf af ag 1)) (cf.prec cg)
       (V (precSelf af ag 0)) hg
     refine ⟨?_, ?_⟩
-    · rw [htag, if_neg hg, hnone]; simp
-    · rw [hval, htag, if_neg hg, hnone]; simp
+    · rw [htag, ite_eq_right hg, hnone]; simp
+    · rw [hval, htag, ite_eq_right hg, hnone]; simp
 
 end PrecEncodes
 
@@ -4311,13 +4313,13 @@ lemma rfIter_spec (cf : Nat.Partrec.Code) (a : ℕ) :
     rw [hstep.1, hstep.2, evaln_rfind'_succ]
     simp only [rfLevel]
     by_cases hg : Nat.pair a m < k + 1
-    · simp only [hg, if_true]
+    · simp only [hg, ite_true]
       cases hoe : Nat.Partrec.Code.evaln (k + 1) cf (Nat.pair a m) with
       | none => simp
       | some x =>
         by_cases hx : x = 0
         · subst hx; simp
-        · simp only [resultTag_some, resultVal_some, hx, if_false, mul_one,
+        · simp only [resultTag_some, resultVal_some, hx, ite_false, mul_one,
             Option.bind_some]
           cases Nat.Partrec.Code.evaln k cf.rfind' (Nat.pair a (m + 1)) <;> simp
     · simp [hg]
@@ -4680,8 +4682,8 @@ lemma rfSelf_update_apply (i j : Fin 32) (X : Fin (32 + af) → ℕ) (x : ℕ) :
     Function.update X (rfSelf af j) x (rfSelf af i)
       = if (i : ℕ) = (j : ℕ) then x else X (rfSelf af i) := by
   by_cases h : (i : ℕ) = (j : ℕ)
-  · rw [if_pos h, Fin.ext h, Function.update_self]
-  · rw [if_neg h, Function.update_of_ne (rfSelf_ne_self i j h)]
+  · rw [ite_eq_left h, Fin.ext h, Function.update_self]
+  · rw [ite_eq_right h, Function.update_of_ne (rfSelf_ne_self i j h)]
 
 /-- A child register never collides with a node register. -/
 lemma rfLoc_update_apply (haf : 16 ≤ af) (i : Fin 16) (j : Fin 32)
@@ -5084,8 +5086,8 @@ lemma rfLoc_rfLoc_update_apply (haf : 16 ≤ af) (i j : Fin 16)
     Function.update X (rfLoc af haf j) x (rfLoc af haf i)
       = if (i : ℕ) = (j : ℕ) then x else X (rfLoc af haf i) := by
   by_cases h : (i : ℕ) = (j : ℕ)
-  · rw [if_pos h, Fin.ext h, Function.update_self]
-  · rw [if_neg h, Function.update_of_ne (fun e => h (by
+  · rw [ite_eq_left h, Fin.ext h, Function.update_self]
+  · rw [ite_eq_right h, Function.update_of_ne (fun e => h (by
       have := congrArg (Fin.val) e
       simpa [rfLoc, shiftEmb_val] using this))]
 
@@ -5100,13 +5102,13 @@ lemma rfPairWin_self_apply (i : Fin 32) (X : Fin (32 + af) → ℕ) (u : Fin 8 �
       = if h : 20 ≤ (i : ℕ) ∧ (i : ℕ) < 28 then u ⟨(i : ℕ) - 20, by omega⟩
         else X (rfSelf af i) := by
   by_cases h : 20 ≤ (i : ℕ) ∧ (i : ℕ) < 28
-  · rw [dif_pos h]
+  · rw [dite_eq_left h]
     have hid : rfPairW af ⟨(i : ℕ) - 20, by omega⟩ = rfSelf af i := by
       apply Fin.ext
       simp [rfPairW, rfSelf, shiftEmb_val]
       omega
     rw [← hid, writeWindow_apply]
-  · rw [dif_neg h]
+  · rw [dite_eq_right h]
     refine writeWindow_of_ne _ _ _ (fun t => rfPairW_ne_self t i ?_)
     have := t.isLt
     simp at h ⊢
@@ -5118,13 +5120,13 @@ lemma rfUnpairWin_self_apply (i : Fin 32) (X : Fin (32 + af) → ℕ) (u : Fin 9
       = if h : 20 ≤ (i : ℕ) ∧ (i : ℕ) < 29 then u ⟨(i : ℕ) - 20, by omega⟩
         else X (rfSelf af i) := by
   by_cases h : 20 ≤ (i : ℕ) ∧ (i : ℕ) < 29
-  · rw [dif_pos h]
+  · rw [dite_eq_left h]
     have hid : rfUnpairW af ⟨(i : ℕ) - 20, by omega⟩ = rfSelf af i := by
       apply Fin.ext
       simp [rfUnpairW, rfSelf, shiftEmb_val]
       omega
     rw [← hid, writeWindow_apply]
-  · rw [dif_neg h]
+  · rw [dite_eq_right h]
     refine writeWindow_of_ne _ _ _ (fun t => rfUnpairW_ne_self t i ?_)
     have := t.isLt
     simp at h ⊢
@@ -5149,7 +5151,7 @@ lemma rfPhaseAPair_self (V : Fin (32 + af) → ℕ) (i : Fin 32)
     rfPhaseAPair af V (rfSelf af i) = V (rfSelf af i) := by
   have h20 : (i : ℕ) ≠ 20 := by omega
   have h21 : (i : ℕ) ≠ 21 := by omega
-  simp only [rfPhaseAPair, rfPairWin_self_apply, dif_neg h, rfSelf_update_apply]
+  simp only [rfPhaseAPair, rfPairWin_self_apply, dite_eq_right h, rfSelf_update_apply]
   norm_num [h20, h21]
 
 /-- The child's input register: this level's `Nat.pair a m`. -/
@@ -6925,13 +6927,13 @@ lemma codeVals_encodes : ∀ c : Nat.Partrec.Code,
             (codeVals cf) (codeVals cg) v
             (precMain (codeRegs cf) (codeRegs cg)
               (precSelf (codeRegs cf) (codeRegs cg) 2)) = _
-        rw [precBlockVals_self]
+        erw [precBlockVals_self]
         exact h.1
       · show precBlockVals (codeRegs cf) (codeRegs cg) (codeRegs_ge cf) (codeRegs_ge cg)
             (codeVals cf) (codeVals cg) v
             (precMain (codeRegs cf) (codeRegs cg)
               (precSelf (codeRegs cf) (codeRegs cg) 3)) = _
-        rw [precBlockVals_self]
+        erw [precBlockVals_self]
         exact h.2
   | .rfind' cf => by
       intro v
@@ -6940,11 +6942,11 @@ lemma codeVals_encodes : ∀ c : Nat.Partrec.Code,
       constructor
       · show rfBlockVals (codeRegs cf) (codeRegs_ge cf) (codeVals cf) v
             (rfMain (codeRegs cf) (rfSelf (codeRegs cf) 2)) = _
-        rw [rfBlockVals_self]
+        erw [rfBlockVals_self]
         exact h.1
       · show rfBlockVals (codeRegs cf) (codeRegs_ge cf) (codeVals cf) v
             (rfMain (codeRegs cf) (rfSelf (codeRegs cf) 3)) = _
-        rw [rfBlockVals_self]
+        erw [rfBlockVals_self]
         exact h.2
 
 end Structural

@@ -218,7 +218,7 @@ lemma ndTrader_exploits (P : History) (DP : DeductiveProcess) (φ : Sentence)
     obtain ⟨g, hg_mono, hg⟩ := extraction_of_frequently_atTop hfreq
     obtain ⟨M, hM⟩ := exists_nat_gt (4 * B)
     obtain ⟨v, hv, hvφ⟩ := hφ (g M)
-    have hpay : v.payout φ = 1 := by rw [PCWorld.payout, if_pos hvφ]
+    have hpay : v.payout φ = 1 := by rw [PCWorld.payout, ite_eq_left hvφ]
     refine ⟨(ndTrader φ).netWorth P v (g M), ⟨g M, v, hv, rfl⟩, ?_⟩
     rw [ndTrader_netWorth]
     set F : ℕ → ℝ := fun i => (ndBeta φ i).denote P * (v.payout φ - P i φ) with hF
@@ -361,11 +361,11 @@ def ndBuySig (φ : Sentence) (j i : ℕ) : EF := buyIndEF φ (ndThr j) (ndPadThr
 
 lemma ndBuySig_live (φ : Sentence) {j i : ℕ} (h : j ≤ i) :
     ndBuySig φ j i = buyIndEF φ (ndThr j) (ndThr j) i := by
-  rw [ndBuySig, ndPadThr, if_neg (by omega)]
+  rw [ndBuySig, ndPadThr, ite_eq_right (by omega)]
 
 lemma ndBuySig_denote_pad (φ : Sentence) (P : History) {j i : ℕ} (h : i < j) :
     (ndBuySig φ j i).denote P = 0 := by
-  rw [ndBuySig, ndPadThr, if_pos h, buyIndEF_denote]
+  rw [ndBuySig, ndPadThr, ite_eq_left h, buyIndEF_denote]
   norm_num
 
 lemma ndBuySig_mem (φ : Sentence) (P : History) (j i : ℕ) :
@@ -427,7 +427,7 @@ lemma ndLadderTrader_exploits (P : History) (DP : DeductiveProcess) (φ : Senten
     linarith
   · intro v hv j n hj hpos
     have hprice := ndBuySig_pos_imp φ P hj hpos
-    have hpay : v.payout φ = 1 := by rw [PCWorld.payout, if_pos hv]
+    have hpay : v.payout φ = 1 := by rw [PCWorld.payout, ite_eq_left hv]
     rw [hpay]
     linarith
   · intro j hj
@@ -506,9 +506,9 @@ lemma encode_thrSum_polyFueled {cj ci : Nat.Partrec.Code} {j'f if_ : ℕ → ℕ
   refine ⟨_, (ifzSel_polyFueled.comp ((padv.pair livev).pair test)).of_eq (fun m => ?_)⟩
   simp only [Nat.unpair_pair, ifzSelFn]
   rcases Nat.lt_or_ge (if_ m) (j'f m + 1) with hcase | hcase
-  · rw [if_pos (by omega), ndPadThr, if_pos hcase, add_zero,
+  · rw [ite_eq_left (by omega), ndPadThr, ite_eq_left hcase, add_zero,
       encode_ndThr (by omega : 1 ≤ j'f m + 1)]
-  · rw [if_neg (by omega), ndPadThr, if_neg (by omega),
+  · rw [ite_eq_right (by omega), ndPadThr, ite_eq_right (by omega),
       encode_ndThr_double (by omega : 1 ≤ j'f m + 1)]
 
 /-- Poly-fueled emission of the padded slope token `⌜1 / ndPadThr (j'+1) i⌝`
@@ -531,8 +531,8 @@ lemma encode_thrRecip_polyFueled {cj ci : Nat.Partrec.Code} {j'f if_ : ℕ → �
   refine ⟨_, (ifzSel_polyFueled.comp ((padv.pair livev).pair test)).of_eq (fun m => ?_)⟩
   simp only [Nat.unpair_pair, ifzSelFn]
   rcases Nat.lt_or_ge (if_ m) (j'f m + 1) with hcase | hcase
-  · rw [if_pos (by omega), ndPadThr, if_pos hcase, div_zero, encode_rat_zero]
-  · rw [if_neg (by omega), ndPadThr, if_neg (by omega),
+  · rw [ite_eq_left (by omega), ndPadThr, ite_eq_left hcase, div_zero, encode_rat_zero]
+  · rw [ite_eq_right (by omega), ndPadThr, ite_eq_right (by omega),
       encode_ndThr_recip (by omega : 1 ≤ j'f m + 1)]
 
 /-- Poly-fueled emission of the rung-weight token `⌜((j'+1 : ℕ) : ℚ)⌝`. -/
@@ -704,11 +704,11 @@ def ndSellSig (φ : Sentence) (j i : ℕ) : EF :=
 
 lemma ndSellSig_live (φ : Sentence) {j i : ℕ} (h : j ≤ i) :
     ndSellSig φ j i = sellIndEF φ (1 - ndThr j) (ndThr j) i := by
-  rw [ndSellSig, ndPadThr, if_neg (by omega)]
+  rw [ndSellSig, ndPadThr, ite_eq_right (by omega)]
 
 lemma ndSellSig_denote_pad (φ : Sentence) (P : History) {j i : ℕ} (h : i < j) :
     (ndSellSig φ j i).denote P = 0 := by
-  rw [ndSellSig, ndPadThr, if_pos h, sellIndEF_denote]
+  rw [ndSellSig, ndPadThr, ite_eq_left h, sellIndEF_denote]
   norm_num
 
 lemma ndSellSig_mem (φ : Sentence) (P : History) (j i : ℕ) :
@@ -771,7 +771,7 @@ lemma ndSellLadderTrader_exploits (P : History) (DP : DeductiveProcess) (φ : Se
     linarith
   · intro v hv j n hj hpos
     have hprice := ndSellSig_pos_imp φ P hj hpos
-    have hpay : v.payout φ = 0 := by rw [PCWorld.payout, if_neg hv]
+    have hpay : v.payout φ = 0 := by rw [PCWorld.payout, ite_eq_right hv]
     rw [hpay]
     linarith
   · intro j hj
@@ -871,12 +871,12 @@ lemma encode_sellB_polyFueled {cj ci : Nat.Partrec.Code} {j'f if_ : ℕ → ℕ}
   refine ⟨_, houter.of_eq (fun m => ?_)⟩
   simp only [Nat.unpair_pair, ifzSelFn]
   rcases Nat.lt_or_ge (if_ m) (j'f m + 1) with hcase | hcase
-  · rw [if_pos (by omega), ndPadThr, if_pos hcase,
+  · rw [ite_eq_left (by omega), ndPadThr, ite_eq_left hcase,
       encode_sellB_pad (by omega : 1 ≤ j'f m + 1)]
   · rcases Nat.eq_zero_or_pos (j'f m) with h0 | h0
-    · rw [if_neg (by omega), if_pos h0, ndPadThr, if_neg (by omega), h0]
+    · rw [ite_eq_right (by omega), ite_eq_left h0, ndPadThr, ite_eq_right (by omega), h0]
       exact (encode_sellB_live_one).symm
-    · rw [if_neg (by omega), if_neg (by omega), ndPadThr, if_neg (by omega),
+    · rw [ite_eq_right (by omega), ite_eq_right (by omega), ndPadThr, ite_eq_right (by omega),
         encode_sellB_live (by omega : 2 ≤ j'f m + 1)]
 
 /-- Poly-fueled emission of the sell rung-weight token `⌜−((j'+1 : ℕ) : ℚ)⌝`. -/

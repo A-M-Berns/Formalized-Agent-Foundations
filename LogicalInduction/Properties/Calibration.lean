@@ -752,9 +752,9 @@ lemma biasRunAttempt_family_polySeg {W : ℕ → EF}
     (UnaryRuler.of_polyFueled htest)) ?_
   intro z
   by_cases hkn : z.unpair.1 ≤ z.unpair.2
-  · rw [if_neg (by omega)]
+  · rw [ite_eq_right (by omega)]
     simp [biasRunAttempt, hkn]
-  · rw [if_pos (by omega)]
+  · rw [ite_eq_left (by omega)]
     simp [biasRunAttempt, hkn]
 
 /-- Constant occupancy of a purchased affine bundle: because these run components buy and
@@ -811,7 +811,7 @@ lemma biasRunAttempt_closed {W : ℕ → EF} (hW : PGenerableWeighting W)
     (biasRunAttempt W rate k n).denoteWith ρ P =
       (biasRunAttempt W rate k n).denote P := by
   by_cases hkn : k ≤ n
-  · simp only [biasRunAttempt, hkn, if_true, EF.denoteWith, EF.denote_mul,
+  · simp only [biasRunAttempt, hkn, ite_true, EF.denoteWith, EF.denote_mul,
       EF.denote_const, Pi.mul_apply]
     rw [hW.closed n ρ P]
   · simp [biasRunAttempt, hkn, EF.denote]
@@ -867,7 +867,7 @@ lemma biasRunAttemptValue_le_one
     (rate : ℕ → ℚ) (hrate1 : ∀ k, (rate k : ℝ) ≤ 1) (k n : ℕ) :
     biasRunAttemptValue W rate P k n ≤ 1 := by
   by_cases hkn : k ≤ n
-  · simp only [biasRunAttemptValue, biasRunAttempt, hkn, if_true,
+  · simp only [biasRunAttemptValue, biasRunAttempt, hkn, ite_true,
       EF.denote_mul, EF.denote_const, Pi.mul_apply]
     calc
       (rate k : ℝ) * (W n).denote P ≤ 1 * 1 :=
@@ -1235,8 +1235,8 @@ lemma biasRunTradeCount_poly {As : ℕ → AffineCombination}
     (h.termCount_poly.comp UnaryRuler.unpairSnd)) (fun z => ?_)
   simp only [biasRunTradeCount]
   by_cases hkn : z.unpair.1 ≤ z.unpair.2
-  · rw [if_pos hkn, if_neg (by omega)]
-  · rw [if_neg hkn, if_pos (by omega)]
+  · rw [ite_eq_left hkn, ite_eq_right (by omega)]
+  · rw [ite_eq_right hkn, ite_eq_left (by omega)]
 
 lemma biasRunTradeCoefficient_polySeg {As : ℕ → AffineCombination}
     (h : PolySequence As) {W : ℕ → EF} (hW : PGenerableWeighting W)
@@ -1278,7 +1278,7 @@ lemma biasRunTrader_trades_eq {As : ℕ → AffineCombination}
         let z := Nat.pair (Nat.pair k n) j
         (biasRunTradeCoefficient h W rate z, biasRunTradeSentence h z)) := by
   by_cases hkn : k ≤ n
-  · simp only [biasRunTrader, hkn, dif_pos, AffineCombination.buy_trades,
+  · simp only [biasRunTrader, hkn, dite_eq_left, AffineCombination.buy_trades,
       AffineCombination.scale, h.terms_eq]
     simp [biasRunTradeCount, hkn, biasRunTradeCoefficient,
       biasRunTradeSentence, List.map_map, Function.comp_apply]
@@ -1311,7 +1311,7 @@ lemma biasRunTrader_value {As : ℕ → AffineCombination}
     ((biasRunTrader h hW rate k).strat n).value P w =
       biasRunGamma As W rate P k n *
         ((As n).value P w - (As n).price P n) := by
-  simp only [biasRunTrader, dif_pos hkn]
+  simp only [biasRunTrader, dite_eq_left hkn]
   rw [AffineCombination.buy_value,
     AffineCombination.scale_value, AffineCombination.scale_price,
     biasRunCoefficient_denote h hW]
@@ -1344,12 +1344,12 @@ lemma biasRunTrader_dayMagnitude {As : ℕ → AffineCombination}
     ((biasRunTrader h hWgen rate k).strat n).magnitude P =
       biasRunGamma As W rate P k n * (As n).magnitude P := by
   by_cases hkn : k ≤ n
-  · simp only [biasRunTrader, dif_pos hkn]
+  · simp only [biasRunTrader, dite_eq_left hkn]
     rw [AffineCombination.buy_magnitude,
       AffineCombination.scale_magnitude, biasRunCoefficient_denote h hWgen,
       abs_of_nonneg (biasRunGamma_nonneg hWdiv hmag rate hrate0 hrate1 k n)]
   · have hnk : n < k := Nat.lt_of_not_ge hkn
-    simp only [biasRunTrader, dif_neg hkn]
+    simp only [biasRunTrader, dite_eq_right hkn]
     have hzero : biasRunGamma As W rate P k n = 0 := by
       rw [biasRunGamma]
       have ha : biasRunAttemptValue W rate P k n = 0 := by
@@ -1866,7 +1866,7 @@ lemma ApproxDeterminedViaTheory.biasRun_surplus_eventually
         (rate k : ℝ) * (w i * (x i - ρ * m i)) else 0) n = 0 := by
       apply Finset.sum_eq_zero
       intro i hi
-      rw [if_neg]
+      rw [ite_eq_right]
       have hin : i ≤ n := Nat.le_of_lt_succ (Finset.mem_range.mp hi)
       omega
     rw [hz]
@@ -2073,7 +2073,7 @@ lemma ApproxDeterminedViaTheory.not_eventually_weightedBias_lt_of_historicalVeri
   have hαmag : ∀ i, (α i).denote P = (Ts i).magnitude P := by
     intro i
     by_cases hi : N ≤ i
-    · simp only [α, gateFeature, hi, if_true, EF.denote_const, Ts,
+    · simp only [α, gateFeature, hi, ite_true, EF.denote_const, Ts,
         gateTraderFamily, baseTs]
       symm
       simpa using

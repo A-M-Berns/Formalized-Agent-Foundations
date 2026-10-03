@@ -105,7 +105,7 @@ lemma ceRepeatSeq_eq_source {source : ℕ → Sentence} (h : CEEnumeration sourc
       = Encodable.encode (source i) + 1) :
     ceRepeatSeq h n = source i := by
   simp only [ceRepeatSeq, hr, Nat.add_sub_cancel, Encodable.encodek, Option.getD_some,
-    Nat.add_one_ne_zero, if_false]
+    Nat.add_one_ne_zero, ite_false]
 
 lemma ceRepeatSeq_encode {source : ℕ → Sentence} (h : CEEnumeration source) (n : ℕ) :
     Encodable.encode (ceRepeatSeq h n) =
@@ -115,7 +115,7 @@ lemma ceRepeatSeq_encode {source : ℕ → Sentence} (h : CEEnumeration source) 
   by_cases hz : codeEvalnNat h.code (Nat.pair n.unpair.2 n.unpair.1) = 0
   · simp [ceRepeatSeq, hz]
   · obtain ⟨i, hi⟩ := h.outputs_sound _ hz
-    rw [ceRepeatSeq_eq_source h hi, if_neg hz, hi, Nat.add_sub_cancel]
+    rw [ceRepeatSeq_eq_source h hi, ite_eq_right hz, hi, Nat.add_sub_cancel]
 
 lemma ceRepeatSeq_codes {source : ℕ → Sentence} (h : CEEnumeration source) :
     PolySentenceCodes (ceRepeatSeq h) := by

@@ -184,18 +184,18 @@ private lemma exists_image_univ_curry {E : Frame W} (N : Frame E.Agent)
     refine ⟨{ Agent := N.Agent, Env := N.Env × E.Agent,
               outcome := fun a p =>
                 if (a, p.1) = (pa p.2, pe p.2) then p.2 else N.outcome a p.1 }, ?_, ?_⟩
-    · exact Set.eq_univ_of_forall fun c => ⟨pa c, (pe c, c), if_pos rfl⟩
+    · exact Set.eq_univ_of_forall fun c => ⟨pa c, (pe c, c), ite_eq_left rfl⟩
     · have key : ∀ (a : N.Agent) (p : N.Env × E.Agent) (e : E.Env),
           E.outcome (if (a, p.1) = (pa p.2, pe p.2) then p.2 else N.outcome a p.1) e
             = E.outcome (N.outcome a p.1) e := by
         intro a p e
         by_cases hc : (a, p.1) = (pa p.2, pe p.2)
-        · rw [if_pos hc]
+        · rw [ite_eq_left hc]
           have h1 : a = pa p.2 := congrArg Prod.fst hc
           have h2 : p.1 = pe p.2 := congrArg Prod.snd hc
           rw [h1, h2]
           exact (hpe p.2 e).symm
-        · rw [if_neg hc]
+        · rw [ite_eq_right hc]
       exact biextEquiv_iff_homotopyEquiv.mpr
         ⟨{ agent := fun a => a
            env := fun q => (q.1.1, q.2)
@@ -264,15 +264,15 @@ theorem MultSubagent.multSubagentCurry {C D : Frame W} (h : C ◁ₓ D) :
               outcome := fun x p =>
                 if g0.agent p.2 = (x, p.1) then p.2 else g1.agent (x, p.1) }, ?_, ?_⟩
     · exact Set.eq_univ_of_forall fun b =>
-        ⟨(g0.agent b).1, ((g0.agent b).2, b), if_pos rfl⟩
+        ⟨(g0.agent b).1, ((g0.agent b).2, b), ite_eq_left rfl⟩
     · have key : ∀ (x : X) (p : Y × D.Agent) (e : D.Env),
           D.outcome (if g0.agent p.2 = (x, p.1) then p.2 else g1.agent (x, p.1)) e
             = D.outcome (g1.agent (x, p.1)) e := by
         intro x p e
         by_cases hc : g0.agent p.2 = (x, p.1)
-        · rw [if_pos hc, ← hc]
+        · rw [ite_eq_left hc, ← hc]
           exact hg01 p.2 e
-        · rw [if_neg hc]
+        · rw [ite_eq_right hc]
       exact hC.trans (biextEquiv_iff_homotopyEquiv.mpr
         ⟨{ agent := fun x => x
            env := fun q => (q.1.1, g1.env q.2)

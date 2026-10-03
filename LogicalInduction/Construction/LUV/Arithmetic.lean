@@ -181,7 +181,7 @@ lemma thresholdPred_code_iff (i : ℕ) (r : ℚ) :
     codeDen_thresholdCode]
   rw [lt_div_iff₀ hden]
   by_cases hr : 0 ≤ r
-  · simp only [if_pos hr, zero_mul, add_zero]
+  · simp only [ite_eq_left hr, zero_mul, add_zero]
     -- both sides nonneg: nat `<` matches ℚ cross-multiplication
     have hrnum : (r.num.natAbs : ℚ) = r * (r.den : ℚ) := by
       have h1 : (r.num.natAbs : ℚ) = (r.num : ℚ) := by
@@ -202,7 +202,7 @@ lemma thresholdPred_code_iff (i : ℕ) (r : ℚ) :
         rw [hrnum]; nlinarith [h, hden, hden']
       exact_mod_cast this
   · push Not at hr
-    simp only [if_neg (not_le.mpr hr)]
+    simp only [ite_eq_right (not_le.mpr hr)]
     constructor
     · intro _
       nlinarith [hr, hden, (by positivity : (0:ℚ) ≤ (L.num i : ℚ))]
@@ -339,12 +339,12 @@ lemma thresholdCodeNat_eq (i j m : ℕ) :
     thresholdCodeNat i j m = thresholdCode i ((j : ℚ) / (m : ℚ)) := by
   unfold thresholdCodeNat thresholdCode
   have hsign : (if 0 ≤ (j : ℚ) / (m : ℚ) then (0 : ℕ) else 1) = 0 :=
-    if_pos (div_nonneg (Nat.cast_nonneg j) (Nat.cast_nonneg m))
+    ite_eq_left (div_nonneg (Nat.cast_nonneg j) (Nat.cast_nonneg m))
   rw [hsign]
   by_cases hm : m = 0
   · subst hm
     norm_num
-  · rw [if_neg hm]
+  · rw [ite_eq_right hm]
     have hnum : ((j : ℚ) / (m : ℚ)).num.natAbs = j / Nat.gcd j m := by
       rw [natCast_div_num hm]; exact Int.natAbs_natCast _
     have hden : ((j : ℚ) / (m : ℚ)).den = m / Nat.gcd j m := natCast_div_den hm
@@ -404,15 +404,15 @@ theorem toLUV_polyThresholdCodes (i : ℕ) : (toLUV i).PolyThresholdCodes := by
   set b := m.unpair.2 with hbdef
   set r := (b : ℚ) / (k : ℚ) with hr
   have hsign : (if 0 ≤ r then (0 : ℕ) else 1) = 0 :=
-    if_pos (div_nonneg (Nat.cast_nonneg b) (Nat.cast_nonneg k))
+    ite_eq_left (div_nonneg (Nat.cast_nonneg b) (Nat.cast_nonneg k))
   unfold thresholdCode
   rw [hsign]
   by_cases hk : k = 0
-  · rw [if_pos hk]
+  · rw [ite_eq_left hk]
     have hr0 : r = 0 := by rw [hr, hk]; simp
     rw [hr0]
     norm_num
-  · rw [if_neg hk]
+  · rw [ite_eq_right hk]
     have hg : 0 < Nat.gcd b k := Nat.gcd_pos_of_pos_right b (Nat.pos_of_ne_zero hk)
     have h1 : Nat.pred (Nat.gcd b k) + 1 = Nat.gcd b k :=
       Nat.succ_pred_eq_of_pos hg

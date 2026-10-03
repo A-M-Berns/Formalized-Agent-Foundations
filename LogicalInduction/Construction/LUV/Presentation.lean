@@ -273,10 +273,10 @@ lemma luvWorld_consistent [𝗥₀ ⪯ T] [T.Δ₁] [RepresentsComputations T]
     exact ((L.exists_luvEventCode T).choose_spec e).mp hdom
   rcases hfires with ⟨htag, hprov⟩ | ⟨htag, hprov⟩
   · -- positive literal: the world believes exactly what `Θ` proves
-    simp only [luvEventAtom, htag, if_pos, PCWorld.holds_atom]
+    simp only [luvEventAtom, htag, ite_eq_left, PCWorld.holds_atom]
     exact hprov
   · -- refutation literal: `Θ` cannot also prove the positive one, by consistency
-    simp only [luvEventAtom, htag, if_neg (_root_.one_ne_zero), PCWorld.holds_neg,
+    simp only [luvEventAtom, htag, ite_eq_right (_root_.one_ne_zero), PCWorld.holds_neg,
       PCWorld.holds_atom]
     intro hpos
     have hpos' : T ⊢ ((L.thresholdSchema T)/[↑e.unpair.2] : ArithmeticSentence) := hpos

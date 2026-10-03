@@ -910,7 +910,7 @@ lemma liftedMachineSourceCode_spec {X : ℕ → LUV}
   · have hr0 : 0 ≤ r := le_of_not_gt hr
     obtain ⟨hn, hmesh⟩ := liftedMachineMeshQuery_spec n r hr0
     simp only [liftedMachineSourceOutput, Nat.unpair_pair, decodedQuotationRat_encode,
-      if_neg hr, liftedMachineSourceSentence]
+      ite_eq_right hr, liftedMachineSourceSentence]
     rw [liftSentenceCode_spec]
     rw [hn, hmesh]
 
@@ -939,7 +939,7 @@ lemma liftedMachineSourceSentence_fresh (X : ℕ → LUV) (n : ℕ) (r : ℚ) :
   · simp [liftedMachineSourceSentence, hr, SemanticPrimeFreshSentence,
       sentenceAtomCodes_verum]
   · intro a ha
-    rw [liftedMachineSourceSentence, if_neg hr, sentenceAtomCodes_liftSentence] at ha
+    rw [liftedMachineSourceSentence, ite_eq_right hr, sentenceAtomCodes_liftSentence] at ha
     obtain ⟨b, _, rfl⟩ := Finset.mem_image.mp ha
     have haold : (oldAtom b).unpair.1 = oldLanguageTag := by simp [oldAtom]
     simp [haold, oldLanguageTag, semanticPrimeTag]
@@ -1018,8 +1018,8 @@ lemma liftedMachineSourceLawSeen_eventually {DP Base : DeductiveProcess}
   have hemit : semanticSourceCutLawAtFuel (liftedMachineSourceSchema hX)
       (sourceCutDownwardJob n r s) emitterFuel = some law := by
     simp only [semanticSourceCutLawAtFuel, sourceCutDownwardJob, Nat.unpair_pair,
-      if_neg (by decide : ¬(2 : ℕ) = 0), if_neg (by decide : ¬(2 : ℕ) = 1),
-      decodedQuotationRat_encode, if_pos hrs]
+      ite_eq_right (by decide : ¬(2 : ℕ) = 0), ite_eq_right (by decide : ¬(2 : ℕ) = 1),
+      decodedQuotationRat_encode, ite_eq_left hrs]
     rw [hfr', hfs']
     change _ = some (liftedMachineSourceSentence X n s 🡒
       liftedMachineSourceSentence X n r)
@@ -1029,7 +1029,7 @@ lemma liftedMachineSourceLawSeen_eventually {DP Base : DeductiveProcess}
   apply entailedSourceLawSeen_eventually base ⟨emitterFuel, hemit⟩
   intro v hv
   by_cases hr : r < 0
-  · simp only [law, liftedMachineSourceSentence, if_pos hr]
+  · simp only [law, liftedMachineSourceSentence, ite_eq_left hr]
     intro _
     exact PCWorld.holds_top v
   · have hs : ¬s < 0 := by linarith

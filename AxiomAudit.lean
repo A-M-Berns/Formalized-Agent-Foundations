@@ -1129,7 +1129,7 @@ tail would otherwise assume, together with the criterion endpoints that consume 
 -- measure.  Metering is by symbol count, not by the derivation's Gödel number: the paper's
 -- `Con(T)(k)` bounds the size of a proof, and a code bound is a different predicate.
 -- Decidability is obtained without a proof checker: `Proof` is `𝚫₁`, so the packed proof predicate and its
--- negation are both `𝚺₁` by `definability`, and `re_iff_sigma1` +
+-- negation are both `𝚺₁` by `definability`, and `rePred_iff_sigma1` +
 -- `ComputablePred.computable_iff_re_compl_re'` decide it; the *search* is then finite by
 -- `bProv_iff_bounded`, which is where `le_G_dSize` is spent, giving
 -- `bprovValue T : ℕ → ℕ`.  `conRunValue T' f` is the universal decider actually represented

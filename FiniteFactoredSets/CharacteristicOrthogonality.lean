@@ -210,11 +210,11 @@ private lemma generatesSub_sdiff_of_dvd [Finite S] {W : Setoid S} {z : Set S}
   -- `r₀ = 1`: both `poly^F_C(z)` and `poly^F_C(w∩z)` have all coefficients `0` or `1`.
   obtain ⟨d, hd⟩ := support_nonempty.2 (poly_ne_zero C (⟨s, hs⟩ : (w ∩ z).Nonempty))
   have hcd : (poly C (w ∩ z)).coeff d = 1 := by
-    rw [coeff_poly, if_pos ((mem_support_poly C (w ∩ z)).1 hd)]
+    rw [coeff_poly, ite_eq_left ((mem_support_poly C (w ∩ z)).1 hd)]
   have hcz : (poly C z).coeff d = r₀ := by rw [hp₀, coeff_C_mul, hcd, mul_one]
   have hdz : d ∈ (poly C z).support := mem_support_iff.2 (by rw [hcz]; exact hr₀)
   have hcz1 : (poly C z).coeff d = 1 := by
-    rw [coeff_poly, if_pos ((mem_support_poly C z).1 hdz)]
+    rw [coeff_poly, ite_eq_left ((mem_support_poly C z).1 hdz)]
   have hr₀1 : r₀ = 1 := by rw [← hcz, hcz1]
   rw [hr₀1, map_one, one_mul] at hp₀
   -- `C₁ = B ∖ C`, read off the disjointness of the two factors' variables.
@@ -244,7 +244,7 @@ private lemma generatesSub_sdiff_of_dvd [Finite S] {W : Setoid S} {z : Set S}
   -- disjoint variables, so no like terms combine.
   obtain ⟨e, he⟩ := support_nonempty.2 (poly_ne_zero (F.B \ C) (⟨s, hs⟩ : (w ∩ z).Nonempty))
   have hce : (poly (F.B \ C) (w ∩ z)).coeff e = 1 := by
-    rw [coeff_poly, if_pos ((mem_support_poly (F.B \ C) (w ∩ z)).1 he)]
+    rw [coeff_poly, ite_eq_left ((mem_support_poly (F.B \ C) (w ∩ z)).1 he)]
   have hceq : q.coeff e = r₁ := by rw [hp₁, coeff_C_mul, hce, mul_one]
   have heq' : e ∈ q.support := mem_support_iff.2 (by rw [hceq]; exact hr₁)
   have hsplit : (F.Q (w ∩ z)).coeff (d + e) = r₁ := by
@@ -254,7 +254,7 @@ private lemma generatesSub_sdiff_of_dvd [Finite S] {W : Setoid S} {z : Set S}
   have hQ1 : (F.Q (w ∩ z)).coeff (d + e) = 1 := by
     have hne' : (F.Q (w ∩ z)).coeff (d + e) ≠ 0 := by rw [hsplit]; exact hr₁
     rw [F.Q_eq_poly] at hne' ⊢
-    rw [coeff_poly, if_pos ((mem_support_poly F.B (w ∩ z)).1 (mem_support_iff.2 hne'))]
+    rw [coeff_poly, ite_eq_left ((mem_support_poly F.B (w ∩ z)).1 (mem_support_iff.2 hne'))]
   have hr₁1 : r₁ = 1 := by rw [← hsplit, hQ1]
   rw [hr₁1, map_one, one_mul] at hp₁
   -- `Q^F_{w∩z} = poly^F_C(z) · poly^F_{B∖C}(w∩z)`, which Proposition 27 reads as

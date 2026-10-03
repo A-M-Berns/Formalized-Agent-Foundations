@@ -463,10 +463,10 @@ lemma ltFlag4_succ (x y p : ℕ) :
         _ ≤ 4 ^ p * dig4 y p := hm
     have hstep : x % 4 ^ p + 4 ^ p * dig4 x p < y % 4 ^ p + 4 ^ p * dig4 y p := by
       omega
-    rw [if_pos hstep, if_pos h]
+    rw [ite_eq_left hstep, ite_eq_left h]
   · have hnot1 : ¬ dig4 x p < dig4 y p := by rw [h]; exact lt_irrefl _
     have hnot2 : ¬ dig4 y p < dig4 x p := by rw [h]; exact lt_irrefl _
-    rw [if_neg hnot1, if_neg hnot2, h]
+    rw [ite_eq_right hnot1, ite_eq_right hnot2, h]
     simp only [add_lt_add_iff_right]
   · have h1 : 4 ^ p * dig4 y p + 4 ^ p ≤ 4 ^ p * dig4 x p := by
       have hm := Nat.mul_le_mul_left (4 ^ p) (Nat.succ_le_of_lt h)
@@ -474,7 +474,7 @@ lemma ltFlag4_succ (x y p : ℕ) :
         _ ≤ 4 ^ p * dig4 x p := hm
     have hstep : ¬ (x % 4 ^ p + 4 ^ p * dig4 x p < y % 4 ^ p + 4 ^ p * dig4 y p) := by
       omega
-    rw [if_neg hstep, if_neg (by omega), if_pos h]
+    rw [ite_eq_right hstep, ite_eq_right (by omega), ite_eq_left h]
 
 /-- At full precision the flag decides the order. -/
 lemma ltFlag4_spec {x y p : ℕ} (hx : x < 4 ^ p) (hy : y < 4 ^ p) :
@@ -487,7 +487,7 @@ lemma ltFlag4_spec {x y p : ℕ} (hx : x < 4 ^ p) (hy : y < 4 ^ p) :
 lemma dig4_mod_pow (t P j : ℕ) :
     dig4 (t % 4 ^ P) j = if j < P then dig4 t j else 0 := by
   by_cases h : j < P
-  · rw [if_pos h, dig4, dig4]
+  · rw [ite_eq_left h, dig4, dig4]
     have hsplit : (4:ℕ) ^ P = 4 ^ j * 4 ^ (P - j) := by
       rw [← pow_add]
       congr 1
@@ -495,7 +495,7 @@ lemma dig4_mod_pow (t P j : ℕ) :
     rw [hsplit, Nat.mod_mul_right_div_self]
     have hdvd : (4:ℕ) ∣ 4 ^ (P - j) := dvd_pow_self 4 (by omega)
     rw [Nat.mod_mod_of_dvd _ hdvd]
-  · rw [if_neg h]
+  · rw [ite_eq_right h]
     have hlt : t % 4 ^ P < 4 ^ j :=
       lt_of_lt_of_le (Nat.mod_lt _ (by positivity))
         (Nat.pow_le_pow_right (by norm_num) (by omega))
@@ -506,14 +506,14 @@ lemma len4_mod_pow_succ (t J : ℕ) :
     len4 (t % 4 ^ (J + 1)) =
       if dig4 t J = 0 then len4 (t % 4 ^ J) else J + 1 := by
   by_cases h : dig4 t J = 0
-  · rw [if_pos h, mod_pow_succ4, h, Nat.mul_zero, Nat.add_zero]
-  · rw [if_neg h]
+  · rw [ite_eq_left h, mod_pow_succ4, h, Nat.mul_zero, Nat.add_zero]
+  · rw [ite_eq_right h]
     rw [len4_eq_iff]
     constructor
     · intro j hj
-      rw [dig4_mod_pow, if_neg (by omega)]
+      rw [dig4_mod_pow, ite_eq_right (by omega)]
     · intro _
-      rw [show J + 1 - 1 = J by omega, dig4_mod_pow, if_pos (by omega)]
+      rw [show J + 1 - 1 = J by omega, dig4_mod_pow, ite_eq_left (by omega)]
       exact h
 
 /-- Partial column convolution (the inner-loop state of the digit multiplier). -/
@@ -770,16 +770,16 @@ lemma ltNat {x y : ℕ → ℕ} (hx : BigDigits x) (hy : BigDigits y) :
       rw [ltFlag4_succ]
       rcases Nat.lt_trichotomy (dig4 (x m) p) (dig4 (y m) p) with h | h | h
       · have c1 : ¬ dig4 (y m) p - dig4 (x m) p = 0 := by omega
-        rw [if_pos h, if_neg c1]
+        rw [ite_eq_left h, ite_eq_right c1]
       · have n1 : ¬ dig4 (x m) p < dig4 (y m) p := by omega
         have n2 : ¬ dig4 (y m) p < dig4 (x m) p := by omega
         have c1 : dig4 (y m) p - dig4 (x m) p = 0 := by omega
         have c2 : dig4 (x m) p - dig4 (y m) p = 0 := by omega
-        rw [if_neg n1, if_neg n2, if_pos c1, if_pos c2]
+        rw [ite_eq_right n1, ite_eq_right n2, ite_eq_left c1, ite_eq_left c2]
       · have n1 : ¬ dig4 (x m) p < dig4 (y m) p := by omega
         have c1 : dig4 (y m) p - dig4 (x m) p = 0 := by omega
         have c2 : ¬ dig4 (x m) p - dig4 (y m) p = 0 := by omega
-        rw [if_neg n1, if_pos h, if_pos c1, if_neg c2])
+        rw [ite_eq_right n1, ite_eq_left h, ite_eq_left c1, ite_eq_right c2])
     ((IsPolyBounded.linear 1).of_le fun z =>
       le_trans (ltFlag4_le_one _ _ _) (by omega))
   have hlen := had.comp (hlx.pair hly)
@@ -806,23 +806,23 @@ lemma natPair {x y : ℕ → ℕ} (hx : BigDigits x) (hy : BigDigits y) :
     (ifzSel_polyFueled.comp ((hd2.pair hd1).pair hflagAtZ)).of_eq (fun z => by
       simp only [Nat.unpair_pair, ifzSelFn]
       by_cases h : x z.unpair.1 < y z.unpair.1
-      · rw [if_pos h, if_neg (by norm_num : ¬ (1:ℕ) = 0)]
+      · rw [ite_eq_left h, ite_eq_right (by norm_num : ¬ (1:ℕ) = 0)]
         show dig4 _ _ = dig4 (Nat.pair _ _) _
-        rw [Nat.pair, if_pos h]
-      · rw [if_neg h, if_pos rfl]
+        rw [Nat.pair, ite_eq_left h]
+      · rw [ite_eq_right h, ite_eq_left rfl]
         show dig4 _ _ = dig4 (Nat.pair _ _) _
-        rw [Nat.pair, if_neg h])
+        rw [Nat.pair, ite_eq_right h])
   have hlen : PolyFueled _
       (fun m => len4 (Nat.pair (x m) (y m))) :=
     (ifzSel_polyFueled.comp ((hl2.pair hl1).pair hflag)).of_eq (fun m => by
       simp only [Nat.unpair_pair, ifzSelFn]
       by_cases h : x m < y m
-      · rw [if_pos h, if_neg (by norm_num : ¬ (1:ℕ) = 0)]
+      · rw [ite_eq_left h, ite_eq_right (by norm_num : ¬ (1:ℕ) = 0)]
         show len4 _ = len4 (Nat.pair _ _)
-        rw [Nat.pair, if_pos h]
-      · rw [if_neg h, if_pos rfl]
+        rw [Nat.pair, ite_eq_left h]
+      · rw [ite_eq_right h, ite_eq_left rfl]
         show len4 _ = len4 (Nat.pair _ _)
-        rw [Nat.pair, if_neg h])
+        rw [Nat.pair, ite_eq_right h])
   exact ⟨_, _, hlen, hdig⟩
 
 /-- **Closure under successor** — the `+ 1` of the encoding shells, as the ripple carry
@@ -967,10 +967,10 @@ lemma blockSeg {x : ℕ → ℕ} (hx : BigDigits x) :
   simp only [Nat.unpair_pair, ifzSelFn]
   rw [tokenBlock_getD]
   by_cases h : j < len4 (x m)
-  · rw [if_pos h, if_pos (by omega : j + 1 - len4 (x m) = 0)]
+  · rw [ite_eq_left h, ite_eq_left (by omega : j + 1 - len4 (x m) = 0)]
     rfl
   · have hje : j = len4 (x m) := by omega
-    rw [if_neg h, if_pos hje, if_neg (by omega : ¬ j + 1 - len4 (x m) = 0)]
+    rw [ite_eq_right h, ite_eq_left hje, ite_eq_right (by omega : ¬ j + 1 - len4 (x m) = 0)]
 
 end BigDigits
 
@@ -1063,8 +1063,8 @@ lemma foldl_undigitizeStep_blockStep (ds : List ℕ) : ∀ (bs : List (List ℕ)
       by_cases h : d < 4
       · rw [show undigitizeStep (bs.map digitVal, digitVal cur, 4 ^ cur.length) d =
             (bs.map digitVal, digitVal cur + d * 4 ^ cur.length, 4 * 4 ^ cur.length) from
-              if_pos h,
-          show blockStep (bs, cur) d = (bs, cur ++ [d]) from if_pos h]
+              ite_eq_left h,
+          show blockStep (bs, cur) d = (bs, cur ++ [d]) from ite_eq_left h]
         have hval := (digitVal_append_singleton cur d).symm
         have hlen : 4 * (4:ℕ) ^ cur.length = 4 ^ (cur ++ [d]).length := by
           rw [List.length_append, List.length_cons, List.length_nil, pow_succ]
@@ -1072,8 +1072,8 @@ lemma foldl_undigitizeStep_blockStep (ds : List ℕ) : ∀ (bs : List (List ℕ)
         rw [hval, hlen]
         exact ih bs (cur ++ [d])
       · rw [show undigitizeStep (bs.map digitVal, digitVal cur, 4 ^ cur.length) d =
-            (bs.map digitVal ++ [digitVal cur], 0, 1) from if_neg h,
-          show blockStep (bs, cur) d = (bs ++ [cur], []) from if_neg h]
+            (bs.map digitVal ++ [digitVal cur], 0, 1) from ite_eq_right h,
+          show blockStep (bs, cur) d = (bs ++ [cur], []) from ite_eq_right h]
         have hmap : bs.map digitVal ++ [digitVal cur] = (bs ++ [cur]).map digitVal := by
           rw [List.map_append, List.map_cons, List.map_nil]
         rw [hmap, show (0:ℕ) = digitVal [] from rfl, show (1:ℕ) = 4 ^ ([] : List ℕ).length by simp]
@@ -1103,14 +1103,14 @@ lemma blockSplit_digits_lt (ds : List ℕ) :
       refine ih _ ?_
       rw [blockStep]
       by_cases h : d < 4
-      · rw [if_pos h]
+      · rw [ite_eq_left h]
         refine ⟨hbase.1, ?_⟩
         intro d' hd'
         rcases List.mem_append.mp hd' with h' | h'
         · exact hbase.2 d' h'
         · rw [List.mem_singleton] at h'
           omega
-      · rw [if_neg h]
+      · rw [ite_eq_right h]
         refine ⟨?_, by simp⟩
         intro b hb
         rcases List.mem_append.mp hb with h' | h'
@@ -1250,25 +1250,25 @@ lemma blkTrack_blockStep (s : List (List ℕ) × List ℕ) (d j : ℕ) :
   obtain ⟨bs, cur⟩ := s
   rw [blockStep]
   by_cases hd : d < 4
-  · rw [if_pos hd]
+  · rw [ite_eq_left hd]
     simp only
     rcases Nat.lt_trichotomy j bs.length with hj | hj | hj
-    · rw [if_neg (by simp only [not_and]; intro; omega), blkTrack, blkTrack]
+    · rw [ite_eq_right (by simp only [not_and]; intro; omega), blkTrack, blkTrack]
       simp only
       rw [List.getD_append _ _ _ _ hj, List.getD_append _ _ _ _ hj]
     · subst hj
-      rw [if_pos ⟨hd, rfl⟩, blkTrack, blkTrack]
+      rw [ite_eq_left ⟨hd, rfl⟩, blkTrack, blkTrack]
       simp only
       rw [List.getD_append_right _ _ _ _ (le_refl _),
         List.getD_append_right _ _ _ _ (le_refl _)]
       simp
-    · rw [if_neg (by simp only [not_and]; intro; omega), blkTrack, blkTrack]
+    · rw [ite_eq_right (by simp only [not_and]; intro; omega), blkTrack, blkTrack]
       simp only
       rw [List.getD_eq_default _ _ (by simp only [List.length_append,
           List.length_cons, List.length_nil]; omega),
         List.getD_eq_default _ _ (by simp only [List.length_append,
           List.length_cons, List.length_nil]; omega)]
-  · rw [if_neg hd, if_neg (by simp only [not_and]; intro; omega)]
+  · rw [ite_eq_right hd, ite_eq_right (by simp only [not_and]; intro; omega)]
     rw [blkTrack, blkTrack]
     simp only
     by_cases hj : j < bs.length + 1
@@ -1314,11 +1314,11 @@ lemma blockSplit_fst_length_le (ds : List ℕ) :
 lemma getD_snoc (l : List ℕ) (d k : ℕ) :
     (l ++ [d]).getD k 0 = if l.length = k then d else l.getD k 0 := by
   rcases Nat.lt_trichotomy k l.length with h | h | h
-  · rw [if_neg (by omega), List.getD_append _ _ _ _ h]
+  · rw [ite_eq_right (by omega), List.getD_append _ _ _ _ h]
   · subst h
-    rw [if_pos rfl, List.getD_append_right _ _ _ _ (le_refl _)]
+    rw [ite_eq_left rfl, List.getD_append_right _ _ _ _ (le_refl _)]
     simp
-  · rw [if_neg (by omega),
+  · rw [ite_eq_right (by omega),
       List.getD_eq_default _ _ (show (l ++ [d]).length ≤ k by
         simp only [List.length_append, List.length_cons, List.length_nil]; omega),
       List.getD_eq_default _ _ (by omega : l.length ≤ k)]
@@ -1380,8 +1380,8 @@ lemma blockCount_polyFueled {ct : Code} {tokenFn : ℕ → ℕ}
   · simp only [Nat.unpair_pair, ifzSelFn]
     rw [vpre_succ, blockSplit_snoc, blockStep_fst_length]
     by_cases h : tokenFn (Nat.pair n i) < 4
-    · rw [if_pos h, if_pos (by omega : tokenFn (Nat.pair n i) - 3 = 0)]
-    · rw [if_neg h, if_neg (by omega : ¬ tokenFn (Nat.pair n i) - 3 = 0)]
+    · rw [ite_eq_left h, ite_eq_left (by omega : tokenFn (Nat.pair n i) - 3 = 0)]
+    · rw [ite_eq_right h, ite_eq_right (by omega : ¬ tokenFn (Nat.pair n i) - 3 = 0)]
   · simp only []
     have h1 := blockSplit_fst_length_le (vpre tokenFn z.unpair.1 z.unpair.2)
     have h2 : (vpre tokenFn z.unpair.1 z.unpair.2).length = z.unpair.2 := by
@@ -1394,7 +1394,7 @@ lemma blockCount_polyFueled {ct : Code} {tokenFn : ℕ → ℕ}
 coefficient shape `IsPolyBounded` takes — hence the `1 *`. -/
 lemma pair_le_one_add_sq (z : ℕ) : Nat.pair z z ≤ 1 * (z + 1) ^ 2 + 1 := by
   have hp : Nat.pair z z = z * z + z + z := by
-    rw [Nat.pair, if_neg (lt_irrefl z)]
+    rw [Nat.pair, ite_eq_right (lt_irrefl z)]
   have hsq : (z + 1) ^ 2 = z * z + 2 * z + 1 := by ring
   omega
 
@@ -1469,16 +1469,16 @@ lemma blkTrackLen_polyFueled {ct : Code} {tokenFn : ℕ → ℕ}
     · have hd0 : tokenFn (Nat.pair a.unpair.1 i) - 3 = 0 := by omega
       by_cases h2 : C = a.unpair.2
       · have ht20 : C - a.unpair.2 + (a.unpair.2 - C) = 0 := by omega
-        rw [if_pos h1, if_pos ⟨h1, h2⟩, if_pos hd0, if_pos ht20, if_pos hd0]
+        rw [ite_eq_left h1, ite_eq_left ⟨h1, h2⟩, ite_eq_left hd0, ite_eq_left ht20, ite_eq_left hd0]
         simp [List.length_append]
       · have ht2n : ¬ C - a.unpair.2 + (a.unpair.2 - C) = 0 := by omega
         have hcn : ¬ (tokenFn (Nat.pair a.unpair.1 i) < 4 ∧ C = a.unpair.2) := by
           tauto
-        rw [if_pos h1, if_neg hcn, if_pos hd0, if_neg ht2n, if_pos hd0]
+        rw [ite_eq_left h1, ite_eq_right hcn, ite_eq_left hd0, ite_eq_right ht2n, ite_eq_left hd0]
     · have hdn : ¬ tokenFn (Nat.pair a.unpair.1 i) - 3 = 0 := by omega
       have hcn : ¬ (tokenFn (Nat.pair a.unpair.1 i) < 4 ∧ C = a.unpair.2) := by
         tauto
-      rw [if_neg h1, if_neg hcn, if_neg hdn, if_neg hdn]
+      rw [ite_eq_right h1, ite_eq_right hcn, ite_eq_right hdn, ite_eq_right hdn]
   · simp only []
     have hpre : (vpre tokenFn z.unpair.1.unpair.1 z.unpair.2).length = z.unpair.2 := by
       simp [vpre]
@@ -1555,29 +1555,29 @@ lemma blkDig_polyFueled {ct : Code} {tokenFn : ℕ → ℕ}
     set K := a.unpair.2 with hK
     congr 1
     · by_cases h1 : D < 4
-      · rw [if_pos h1, if_pos (by omega : D - 3 = 0)]
-      · rw [if_neg h1, if_neg (by omega : ¬ D - 3 = 0)]
+      · rw [ite_eq_left h1, ite_eq_left (by omega : D - 3 = 0)]
+      · rw [ite_eq_right h1, ite_eq_right (by omega : ¬ D - 3 = 0)]
     congr 1
     · by_cases h1 : D < 4
       · by_cases h2 : C = J
-        · rw [if_pos (show D < 4 ∧ C = J from ⟨h1, h2⟩),
-            if_pos (by omega : D - 3 = 0), if_pos (by omega : C - J + (J - C) = 0)]
+        · rw [ite_eq_left (show D < 4 ∧ C = J from ⟨h1, h2⟩),
+            ite_eq_left (by omega : D - 3 = 0), ite_eq_left (by omega : C - J + (J - C) = 0)]
           simp [List.length_append]
-        · rw [if_neg (show ¬ (D < 4 ∧ C = J) by tauto),
-            if_pos (by omega : D - 3 = 0), if_neg (by omega : ¬ C - J + (J - C) = 0)]
-      · rw [if_neg (show ¬ (D < 4 ∧ C = J) by tauto),
-          if_neg (by omega : ¬ D - 3 = 0)]
+        · rw [ite_eq_right (show ¬ (D < 4 ∧ C = J) by tauto),
+            ite_eq_left (by omega : D - 3 = 0), ite_eq_right (by omega : ¬ C - J + (J - C) = 0)]
+      · rw [ite_eq_right (show ¬ (D < 4 ∧ C = J) by tauto),
+          ite_eq_right (by omega : ¬ D - 3 = 0)]
     · by_cases h1 : D < 4
       · by_cases h2 : C = J
-        · rw [if_pos (show D < 4 ∧ C = J from ⟨h1, h2⟩), getD_snoc,
-            if_pos (by omega : D - 3 = 0), if_pos (by omega : C - J + (J - C) = 0)]
+        · rw [ite_eq_left (show D < 4 ∧ C = J from ⟨h1, h2⟩), getD_snoc,
+            ite_eq_left (by omega : D - 3 = 0), ite_eq_left (by omega : C - J + (J - C) = 0)]
           by_cases h3 : TR.length = K
-          · rw [if_pos h3, if_pos (by omega : TR.length - K + (K - TR.length) = 0)]
-          · rw [if_neg h3, if_neg (by omega : ¬ TR.length - K + (K - TR.length) = 0)]
-        · rw [if_neg (show ¬ (D < 4 ∧ C = J) by tauto),
-            if_pos (by omega : D - 3 = 0), if_neg (by omega : ¬ C - J + (J - C) = 0)]
-      · rw [if_neg (show ¬ (D < 4 ∧ C = J) by tauto),
-          if_neg (by omega : ¬ D - 3 = 0)]
+          · rw [ite_eq_left h3, ite_eq_left (by omega : TR.length - K + (K - TR.length) = 0)]
+          · rw [ite_eq_right h3, ite_eq_right (by omega : ¬ TR.length - K + (K - TR.length) = 0)]
+        · rw [ite_eq_right (show ¬ (D < 4 ∧ C = J) by tauto),
+            ite_eq_left (by omega : D - 3 = 0), ite_eq_right (by omega : ¬ C - J + (J - C) = 0)]
+      · rw [ite_eq_right (show ¬ (D < 4 ∧ C = J) by tauto),
+          ite_eq_right (by omega : ¬ D - 3 = 0)]
   · have hpre : (vpre tokenFn z.unpair.1.unpair.1.unpair.1 z.unpair.2).length
         = z.unpair.2 := by simp [vpre]
     have h1 : (blockSplit (vpre tokenFn z.unpair.1.unpair.1.unpair.1
@@ -1673,11 +1673,11 @@ lemma PolySegStream.undigitizeTokens {s : ℕ → List ℕ} (h : PolySegStream s
           w.unpair.1.unpair.2)]
         by_cases hj : w.unpair.1.unpair.2 <
             (blockSplit (s w.unpair.1.unpair.1)).1.length
-        · rw [if_pos (by omega :
+        · rw [ite_eq_left (by omega :
             w.unpair.1.unpair.2 + 1 -
               (blockSplit (s w.unpair.1.unpair.1)).1.length = 0)]
           rw [blkTrack_closed _ hj]
-        · rw [if_neg (by omega :
+        · rw [ite_eq_right (by omega :
             ¬ w.unpair.1.unpair.2 + 1 -
               (blockSplit (s w.unpair.1.unpair.1)).1.length = 0)]
           rw [List.getD_eq_default (l := (blockSplit
@@ -1694,11 +1694,11 @@ lemma PolySegStream.undigitizeTokens {s : ℕ → List ℕ} (h : PolySegStream s
     simp only [Nat.unpair_pair, ifzSelFn]
     rw [hvs, htokS]
     by_cases hj : m.unpair.2 < (blockSplit (s m.unpair.1)).1.length
-    · rw [if_pos (by omega :
+    · rw [ite_eq_left (by omega :
         m.unpair.2 + 1 - (blockSplit (s m.unpair.1)).1.length = 0),
         blkTrack_closed _ hj]
       exact len4_digitVal_le _ (blockSplit_getD_digits_lt (s m.unpair.1) m.unpair.2)
-    · rw [if_neg (by omega :
+    · rw [ite_eq_right (by omega :
         ¬ m.unpair.2 + 1 - (blockSplit (s m.unpair.1)).1.length = 0),
         List.getD_eq_default (l := (blockSplit (s m.unpair.1)).1) _ (by omega)]
       simp [len4_zero])

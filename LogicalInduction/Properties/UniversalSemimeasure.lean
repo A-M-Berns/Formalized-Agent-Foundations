@@ -552,10 +552,10 @@ lemma dusSignal_pos_imp_price_lt_mass {DP : DeductiveProcess}
           exact_mod_cast ha.symm
         rw [haR]
         simp
-      rw [dusSignal, if_neg hlive, buyIndEF_denote, hb] at hsig
+      rw [dusSignal, ite_eq_right hlive, buyIndEF_denote, hb] at hsig
       norm_num at hsig
     · exact_mod_cast ha
-  rw [dusSignal, if_neg hlive] at hsig
+  rw [dusSignal, ite_eq_right hlive] at hsig
   have hlt := buyInd_pos_imp (dusBase_pos A ha) hsig
   have happ := A.le_mass n n.unpair.2
   have hkpos : 0 < (2 * ((k + 1 : ℕ) : ℝ)) := by positivity
@@ -590,7 +590,7 @@ lemma dusSignal_eq_one {DP : DeductiveProcess}
     (ha : 0 < A.approximation n n.unpair.2)
     (hprice : P n (dusSentence B n) < ((dusBase A k n : ℚ) : ℝ)) :
     (dusSignal A k n).denote P = 1 := by
-  rw [dusSignal, if_neg (by omega)]
+  rw [dusSignal, ite_eq_right (by omega)]
   exact buyInd_eq_one (dusBase_pos A ha) hprice
 
 lemma dusSignal_closed {DP : DeductiveProcess}
@@ -785,7 +785,7 @@ lemma dusWeightBody_machineSpliceStream
     (MachineSpliceStream.serialize_mul hneg hsum)
   refine MachineSpliceStream.of_eq hbody ?_
   intro z
-  simp only [ROIBudget.featureWeightBody, dusActive, if_true]
+  simp only [ROIBudget.featureWeightBody, dusActive, ite_true]
 
 /-- The shared remaining-budget feature is uniformly polynomial across both scale and
 day; previous recurrence values are referenced by `EF.var`, not duplicated. -/
@@ -1017,7 +1017,7 @@ lemma dusMeanPayoutThrough_le_semimeasureMean
     simp only [List.mem_map] at hx
     obtain ⟨σ, hσ, rfl⟩ := hx
     by_cases h : dusPrefix B i = σ
-    · simp only [c, h, if_true]
+    · simp only [c, h, ite_true]
       exact mul_nonneg (M.nonneg σ) (dusShares_nonneg A P hP k i)
     · simp [c, h]
   · exact List.mem_map.mpr ⟨dusPrefix B i, hmem, by simp [c]⟩
@@ -1091,10 +1091,10 @@ lemma prefixPathPayout_dusPurchaseWeight_le_gross
   · have hholds : v.Holds (B.prefixSentence (dusPrefix B i)) :=
       B.holds_prefix_of_pathNode v hbits hmem
     have hpayout : v.payout (dusSentence B i) = 1 := by
-      rw [PCWorld.payout, if_pos]
+      rw [PCWorld.payout, ite_eq_left]
       simpa [dusSentence] using hholds
     simp [hmem, hpayout]
-  · rw [if_neg hmem]
+  · rw [ite_eq_right hmem]
     exact mul_nonneg (dusShares_nonneg A P hP k i) (by
       rw [PCWorld.payout]
       split <;> norm_num)
@@ -1171,7 +1171,7 @@ lemma dusSpendThrough_eq
             (fun i ↦ (dusCostEF A k i).denote P) n *
           (dusCostEF A k n).denote P := by
   rw [dusSpendThrough, Finset.sum_range_succ, ROIBudget.outstanding]
-  simp only [dusActive, if_true]
+  simp only [dusActive, ite_true]
   rw [← Fin.sum_univ_eq_sum_range]
   congr 1
   · apply Finset.sum_congr rfl
@@ -1193,7 +1193,7 @@ lemma dusRemainingEF_denote_eq_one_sub_spendBefore
       1 - ∑ i ∈ Finset.range n,
         dusShares A P k i * P i (dusSentence B i) := by
   rw [dusRemainingEF_denote, ROIBudget.weight_eq, ROIBudget.outstanding]
-  simp only [dusActive, if_true]
+  simp only [dusActive, ite_true]
   rw [← Fin.sum_univ_eq_sum_range]
   congr 1
   apply Finset.sum_congr rfl
@@ -1496,8 +1496,8 @@ def dusScaleTrader_polyTradeEmulatable
     refine UnaryRuler.of_eq
       (htest.ifZero (UnaryRuler.const 0) (UnaryRuler.const 1)) (fun w ↦ ?_)
     by_cases h : w.unpair.2 < w.unpair.1
-    · rw [if_pos (by omega), if_pos h]
-    · rw [if_neg (by omega), if_neg h]
+    · rw [ite_eq_left (by omega), ite_eq_left h]
+    · rw [ite_eq_right (by omega), ite_eq_right h]
   coefficient_poly :=
     ((dusSharesEF_machineSpliceStream A emit).comp
       (UnaryRuler.unpairFst)).of_eq (fun _ ↦ rfl)
@@ -1509,7 +1509,7 @@ def dusScaleTrader_polyTradeEmulatable
     intro k n
     by_cases h : n < k
     · simp [dusScaleTrader, h]
-    · simp only [dusScaleTrader, dif_neg h, Nat.unpair_pair, if_neg h]
+    · simp only [dusScaleTrader, dite_eq_right h, Nat.unpair_pair, ite_eq_right h]
       simp
 
 /-- Uniform token stream for the entire scale family. -/

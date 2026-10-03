@@ -104,7 +104,7 @@ lemma expected_pure [∀ i, DecidableEq (𝒜 i)] (a : ∀ i, 𝒜 i) (ha : a �
     constructor
     · intro h; funext j; exact Subtype.ext (h j (Finset.mem_univ j))
     · intro h j _; rw [h]; rfl
-  simp only [key, ite_mul, one_mul, zero_mul, Finset.sum_ite_eq', Finset.mem_univ, if_true]
+  simp only [key, ite_mul, one_mul, zero_mul, Finset.sum_ite_eq', Finset.mem_univ, ite_true]
   rfl
 
 /-- `|uᵢ(σ)|` is bounded by the sum of `|uᵢ|` over pure profiles, uniformly in `σ`. -/
@@ -223,7 +223,7 @@ lemma expected_le_bestReply [∀ i, DecidableEq (𝒜 i)] (i : N) {b : ∀ j, �
             have hne := Finset.prod_ne_zero_iff.1 hz j (Finset.mem_univ j)
             rw [hσ, Function.update_of_ne hj, Γ.pureMixed_val] at hne
             by_contra hcontra
-            exact hne (if_neg hcontra)
+            exact hne (ite_eq_right hcontra)
           have heq : Γ.ofStrategicProfile s = Function.update b i (s i : 𝒜 i) := by
             funext j
             by_cases hj : j = i
@@ -274,7 +274,7 @@ lemma le_expected_update_pure [∀ i, DecidableEq (𝒜 i)] {i : N} {a : 𝒜 i}
           have hne : (σ i).val (s i) ≠ 0 :=
             fun hz => hpos.ne' (Finset.prod_eq_zero (Finset.mem_univ i) hz)
           rw [hσ, Function.update_self, pureMixed_val] at hne
-          exact h s (by by_contra hc; exact hne (if_neg hc))
+          exact h s (by by_contra hc; exact hne (ite_eq_right hc))
         · rw [← hzero, zero_mul, zero_mul]
 
 /-- **The threat point is metered from below by a maximin guarantee**: if some pure action

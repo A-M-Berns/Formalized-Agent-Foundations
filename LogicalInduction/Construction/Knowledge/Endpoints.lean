@@ -1726,12 +1726,12 @@ lemma mem_theoryOf {m : Nat.Partrec.Code} {σ : ArithmeticSentence} {b i : ℕ}
 machine's output to the endpoint's `hinc`.
 
 Kind `C` (composition).  Provenance: (b) Foundation citations — `Entailment.by_axm`,
-`Entailment.weakening!`, `Entailment.inconsistent_iff_provable_bot`, `Entailment.N!_iff_CO!`. -/
+`Entailment.weakening!`, `Entailment.inconsistent_iff_provable_bot`, `Entailment.N_iff_CO`. -/
 lemma not_consistent_of_refutable_mem {S : ArithmeticTheory} {σ : ArithmeticSentence}
     (hmem : σ ∈ S) (href : (∅ : ArithmeticTheory) ⊢ ∼σ) : ¬Entailment.Consistent S := by
   rw [Entailment.not_consistent_iff_inconsistent, Entailment.inconsistent_iff_provable_bot]
-  exact (FFL.Entailment.N!_iff_CO!.mp
-    (Entailment.wk! (Set.empty_subset S) href)) ⨀ Entailment.by_axm hmem
+  exact (FFL.Entailment.N_iff_CO.mp
+    (Entailment.weakening! (Set.empty_subset S) href)) ⨀ Entailment.by_axm hmem
 
 /-- **The finite window, found.**  Any finite list of `m`'s axioms is emitted together in a
 single budget-`b` run at some list of inputs, and — at that budget or any larger one — the
@@ -1922,7 +1922,7 @@ empty theory could satisfy the predicate.
 Kind `P` (proved).  Provenance: (a) `exists_sources_axiomWindow`,
 `exists_listConj_of_window_sources`, `negWindowCode_eq_quote` derived in-project;
 (b) Foundation citations — `Bootstrapping.provable_iff_provable`, `Entailment.by_axm`,
-`Entailment.wk!`, `Entailment.N!_iff_CO!`. -/
+`Entailment.weakening!`, `Entailment.N_iff_CO`. -/
 lemma not_consistent_theoryOf_of_machineTheoryInconsistent {m : Nat.Partrec.Code}
     (h : MachineTheoryInconsistent m.sourceNat) :
     ¬Entailment.Consistent (theoryOf m) := by
@@ -1938,7 +1938,7 @@ lemma not_consistent_theoryOf_of_machineTheoryInconsistent {m : Nat.Partrec.Code
       · exact Entailment.by_axm hφ'
   intro hcons
   exact hcons.not_bot
-    ((FFL.Entailment.N!_iff_CO!.mp (Entailment.wk! (Set.empty_subset _) hw)) ⨀ hprov)
+    ((FFL.Entailment.N_iff_CO.mp (Entailment.weakening! (Set.empty_subset _) hw)) ⨀ hprov)
 
 /-- **The represented predicate is exactly the convention's inconsistency claim.**  Both
 directions, at every machine: no gap between what `thm:incons`'s day-`n` sentence says and
@@ -1989,7 +1989,7 @@ lemma not_machineTheoryInconsistent_of_diverges {m : Nat.Partrec.Code}
         (⊤ : ArithmeticSentence)) :=
     provable_listConj ∅ (fun φ hφ => by
       rw [List.eq_of_mem_replicate hφ]; cl_prover)
-  exact consistent_empty.not_bot ((FFL.Entailment.N!_iff_CO!.mp hw) ⨀ hprov)
+  exact consistent_empty.not_bot ((FFL.Entailment.N_iff_CO.mp hw) ⨀ hprov)
 
 /-- The never-halting machine never emits, at any budget: `evaln` is sound for `eval`. -/
 lemma evaln_neverHaltMachine (b i : ℕ) :

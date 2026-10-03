@@ -128,8 +128,8 @@ lemma RpnSentenceCodes.or {φ ψ : ℕ → Sentence}
   have hlen : (4 :: (a z ++ b z)).length = (a z).length + (b z).length + 1 := by
     simp
   rw [hlen, parseRpn_cons]
-  rw [if_neg (by norm_num), if_neg (by norm_num), if_neg (by norm_num),
-    if_neg (by norm_num), if_pos rfl]
+  rw [ite_eq_right (by norm_num), ite_eq_right (by norm_num), ite_eq_right (by norm_num),
+    ite_eq_right (by norm_num), ite_eq_left rfl]
   rw [parseRpn_block_head (hpa z) (b z) (by omega)]
   simp only [Option.bind_some]
   rw [parseRpn_mono (b z) (show (b z).length ≤ (a z).length + (b z).length by omega)
@@ -150,7 +150,7 @@ lemma RpnSentenceCodes.imp {φ ψ : ℕ → Sentence}
   have hlen : (2 :: (a z ++ b z)).length = (a z).length + (b z).length + 1 := by
     simp
   rw [hlen, parseRpn_cons]
-  rw [if_neg (by norm_num), if_neg (by norm_num), if_pos rfl]
+  rw [ite_eq_right (by norm_num), ite_eq_right (by norm_num), ite_eq_left rfl]
   rw [parseRpn_block_head (hpa z) (b z) (by omega)]
   simp only [Option.bind_some]
   rw [parseRpn_mono (b z) (show (b z).length ≤ (a z).length + (b z).length by omega)
@@ -181,7 +181,7 @@ lemma parseRpn_disjChain (blk : ℕ → List ℕ) (D : ℕ → Sentence)
         cases fuel with
         | zero => simp at hfuel
         | succ g => exact ⟨g, rfl⟩
-      rw [parseRpn_cons, if_pos rfl]
+      rw [parseRpn_cons, ite_eq_left rfl]
       rfl
   | succ t ih =>
       intro a rest fuel hfuel
@@ -216,8 +216,8 @@ lemma parseRpn_disjChain (blk : ℕ → List ℕ) (D : ℕ → Sentence)
         simp only [List.length_cons, List.length_append] at hfuel ⊢
         omega
       rw [parseRpn_cons]
-      rw [if_neg (by norm_num), if_neg (by norm_num), if_neg (by norm_num),
-        if_neg (by norm_num), if_pos rfl]
+      rw [ite_eq_right (by norm_num), ite_eq_right (by norm_num), ite_eq_right (by norm_num),
+        ite_eq_right (by norm_num), ite_eq_left rfl]
       rw [parseRpn_block_head (hblk a) (F ++ 0 :: rest)
         (le_trans (Nat.le_add_right _ _) hlen)]
       simp only [Option.bind_some]
@@ -254,14 +254,14 @@ lemma parseRpn_conjChain (blk : ℕ → List ℕ) (D : ℕ → Sentence)
         cases fuel with
         | zero => simp at hfuel
         | succ g => exact ⟨g, rfl⟩
-      rw [parseRpn_cons, if_neg (by norm_num), if_neg (by norm_num), if_pos rfl]
+      rw [parseRpn_cons, ite_eq_right (by norm_num), ite_eq_right (by norm_num), ite_eq_left rfl]
       obtain ⟨fuel, rfl⟩ : ∃ g, fuel = g + 1 := by
         cases fuel with
         | zero => simp at hfuel
         | succ g => exact ⟨g, rfl⟩
-      rw [parseRpn_cons, if_pos rfl]
+      rw [parseRpn_cons, ite_eq_left rfl]
       simp only [Option.bind_some]
-      rw [parseRpn_cons, if_pos rfl]
+      rw [parseRpn_cons, ite_eq_left rfl]
       simp only [Option.bind_some]
       rfl
   | succ t ih =>
@@ -297,7 +297,7 @@ lemma parseRpn_conjChain (blk : ℕ → List ℕ) (D : ℕ → Sentence)
         simp only [List.length_cons, List.length_append] at hfuel ⊢
         omega
       rw [parseRpn_cons]
-      rw [if_neg (by norm_num), if_neg (by norm_num), if_neg (by norm_num), if_pos rfl]
+      rw [ite_eq_right (by norm_num), ite_eq_right (by norm_num), ite_eq_right (by norm_num), ite_eq_left rfl]
       rw [parseRpn_block_head (hblk a) (F ++ 2 :: 0 :: 0 :: rest)
         (le_trans (Nat.le_add_right _ _) hlen)]
       simp only [Option.bind_some]
@@ -408,13 +408,13 @@ lemma modDispatch_of_closure {C : (ℕ → Sentence) → Prop}
         refine hof_eq
           (hifZero (hcomp (hφ m hmk) hleft) (ih (le_of_lt hm)) htest) (fun z => ?_)
         by_cases heq : z.unpair.2 % k = m
-        · rw [if_pos (by omega), if_pos (by omega), heq]
-        · rw [if_neg (by omega)]
+        · rw [ite_eq_left (by omega), ite_eq_left (by omega), heq]
+        · rw [ite_eq_right (by omega)]
           by_cases hlt : z.unpair.2 % k < m + 1
-          · rw [if_pos hlt, if_pos (by omega)]
-          · rw [if_neg hlt, if_neg (by omega)]
+          · rw [ite_eq_left hlt, ite_eq_left (by omega)]
+          · rw [ite_eq_right hlt, ite_eq_right (by omega)]
   exact hof_eq (H k le_rfl) (fun z => by
-    rw [if_pos (Nat.mod_lt z.unpair.2 hk)])
+    rw [ite_eq_left (Nat.mod_lt z.unpair.2 hk)])
 
 /-- Finite mod-`k` dispatch at the value-bounded sentence class. -/
 lemma RpnSentenceCodes.modDispatch {k : ℕ} (hk : 0 < k) {φ : ℕ → ℕ → Sentence}

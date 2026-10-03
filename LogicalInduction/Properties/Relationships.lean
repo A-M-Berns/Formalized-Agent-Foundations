@@ -448,15 +448,15 @@ theorem lic_limitingBelief_add_neg
     have hrange : List.range 2 = [0, 1] := by decide
     rw [hrange]
     simp only [List.map_cons, List.map_nil, List.sum_cons, List.sum_nil, add_zero]
-    simp only [pair, if_pos rfl, if_neg (by omega : (1 : ℕ) ≠ 0)]
+    simp only [pair, ite_eq_left rfl, ite_eq_right (by omega : (1 : ℕ) ≠ 0)]
     by_cases hφ : v.Holds φ
     · have hn : ¬ v.Holds (∼φ) := by
         rw [PCWorld.holds_neg]
         exact not_not_intro hφ
-      rw [PCWorld.payout, if_pos hφ, PCWorld.payout, if_neg hn]
+      rw [PCWorld.payout, ite_eq_left hφ, PCWorld.payout, ite_eq_right hn]
       norm_num
     · have hn : v.Holds (∼φ) := (PCWorld.holds_neg v φ).2 hφ
-      rw [PCWorld.payout, if_neg hφ, PCWorld.payout, if_pos hn]
+      rw [PCWorld.payout, ite_eq_right hφ, PCWorld.payout, ite_eq_left hn]
       norm_num
   have hlex0 := lic_learning_exclusive_exhaustive P DP 2 (by omega)
     pair hcodes hworld hsemantic

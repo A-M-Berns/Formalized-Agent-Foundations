@@ -186,7 +186,7 @@ lemma tvAux_one_eq (n : ℕ) : tvAux 1 n = tvSize n := rfl
 
 lemma tvAux_succ_of_ne {mode : ℕ} (h : mode ≠ 0) (m : ℕ) :
     tvAux mode (m + 1) = 1 + tSize (arg 0 m) + tvSize (tail 1 m) := by
-  rw [tvAux, if_neg h]
+  rw [tvAux, ite_eq_right h]
   rfl
 
 /-! ## Formulas -/
@@ -376,21 +376,21 @@ private lemma le_G_tvAux : ∀ (n mode : ℕ), n ≤ G (tvAux mode n) := by
       · subst hmode
         rw [tvAux_zero_eq, tSize_succ]
         by_cases h0 : arg 0 m = 0
-        · rw [if_pos h0, show 1 + idxLen (tail 1 m) = idxLen (tail 1 m) + 1 by omega]
+        · rw [ite_eq_left h0, show 1 + idxLen (tail 1 m) = idxLen (tail 1 m) + 1 by omega]
           refine node_bound (j := 1) (N := idxLen (tail 1 m)) (by omega) ?_ (idx_le_Bd le_rfl)
           intro i hi
           interval_cases i
           exact tag_le_Bd (by omega)
-        · rw [if_neg h0]
+        · rw [ite_eq_right h0]
           by_cases h1 : arg 0 m = 1
-          · rw [if_pos h1, show 1 + idxLen (tail 1 m) = idxLen (tail 1 m) + 1 by omega]
+          · rw [ite_eq_left h1, show 1 + idxLen (tail 1 m) = idxLen (tail 1 m) + 1 by omega]
             refine node_bound (j := 1) (N := idxLen (tail 1 m)) (by omega) ?_ (idx_le_Bd le_rfl)
             intro i hi
             interval_cases i
             exact tag_le_Bd (by omega)
-          · rw [if_neg h1]
+          · rw [ite_eq_right h1]
             by_cases h2 : arg 0 m = 2
-            · rw [if_pos h2, show 1 + idxLen (arg 1 m) + idxLen (arg 2 m)
+            · rw [ite_eq_left h2, show 1 + idxLen (arg 1 m) + idxLen (arg 2 m)
                   + tvSize (tail 3 m)
                 = (idxLen (arg 1 m) + idxLen (arg 2 m) + tvSize (tail 3 m)) + 1 by omega]
               refine node_bound (j := 3) (by omega) ?_ ?_
@@ -400,7 +400,7 @@ private lemma le_G_tvAux : ∀ (n mode : ℕ), n ≤ G (tvAux mode n) := by
                 · exact idx_le_Bd (by omega)
                 · exact idx_le_Bd (by omega)
               · exact sub_le_Bd (ih1 _ (tail_lt_succ 3 m)) (by omega)
-            · rw [if_neg h2]
+            · rw [ite_eq_right h2]
               exact self_le_G (m + 1)
       · rw [tvAux_succ_of_ne hmode,
             show 1 + tSize (arg 0 m) + tvSize (tail 1 m)
@@ -429,7 +429,7 @@ lemma le_G_fSize (n : ℕ) : n ≤ G (fSize n) := by
     | (m + 1) =>
       rw [fSize]
       by_cases h01 : arg 0 m = 0 ∨ arg 0 m = 1
-      · rw [if_pos h01, show 1 + idxLen (arg 1 m) + idxLen (arg 2 m) + tvSize (tail 3 m)
+      · rw [ite_eq_left h01, show 1 + idxLen (arg 1 m) + idxLen (arg 2 m) + tvSize (tail 3 m)
               = (idxLen (arg 1 m) + idxLen (arg 2 m) + tvSize (tail 3 m)) + 1 by omega]
         refine node_bound (j := 3) (by omega) ?_ ?_
         · intro i hi
@@ -438,20 +438,20 @@ lemma le_G_fSize (n : ℕ) : n ≤ G (fSize n) := by
           · exact idx_le_Bd (by omega)
           · exact idx_le_Bd (by omega)
         · exact sub_le_Bd (le_G_tvSize (tail 3 m)) (by omega)
-      · rw [if_neg h01]
+      · rw [ite_eq_right h01]
         by_cases h23 : arg 0 m = 2 ∨ arg 0 m = 3
-        · rw [if_pos h23]
+        · rw [ite_eq_left h23]
           by_cases hz : tail 1 m = 0
-          · rw [if_pos hz, show (1 : ℕ) = 0 + 1 by omega]
+          · rw [ite_eq_left hz, show (1 : ℕ) = 0 + 1 by omega]
             refine node_bound (j := 1) (N := 0) (by omega) ?_ (by rw [hz]; exact Nat.zero_le _)
             intro i hi
             interval_cases i
             exact tag_le_Bd (by rcases h23 with h | h <;> omega)
-          · rw [if_neg hz]
+          · rw [ite_eq_right hz]
             exact self_le_G (m + 1)
-        · rw [if_neg h23]
+        · rw [ite_eq_right h23]
           by_cases h45 : arg 0 m = 4 ∨ arg 0 m = 5
-          · rw [if_pos h45, show 1 + fSize (arg 1 m) + fSize (tail 2 m)
+          · rw [ite_eq_left h45, show 1 + fSize (arg 1 m) + fSize (tail 2 m)
                   = (fSize (arg 1 m) + fSize (tail 2 m)) + 1 by omega]
             refine node_bound (j := 2) (by omega) ?_ ?_
             · intro i hi
@@ -459,15 +459,15 @@ lemma le_G_fSize (n : ℕ) : n ≤ G (fSize n) := by
               · exact tag_le_Bd (by rcases h45 with h | h <;> omega)
               · exact sub_le_Bd (ih _ (arg_lt_succ 1 m)) (by omega)
             · exact sub_le_Bd (ih _ (tail_lt_succ 2 m)) (by omega)
-          · rw [if_neg h45]
+          · rw [ite_eq_right h45]
             by_cases h67 : arg 0 m = 6 ∨ arg 0 m = 7
-            · rw [if_pos h67, show 1 + fSize (tail 1 m) = fSize (tail 1 m) + 1 by omega]
+            · rw [ite_eq_left h67, show 1 + fSize (tail 1 m) = fSize (tail 1 m) + 1 by omega]
               refine node_bound (j := 1) (by omega) ?_ ?_
               · intro i hi
                 interval_cases i
                 exact tag_le_Bd (by rcases h67 with h | h <;> omega)
               · exact sub_le_Bd (ih _ (tail_lt_succ 1 m)) (by omega)
-            · rw [if_neg h67]
+            · rw [ite_eq_right h67]
               exact self_le_G (m + 1)
 
 /-! ### Sequents -/
@@ -888,7 +888,7 @@ private lemma gsize_correct (n : ℕ) : gsize ((List.range n).map Nat.size) = Na
   rcases Nat.eq_zero_or_pos n with rfl | hn
   · simp [gsize]
   · have hlen : ((List.range n).map Nat.size).length = n := by simp
-    rw [gsize, hlen, if_neg (by omega), getD_range_map Nat.size (by omega)]
+    rw [gsize, hlen, ite_eq_right (by omega), getD_range_map Nat.size (by omega)]
     exact (size_eq_succ (by omega)).symm
 
 private lemma prim_natSize : Primrec Nat.size := by
@@ -976,16 +976,16 @@ private lemma gtv_correct (z : ℕ) : gtv ((List.range z).map tvPacked) = tvPack
     fun i hi => getD_range_map tvPacked hi
   rw [gtv, hlen]
   by_cases hz : z / 2 = 0
-  · rw [if_pos hz, tvPacked, hz, tvAux_zero]
-  · rw [if_neg hz]
+  · rw [ite_eq_left hz, tvPacked, hz, tvAux_zero]
+  · rw [ite_eq_right hz]
     obtain ⟨m, hm⟩ : ∃ m, z / 2 = m + 1 := ⟨z / 2 - 1, by omega⟩
     have hz2 : z = 2 * (m + 1) + z % 2 := by omega
     have hmod : z % 2 = 0 ∨ z % 2 = 1 := by omega
     rw [hm, Nat.add_sub_cancel, tvBody, tvPacked, hm]
     rcases hmod with h | h
-    · rw [h, if_pos rfl, tvAux_zero_eq, tSize_succ,
+    · rw [h, ite_eq_left rfl, tvAux_zero_eq, tSize_succ,
         hget (2 * tail 3 m + 1) (by have := tail_le 3 m; omega), tvPacked_two_mul_succ]
-    · rw [h, if_neg one_ne_zero, tvAux_succ_of_ne one_ne_zero,
+    · rw [h, ite_eq_right one_ne_zero, tvAux_succ_of_ne one_ne_zero,
         hget (2 * arg 0 m) (by have := arg_le 0 m; omega),
         hget (2 * tail 1 m + 1) (by have := tail_le 1 m; omega),
         tvPacked_two_mul, tvPacked_two_mul_succ]
@@ -1058,7 +1058,7 @@ private lemma gf_correct (n : ℕ) : gf ((List.range n).map fSize) = fSize n := 
     have hlen : ((List.range (m + 1)).map fSize).length = m + 1 := by simp
     have hget : ∀ i, i < m + 1 → ((List.range (m + 1)).map fSize).getD i 0 = fSize i :=
       fun i hi => getD_range_map fSize hi
-    rw [gf, hlen, if_neg (Nat.succ_ne_zero m), Nat.add_sub_cancel, fBody, fSize,
+    rw [gf, hlen, ite_eq_right (Nat.succ_ne_zero m), Nat.add_sub_cancel, fBody, fSize,
       hget (arg 1 m) (arg_lt_succ 1 m), hget (tail 2 m) (tail_lt_succ 2 m),
       hget (tail 1 m) (tail_lt_succ 1 m)]
 
@@ -1208,7 +1208,7 @@ private lemma gd_correct (n : ℕ) : gd ((List.range n).map dSize) = dSize n := 
     have hlen : ((List.range (m + 1)).map dSize).length = m + 1 := by simp
     have hget : ∀ i, i < m + 1 → ((List.range (m + 1)).map dSize).getD i 0 = dSize i :=
       fun i hi => getD_range_map dSize hi
-    rw [gd, hlen, if_neg (Nat.succ_ne_zero m), Nat.add_sub_cancel, dBody, dSize,
+    rw [gd, hlen, ite_eq_right (Nat.succ_ne_zero m), Nat.add_sub_cancel, dBody, dSize,
       hget (arg 4 m) (arg_lt_succ 4 m), hget (tail 5 m) (tail_lt_succ 5 m),
       hget (tail 4 m) (tail_lt_succ 4 m), hget (tail 3 m) (tail_lt_succ 3 m),
       hget (tail 2 m) (tail_lt_succ 2 m), hget (arg 3 m) (arg_lt_succ 3 m)]
@@ -1290,7 +1290,7 @@ private lemma scan_eq (a : ℕ) : ∀ n : ℕ,
         Nat.rec (motive := fun _ => ℕ) 0 (fun y IH => if p a y then 1 else IH) n) = _
       rw [ih]
       by_cases hn : p a n
-      · rw [if_pos hn, if_pos ⟨n, Nat.lt_succ_self n, hn⟩]
+      · rw [ite_eq_left hn, ite_eq_left ⟨n, Nat.lt_succ_self n, hn⟩]
       · have hnex : (∃ d < n, p a d) ↔ ∃ d < n + 1, p a d := by
           constructor
           · rintro ⟨d, hd, hpd⟩; exact ⟨d, by omega, hpd⟩
@@ -1298,7 +1298,7 @@ private lemma scan_eq (a : ℕ) : ∀ n : ℕ,
             rcases Nat.lt_succ_iff_lt_or_eq.mp hd with h | rfl
             · exact ⟨d, h, hpd⟩
             · exact absurd hpd hn
-        rw [if_neg hn]
+        rw [ite_eq_right hn]
         exact if_congr hnex rfl rfl
 
 -- The search is a `Nat.rec` over a `Computable₂` step, and its witness is assembled

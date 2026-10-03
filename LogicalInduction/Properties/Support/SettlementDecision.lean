@@ -504,7 +504,7 @@ def bitsToFin (B : ℕ) (l : List Bool) : BoolPCWorld.FiniteWorld B := fun a => 
 
 /-- A bit list of the right length denotes the same world whether read dependently (through
 `FiniteWorld B`) or non-dependently (through `BoolPCWorld.bitsWorld`).  Past the end of the
-list both read `false`: `toBoolPCWorld` by its `dif_neg` branch, `bitsWorld` because
+list both read `false`: `toBoolPCWorld` by its `dite_eq_right` branch, `bitsWorld` because
 `getD` is out of range.  This is what lets the compiled test avoid `Fin B` entirely. -/
 lemma toBoolPCWorld_bitsToFin {B : ℕ} {l : List Bool} (hl : l.length = B) :
     (bitsToFin B l).toBoolPCWorld = BoolPCWorld.bitsWorld l := by
@@ -512,7 +512,7 @@ lemma toBoolPCWorld_bitsToFin {B : ℕ} {l : List Bool} (hl : l.length = B) :
   rw [BoolPCWorld.FiniteWorld.toBoolPCWorld, BoolPCWorld.bitsWorld]
   by_cases h : a < B
   · simp [h, bitsToFin]
-  · rw [dif_neg h, List.getD_eq_default _ _ (by omega)]
+  · rw [dite_eq_right h, List.getD_eq_default _ _ (by omega)]
 
 lemma payoutRat_bitsToFin {B : ℕ} {l : List Bool} (hl : l.length = B) :
     (bitsToFin B l).payoutRat = BoolPCWorld.bitsPayoutRat l := by

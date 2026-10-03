@@ -220,8 +220,8 @@ noncomputable def prescribedRandom (T : Game N 𝒜) {a : Ω → ∀ i, 𝒜 i}
   page_mem q ω := by
     classical
     by_cases h : T.cls = q
-    · rw [dif_pos h]; exact (T.canon.chosenIso q (T.cls_canon.trans h)).map_mem (ha ω)
-    · rw [dif_neg h]; exact (q.rep.profiles_nonempty).choose_spec
+    · rw [dite_eq_left h]; exact (T.canon.chosenIso q (T.cls_canon.trans h)).map_mem (ha ω)
+    · rw [dite_eq_right h]; exact (q.rep.profiles_nonempty).choose_spec
 
 /-- The prescribed book plays `a ω` in every game whose full reduction is `T`. -/
 lemma prescribedRandom_play (T : Game N 𝒜) {a : Ω → ∀ i, 𝒜 i} (ha : ∀ ω, a ω ∈ T.profiles)
@@ -230,7 +230,7 @@ lemma prescribedRandom_play (T : Game N 𝒜) {a : Ω → ∀ i, 𝒜 i} (ha : �
   classical
   rw [toPlay_play, hΓ, playReduced, prescribedRandom]
   dsimp only
-  rw [dif_pos rfl]
+  rw [dite_eq_left rfl]
   exact GameIso.symm_map_map _ (ha ω)
 
 /-- The **prescribed book** for one target class: the page of the class of the reduced
@@ -261,8 +261,8 @@ noncomputable def varying : Book N 𝒜 (∀ i, 𝒜 i) where
   page_mem q ω := by
     classical
     by_cases h : ω ∈ q.rep.profiles
-    · rw [dif_pos h]; exact h
-    · rw [dif_neg h]; exact (q.rep.profiles_nonempty).choose_spec
+    · rw [dite_eq_left h]; exact h
+    · rw [dite_eq_right h]; exact (q.rep.profiles_nonempty).choose_spec
 
 /-- The varying book plays any prescribed outcome of a game's full reduction at a suitable
 sample point: the sample point is the outcome's image in the class representative. -/
@@ -274,7 +274,7 @@ lemma varying_play_eq (Γ : Game N 𝒜) {a : ∀ i, 𝒜 i} (ha : a ∈ Γ.redu
   have hmem : φ.map a ∈ (Γ.reduce.cls).rep.profiles := φ.map_mem ha
   rw [toPlay_play, playReduced]
   show φ.symm.map (varying.page Γ.reduce.cls (φ.map a)) = a
-  rw [show varying.page Γ.reduce.cls (φ.map a) = φ.map a from dif_pos hmem]
+  rw [show varying.page Γ.reduce.cls (φ.map a) = φ.map a from dite_eq_left hmem]
   exact φ.symm_map_map ha
 
 /-! ### Books as probabilistic representatives -/

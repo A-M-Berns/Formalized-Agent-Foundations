@@ -160,14 +160,14 @@ lemma acc_halts : ∀ (t : ℕ), ∀ p ∈ acc t,
       intro p hp
       rw [acc] at hp
       by_cases h : accOK t (acc t)
-      · rw [if_pos h] at hp
+      · rw [ite_eq_left h] at hp
         rcases List.mem_cons.mp hp with rfl | hp'
         · have hs : (candHit t).isSome := by
             simpa using (Bool.and_eq_true .. ▸ h : (candHit t).isSome = true ∧ _).1
           obtain ⟨y, hy⟩ := Option.isSome_iff_exists.mp hs
           exact ⟨y, Nat.Partrec.Code.evaln_sound hy⟩
         · exact acc_halts t p hp'
-      · rw [if_neg h] at hp; exact acc_halts t p hp
+      · rw [ite_eq_right h] at hp; exact acc_halts t p hp
 
 /-- The guard, read backwards: an accepted candidate is incomparable with everything
 already accepted for its machine. -/
@@ -191,13 +191,13 @@ lemma acc_antichain : ∀ (t : ℕ) (p q : ℕ × List Bool), p ∈ acc t → q 
       intro p q hp hq hcode hpre
       rw [acc] at hp hq
       by_cases h : accOK t (acc t)
-      · rw [if_pos h] at hp hq
+      · rw [ite_eq_left h] at hp hq
         rcases List.mem_cons.mp hp with rfl | hp' <;> rcases List.mem_cons.mp hq with rfl | hq'
         · rfl
         · exact absurd hpre (accOK_guard h hq' hcode.symm).2
         · exact absurd hpre (accOK_guard h hp' hcode).1
         · exact acc_antichain t p q hp' hq' hcode hpre
-      · rw [if_neg h] at hp hq
+      · rw [ite_eq_right h] at hp hq
         exact acc_antichain t p q hp hq hcode hpre
 
 lemma Accepted.halts {e : ℕ} {w : List Bool} (h : Accepted e w) :
@@ -453,7 +453,7 @@ lemma accepted_of_prefixFree {c : Nat.Partrec.Code}
         exact ⟨t, by rw [← hpe, ← hpw]; exact hp⟩
     · exact Or.inl hpe
   exact hcon ⟨t + 1, by
-    rw [acc, if_pos hok]
+    rw [acc, ite_eq_left hok]
     exact List.mem_cons.mpr (Or.inl (by rw [hcode, hword]))⟩
 
 /-- **Invariance / universality.**  For every prefix machine `M` (a code with prefix-free
@@ -643,7 +643,7 @@ lemma uTab_tendsto (i : ℕ) :
     (uApprox_tendsto i).comp (Filter.tendsto_sub_atTop_nat 1)
   refine Filter.Tendsto.congr' ?_ h1
   filter_upwards [Filter.eventually_gt_atTop 0] with j hj
-  rw [uTab, if_neg (by omega)]
+  rw [uTab, ite_eq_right (by omega)]
 
 /-- The exact stage table, as a natural-number stream. -/
 noncomputable def uEmit (z : ℕ) : ℕ := Encodable.encode (uTab z.unpair.1 z.unpair.2)
@@ -785,12 +785,12 @@ lemma uUniv_spec (n : ℕ) (v : List Bool) (y : ℕ) :
     constructor
     · rintro ⟨q, hq, hq2⟩
       by_cases h : natCode q.1 ++ q.2 = v
-      · rw [if_pos h] at hq2
+      · rw [ite_eq_left h] at hq2
         obtain rfl : q = p := by simpa using hq2
         exact ⟨hq, h⟩
-      · rw [if_neg h] at hq2; simp at hq2
+      · rw [ite_eq_right h] at hq2; simp at hq2
     · rintro ⟨hp, hv⟩
-      exact ⟨p, hp, by rw [if_pos hv]⟩
+      exact ⟨p, hp, by rw [ite_eq_left hv]⟩
   have huniq : ∀ p q : ℕ × List Bool, p ∈ L → q ∈ L → p = q := by
     rintro ⟨p1, p2⟩ ⟨q1, q2⟩ hp hq
     have h1 := (hmem (p1, p2)).mp hp
@@ -973,9 +973,9 @@ lemma mem_uLenList {n y m : ℕ} (h : m ∈ uLenList n y) :
   rw [uLenList, List.mem_filterMap] at h
   obtain ⟨v, -, hv⟩ := h
   by_cases hc : uVal n v = some y
-  · rw [if_pos hc] at hv
+  · rw [ite_eq_left hc] at hv
     exact ⟨v, (uVal_spec n v y).mp hc, by simpa using hv⟩
-  · rw [if_neg hc] at hv; simp at hv
+  · rw [ite_eq_right hc] at hv; simp at hv
 
 /-- The bounded search computes exactly the stage-`n` minimum codeword length.
 Paper node: `thm:ob` -/
@@ -994,7 +994,7 @@ lemma uMinLen_eq (n y : ℕ) : uMinLen n y = sInf (uLenSetBy n y) := by
     (mem_wordsUpto _ v).mpr (by omega)
   have : sInf (uLenSetBy n y) ∈ uLenList n y := by
     rw [uLenList, List.mem_filterMap]
-    exact ⟨v, hvm, by rw [if_pos ((uVal_spec n v y).mpr hv), hlen]⟩
+    exact ⟨v, hvm, by rw [ite_eq_left ((uVal_spec n v y).mpr hv), hlen]⟩
   exact foldr_min_le _ _ _ this
 
 lemma kappaStage_eq (n y : ℕ) : kappaStage n y = uMinLen n y + 1 := by
@@ -1025,8 +1025,8 @@ lemma encodeEnum_prim : Primrec (fun i => Encodable.encode (prefixSentenceEnum i
     (fun i => ?_)
   rw [encode_prefixSentenceEnum]
   by_cases hv : validCode i
-  · rw [if_pos hv, if_pos (by simp [invalidBit, hv])]; rfl
-  · rw [if_neg hv, if_neg (by simp [invalidBit, hv])]; rfl
+  · rw [ite_eq_left hv, ite_eq_left (by simp [invalidBit, hv])]; rfl
+  · rw [ite_eq_right hv, ite_eq_right (by simp [invalidBit, hv])]; rfl
 
 lemma uApprox_eq_halfPow (n i : ℕ) :
     uApprox n i = Dovetail.halfPow (uMinLen n (Encodable.encode (prefixSentenceEnum i))) := by
@@ -1051,8 +1051,8 @@ lemma uEmit_prim : Primrec uEmit := by
     (fun z => ?_)
   rw [uEmit, uTab]
   by_cases h : z.unpair.1 = 0
-  · rw [if_pos h, if_pos h]
-  · rw [if_neg h, if_neg h, uApprox_eq_halfPow]
+  · rw [ite_eq_left h, ite_eq_left h]
+  · rw [ite_eq_right h, ite_eq_right h, uApprox_eq_halfPow]
 
 /-- The exact κ_U stage table has a `Nat.Partrec.Code`: the emission function is
 primitive recursive, so `exists_code` + `evaln_complete` supply the program.

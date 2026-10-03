@@ -288,10 +288,10 @@ lemma gate_netWorth_difference_le (Tr : Trader) (P : History)
       apply Finset.sum_le_sum
       intro i hi
       by_cases his : i < start
-      · rw [if_pos his, Tr.gate_strat_of_lt his]
+      · rw [ite_eq_left his, Tr.gate_strat_of_lt his]
         simpa [Trader.zero, Strategy.value] using
           Strategy.abs_value_le (Tr.strat i) P hP v.payout hw
-      · rw [if_neg his, Tr.gate_strat_of_le (Nat.le_of_not_gt his)]
+      · rw [ite_eq_right his, Tr.gate_strat_of_le (Nat.le_of_not_gt his)]
         simp
     _ = ∑ i ∈ (Finset.range (n + 1)).filter (fun i => i < start),
           ((Tr.strat i).absBound : ℝ) := by rw [Finset.sum_filter]

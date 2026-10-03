@@ -60,7 +60,7 @@ def paperTheoremFires [T.Δ₁] (formulaCode : ℕ) : Prop :=
 /-- The theorem event is r.e.: `Bootstrapping.Provable T` is `Σ₁` over a `Δ₁` theory. -/
 lemma paperTheoremFires_re [T.Δ₁] :
     REPred (paperTheoremFires T) := by
-  apply re_iff_sigma1.mpr
+  apply rePred_iff_sigma1.mpr
   change 𝚺₁-Predicate fun formulaCode : ℕ => Bootstrapping.Provable T formulaCode
   definability
 

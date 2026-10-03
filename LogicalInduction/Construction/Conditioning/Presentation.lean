@@ -60,10 +60,10 @@ presentation in this file is discharged by. -/
     (v : PCWorld) (stage : Finset Sentence) :
     v.Holds (deductiveStageCondition stage) ↔ v.ConsistentWith stage := by
   have hlist (l : List Sentence) :
-      FFL.Propositional.Formula.Boolean.val v l.conj₂ ↔
-        ∀ φ ∈ l, FFL.Propositional.Formula.Boolean.val v φ := by
+      FFL.Propositional.Formula.val v l.conj₂ ↔
+        ∀ φ ∈ l, FFL.Propositional.Formula.val v φ := by
     induction l using List.induction_with_singleton' <;>
-      simp_all [FFL.Propositional.Formula.Boolean.val]
+      simp_all [FFL.Propositional.Formula.val]
   simpa [deductiveStageCondition, PCWorld.Holds, PCWorld.ConsistentWith,
     Finset.conj] using hlist stage.toList
 

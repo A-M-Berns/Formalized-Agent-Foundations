@@ -115,8 +115,8 @@ def oracleOf (entries : List TableEntry) (v : List Bool) : List Bool :=
   match entries with
   | [] => []
   | e :: rest =>
-      if NumEqBits e.day (fstBlock v) then
-        SegRec.segNest FiberTest.holeGuards sndBlock (fun _ => entryBits e)
+      if NumEqBits e.day (pairFst v) then
+        SegRec.segNest FiberTest.holeGuards pairSnd (fun _ => entryBits e)
           (fun v => oracleOf rest v) (StructPat.segPatterns e.sentence) v
       else oracleOf rest v
 
@@ -151,31 +151,31 @@ lemma decodeBits_oracleOf : ∀ (entries : List TableEntry) (cur : List ℕ),
       simp
   | (e :: rest), cur, hcur, bufW => by
       have hiff := StructPat.parseRpn_iff_segMatch e.sentence (decodeBits bufW)
-      rw [oracleOf, fstBlock_pair]
+      rw [oracleOf, pairFst_pair]
       by_cases hday : NumEqBits e.day (digitsToBits cur)
       · have hd : digitVal cur = e.day := (numEqBits_spec e.day cur hcur).mp hday
-        rw [if_pos hday]
+        rw [ite_eq_left hday]
         by_cases hp : parseRpn (decodeBits bufW).length (decodeBits bufW)
             = some (e.sentence, [])
         · have hlk : tableLookup (e :: rest) (decodeBits bufW) (digitVal cur)
-              = some e.value := by rw [tableLookup, if_pos ⟨hd.symm, hp⟩]
+              = some e.value := by rw [tableLookup, ite_eq_left ⟨hd.symm, hp⟩]
           rw [SegRec.segNest_pos _ _ _ _ _ _ (by
-            rw [sndBlock_pair]; exact hiff.mp hp), decodeBits_entryBits]
+            rw [pairSnd_pair]; exact hiff.mp hp), decodeBits_entryBits]
           simp only [selRunOf, quoteRunOf, hlk]
           simp
         · have hlk : tableLookup (e :: rest) (decodeBits bufW) (digitVal cur)
               = tableLookup rest (decodeBits bufW) (digitVal cur) := by
-            rw [tableLookup, if_neg (fun hc => hp hc.2)]
+            rw [tableLookup, ite_eq_right (fun hc => hp hc.2)]
           rw [SegRec.segNest_neg _ _ _ _ _ _ (by
-            rw [sndBlock_pair]; exact fun hc => hp (hiff.mpr hc))]
+            rw [pairSnd_pair]; exact fun hc => hp (hiff.mpr hc))]
           rw [decodeBits_oracleOf rest cur hcur bufW]
           simp only [selRunOf, quoteRunOf, hlk]
       · have hd : digitVal cur ≠ e.day := fun hc =>
           hday ((numEqBits_spec e.day cur hcur).mpr hc)
         have hlk : tableLookup (e :: rest) (decodeBits bufW) (digitVal cur)
             = tableLookup rest (decodeBits bufW) (digitVal cur) := by
-          rw [tableLookup, if_neg (fun hc => hd hc.1.symm)]
-        rw [if_neg hday, decodeBits_oracleOf rest cur hcur bufW]
+          rw [tableLookup, ite_eq_right (fun hc => hd hc.1.symm)]
+        rw [ite_eq_right hday, decodeBits_oracleOf rest cur hcur bufW]
         simp only [selRunOf, quoteRunOf, hlk]
 
 /-! ### Well-formedness and the constant budget -/
@@ -186,7 +186,7 @@ lemma blockWF_oracleOf : ∀ (entries : List TableEntry) (v : List Bool),
   | (e :: rest), v => by
       rw [oracleOf]
       split_ifs
-      · rcases SegRec.segNest_cases FiberTest.holeGuards sndBlock (fun _ => entryBits e)
+      · rcases SegRec.segNest_cases FiberTest.holeGuards pairSnd (fun _ => entryBits e)
             (fun v => oracleOf rest v) (StructPat.segPatterns e.sentence) v with h | h
         · rw [h]; exact blockWF_tokBits _
         · rw [h]; exact blockWF_oracleOf rest v
@@ -203,7 +203,7 @@ lemma oracleOf_length_le : ∀ (entries : List TableEntry) (v : List Bool),
       rw [oracleOf, oracleLen, List.foldr_cons]
       have hrec : (oracleOf rest v).length ≤ oracleLen rest := oracleOf_length_le rest v
       split_ifs
-      · rcases SegRec.segNest_cases FiberTest.holeGuards sndBlock (fun _ => entryBits e)
+      · rcases SegRec.segNest_cases FiberTest.holeGuards pairSnd (fun _ => entryBits e)
             (fun v => oracleOf rest v) (StructPat.segPatterns e.sentence) v with h | h
         · rw [h]; exact le_max_left _ _
         · rw [h]; exact le_trans hrec (le_max_right _ _)
@@ -223,13 +223,13 @@ lemma oracleOf_mem_FP : ∀ (entries : List TableEntry), oracleOf entries ∈ FP
       rw [heq]; exact constFn_mem_FP []
   | (e :: rest) => by
       have hrec := oracleOf_mem_FP rest
-      have hpat : (fun v => SegRec.segNest FiberTest.holeGuards sndBlock
+      have hpat : (fun v => SegRec.segNest FiberTest.holeGuards pairSnd
           (fun _ => entryBits e) (fun v => oracleOf rest v)
           (StructPat.segPatterns e.sentence) v) ∈ FP :=
         SegRec.segNest_mem_FP _ sndBlock_mem_FP (constFn_mem_FP _) hrec _
       have h := ifNumEq_mem_FP fstBlock_mem_FP e.day hpat hrec
-      have heq : (fun v => if NumEqBits e.day (fstBlock v) then
-            SegRec.segNest FiberTest.holeGuards sndBlock (fun _ => entryBits e)
+      have heq : (fun v => if NumEqBits e.day (pairFst v) then
+            SegRec.segNest FiberTest.holeGuards pairSnd (fun _ => entryBits e)
               (fun v => oracleOf rest v) (StructPat.segPatterns e.sentence) v
           else oracleOf rest v) = oracleOf (e :: rest) := by
         funext v; rw [oracleOf]
@@ -285,8 +285,8 @@ lemma tableLookup_eq_on : ∀ (entries : List TableEntry),
         · intro h; rw [h]; exact hb
       rw [tableLookup, tableLookupOn]
       by_cases hc : e.day = D ∧ e.sentence = φ
-      · rw [if_pos ⟨hc.1, hiff.mpr hc.2⟩, if_pos hc]
-      · rw [if_neg (fun h => hc ⟨h.1, hiff.mp h.2⟩), if_neg hc]
+      · rw [ite_eq_left ⟨hc.1, hiff.mpr hc.2⟩, ite_eq_left hc]
+      · rw [ite_eq_right (fun h => hc ⟨h.1, hiff.mp h.2⟩), ite_eq_right hc]
         exact tableLookup_eq_on rest hb D
 
 /-- The condition under which an entry list presents a market's frozen quote table.
@@ -331,8 +331,8 @@ lemma selRunOf_bridge {S : Finset (ℕ × Sentence)} {quote : ℕ → Sentence �
   rw [selRunOf, tableLookup_eq_on entries hb D, htab.lookup_eq D φ,
     selCodeOf_decode D _ (Encodable.encodek φ)]
   by_cases hmem : (D, φ) ∈ S
-  · rw [if_pos hmem]; simp [hmem]
-  · rw [if_neg hmem]; simp [hmem]
+  · rw [ite_eq_left hmem]; simp [hmem]
+  · rw [ite_eq_right hmem]; simp [hmem]
 
 /-- The quote bridge holds exactly where the freeze reads it: at a **selected** coordinate.
 
@@ -349,9 +349,9 @@ lemma quoteRunOf_bridge {S : Finset (ℕ × Sentence)} {quote : ℕ → Sentence
     rw [tableLookup_eq_on entries hb D, htab.lookup_eq D φ]
   have hmem : (D, φ) ∈ S := by
     by_contra hc
-    rw [selRunOf, hlk, if_neg hc] at hsel
+    rw [selRunOf, hlk, ite_eq_right hc] at hsel
     simp at hsel
-  rw [quoteRunOf, hlk, if_pos hmem, quoteCodeOf_decode D _ (Encodable.encodek φ)]
+  rw [quoteRunOf, hlk, ite_eq_left hmem, quoteCodeOf_decode D _ (Encodable.encodek φ)]
   simp
 
 /-! ## The patch, for a presented table -/
@@ -433,9 +433,9 @@ lemma examplePresentation (q : ℚ) :
     rw [exampleEntries, tableLookupOn, tableLookupOn]
     by_cases h : (0 : ℕ) = D ∧ exampleSentence = φ
     · obtain ⟨rfl, rfl⟩ := h
-      rw [if_pos ⟨rfl, rfl⟩, if_pos (by simp [pointS])]
+      rw [ite_eq_left ⟨rfl, rfl⟩, ite_eq_left (by simp [pointS])]
       rfl
-    · rw [if_neg h, if_neg (by
+    · rw [ite_eq_right h, ite_eq_right (by
         intro hc
         simp only [pointS, Finset.mem_singleton, Prod.ext_iff] at hc
         exact h ⟨hc.1.symm, hc.2.symm⟩)]
@@ -528,11 +528,11 @@ lemma tableLookupOn_map : ∀ (l : List (ℕ × Sentence)) (mq : ℕ → ℕ →
       rw [List.map_cons, tableLookupOn, tableLookupOn_map l mq φ D]
       by_cases hc : p.1 = D ∧ p.2 = φ
       · have hp : p = (D, φ) := Prod.ext hc.1 hc.2
-        rw [if_pos hc, if_pos (by rw [hp]; exact List.mem_cons_self ..), hc.1, hc.2]
-      · rw [if_neg hc]
+        rw [ite_eq_left hc, ite_eq_left (by rw [hp]; exact List.mem_cons_self ..), hc.1, hc.2]
+      · rw [ite_eq_right hc]
         by_cases hm : (D, φ) ∈ l
-        · rw [if_pos hm, if_pos (List.mem_cons_of_mem _ hm)]
-        · rw [if_neg hm, if_neg (by
+        · rw [ite_eq_left hm, ite_eq_left (List.mem_cons_of_mem _ hm)]
+        · rw [ite_eq_right hm, ite_eq_right (by
             intro hcons
             rcases List.mem_cons.mp hcons with h | h
             · exact hc ⟨congrArg Prod.fst h.symm, congrArg Prod.snd h.symm⟩
@@ -768,7 +768,7 @@ lemma pointHistory_agree (φ : Sentence) (q q' : ℚ) :
     exact hmem (by simp [pointS, hc.1, hc.2])
   have hq : ∀ r : ℚ, pointQuote φ r d (Encodable.encode χ) = 0 := by
     intro r
-    rw [pointQuote, if_neg]
+    rw [pointQuote, ite_eq_right]
     intro hc
     exact hne ⟨hc.1, Encodable.encode_injective hc.2⟩
   rw [pointHistory, pointHistory, hq, hq]
@@ -780,7 +780,7 @@ Paper node: `app:ifp` -/
 lemma pointHistory_ne_at (φ : Sentence) :
     pointHistory φ (1 / 2) 0 φ ≠ pointHistory φ (1 / 3) 0 φ := by
   rw [pointHistory, pointHistory, pointQuote, pointQuote,
-    if_pos ⟨rfl, rfl⟩, if_pos ⟨rfl, rfl⟩]
+    ite_eq_left ⟨rfl, rfl⟩, ite_eq_left ⟨rfl, rfl⟩]
   norm_num
 
 /-! ### The `atom 0` instance -/
@@ -814,7 +814,7 @@ lemma twoPointHistory_exact (q : ℚ) :
   intro d φ hmem
   simp only [pointS, Finset.mem_singleton, Prod.ext_iff] at hmem
   obtain ⟨rfl, rfl⟩ := hmem
-  rw [twoPointHistory, pointHistory, pointQuote, if_pos ⟨rfl, rfl⟩]
+  rw [twoPointHistory, pointHistory, pointQuote, ite_eq_left ⟨rfl, rfl⟩]
   rfl
 
 /-- The disagreement, at the coordinate itself.

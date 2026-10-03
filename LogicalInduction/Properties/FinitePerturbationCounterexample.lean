@@ -116,7 +116,7 @@ open Classical in
 lemma settleStage_spec {V : History} {DP : DeductiveProcess} {χ : ℕ → Sentence} {m : ℕ}
     (h : Dichotomy V DP χ m) : SettledAt V DP χ m (settleStage V DP χ m) := by
   have hex : ∃ k, SettledAt V DP χ m k := exists_settled h
-  rw [settleStage, dif_pos hex]
+  rw [settleStage, dite_eq_left hex]
   exact Nat.find_spec hex
 
 /-! ## The sparse schedule
@@ -240,11 +240,11 @@ lemma half_le_roundValue {m k k' : ℕ} (h : SettledAt V DP χ m k) (hk : k ≤ 
   by_cases hlt : V m (χ m) < 1 / 2
   · have hH : v.Holds (χ m) := hset.2 hlt
     have hpay : v.payout (χ m) = 1 := by simp [PCWorld.payout, hH]
-    simp only [roundValue, signCoeff, if_pos hlt, hpay]
+    simp only [roundValue, signCoeff, ite_eq_left hlt, hpay]
     linarith
   · have hH : ¬ v.Holds (χ m) := fun hH => hlt (hset.1 hH)
     have hpay : v.payout (χ m) = 0 := by simp [PCWorld.payout, hH]
-    simp only [roundValue, signCoeff, if_neg hlt, hpay]
+    simp only [roundValue, signCoeff, ite_eq_right hlt, hpay]
     push Not at hlt
     linarith
 
@@ -259,8 +259,8 @@ lemma neg_one_le_roundValue (hV : ∀ n φ, 0 ≤ V n φ ∧ V n φ ≤ 1) (v : 
     · exact Or.inr (by simp [PCWorld.payout, hH])
   simp only [roundValue, signCoeff]
   by_cases hlt : V m (χ m) < 1 / 2
-  · rw [if_pos hlt]; rcases hpay with hp | hp <;> rw [hp] <;> linarith
-  · rw [if_neg hlt]; push Not at hlt
+  · rw [ite_eq_left hlt]; rcases hpay with hp | hp <;> rw [hp] <;> linarith
+  · rw [ite_eq_right hlt]; push Not at hlt
     rcases hpay with hp | hp <;> rw [hp] <;> linarith
 
 /-! ## Exploitation bookkeeping
@@ -406,13 +406,13 @@ lemma settleStage_congr {P P' : History} {DP : DeductiveProcess} {χ : ℕ → S
   by_cases hex : ∃ k, SettledAt P DP χ m k
   · have hex' : ∃ k, SettledAt P' DP χ m k :=
       hex.imp (fun k hk => (settledAt_congr hagree hm k).1 hk)
-    rw [settleStage, settleStage, dif_pos hex, dif_pos hex']
+    rw [settleStage, settleStage, dite_eq_left hex, dite_eq_left hex']
     exact le_antisymm
       (Nat.find_mono (fun k hk => (settledAt_congr hagree hm k).2 hk))
       (Nat.find_mono (fun k hk => (settledAt_congr hagree hm k).1 hk))
   · have hex' : ¬ ∃ k, SettledAt P' DP χ m k :=
       fun h => hex (h.imp (fun k hk => (settledAt_congr hagree hm k).2 hk))
-    rw [settleStage, settleStage, dif_neg hex, dif_neg hex']
+    rw [settleStage, settleStage, dite_eq_right hex, dite_eq_right hex']
 
 /-- The schedule is insensitive to the day-`0` perturbation: no circularity.
 Kind `C`; hypotheses `(a)`. -/
@@ -523,7 +523,7 @@ noncomputable def adviceRow (base : Valuation) (gate sign : ℕ → ℝ) : Valua
 @[simp] lemma adviceRow_schedAtom (base : Valuation) (gate sign : ℕ → ℝ) (n : ℕ) :
     adviceRow base gate sign (schedAtom n) = gate n := by
   have hex : ∃ m, schedAtom n = schedAtom m := ⟨n, rfl⟩
-  rw [adviceRow, dif_pos hex]
+  rw [adviceRow, dite_eq_left hex]
   congr 1
   exact (schedAtom_inj.mp hex.choose_spec).symm
 
@@ -533,7 +533,7 @@ noncomputable def adviceRow (base : Valuation) (gate sign : ℕ → ℝ) : Valua
     rintro ⟨m, hm⟩
     exact schedAtom_ne_signAtom m n hm.symm
   have hex : ∃ m, signAtom n = signAtom m := ⟨n, rfl⟩
-  rw [adviceRow, dif_neg hno, dif_pos hex]
+  rw [adviceRow, dite_eq_right hno, dite_eq_left hex]
   congr 1
   exact (signAtom_inj.mp hex.choose_spec).symm
 
@@ -543,8 +543,8 @@ Kind `P`. -/
 lemma adviceRow_of_not_advice (base : Valuation) (gate sign : ℕ → ℝ) (φ : Sentence)
     (h6 : ∀ n, φ ≠ schedAtom n) (h7 : ∀ n, φ ≠ signAtom n) :
     adviceRow base gate sign φ = base φ := by
-  rw [adviceRow, dif_neg (fun h => (h6 h.choose) h.choose_spec),
-    dif_neg (fun h => (h7 h.choose) h.choose_spec)]
+  rw [adviceRow, dite_eq_right (fun h => (h6 h.choose) h.choose_spec),
+    dite_eq_right (fun h => (h7 h.choose) h.choose_spec)]
 
 /-- Kind `P`; hypotheses `(a)`. -/
 lemma adviceRow_mem_Icc {base : Valuation} {gate sign : ℕ → ℝ}
@@ -568,15 +568,15 @@ Kind `P`. -/
 lemma advicePerturb_agree (P : History) (gate sign : ℕ → ℝ) :
     ∀ n, 1 ≤ n → ∀ φ, P n φ = advicePerturb P gate sign n φ := by
   intro n hn φ
-  rw [advicePerturb, if_neg (by omega)]
+  rw [advicePerturb, ite_eq_right (by omega)]
 
 @[simp] lemma advicePerturb_zero_schedAtom (P : History) (gate sign : ℕ → ℝ) (n : ℕ) :
     advicePerturb P gate sign 0 (schedAtom n) = gate n := by
-  rw [advicePerturb, if_pos rfl, adviceRow_schedAtom]
+  rw [advicePerturb, ite_eq_left rfl, adviceRow_schedAtom]
 
 @[simp] lemma advicePerturb_zero_signAtom (P : History) (gate sign : ℕ → ℝ) (n : ℕ) :
     advicePerturb P gate sign 0 (signAtom n) = sign n := by
-  rw [advicePerturb, if_pos rfl, adviceRow_signAtom]
+  rw [advicePerturb, ite_eq_left rfl, adviceRow_signAtom]
 
 /-- Kind `C`; hypotheses `(a)`. -/
 lemma advicePerturb_mem_Icc {P : History} {gate sign : ℕ → ℝ}
@@ -633,7 +633,7 @@ Kind `C`; hypotheses `(a)`. -/
 lemma advicePerturbed_schedAtom_off (P : History) (DP : DeductiveProcess) (χ : ℕ → Sentence)
     (i : ℕ) (hi : ∀ j, sched (advicePerturbed P DP χ) DP χ j ≠ i) :
     advicePerturbed P DP χ 0 (schedAtom i) = 0 := by
-  rw [advicePerturbed, advicePerturb_zero_schedAtom, gateBit, if_neg]
+  rw [advicePerturbed, advicePerturb_zero_schedAtom, gateBit, ite_eq_right]
   rintro ⟨j, hj⟩
   exact hi j ((sched_congr (advicePerturbed_agree P DP χ) j).symm.trans hj)
 
@@ -642,7 +642,7 @@ Kind `C`; hypotheses `(a)`. -/
 lemma advicePerturbed_schedAtom_on (P : History) (DP : DeductiveProcess) (χ : ℕ → Sentence)
     (j : ℕ) :
     advicePerturbed P DP χ 0 (schedAtom (sched (advicePerturbed P DP χ) DP χ j)) = 1 := by
-  rw [advicePerturbed, advicePerturb_zero_schedAtom, gateBit, if_pos]
+  rw [advicePerturbed, advicePerturb_zero_schedAtom, gateBit, ite_eq_left]
   exact ⟨j, sched_congr (advicePerturbed_agree P DP χ) j⟩
 
 /-- **The published sign bit is the market's own** — the `hsign` conjunct, at the scheduled
@@ -727,8 +727,8 @@ lemma adviceTrader_value_on_sched (sa si χ : ℕ → Sentence) (V : History)
       = roundValue V χ v (sched V DP χ j) := by
   rw [adviceTrader_value, hgateOn j, hsign j, roundValue, signCoeff]
   by_cases h : V (sched V DP χ j) (χ (sched V DP χ j)) < 1 / 2
-  · rw [if_pos h, if_pos h]; ring
-  · rw [if_neg h, if_neg h]; ring
+  · rw [ite_eq_left h, ite_eq_left h]; ring
+  · rw [ite_eq_right h, ite_eq_right h]; ring
 
 /-- **The advice trader is efficiently computable**, given `MachineSentenceCodes` certificates
 for the two advice-atom families and for the traded diagonal.

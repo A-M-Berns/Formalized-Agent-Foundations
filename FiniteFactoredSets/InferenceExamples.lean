@@ -781,20 +781,20 @@ private lemma exists_boolIndexed {P : M.S → Bool} {s₀ s₁ : M.S} {b : Setoi
   refine ⟨fun i => if P s₀ = i then s₀ else s₁, fun i => ?_, fun i i' c hc hcb => ?_⟩
   · show P (if P s₀ = i then s₀ else s₁) = i
     by_cases h : P s₀ = i
-    · rw [if_pos h]; exact h
-    · rw [if_neg h]
+    · rw [ite_eq_left h]; exact h
+    · rw [ite_eq_right h]
       revert h hne
       cases P s₀ <;> cases P s₁ <;> cases i <;> simp
   · show c (if P s₀ = i then s₀ else s₁) (if P s₀ = i' then s₀ else s₁)
     by_cases h : P s₀ = i
-    · rw [if_pos h]
+    · rw [ite_eq_left h]
       by_cases h' : P s₀ = i'
-      · rw [if_pos h']
-      · rw [if_neg h']; exact hs c hc hcb
-    · rw [if_neg h]
+      · rw [ite_eq_left h']
+      · rw [ite_eq_right h']; exact hs c hc hcb
+    · rw [ite_eq_right h]
       by_cases h' : P s₀ = i'
-      · rw [if_pos h']; exact c.symm' (hs c hc hcb)
-      · rw [if_neg h']
+      · rw [ite_eq_left h']; exact c.symm' (hs c hc hcb)
+      · rw [ite_eq_right h']
 
 /-- The paper's `r_{ij} = χ^F_{H_X}(s_i, t_j)`: four points realizing every combination of a
 first bit and an agreement bit, spliced so that `b_X` sees only `i` and `b_V` only `j`. -/

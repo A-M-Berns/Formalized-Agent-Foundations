@@ -251,7 +251,7 @@ private lemma unboundedTruth_apply {f : DeferralFunction}
     unboundedTruth f (f k) = ((k : ℕ) : ℝ) := by
   classical
   have hex : ∃ j, f j = f k := ⟨k, rfl⟩
-  rw [unboundedTruth, dif_pos hex]
+  rw [unboundedTruth, dite_eq_left hex]
   have hchoose := hstrict.injective hex.choose_spec
   rw [hchoose]
 
@@ -346,7 +346,7 @@ lemma feedbackFlag_spec
       · exact ho
   have hpre : deferralPreimage f m ≠ 0 := by
     unfold feedbackFlag at hm
-    rw [if_neg (by omega)] at hm
+    rw [ite_eq_right (by omega)] at hm
     split at hm <;> omega
   have hpair := deferralPreimage_spec f hstrict.injective himage
   rw [feedbackIndex]
@@ -447,7 +447,7 @@ lemma feedbackResidualSeq_eq_at
     feedbackResidualSeq As C (f (k + 1)) =
       ⟨EF.add (As (f k)).const (EF.mul (EF.const (-1)) (EF.const (C.value k))),
         (As (f k)).terms⟩ := by
-  rw [feedbackResidualSeq, feedbackFlag_at f hstrict k, if_neg one_ne_zero,
+  rw [feedbackResidualSeq, feedbackFlag_at f hstrict k, ite_eq_right one_ne_zero,
     sourceIndex_at f hstrict k, feedbackIndex_at f hstrict k]
 
 @[simp] lemma feedbackResidualSeq_price_at
@@ -545,7 +545,7 @@ noncomputable def feedbackResidualSeqPoly
       unfold feedbackResidualSeq
       by_cases hm : feedbackFlag f m = 0
       · simp [hm]
-      · rw [if_neg hm]
+      · rw [ite_eq_right hm]
         simp only [EF.rank]
         have hone : feedbackFlag f m = 1 :=
           (feedbackFlag_zero_or_one f m).resolve_left hm
@@ -589,7 +589,7 @@ lemma feedbackResidualSeq_value_eq
       (As (f (feedbackIndex f m))).value P v.payout -
         truth (f (feedbackIndex f m)) := by
   unfold feedbackResidualSeq
-  rw [if_neg (by omega)]
+  rw [ite_eq_right (by omega)]
   have hsource := sourceIndex_eq_of_flag f hstrict hm
   have heq :
       (⟨EF.add (As (sourceIndex f m)).const
@@ -681,7 +681,7 @@ lemma feedbackResidualSeq_bounded
     linarith
   · have hm1 : feedbackFlag f m = 1 :=
       (feedbackFlag_zero_or_one f m).resolve_left hm
-    rw [if_neg hm]
+    rw [ite_eq_right hm]
     have hsource := sourceIndex_eq_of_flag f hstrict hm1
     have htruth : |(C.value (feedbackIndex f m) : ℝ)| ≤ B + 1 + M := by
       rw [C.agrees, ← hsource]

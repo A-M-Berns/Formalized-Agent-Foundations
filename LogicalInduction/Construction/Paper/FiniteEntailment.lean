@@ -44,7 +44,7 @@ private noncomputable def worldBool (v : PCWorld) (a : ℕ) : Bool :=
 private lemma atomTableFromList_map_worldBool (atoms : List ℕ) (v : PCWorld)
     {a : ℕ} (ha : a ∈ atoms) :
     atomTableFromList atoms (atoms.map (worldBool v)) a = worldBool v a := by
-  rw [atomTableFromList_apply, if_pos ha]
+  rw [atomTableFromList_apply, ite_eq_left ha]
   have hidx : atoms.idxOf a < atoms.length := List.idxOf_lt_length_of_mem ha
   rw [List.getD_eq_getElem _ _ (by simpa using hidx)]
   simp only [List.getElem_map]

@@ -175,11 +175,11 @@ lemma eqLenNest_spec (P X Y : List Bool → List Bool) : ∀ (l : List ℕ) (z :
   | (i :: l), z => by
       rw [eqLenNest, eqLenNest_spec P X Y l z]
       by_cases h : (P z).length = i
-      · rw [if_pos h, if_pos (by rw [h]; exact List.mem_cons_self ..)]
-      · rw [if_neg h]
+      · rw [ite_eq_left h, ite_eq_left (by rw [h]; exact List.mem_cons_self ..)]
+      · rw [ite_eq_right h]
         by_cases hm : (P z).length ∈ l
-        · rw [if_pos hm, if_pos (List.mem_cons_of_mem _ hm)]
-        · rw [if_neg hm, if_neg (by
+        · rw [ite_eq_left hm, ite_eq_left (List.mem_cons_of_mem _ hm)]
+        · rw [ite_eq_right hm, ite_eq_right (by
             intro hc
             rcases List.mem_cons.mp hc with hc | hc
             · exact h hc
@@ -226,8 +226,8 @@ lemma ifAuto_mem_FP {S X Y : List Bool → List Bool} (hS : S ∈ FP) (hX : X �
     funext z
     rw [eqLenNest_spec, A.length_pass (S z)]
     by_cases hacc : A.Accepts (decodeBits (S z)) = true
-    · rw [if_pos ((A.mem_acceptList (A.run_le _)).mpr hacc), if_pos hacc]
-    · rw [if_neg (fun hc => hacc ((A.mem_acceptList (A.run_le _)).mp hc)), if_neg hacc]
+    · rw [ite_eq_left ((A.mem_acceptList (A.run_le _)).mpr hacc), ite_eq_left hacc]
+    · rw [ite_eq_right (fun hc => hacc ((A.mem_acceptList (A.run_le _)).mp hc)), ite_eq_right hacc]
   rwa [heq] at h
 
 end BlockAutomaton
@@ -286,13 +286,13 @@ lemma length_tokNest (Q A : ℕ) (f : ℕ → ℕ → ℕ) (i : ℕ) (W cli : Li
       rw [tokNest, lastBlock_pair]
       by_cases h : NumEqBits t (digitsToBits cur)
       · have hv : digitVal cur = t := (numEqBits_spec t cur hcur).mp h
-        rw [if_pos h, if_pos (by rw [hv]; exact List.mem_cons_self ..), hv,
+        rw [ite_eq_left h, ite_eq_left (by rw [hv]; exact List.mem_cons_self ..), hv,
           List.length_replicate]
       · have hv : digitVal cur ≠ t := fun hc => h ((numEqBits_spec t cur hcur).mpr hc)
-        rw [if_neg h, length_tokNest Q A f i W cli cur hcur l hle]
+        rw [ite_eq_right h, length_tokNest Q A f i W cli cur hcur l hle]
         by_cases hm : digitVal cur ∈ l
-        · rw [if_pos hm, if_pos (List.mem_cons_of_mem _ hm)]
-        · rw [if_neg hm, if_neg (by
+        · rw [ite_eq_left hm, ite_eq_left (List.mem_cons_of_mem _ hm)]
+        · rw [ite_eq_right hm, ite_eq_right (by
             intro hc
             rcases List.mem_cons.mp hc with hc | hc
             · exact hv hc
@@ -337,8 +337,8 @@ lemma stNest_eq (Q A : ℕ) (f : ℕ → ℕ → ℕ) : ∀ (l : List ℕ) (v : 
   | (i :: l), v, hm => by
       rw [stNest]
       by_cases h : (midBlock v).length = i
-      · rw [if_pos h, h]
-      · rw [if_neg h]
+      · rw [ite_eq_left h, h]
+      · rw [ite_eq_right h]
         exact stNest_eq Q A f l v (by
           rcases List.mem_cons.mp hm with hc | hc
           · exact absurd hc h
@@ -386,9 +386,9 @@ def tableAutomaton (Q A : ℕ) (f : ℕ → ℕ → ℕ) (acc : ℕ → Bool) : 
       tblStep]
     by_cases hv : digitVal cur ≤ A
     · have hm : min (digitVal cur) (A + 1) = digitVal cur := min_eq_left (by omega)
-      rw [hm, if_pos (by simp only [List.mem_range]; omega)]
+      rw [hm, ite_eq_left (by simp only [List.mem_range]; omega)]
     · have hm : min (digitVal cur) (A + 1) = A + 1 := min_eq_right (by omega)
-      rw [hm, if_neg (by simp only [List.mem_range]; omega)]
+      rw [hm, ite_eq_right (by simp only [List.mem_range]; omega)]
   accept := acc
 
 @[simp] lemma tableAutomaton_Q (Q A : ℕ) (f : ℕ → ℕ → ℕ) (acc : ℕ → Bool) :
@@ -442,10 +442,10 @@ def litGuard (t : ℕ) : TokGuard where
   gW_spec := by
     intro cur hcur
     by_cases h : NumEqBits t (digitsToBits cur)
-    · rw [if_pos h]
+    · rw [ite_eq_left h]
       simp only [List.length_singleton, decide_eq_true_eq, true_iff]
       exact (numEqBits_spec t cur hcur).mp h
-    · rw [if_neg h]
+    · rw [ite_eq_right h]
       simp only [List.length_nil, decide_eq_true_eq]
       constructor
       · intro hc; exact absurd hc (by omega)
@@ -487,8 +487,8 @@ lemma length_rowNest (Q : ℕ) (W cli : List Bool) (cur : List ℕ) (hcur : ∀ 
   | ((g, q) :: gs), d => by
       rw [rowNest, rowStep, lastBlock_pair]
       by_cases h : g.P (digitVal cur) = true
-      · rw [if_pos ((g.gW_spec cur hcur).mpr h), if_pos h, List.length_replicate]
-      · rw [if_neg (fun hc => h ((g.gW_spec cur hcur).mp hc)), if_neg h,
+      · rw [ite_eq_left ((g.gW_spec cur hcur).mpr h), ite_eq_left h, List.length_replicate]
+      · rw [ite_eq_right (fun hc => h ((g.gW_spec cur hcur).mp hc)), ite_eq_right h,
           length_rowNest Q W cli cur hcur gs d]
 
 lemma rowNest_mem_FP (Q : ℕ) : ∀ (gs : List (TokGuard × ℕ)) (d : ℕ),
@@ -533,8 +533,8 @@ lemma gstNest_eq (Q : ℕ) (rows : ℕ → GuardRow) : ∀ (l : List ℕ) (v : L
   | (i :: l), v, hm => by
       rw [gstNest]
       by_cases h : (midBlock v).length = i
-      · rw [if_pos h, h]
-      · rw [if_neg h]
+      · rw [ite_eq_left h, h]
+      · rw [ite_eq_right h]
         exact gstNest_eq Q rows l v (by
           rcases List.mem_cons.mp hm with hc | hc
           · exact absurd hc h
@@ -615,7 +615,7 @@ machine only where a count is genuinely needed.
 The acceptance test is a *field* rather than a fixed convention (a leading bit, say) for a
 concrete reason: a structured-leaf recognizer must carry both a finite payload-automaton
 state and an unbounded counter, and the natural way to keep two fields in one `FP`-legible
-word is `Complexity.Cobham.pair`, whose projections `fstBlock`/`sndBlock` are `FP` while its
+word is `Complexity.Cobham.pair`, whose projections `pairFst`/`pairSnd` are `FP` while its
 *leading bit* is an artifact of the pairing rather than anything the client chose.  Fixing
 acceptance to the leading bit would therefore have made the interface unusable by exactly
 the client it exists for. -/
@@ -710,9 +710,9 @@ lemma ifRun_mem_FP {S X Y : List Bool → List Bool} (hS : S ∈ FP) (hX : X ∈
     have hspec := M.acceptW_spec (M.pass (S z))
     rw [M.pass_eq (S z)] at hspec
     by_cases hacc' : M.Accepts (decodeBits (S z)) = true
-    · rw [if_pos (by rw [M.pass_eq (S z)]; exact hspec.mpr hacc'), if_pos hacc']
-    · rw [if_neg (fun hc => hacc' (hspec.mp (by rw [← M.pass_eq (S z)]; exact hc))),
-        if_neg hacc']
+    · rw [ite_eq_left (by rw [M.pass_eq (S z)]; exact hspec.mpr hacc'), ite_eq_left hacc']
+    · rw [ite_eq_right (fun hc => hacc' (hspec.mp (by rw [← M.pass_eq (S z)]; exact hc))),
+        ite_eq_right hacc']
   rwa [heq] at h
 
 end BlockMachine

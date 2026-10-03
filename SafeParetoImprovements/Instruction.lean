@@ -78,13 +78,13 @@ lemma execAt_delegate (c : N → Prog Γ₀) (k : N) (Γ' : Game N 𝒜) (h : Γ
 lemma execAt_ifAllSame_of_all {c : N → Prog Γ₀} {k : N} (hall : ∀ j, c j = c k)
     (t : Prog Γ₀) (p : N → Prog Γ₀) (ω : R.Ω) :
     execAt R c k (ifAllSame t p) ω = execAt R c k t ω := by
-  simp only [execAt, dif_pos hall]
+  simp only [execAt, dite_eq_left hall]
 
 lemma execAt_ifAllSame_of_ne {c : N → Prog Γ₀} {k : N} (hne : ¬ ∀ j, c j = c k)
     (t : Prog Γ₀) (p : N → Prog Γ₀) (ω : R.Ω) :
     ∃ j, c j ≠ c k ∧ execAt R c k (ifAllSame t p) ω = execAt R c k (p j) ω := by
   refine ⟨Classical.choose (not_forall.1 hne), Classical.choose_spec (not_forall.1 hne), ?_⟩
-  simp only [execAt, dif_neg hne]
+  simp only [execAt, dite_eq_right hne]
 
 section measurable
 
@@ -119,15 +119,15 @@ lemma measurable_execAt (c : N → Prog Γ₀) (k : N) (p : Prog Γ₀) (b : Γ�
         rw [execAt_delegate, Game.pureMixed_val]
         simp only [Set.indicator, mem_setOf_eq]
         by_cases hb : R.play Γ' ω k = b
-        · rw [if_pos hb.symm, if_pos hb]
-        · rw [if_neg (Ne.symm hb), if_neg hb]
+        · rw [ite_eq_left hb.symm, ite_eq_left hb]
+        · rw [ite_eq_right (Ne.symm hb), ite_eq_right hb]
       rw [this]
       exact measurable_const.indicator (measurableSet_coord_fiber R Γ' k b)
   | ifAllSame t p iht ihp =>
       by_cases hall : ∀ j, c j = c k
       · simp only [execAt_ifAllSame_of_all R hall]
         exact iht
-      · simp only [execAt, dif_neg hall]
+      · simp only [execAt, dite_eq_right hall]
         exact ihp _
 
 variable (Γ₀) in

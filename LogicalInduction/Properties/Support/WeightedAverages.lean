@@ -52,13 +52,13 @@ lemma prefixSum_gate_mul_eq (x : ℕ → ℝ) (c : ℝ) (k n : ℕ) (hkn : k ≤
       have hz : ∑ i ∈ Finset.range k, (if k ≤ i then c * x i else 0) = 0 := by
         apply Finset.sum_eq_zero
         intro i hi
-        rw [if_neg]
+        rw [ite_eq_right]
         exact Nat.not_le.mpr (Finset.mem_range.mp hi)
-      rw [hz, if_pos le_rfl, prefixSum, Finset.sum_range_succ]
+      rw [hz, ite_eq_left le_rfl, prefixSum, Finset.sum_range_succ]
       ring
   | succ n hkn ih =>
       rw [prefixSum_succ, ih, prefixSum_succ,
-        if_pos (hkn.trans (Nat.le_succ n))]
+        ite_eq_left (hkn.trans (Nat.le_succ n))]
       ring
 
 lemma prefixSum_gate_mul_tendsto_atTop (x : ℕ → ℝ) (c : ℝ) (hc : 0 < c)

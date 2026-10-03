@@ -740,7 +740,7 @@ lemma subgraphIsoProblem_of_spiDecision (hε : 0 < ε) (hε1 : ε < 1) (hε' : �
     refine ⟨⟨φ', hφ'inj⟩, fun i j hij => ?_⟩
     have h1 := hP₁ (Sum.inl i) (Sum.inl j)
     rw [hφ', hsecond] at h1
-    simp only [tableU₁, if_neg hij, if_neg (hφ'inj.ne hij)] at h1
+    simp only [tableU₁, ite_eq_right hij, ite_eq_right (hφ'inj.ne hij)] at h1
     exact le_of_adj_le a a' h1
 
 end extraction

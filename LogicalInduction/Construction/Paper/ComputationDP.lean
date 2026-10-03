@@ -77,7 +77,7 @@ open Filter Topology
 open Classical in
 /-- For a fixed schema `φ` and a `Δ₁` theory `T`, provability of `φ`'s numerical instances
 is recursively enumerable: the predicate is `𝚺₁` by `definability` and internalisation, and
-`re_iff_sigma1` converts it.  Mirrors the positive-path assembly inside FFL's
+`rePred_iff_sigma1` converts it.  Mirrors the positive-path assembly inside FFL's
 `incomplete_of_REPred_not_ComputablePred_Nat'`. -/
 lemma provable_instances_re (T : ArithmeticTheory) [T.Δ₁]
     (φ : ArithmeticSemisentence 1) :
@@ -86,7 +86,7 @@ lemma provable_instances_re (T : ArithmeticTheory) [T.Δ₁]
       Bootstrapping.Provable T
         (Bootstrapping.subst ℒₒᵣ ?[Bootstrapping.Arithmetic.numeral b] ⌜φ⌝) := by
     definability
-  apply REPred.of_eq (re_iff_sigma1.mpr hsig)
+  apply REPred.of_eq (rePred_iff_sigma1.mpr hsig)
   intro a
   constructor
   · rintro hP
@@ -274,8 +274,8 @@ lemma theoremDP_hworld [T.Δ₁] [𝗣𝗔⁻ ⪯ T] [Entailment.Consistent T] (
       (by cl_prover [hpos, hfires, hexc])
   · -- default tag: atom is ⊤, always held
     simp only [eventAtom, h]
-    show FFL.Propositional.Formula.Boolean.val (provabilityWorld T) ⊤
-    simp [FFL.Propositional.Formula.Boolean.val]
+    show FFL.Propositional.Formula.val (provabilityWorld T) ⊤
+    simp [FFL.Propositional.Formula.val]
 
 /-! ## Computability of the stage enumerator
 
@@ -340,8 +340,8 @@ lemma eventAtom_prim : Primrec (fun e : ℕ => eventAtom e) := by
       encode_atom, hKQP, hKQN]
   · simp [h, eventAtom, quoteAtom, quotationClaimSentence, quotationClaimCode,
       encode_negAtom, hKQP, hKQN]
-  · rw [if_neg (by omega), if_neg (by omega), if_neg (by omega), if_neg (by omega),
-      if_neg (by omega), if_neg (by omega)]
+  · rw [ite_eq_right (by omega), ite_eq_right (by omega), ite_eq_right (by omega), ite_eq_right (by omega),
+      ite_eq_right (by omega), ite_eq_right (by omega)]
     simp [eventAtom, h, encode_top]
 
 /-! ### Assembling the computation -/

@@ -209,7 +209,7 @@ lemma conflictBook_page (ω : Bool) :
       (conflictGame.canon.chosenIso conflictGame.cls (conflictGame.cls_canon.trans h)).map
         (conflictPages ω)
     else (conflictGame.cls.rep.profiles_nonempty).choose) = _
-  rw [dif_pos rfl]
+  rw [dite_eq_left rfl]
 
 /-- The representatives' play of the token copy is the book's translation of the page. -/
 lemma conflictRepresentatives_play_hat (ω : conflictRepresentatives.Ω) :
@@ -297,7 +297,7 @@ lemma conflictStrictUe_tails :
       conflictGame.u (conflictPages false) := by
   classical
   unfold conflictStrictUe
-  rw [if_neg]
+  rw [ite_eq_right]
   · rw [conflictBookIso.symm_map_map (conflictPages_mem false)]
   · intro h
     exact conflictPages_ne (conflictBookIso.map_injOn (conflictPages_mem true)
@@ -307,7 +307,7 @@ lemma conflictStrictUe_heads :
     conflictStrictUe (conflictBookIso.map (conflictPages true)) = conflictImproved := by
   classical
   unfold conflictStrictUe
-  rw [if_pos rfl]
+  rw [ite_eq_left rfl]
 
 lemma conflictStrictToken_isSPI :
     conflictStrictToken.IsSPI conflictRepresentatives.toPlay
@@ -363,7 +363,7 @@ lemma conflictStrictToken_ue_ne :
   have hval : conflictStrictUe (conflictBookIso.map (pair (Sum.inl false) (Sum.inl true))) =
       conflictGame.u (pair (Sum.inl false) (Sum.inl true)) := by
     unfold conflictStrictUe
-    rw [if_neg, conflictBookIso.symm_map_map hmem]
+    rw [ite_eq_right, conflictBookIso.symm_map_map hmem]
     intro h
     exact hne (conflictBookIso.map_injOn hmem (conflictPages_mem true) h)
   rw [hval]

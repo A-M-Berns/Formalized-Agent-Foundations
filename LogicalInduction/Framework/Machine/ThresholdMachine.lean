@@ -96,9 +96,9 @@ lemma indicatorOf_machineThresholdCodeSeq {φ : ℕ → Sentence}
         have hlt : m.unpair.2.unpair.2 < m.unpair.2.unpair.1 := by omega
         exact_mod_cast hlt
   by_cases hlt : (m.unpair.2.unpair.2 : ℚ) / (m.unpair.2.unpair.1 : ℚ) < 1
-  · rw [if_pos (hkey.mp hlt)]
+  · rw [ite_eq_left (hkey.mp hlt)]
     simp [LUV.indicatorOf, hnn, hlt]
-  · rw [if_neg (fun hc => hlt (hkey.mpr hc))]
+  · rw [ite_eq_right (fun hc => hlt (hkey.mpr hc))]
     simp [LUV.indicatorOf, hnn, hlt]
 
 /-- **Every fuel-metered single-LUV threshold certificate is machine-metered.**

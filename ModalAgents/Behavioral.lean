@@ -55,9 +55,9 @@ theorem modalAgent_behavioral (X : ModalAgent) {Y Z : ModalAgent} (h : Y ≈ Z) 
         (if hk : k < X.arity then outcome Z (X.references ⟨k, hk⟩) else .atom (k+1))) ∈
           (LogicGL : Logic ℕ)
       by_cases hk : k < X.arity
-      · simp only [dif_pos hk]
+      · simp only [dite_eq_left hk]
         exact h (X.references ⟨k, hk⟩)
-      · simp only [dif_neg hk]
+      · simp only [dite_eq_right hk]
         exact GL.iff_refl
   exact GL.iff_trans hY (GL.iff_trans hcong (GL.iff_symm hZ))
 

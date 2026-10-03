@@ -64,17 +64,7 @@ section Interpretation
 
 open FFL.FirstOrder FFL.FirstOrder.ProvabilityAbstraction
 
-variable {L : FirstOrder.Language} [L.ReferenceableBy L]
-  {T₀ T : FirstOrder.Theory L} {𝔅 : Provability T₀ T}
-
-@[simp] lemma interpret_atom (f : _root_.Realization ℕ L) (a : ℕ) :
-    (_root_.Formula.atom a).interpret f 𝔅 = f.val a := rfl
-
-@[simp] lemma interpret_imp (f : _root_.Realization ℕ L) (A B : _root_.Formula ℕ) :
-    (A 🡒 B).interpret f 𝔅 = ((A.interpret f 𝔅 🡒 B.interpret f 𝔅) : FirstOrder.Sentence L) := rfl
-
-@[simp] lemma interpret_box (f : _root_.Realization ℕ L) (A : _root_.Formula ℕ) :
-    (□A).interpret f 𝔅 = 𝔅 (A.interpret f 𝔅) := rfl
+variable {L : FirstOrder.Language}
 
 /-- Rebind one atom of a realization. -/
 def _root_.Realization.update (f : _root_.Realization ℕ L) (p : ℕ)
@@ -84,6 +74,17 @@ def _root_.Realization.update (f : _root_.Realization ℕ L) (p : ℕ)
 @[simp] lemma Realization.update_val (f : _root_.Realization ℕ L) (p : ℕ)
     (σ : FirstOrder.Sentence L) (a : ℕ) :
     (f.update p σ).val a = if a = p then σ else f.val a := rfl
+
+variable [L.ReferenceableBy L] {T₀ T : FirstOrder.Theory L} {𝔅 : Provability T₀ T}
+
+@[simp] lemma interpret_atom (f : _root_.Realization ℕ L) (a : ℕ) :
+    (_root_.Formula.atom a).interpret f 𝔅 = f.val a := rfl
+
+@[simp] lemma interpret_imp (f : _root_.Realization ℕ L) (A B : _root_.Formula ℕ) :
+    (A 🡒 B).interpret f 𝔅 = ((A.interpret f 𝔅 🡒 B.interpret f 𝔅) : FirstOrder.Sentence L) := rfl
+
+@[simp] lemma interpret_box (f : _root_.Realization ℕ L) (A : _root_.Formula ℕ) :
+    (□A).interpret f 𝔅 = 𝔅 (A.interpret f 𝔅) := rfl
 
 /-- Substituting for atom `p` in the modal formula is rebinding atom `p` in the
 realization: the syntactic `diag` and the semantic `update` agree. -/
@@ -95,7 +96,7 @@ lemma interpret_subst_diag (f : _root_.Realization ℕ L) (p : ℕ)
   refine congrArg _root_.Realization.mk (funext fun a => ?_)
   by_cases h : a = p
   · simp [h, diag, _root_.Formula.Substitution.single]
-  · simp [h, diag, _root_.Formula.Substitution.single, _root_.Formula.interpret]
+  · simp [h, diag, _root_.Formula.Substitution.single]
 
 /-- The interpreted shape of a modal conjunction. -/
 abbrev pAnd (a b : FirstOrder.Sentence L) : FirstOrder.Sentence L :=

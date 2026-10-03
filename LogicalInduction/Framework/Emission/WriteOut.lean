@@ -300,7 +300,7 @@ lemma neg {φ : ℕ → Sentence} (hφ : BigSentenceCodes φ) :
     ((h2.append ha).append hb).of_eq (fun z => by simp), fun z => ?_⟩
   have hlen : (2 :: (a z ++ b z)).length = (a z).length + (b z).length + 1 := by simp
   rw [hlen, parseRpn_cons]
-  rw [if_neg (by norm_num), if_neg (by norm_num), if_pos rfl]
+  rw [ite_eq_right (by norm_num), ite_eq_right (by norm_num), ite_eq_left rfl]
   rw [parseRpn_block_head (hpa z) (b z) (by omega)]
   simp only [Option.bind_some]
   rw [parseRpn_mono (b z) (show (b z).length ≤ (a z).length + (b z).length by omega)
@@ -583,7 +583,7 @@ lemma BigSpliceStream.ec (Tr : Trader)
       · next trades' hsome =>
           rw [hdecode] at hsome
           obtain rfl := Option.some.inj hsome
-          rw [dif_pos rank_le]
+          rw [dite_eq_left rank_le]
 
 /-- Write-out mirror of `PolyFueledTrader.ofSingleTradeBlocks`: a trader whose day-`n`
 strategy is the single trade `(f n, φ n)`, with a price-free coefficient stream and a
@@ -733,9 +733,9 @@ lemma encode_int_mod_two (i : ℤ) : Encodable.encode i % 2 = if i < 0 then 1 el
   cases i with
   | ofNat m =>
       rw [show (Int.ofNat m) = ((m : ℕ) : ℤ) from rfl, encode_int_natCast,
-        if_neg (by simp)]
+        ite_eq_right (by simp)]
       omega
-  | negSucc n => rw [encode_int_negSucc, if_pos (Int.negSucc_lt_zero n)]; omega
+  | negSucc n => rw [encode_int_negSucc, ite_eq_left (Int.negSucc_lt_zero n)]; omega
 
 namespace DigitRatCodes
 
@@ -845,13 +845,13 @@ lemma dig4_two_pow (n j : ℕ) :
     rw [show (4:ℕ) = 2 ^ 2 from rfl, ← pow_mul]]
   rcases lt_or_ge n (2 * j) with h | h
   · rw [Nat.div_eq_of_lt (Nat.pow_lt_pow_right (by norm_num) h)]
-    rw [if_neg (by omega), if_neg (by omega)]
+    rw [ite_eq_right (by omega), ite_eq_right (by omega)]
   · rw [Nat.pow_div h (by norm_num : 0 < 2)]
     rcases Nat.lt_or_ge (n - 2 * j) 2 with h2 | h2
     · rcases (by omega : n - 2 * j = 0 ∨ n - 2 * j = 1) with hh | hh
-      · rw [hh, if_pos (by omega)]
-      · rw [hh, if_neg (by omega), if_pos (by omega)]
-    · rw [if_neg (by omega), if_neg (by omega)]
+      · rw [hh, ite_eq_left (by omega)]
+      · rw [hh, ite_eq_right (by omega), ite_eq_left (by omega)]
+    · rw [ite_eq_right (by omega), ite_eq_right (by omega)]
       obtain ⟨m, hm⟩ : ∃ m, n - 2 * j = m + 2 := ⟨n - 2 * j - 2, by omega⟩
       rw [hm, pow_add]
       simp [Nat.mul_mod_left]
@@ -884,15 +884,15 @@ lemma bigDigits_two_pow : BigDigits (fun n => 2 ^ n) := by
       (fun z => by
         simp only [Nat.unpair_pair, ifzSelFn]
         by_cases h : z.unpair.1 = 2 * z.unpair.2 + 1
-        · rw [if_pos (by omega), if_pos h]
-        · rw [if_neg (by omega), if_neg h])
+        · rw [ite_eq_left (by omega), ite_eq_left h]
+        · rw [ite_eq_right (by omega), ite_eq_right h])
   have hdig : PolyFueled _ (fun z : ℕ => dig4 (2 ^ z.unpair.1) z.unpair.2) :=
     (ifzSel_polyFueled.comp
       (((PolyFueled.const 1).pair hinner).pair ht1)).of_eq (fun z => by
         simp only [Nat.unpair_pair, ifzSelFn, dig4_two_pow]
         by_cases h : z.unpair.1 = 2 * z.unpair.2
-        · rw [if_pos (by omega), if_pos h]
-        · rw [if_neg (by omega), if_neg h])
+        · rw [ite_eq_left (by omega), ite_eq_left h]
+        · rw [ite_eq_right (by omega), ite_eq_right h])
   exact ⟨_, _, hlen, hdig⟩
 
 /-- **The natural-number separation.**  `2 ^ n` — an `n`-bit string, and so a paper-legal

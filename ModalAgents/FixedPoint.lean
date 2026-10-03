@@ -82,7 +82,7 @@ private lemma glFixedPoint_eq {p : ℕ} {φ : Formula ℕ} (h : Modalized p φ) 
     glFixedPoint p φ = (glFixedPoint_thm42 h).choose := by
   show (haveI := Classical.propDecidable (Modalized p φ);
     if h : Modalized p φ then (glFixedPoint_thm42 h).choose else φ) = _
-  rw [dif_pos h]
+  rw [dite_eq_left h]
 
 /-- Defining equation for the fixed point: the Skolemized operator `glFixedPoint`
 satisfies the existence claim of the same node that `glFixedPoint_thm42` states.

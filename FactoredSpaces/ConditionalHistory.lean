@@ -112,7 +112,7 @@ lemma zClosure_subset {Z : Finset V} {s : V} {S : Set V} (hS : G.IsZClosed Z S)
 lemma unblockedAnc_subset_zClosure {Z : Finset V} {s : V} (hs : s ∉ Z) :
     G.unblockedAnc Z s ⊆ G.zClosure Z s := by
   unfold Digraph.zClosure
-  rw [if_neg hs]
+  rw [ite_eq_right hs]
   intro a ha S hS
   exact hS.2 ha
 
@@ -235,7 +235,7 @@ lemma exists_of_mem_zClosureSet {Z A : Finset V} {u : V} (hu : u ∈ G.zClosureS
   obtain ⟨a, ha, hua⟩ := Set.mem_iUnion₂.mp hu
   refine ⟨a, ha, ?_, hua⟩
   intro h
-  simp only [Digraph.zClosure, if_pos h, Set.mem_empty_iff_false] at hua
+  simp only [Digraph.zClosure, ite_eq_left h, Set.mem_empty_iff_false] at hua
 
 /-- `S_Z(A)` is closed under unblocked ancestors of its members. -/
 lemma unblockedAnc_subset_zClosureSet {Z A : Finset V} {u : V} (hu : u ∈ G.zClosureSet Z A) :
@@ -338,19 +338,19 @@ lemma exists_zCompat_idxAt [∀ v, Nonempty (Val v)] {Z : Finset V} {z : PtOn Va
   refine ⟨fun q => if h : G.Adj q i.1 then i.2 ⟨q, (Digraph.mem_parents G).mpr h⟩ else
       if hz : q ∈ Z then z ⟨q, hz⟩ else Classical.arbitrary (Val q), fun v => ?_, ?_⟩
   · by_cases h : G.Adj v.1 i.1
-    · simp only [dif_pos h]
+    · simp only [dite_eq_left h]
       exact hi ⟨v.1, (Digraph.mem_parents G).mpr h⟩ v.2
-    · simp only [dif_neg h, dif_pos v.2]
+    · simp only [dite_eq_right h, dite_eq_left v.2]
   · refine congrArg (Sigma.mk i.1) (funext fun p => ?_)
     have h : G.Adj p.1 i.1 := (Digraph.mem_parents G).mp p.2
     show (if h : G.Adj p.1 i.1 then i.2 ⟨p.1, (Digraph.mem_parents G).mpr h⟩ else _) = i.2 p
-    rw [dif_pos h]
+    rw [dite_eq_left h]
 
 lemma exists_zCompat [∀ v, Nonempty (Val v)] {Z : Finset V} (z : PtOn Val Z) :
     ∃ x : Pt Val, ZCompat Val z x := by
   classical
   exact ⟨fun q => if h : q ∈ Z then z ⟨q, h⟩ else Classical.arbitrary (Val q),
-    fun v => by simp only [dif_pos v.2]⟩
+    fun v => by simp only [dite_eq_left v.2]⟩
 
 /-- The block of a node is never empty: some `z`-consistent index sits at every `v`. -/
 lemma exists_mem_zConsistent [∀ v, Nonempty (Val v)] {Z : Finset V} (z : PtOn Val Z) (v : V) :
@@ -388,20 +388,20 @@ lemma propTable_of_good {Z : Finset V} {x bad : Pt Val} {D : Set V} {q : V}
     {y : ParentVals G Val q} (h : ∀ p : G.parents q, p.1 ∈ D → p.1 ∉ Z → y p = x p.1) :
     propTable G Val Z x bad D ⟨q, y⟩ = x q := by
   classical
-  refine if_neg ?_
+  refine ite_eq_right ?_
   rintro ⟨-, p, hpD, hpZ, hne⟩
   exact hne (h p hpD hpZ)
 
 lemma propTable_of_not_mem {Z : Finset V} {x bad : Pt Val} {D : Set V} {q : V}
     (hq : q ∉ D) (y : ParentVals G Val q) : propTable G Val Z x bad D ⟨q, y⟩ = x q := by
   classical
-  exact if_neg fun h => hq h.1
+  exact ite_eq_right fun h => hq h.1
 
 lemma propTable_of_bad {Z : Finset V} {x bad : Pt Val} {D : Set V} {q : V}
     {y : ParentVals G Val q} (hq : q ∈ D) (p : G.parents q) (hpD : p.1 ∈ D) (hpZ : p.1 ∉ Z)
     (hne : y p ≠ x p.1) : propTable G Val Z x bad D ⟨q, y⟩ = bad q := by
   classical
-  exact if_pos ⟨hq, p, hpD, hpZ, hne⟩
+  exact ite_eq_left ⟨hq, p, hpD, hpZ, hne⟩
 
 /-- **Bad propagation.**  If every node of `D` other than the source `d` returns a bad
 value once a live parent deviates, and `X_d(ω)` already deviates, then `X_q(ω)` deviates

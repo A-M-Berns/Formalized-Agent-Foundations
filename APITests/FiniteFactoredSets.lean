@@ -425,7 +425,7 @@ example :
             * ProbDist.diracAt (true, true) obsFstFalse := by
   refine ⟨?_, ?_⟩
   · rw [ProbDist.diracAt_apply]
-    exact if_neg (fun h => Bool.noConfusion (h : (true : Bool) = false))
+    exact ite_eq_right (fun h => Bool.noConfusion (h : (true : Bool) = false))
   · exact (clientPairFS.orthogonalGiven_iff_forall_isDistribution obsFst obsFst obsFst).1
       ((clientPairFS.orthogonalGiven_self_iff obsFst obsFst).2 le_rfl)
       _ (clientPairFS.isDistribution_diracAt _) _ obsFstFalse_mem_classes _

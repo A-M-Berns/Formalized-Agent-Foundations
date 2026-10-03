@@ -689,8 +689,8 @@ noncomputable def PolyTradeEmulatable.gateBefore {Ts : ℕ → Trader}
     intro z
     simp only [count]
     by_cases hs : start ≤ z.unpair.1
-    · rw [if_pos hs, if_neg (by omega)]
-    · rw [if_neg hs, if_pos (by omega)]
+    · rw [ite_eq_left hs, ite_eq_right (by omega)]
+    · rw [ite_eq_right hs, ite_eq_left (by omega)]
   have hzeroSeg : MachineSpliceStream (fun _ : ℕ => []) :=
     MachineSpliceStream.ofTransparent (MachineTokenStream.const [])
       (fun _ => UnRpnTransparent.nil)
@@ -712,14 +712,14 @@ noncomputable def PolyTradeEmulatable.gateBefore {Ts : ℕ → Trader}
     intro z
     simp only [gateTraderFamily]
     by_cases hs : start ≤ z.unpair.1
-    · rw [if_pos hs, if_neg (by omega)]
-    · rw [if_neg hs, if_pos (by omega)]
+    · rw [ite_eq_left hs, ite_eq_right (by omega)]
+    · rw [ite_eq_right hs, ite_eq_left (by omega)]
       simp [Trader.zero, serializeTrades]
   have hzero : ∀ k n, n < k →
       (((gateTraderFamily start Ts) k).strat n).trades = [] := by
     intro k n hnk
     by_cases hs : start ≤ k
-    · rw [gateTraderFamily, if_pos hs]
+    · rw [gateTraderFamily, ite_eq_left hs]
       exact h.launchGated.zero_before hnk
     · simp [gateTraderFamily, hs, Trader.zero]
   refine
@@ -733,7 +733,7 @@ noncomputable def PolyTradeEmulatable.gateBefore {Ts : ℕ → Trader}
       trades_eq := ?_ }
   intro k n
   by_cases hs : start ≤ k
-  · rw [gateTraderFamily, if_pos hs, h.trades_eq]
+  · rw [gateTraderFamily, ite_eq_left hs, h.trades_eq]
     simp [count, hs]
   · simp [gateTraderFamily, hs, Trader.zero, count]
 
@@ -1060,7 +1060,7 @@ private lemma featureWeightBody_denoteWith (active : ℕ → ℕ → Bool) (α :
     apply Finset.sum_congr rfl
     intro i hi
     by_cases hop : active i k = true
-    · simp only [hop, if_true, EF.denoteWith]
+    · simp only [hop, ite_true, EF.denoteWith]
       rw [hρ i]
       rw [hαc i ρ V]
     · simp [hop]
@@ -1470,11 +1470,11 @@ lemma fractional_allocations_finset_le_one
     by_cases hin : i = n
     · change 0 ≤ if i = n then β i * α i else
           β i * α i * occupancy i n
-      rw [if_pos hin]
+      rw [ite_eq_left hin]
       exact mul_nonneg (hβ0 i) (hα0 i)
     · change 0 ≤ if i = n then β i * α i else
           β i * α i * occupancy i n
-      rw [if_neg hin]
+      rw [ite_eq_right hin]
       exact mul_nonneg (mul_nonneg (hβ0 i) (hα0 i)) (hocc.nonneg i n)
   have hbudget :=
     (fractionalWeight_nonneg_and_postAllocation_le occupancy α hocc hα0 hα1 n).2
@@ -1487,7 +1487,7 @@ lemma fractional_allocations_finset_le_one
     _ = fractionalOutstanding occupancy α (fractionalWeight occupancy α) n +
         fractionalWeight occupancy α n * α n := by
       rw [Finset.sum_range_succ]
-      simp only [r, q, β, if_pos]
+      simp only [r, q, β, ite_eq_left]
       congr 1
       rw [fractionalOutstanding, ← Fin.sum_univ_eq_sum_range]
       apply Finset.sum_congr rfl
@@ -1792,7 +1792,7 @@ lemma fractionalAllocationPrefix_not_bddAbove_of_frequently
           apply Finset.sum_le_sum
           intro i hi
           by_cases hKi : K ≤ i
-          · simp only [hKi, if_true, fractionalAllocation]
+          · simp only [hKi, ite_true, fractionalAllocation]
             exact mul_le_of_le_one_right
               (mul_nonneg
                 (fractionalWeight_nonneg occupancy α hocc hα0 hα1 i) (hα0 i))
@@ -2016,8 +2016,8 @@ lemma decreasingOccupancy_boolOccupancy {active : ℕ → ℕ → Bool}
   antitone i n := by
     unfold boolOccupancy
     by_cases h : active i (n + 1) = true
-    · rw [if_pos h, if_pos (hclose i n h)]
-    · rw [if_neg h]; split <;> norm_num
+    · rw [ite_eq_left h, ite_eq_left (hclose i n h)]
+    · rw [ite_eq_right h]; split <;> norm_num
 
 /-- The Boolean launch weight is the fractional one at indicator occupancy. -/
 lemma weight_eq_fractionalWeight (active : ℕ → ℕ → Bool) (α : ℕ → ℝ) (n : ℕ) :
@@ -2030,8 +2030,8 @@ lemma weight_eq_fractionalWeight (active : ℕ → ℕ → Bool) (α : ℕ → �
       rw [← ih i i.isLt]
       unfold boolOccupancy
       by_cases h : active (i : ℕ) n = true
-      · rw [if_pos h, if_pos h]; ring
-      · rw [if_neg h, if_neg h]; ring
+      · rw [ite_eq_left h, ite_eq_left h]; ring
+      · rw [ite_eq_right h, ite_eq_right h]; ring
 
 /-- Hence the Boolean allocation prefix is the fractional one. -/
 lemma allocationPrefix_eq_fractional (active : ℕ → ℕ → Bool) (α : ℕ → ℝ) :
@@ -2327,7 +2327,7 @@ lemma sharedBudgetedTrader_netWorth_lower
         exact neg_le_of_abs_le
           ((Ts i).abs_netWorth_le_magnitude V v hP (hroi i).1 n)
       have hscaled := mul_le_mul_of_nonneg_left hnw (hβ0 i)
-      simp only [hop, if_true]
+      simp only [hop, ite_true]
       have htol0 := mul_nonneg (hη0 i) (halloc0 i)
       calc
         ε * allocation active M i - (ε + 1) * allocation active M i -

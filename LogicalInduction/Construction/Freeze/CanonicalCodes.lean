@@ -288,10 +288,10 @@ Paper node: `app:ifp` -/
 lemma sentenceMatches_of_botFree (φ : Sentence) (hφ : BotFree φ) (c : ℕ) :
     sentenceMatches φ c = if c = Encodable.encode φ then 1 else 0 := by
   by_cases h : c = Encodable.encode φ
-  · rw [if_pos h]
+  · rw [ite_eq_left h]
     exact (sentenceMatches_eq_one_iff φ c).mpr
       ((decode_eq_some_iff_of_botFree φ hφ c).mpr h)
-  · rw [if_neg h]
+  · rw [ite_eq_right h]
     exact (sentenceMatches_eq_zero_iff φ c).mpr
       (fun hdec => h ((decode_eq_some_iff_of_botFree φ hφ c).mp hdec))
 

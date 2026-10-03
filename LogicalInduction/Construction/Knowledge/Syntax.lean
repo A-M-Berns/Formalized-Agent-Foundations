@@ -146,10 +146,10 @@ private lemma universalBoundedRun_re (b : Bool) :
     obtain ⟨m, hm, ha⟩ := Part.mem_bind_iff.mp ha
     refine ⟨m, hm, ?_⟩
     by_contra hb
-    rw [if_neg hb] at ha
+    rw [ite_eq_right hb] at ha
     simp at ha
   · rintro ⟨m, hm, hb⟩
-    exact ⟨0, Part.mem_bind_iff.mpr ⟨m, hm, by rw [if_pos hb]; simp⟩⟩
+    exact ⟨0, Part.mem_bind_iff.mpr ⟨m, hm, by rw [ite_eq_left hb]; simp⟩⟩
 
 /-- The deferred-horizon bounded halting predicate is recursively enumerable. -/
 lemma universalBoundedHalts_re : REPred UniversalBoundedHalts :=

@@ -516,8 +516,8 @@ lemma MachineSpliceStream.gateFeature {f : ℕ → EF}
     (t := fun i : ℕ => i + 1 - start) (UnaryRuler.of_polyFueled htest)) ?_
   intro i
   by_cases hs : start ≤ i
-  · rw [if_neg (by omega), AffineCombination.gateFeature, if_pos hs]
-  · rw [if_pos (by omega), AffineCombination.gateFeature, if_neg hs]
+  · rw [ite_eq_right (by omega), AffineCombination.gateFeature, ite_eq_left hs]
+  · rw [ite_eq_left (by omega), AffineCombination.gateFeature, ite_eq_right hs]
 
 /-- The two-index launch gate at the machine-metered stream class. -/
 lemma MachineSpliceStream.gateOccupancy {f : ℕ → ℕ → EF}
@@ -539,8 +539,8 @@ lemma MachineSpliceStream.gateOccupancy {f : ℕ → ℕ → EF}
     (t := fun z : ℕ => z.unpair.2 + 1 - start) (UnaryRuler.of_polyFueled htest)) ?_
   intro z
   by_cases hs : start ≤ z.unpair.2
-  · rw [if_neg (by omega), AffineCombination.gateOccupancy, if_pos hs]
-  · rw [if_pos (by omega), AffineCombination.gateOccupancy, if_neg hs]
+  · rw [ite_eq_right (by omega), AffineCombination.gateOccupancy, ite_eq_left hs]
+  · rw [ite_eq_left (by omega), AffineCombination.gateOccupancy, ite_eq_right hs]
 
 lemma PolySequence.gradualRisk_polySeg {As : ℕ → AffineCombination}
     (h : PolySequence As) (low δ : ℚ) :
@@ -799,8 +799,8 @@ lemma PolySequence.gradualTradeCount_poly {As : ℕ → AffineCombination}
   intro z
   simp only [gradualTradeCount]
   by_cases hle : z.unpair.1 ≤ z.unpair.2
-  · rw [if_pos hle, if_neg (by omega)]
-  · rw [if_neg hle, if_pos (by omega)]
+  · rw [ite_eq_left hle, ite_eq_right (by omega)]
+  · rw [ite_eq_right hle, ite_eq_left (by omega)]
 
 -- `Nat.sqrt` sits under `Nat.unpair`, and its unfolding whnf-loops in the deep paired-index
 -- elaboration the machine rulers go through; see `notes/lean-gotchas.md`.
@@ -862,7 +862,7 @@ lemma PolySequence.gradualCoefficient_polySeg {As : ℕ → AffineCombination}
   · simp [heq]
   · have htest : z.unpair.1.unpair.2 - z.unpair.1.unpair.1 +
         (z.unpair.1.unpair.1 - z.unpair.1.unpair.2) ≠ 0 := by omega
-    rw [if_neg htest, if_neg heq]
+    rw [ite_eq_right htest, ite_eq_right heq]
 
 lemma PolySequence.gradualFamily_trades_eq {As : ℕ → AffineCombination}
     (h : PolySequence As) (low high δ : ℚ) (k n : ℕ) :
@@ -1124,12 +1124,12 @@ lemma PolySequence.gradualRisk_converges {As : ℕ → AffineCombination}
     (buyIndF_mem ((As i).priceFeature i) low δ V).2
   have hα0 : ∀ i, 0 ≤ (α i).denote V := fun i => by
     by_cases hs : start ≤ i
-    · simp only [α, gateFeature, hs, if_true, baseα, gradualRisk, riskFeature_denote]
+    · simp only [α, gateFeature, hs, ite_true, baseα, gradualRisk, riskFeature_denote]
       exact mul_nonneg (hentry0 i) ((As i).magnitude_nonneg V)
     · simp [α, gateFeature, hs]
   have hα1 : ∀ i, (α i).denote V ≤ 1 := fun i => by
     by_cases hs : start ≤ i
-    · simp only [α, gateFeature, hs, if_true, baseα, gradualRisk, riskFeature_denote]
+    · simp only [α, gateFeature, hs, ite_true, baseα, gradualRisk, riskFeature_denote]
       calc
         (entry i).denote V * (As i).magnitude V ≤ 1 * (As i).magnitude V :=
           mul_le_mul_of_nonneg_right (hentry1 i) ((As i).magnitude_nonneg V)
@@ -1183,7 +1183,7 @@ lemma PolySequence.gradualRisk_converges {As : ℕ → AffineCombination}
           (1 - rem) * ((entry i).denote V * (ε * mag)) -
             (entry i).denote V * rem * mag := by
             simp only [α, gradualRisk, riskFeature_denote, occupancy, gradualOccupancy,
-              gateFeature, gateOccupancy, hs, if_true, baseα, baseOccupancy, rem, mag, t]
+              gateFeature, gateOccupancy, hs, ite_true, baseα, baseOccupancy, rem, mag, t]
             ring
       _ ≤ (1 - rem) * ((entry i).denote V *
             ((high : ℝ) - δ - (As i).price V i)) -

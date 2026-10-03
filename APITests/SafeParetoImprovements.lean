@@ -74,7 +74,7 @@ noncomputable def clientPlay : Play Two CUniv Unit where
   mem Γ _ i := by
     by_cases h : true ∈ Γ.S i
     · simp [h]
-    · simp only [h, if_false]; exact (Γ.nonempty i).choose_spec
+    · simp only [h, ite_false]; exact (Γ.nonempty i).choose_spec
 
 /-- Every game is an SPI on itself, and Theorem 3 turns that into a Pareto-improving outcome
 correspondence — for any certainty filter. -/

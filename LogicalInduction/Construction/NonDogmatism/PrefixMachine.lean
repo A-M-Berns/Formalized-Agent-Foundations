@@ -548,14 +548,14 @@ lemma dcStep_of_neg {m : ℕ} (cnt : ℕ) (h1 : 1 ≤ m) (h2 : (m - 1).unpair.1 
     dcStep (Nat.pair m cnt) = Nat.pair (m - 1).unpair.2.unpair.1 (cnt + 1) := by
   rw [dcStep, ifzSelFn]
   simp only [Nat.unpair_pair]
-  rw [if_pos (by omega)]
+  rw [ite_eq_left (by omega)]
 
 lemma dcStep_of_stay {m : ℕ} (cnt : ℕ)
     (h : ¬(1 ≤ m ∧ (m - 1).unpair.1 = 2 ∧ (m - 1).unpair.2.unpair.2 = 1)) :
     dcStep (Nat.pair m cnt) = Nat.pair m cnt := by
   rw [dcStep, ifzSelFn]
   simp only [Nat.unpair_pair]
-  rw [if_neg (by omega)]
+  rw [ite_eq_right (by omega)]
 
 lemma dcStep_encode_neg (φ : Sentence) (cnt : ℕ) :
     dcStep (Nat.pair (Encodable.encode (Formula.imp φ Formula.falsum)) cnt) =
@@ -777,7 +777,7 @@ lemma p2sStep_spec (x j : ℕ) :
     have h1 : (x + 1) / 2 ^ (j + 1) = 0 :=
       Nat.div_eq_of_lt (lt_of_lt_of_le hlt (Nat.pow_le_pow_right (by norm_num) (by omega)))
     rw [p2sStep, ifzSelFn]
-    simp only [Nat.unpair_pair, hc, if_true]
+    simp only [Nat.unpair_pair, hc, ite_true]
     rw [h1, Nat.min_eq_right hs, Nat.min_eq_right (by omega)]
   · have h2j : 2 ^ j ≤ x + 1 := by
       rw [Nat.div_eq_zero_iff] at hc
@@ -788,7 +788,7 @@ lemma p2sStep_spec (x j : ℕ) :
       omega
     rw [p2sStep, ifzSelFn]
     simp only [Nat.unpair_pair]
-    rw [if_neg hc, Nat.div_div_eq_div_mul, ← pow_succ,
+    rw [ite_eq_right hc, Nat.div_div_eq_div_mul, ← pow_succ,
       Nat.min_eq_left (by omega), Nat.min_eq_left (by omega), ← Nat.mul_two, ← pow_succ]
 
 /-- `p2s` is poly-fueled. -/
@@ -950,20 +950,20 @@ lemma of_validCode : ∀ n, validCode n = true → ∃ φ : Sentence, Encodable.
       intro h
       rw [validCode] at h
       by_cases h0 : e.unpair.1 = 0
-      · rw [if_pos h0] at h
+      · rw [ite_eq_left h0] at h
         have hc : e.unpair.2 = 0 := by simpa using h
         have he : e = 0 := by
           have := Nat.pair_unpair e
           rw [h0, hc] at this
           simpa [show Nat.pair 0 0 = 0 from rfl] using this.symm
         exact ⟨Formula.falsum, by rw [he]; rfl⟩
-      · rw [if_neg h0] at h
+      · rw [ite_eq_right h0] at h
         by_cases h1 : e.unpair.1 = 1
         · refine ⟨Formula.atom e.unpair.2, ?_⟩
           rw [encode_atom, ← h1, Nat.pair_unpair]
-        · rw [if_neg h1] at h
+        · rw [ite_eq_right h1] at h
           by_cases h4 : e.unpair.1 ≤ 4
-          · rw [if_pos h4] at h
+          · rw [ite_eq_left h4] at h
             obtain ⟨hv1, hv2⟩ : validCode e.unpair.2.unpair.1 = true ∧
                 validCode e.unpair.2.unpair.2 = true := by simpa using h
             have hlt1 : e.unpair.2.unpair.1 < e + 1 :=
@@ -982,7 +982,7 @@ lemma of_validCode : ∀ n, validCode n = true → ∃ φ : Sentence, Encodable.
                 by rw [encode_and, hφ₁, hφ₂, hpc, ← h3, Nat.pair_unpair]⟩
             · exact ⟨Formula.or φ₁ φ₂,
                 by rw [encode_or, hφ₁, hφ₂, hpc, ← h4', Nat.pair_unpair]⟩
-          · rw [if_neg h4] at h
+          · rw [ite_eq_right h4] at h
             exact absurd h (by simp)
 
 /-- The emitted code of the total enumeration, as a function of the canonicity bit. -/
@@ -991,10 +991,10 @@ lemma encode_prefixSentenceEnum (n : ℕ) :
       if validCode n then n else Nat.pair 1 n + 1 := by
   by_cases hv : validCode n
   · obtain ⟨φ, rfl⟩ := of_validCode n hv
-    rw [prefixSentenceEnum_encode, if_pos hv]
+    rw [prefixSentenceEnum_encode, ite_eq_left hv]
   · rw [prefixSentenceEnum_of_not_canonical
       (fun φ he => hv (by rw [← he]; exact validCode_encode φ)),
-      encode_atom, if_neg hv]
+      encode_atom, ite_eq_right hv]
 
 /-- The canonicity bit, arithmetized: `0` on canonical codes, `1` on fallback indices. -/
 def invalidBit (n : ℕ) : ℕ := if validCode n then 0 else 1
@@ -1070,7 +1070,7 @@ lemma validCode_ch (m : ℕ) : validCode m = (validCode (chL m) && validCode (ch
   | 0 => simp [chL, chR, validCode_zero]
   | (e + 1) =>
     rw [validCode]
-    simp only [chL, chR, Nat.succ_ne_zero, if_false, Nat.add_sub_cancel]
+    simp only [chL, chR, Nat.succ_ne_zero, ite_false, Nat.add_sub_cancel]
     by_cases h0 : e.unpair.1 = 0
     · by_cases hc : e.unpair.2 = 0
       · simp [h0, hc, validCode_one]
@@ -1384,17 +1384,17 @@ private lemma chSel_polyFueled {csel : Nat.Partrec.Code} {sel : ℕ → ℕ}
   refine ⟨_, top.of_eq (fun m => ?_)⟩
   simp only [Nat.unpair_pair, ifzSelFn]
   by_cases h0 : m = 0
-  · rw [if_pos h0, if_pos h0]
-  · rw [if_neg h0, if_neg h0]
+  · rw [ite_eq_left h0, ite_eq_left h0]
+  · rw [ite_eq_right h0, ite_eq_right h0]
     by_cases h1 : (m - 1).unpair.1 = 0
-    · rw [if_pos h1, if_pos h1]
-    · rw [if_neg h1, if_neg h1]
+    · rw [ite_eq_left h1, ite_eq_left h1]
+    · rw [ite_eq_right h1, ite_eq_right h1]
       by_cases h2 : (m - 1).unpair.1 = 1
-      · rw [if_pos (by omega : (m - 1).unpair.1 - 1 = 0), if_pos h2]
-      · rw [if_neg (by omega : ¬ (m - 1).unpair.1 - 1 = 0), if_neg h2]
+      · rw [ite_eq_left (by omega : (m - 1).unpair.1 - 1 = 0), ite_eq_left h2]
+      · rw [ite_eq_right (by omega : ¬ (m - 1).unpair.1 - 1 = 0), ite_eq_right h2]
         by_cases h4 : (m - 1).unpair.1 ≤ 4
-        · rw [if_pos (by omega : (m - 1).unpair.1 - 4 = 0), if_pos h4]
-        · rw [if_neg (by omega : ¬ (m - 1).unpair.1 - 4 = 0), if_neg h4]
+        · rw [ite_eq_left (by omega : (m - 1).unpair.1 - 4 = 0), ite_eq_left h4]
+        · rw [ite_eq_right (by omega : ¬ (m - 1).unpair.1 - 4 = 0), ite_eq_right h4]
 
 lemma chL_polyFueled : ∃ c, PolyFueled c chL :=
   chSel_polyFueled (sel := fun p => p.unpair.1) PolyFueled.left
@@ -1901,8 +1901,8 @@ lemma andLoop_polyFueled :
     (fun z => by
       simp only [Nat.unpair_pair, ifzSelFn]
       by_cases h : z.unpair.2.unpair.2.unpair.1 % (z.unpair.1.unpair.1 + 1) = 1
-      · rw [if_pos (by omega), if_pos h]
-      · rw [if_neg (by omega), if_neg h])
+      · rw [ite_eq_left (by omega), ite_eq_left h]
+      · rw [ite_eq_right (by omega), ite_eq_right h])
   have gPF := R'PF.pair (hm.comp (accPF.pair eq1PF))
   have hone : IsPolyBounded (fun _ : ℕ => (1:ℕ)) :=
     (IsPolyBounded.linear 1).of_le (fun _ => by omega)

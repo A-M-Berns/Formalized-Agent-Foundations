@@ -551,7 +551,7 @@ theorem aeFunctionOf_of_condEntropy_eq_zero [Countable Ω] [MeasurableSingletonC
   have hfib : μ (X ⁻¹' {X ω}) ≠ 0 := fun h0 => hω (measure_mono_null hsub h0)
   haveI : IsProbabilityMeasure (μ[|X ⁻¹' {X ω}]) := cond_isProbabilityMeasure hfib
   show Y ω = if hx : μ (X ⁻¹' {X ω}) ≠ 0 then (key (X ω) hx).choose else Classical.arbitrary T
-  rw [dif_pos hfib]
+  rw [dite_eq_left hfib]
   set t : T := (key (X ω) hfib).choose
   have hspec : (μ[|X ⁻¹' {X ω}]).real (Y ⁻¹' {t}) = 1 := (key (X ω) hfib).choose_spec
   have h1 : (μ[|X ⁻¹' {X ω}]) (Y ⁻¹' {t}) = 1 := by

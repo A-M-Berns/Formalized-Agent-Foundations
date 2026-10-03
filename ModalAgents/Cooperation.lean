@@ -28,9 +28,9 @@ lemma substFull_modalized_step {m : ℕ} (β : Formula ℕ)
   obtain ⟨k, rfl⟩ := Nat.exists_eq_succ_of_ne_zero hk
   show Modalized 0 (if h : k < m then refs ⟨k, h⟩ else .atom (k+1))
   by_cases hk' : k < m
-  · rw [dif_pos hk']
+  · rw [dite_eq_left hk']
     exact modalized_of_notMem_atoms (hrefs ⟨k, hk'⟩)
-  · rw [dif_neg hk']
+  · rw [dite_eq_right hk']
     show k+1 ≠ 0
     exact Nat.succ_ne_zero k
 
@@ -111,9 +111,9 @@ lemma substFull_comp_diag_of_notMem (β χ : Formula ℕ) {m : ℕ}
     show (if h : j < m then refs ⟨j, h⟩ else .atom (j+1))⟦diag 0 χ⟧
        = if h : j < m then refs ⟨j, h⟩ else .atom (j+1)
     by_cases h : j < m
-    · rw [dif_pos h]
+    · rw [dite_eq_left h]
       exact subst_diag_of_notMem_atoms (hrefs ⟨j, h⟩)
-    · rw [dif_neg h]
+    · rw [dite_eq_right h]
       show diag 0 χ (j+1) = .atom (j+1)
       simp [diag, Formula.Substitution.single]
 

@@ -411,14 +411,14 @@ lemma indicatorProductLUV_valuesAt {DP : DeductiveProcess} {T : ArithmeticTheory
     v.ValuesAt (indicatorProductLUV q φ n) (v.payout (φ n) * (value n : ℝ)) := by
   obtain ⟨h0, h1, hthr⟩ := RationalQuoteCode.reflected Q q n v hv
   by_cases hφv : v.Holds (φ n)
-  · have hpay : v.payout (φ n) = 1 := if_pos hφv
+  · have hpay : v.payout (φ n) = 1 := ite_eq_left hφv
     rw [hpay, one_mul]
     refine ⟨h0, h1, fun r => ⟨?_, ?_⟩⟩
     · intro hr
       rw [indicatorProductLUV_gt]
       by_cases hr0 : r < 0
-      · rw [if_pos hr0]; exact PCWorld.holds_top v
-      · rw [if_neg hr0]
+      · rw [ite_eq_left hr0]; exact PCWorld.holds_top v
+      · rw [ite_eq_right hr0]
         exact (PCWorld.holds_and v _ _).mpr ⟨hφv, (hthr r).1 hr⟩
     · intro hr
       rw [indicatorProductLUV_gt]
@@ -426,20 +426,20 @@ lemma indicatorProductLUV_valuesAt {DP : DeductiveProcess} {T : ArithmeticTheory
         have hrR : (0 : ℝ) < (r : ℝ) := lt_of_le_of_lt h0 hr
         have : (0 : ℚ) < r := by exact_mod_cast hrR
         exact not_lt.mpr this.le
-      rw [if_neg hr0]
+      rw [ite_eq_right hr0]
       intro hcon
       exact (hthr r).2 hr ((PCWorld.holds_and v _ _).mp hcon).2
-  · have hpay : v.payout (φ n) = 0 := if_neg hφv
+  · have hpay : v.payout (φ n) = 0 := ite_eq_right hφv
     rw [hpay, zero_mul]
     refine ⟨le_refl 0, zero_le_one, fun r => ⟨?_, ?_⟩⟩
     · intro hr
-      rw [indicatorProductLUV_gt, if_pos (by exact_mod_cast hr : r < 0)]
+      rw [indicatorProductLUV_gt, ite_eq_left (by exact_mod_cast hr : r < 0)]
       exact PCWorld.holds_top v
     · intro hr
       have hr0 : ¬ r < 0 := by
         have : (0 : ℚ) < r := by exact_mod_cast hr
         exact not_lt.mpr this.le
-      rw [indicatorProductLUV_gt, if_neg hr0]
+      rw [indicatorProductLUV_gt, ite_eq_right hr0]
       intro hcon
       exact hφv ((PCWorld.holds_and v _ _).mp hcon).1
 
@@ -462,7 +462,7 @@ lemma indicatorProductLUV_machineThresholdCodeSeq {T : ArithmeticTheory} {value 
   refine (MachineSentenceCodes.and hφAt hquote).of_eq (fun m => ?_)
   have hmesh0 : ¬ ((m.unpair.2.unpair.2 : ℚ) / (m.unpair.2.unpair.1 : ℚ)) < 0 :=
     not_lt.mpr (div_nonneg (Nat.cast_nonneg _) (Nat.cast_nonneg _))
-  rw [indicatorProductLUV_gt, if_neg hmesh0]
+  rw [indicatorProductLUV_gt, ite_eq_right hmesh0]
 
 /-! ## The mesh product: a quoted product for an arbitrary source
 
@@ -619,8 +619,8 @@ lemma meshProductLUV_valuesAt {DP : DeductiveProcess} {T : ArithmeticTheory}
       intro hr
       rw [meshProductLUV_gt]
       by_cases hr0 : r < 0
-      · rw [if_pos hr0]; exact PCWorld.holds_top v
-      rw [if_neg hr0]
+      · rw [ite_eq_left hr0]; exact PCWorld.holds_top v
+      rw [ite_eq_right hr0]
       have hrR : (0 : ℝ) ≤ (r : ℝ) := by
         have : (0 : ℚ) ≤ r := not_lt.mp hr0
         exact_mod_cast this
@@ -654,7 +654,7 @@ lemma meshProductLUV_valuesAt {DP : DeductiveProcess} {T : ArithmeticTheory}
       have hr0 : ¬ r < 0 := by
         have : (0 : ℚ) < r := by exact_mod_cast hrpos
         exact not_lt.mpr this.le
-      rw [if_neg hr0, holds_sentenceDisjunction]
+      rw [ite_eq_right hr0, holds_sentenceDisjunction]
       rintro ⟨φ, hmem, hφ⟩
       simp only [List.mem_map, List.mem_range] at hmem
       obtain ⟨j, hjN, rfl⟩ := hmem
@@ -735,7 +735,7 @@ lemma meshProductLUV_machineThresholdCodeSeq {T : ArithmeticTheory} {value : ℕ
     (UnaryRuler.unpairFst.succ)).of_eq (fun m => ?_)
   have hr0 : ¬ ((m.unpair.2.unpair.2 : ℚ) / (m.unpair.2.unpair.1 : ℚ)) < 0 :=
     not_lt.mpr (div_nonneg (Nat.cast_nonneg _) (Nat.cast_nonneg _))
-  rw [meshProductLUV_gt, if_neg hr0]
+  rw [meshProductLUV_gt, ite_eq_right hr0]
   congr 1
   refine List.map_congr_left (fun j _ => ?_)
   have hthr : (((m.unpair.2.unpair.2 * (m.unpair.1 + 1) : ℕ) : ℚ) /

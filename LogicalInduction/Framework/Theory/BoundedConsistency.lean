@@ -27,7 +27,7 @@ what is made computable here.
 
 * `ProofPacked` and `proofPacked_computable` — decidability with no proof checker written.
   Foundation's `Bootstrapping.Proof` is `𝚫₁`, so the packed predicate and its negation are
-  both `𝚺₁` by `definability`; `re_iff_sigma1` plus
+  both `𝚺₁` by `definability`; `rePred_iff_sigma1` plus
   `ComputablePred.computable_iff_re_compl_re'` decide it. `pi₁_nat` / `pi₂_nat` bridge
   Foundation's `π₁`/`π₂` (which `definability` sees through) to `Nat.unpair` (which
   `Computable` wants).
@@ -101,14 +101,14 @@ lemma proofPacked_sigmaOne : 𝚺₁-Predicate (ProofPacked T) := by
 lemma not_proofPacked_sigmaOne : 𝚺₁-Predicate (fun z => ¬ ProofPacked T z) := by
   unfold ProofPacked; definability
 
-/-- **The proof predicate is decidable.**  Both polarities are r.e. by `re_iff_sigma1`, and
+/-- **The proof predicate is decidable.**  Both polarities are r.e. by `rePred_iff_sigma1`, and
 a predicate r.e. together with its complement is computable.
 
-Kind `C` (composition).  Provenance: (b) Foundation citation — `re_iff_sigma1`;
+Kind `C` (composition).  Provenance: (b) Foundation citation — `rePred_iff_sigma1`;
 Mathlib citation — `ComputablePred.computable_iff_re_compl_re'`. -/
 lemma proofPacked_computable : ComputablePred (ProofPacked T) :=
   ComputablePred.computable_iff_re_compl_re'.mpr
-    ⟨re_iff_sigma1.mpr (proofPacked_sigmaOne T), re_iff_sigma1.mpr (not_proofPacked_sigmaOne T)⟩
+    ⟨rePred_iff_sigma1.mpr (proofPacked_sigmaOne T), rePred_iff_sigma1.mpr (not_proofPacked_sigmaOne T)⟩
 
 /-- The packed predicate at `z` is Foundation's `Proof` at the unpaired components: this
 is where Foundation's `π₁`/`π₂` presentation and `Nat.unpair` are identified. -/
@@ -189,8 +189,8 @@ lemma bprovValue_computable : Computable (bprovValue T) := by
     hp hb).of_eq fun z => ?_
   unfold bprovValue
   by_cases h : BProvPacked T z
-  · rw [if_pos ((bProv_iff_bounded T _ _).mp h), if_pos h]
-  · rw [if_neg (fun hc' => h ((bProv_iff_bounded T _ _).mpr hc')), if_neg h]
+  · rw [ite_eq_left ((bProv_iff_bounded T _ _).mp h), ite_eq_left h]
+  · rw [ite_eq_right (fun hc' => h ((bProv_iff_bounded T _ _).mpr hc')), ite_eq_right h]
 
 @[simp] lemma bprovValue_eq_zero_iff (z : ℕ) : bprovValue T z = 0 ↔ ¬ BProvPacked T z := by
   unfold bprovValue; split <;> simp_all
@@ -222,7 +222,8 @@ Kind `P` (proved).  Provenance: (a) derived in-project; (b) Foundation citation 
 `Bootstrapping.provable_of_standard_proof`. -/
 lemma conWithin_of_consistent (hcon : Entailment.Consistent T) (k : ℕ) : conWithin T k := by
   rintro ⟨d, hd, -⟩
-  exact Entailment.Consistent.not_bot hcon (provable_of_bProv_witness T ⊥ hd)
+  haveI : Entailment.Consistent T := hcon
+  exact Entailment.Consistent.not_bot (𝓢 := T) (provable_of_bProv_witness T ⊥ hd)
 
 /-! ## The universal bounded-provability decider at a horizon
 
@@ -291,9 +292,9 @@ def ProvableCode (φcode : ℕ) : Prop := Bootstrapping.Provable (V := ℕ) T φ
 /-- Internal provability is `𝚺₁`, hence r.e. — which is all `codeOfREPred` consumes.
 
 Kind `C` (composition).  Provenance: (b) Foundation citations —
-`Bootstrapping.Provable.definable`, `re_iff_sigma1`. -/
+`Bootstrapping.Provable.definable`, `rePred_iff_sigma1`. -/
 lemma provableCode_re : REPred (ProvableCode T) :=
-  re_iff_sigma1.mpr (by unfold ProvableCode; infer_instance)
+  rePred_iff_sigma1.mpr (by unfold ProvableCode; infer_instance)
 
 /-- **Internal and external provability agree at a standard code**, in both directions.  The
 forward direction is soundness of the internal proof predicate; the backward direction is the
@@ -312,11 +313,11 @@ code.
 
 Kind `C` (composition).  Provenance: (b) Foundation citations —
 `Entailment.not_consistent_iff_inconsistent`, `Entailment.inconsistent_iff_provable_bot`,
-`Entailment.deduction_iff`, `Entailment.N!_iff_CO!`. -/
+`Entailment.deduction_iff`, `Entailment.N_iff_CO`. -/
 lemma not_consistent_adjoin_iff (σ : ArithmeticSentence) :
     ¬Entailment.Consistent (σ ∷ T) ↔ T ⊢ ∼σ := by
   rw [Entailment.not_consistent_iff_inconsistent, Entailment.inconsistent_iff_provable_bot,
-    Entailment.deduction_iff, ← FFL.Entailment.N!_iff_CO!]
+    Entailment.deduction_iff, ← FFL.Entailment.N_iff_CO]
 
 /-- `⊤` is provable in every theory, so the provability predicate is not constantly false. -/
 lemma provableCode_quote_verum : ProvableCode T ⌜(⊤ : ArithmeticSentence)⌝ := by
@@ -362,8 +363,8 @@ lemma consistent_empty : Entailment.Consistent (∅ : ArithmeticTheory) :=
 
 /-- **Compactness, in the form a machine-enumerated theory needs.**  An inconsistent theory
 has an inconsistent finite sublist of its own axioms.  There is no induction here: a
-Foundation proof of `⊥` *is* a finite axiom list together with a derivation that does not
-mention the theory, so the same derivation re-packs against the list.
+Foundation proof of `⊥` *is* a finite multiset of axioms together with a derivation that
+does not mention the theory, so the same derivation re-packs against the multiset's list.
 
 Kind `P` (proved).  Provenance: (b) Foundation citations — `Theory.Proof` (its `axioms`,
 `axioms_mem`, `derivation` fields), `Entailment.not_consistent_iff_inconsistent`,
@@ -374,7 +375,7 @@ lemma exists_inconsistent_list {S : ArithmeticTheory} (h : ¬Entailment.Consiste
   rw [Entailment.not_consistent_iff_inconsistent,
     Entailment.inconsistent_iff_provable_bot] at h
   rcases h with ⟨d⟩
-  refine ⟨d.axioms, d.axioms_mem, ?_⟩
+  refine ⟨d.axioms.toList, fun ψ hψ => d.axioms_mem ψ (Multiset.mem_toList.mp hψ), ?_⟩
   rw [Entailment.not_consistent_iff_inconsistent,
     Entailment.inconsistent_iff_provable_bot]
   exact ⟨⟨d.axioms, by simp, d.derivation⟩⟩
@@ -414,13 +415,13 @@ has to mention a theory.
 
 Kind `C` (composition).  Provenance: (a) `provable_listConj_imply` derived in-project;
 (b) Foundation citations — `Entailment.not_consistent_iff_inconsistent`,
-`Entailment.inconsistent_iff_provable_bot`, `Entailment.N!_iff_CO!`. -/
+`Entailment.inconsistent_iff_provable_bot`, `Entailment.N_iff_CO`. -/
 lemma provable_neg_listConj_of_not_consistent {l : List ArithmeticSentence}
     (h : ¬Entailment.Consistent {φ : ArithmeticSentence | φ ∈ l}) :
     (∅ : ArithmeticTheory) ⊢ ∼listConj l := by
   rw [Entailment.not_consistent_iff_inconsistent,
     Entailment.inconsistent_iff_provable_bot] at h
-  rw [FFL.Entailment.N!_iff_CO!]
+  rw [FFL.Entailment.N_iff_CO]
   exact provable_listConj_imply l ⊥ h
 
 omit [T.Δ₁] in
@@ -432,6 +433,6 @@ lemma provable_listConj {l : List ArithmeticSentence} (h : ∀ φ ∈ l, T ⊢ �
   | nil => simp
   | cons σ t ih =>
       rw [listConj_cons]
-      exact Entailment.K!_intro (h σ (by simp)) (ih fun φ hφ => h φ (by simp [hφ]))
+      exact Entailment.K_intro (h σ (by simp)) (ih fun φ hφ => h φ (by simp [hφ]))
 
 end LogicalInduction

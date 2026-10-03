@@ -148,10 +148,10 @@ lemma parseStructuredPaperPrime_tail_suffix {polarity : ℕ} {framed : List ℕ}
         some (Formula.atom (Nat.pair 5 (Nat.pair polarity code)), payload.drop (n + 1))
       else none) = some (φ, rest) at h
     by_cases hterm : payload.getD n 0 = 19
-    · rw [if_pos hterm] at h
+    · rw [ite_eq_left hterm] at h
       obtain ⟨-, rfl⟩ := Prod.mk.injEq .. ▸ Option.some.inj h
       exact (List.drop_suffix (n + 1) payload).trans (readStructuredLength_suffix hr)
-    · rw [if_neg hterm] at h
+    · rw [ite_eq_right hterm] at h
       contradiction
   · simp at h
 
@@ -192,7 +192,7 @@ lemma parseStructuredPaperPrime_append {ts : List ℕ} {φ : Sentence} {rest : L
         some (Formula.atom (Nat.pair 5 (Nat.pair polarity code)), payload.drop (n + 1))
       else none) = some (φ, rest) at h
     by_cases hterm : payload.getD n 0 = 19
-    · rw [if_pos hterm] at h
+    · rw [ite_eq_left hterm] at h
       obtain ⟨rfl, rfl⟩ := Prod.mk.injEq .. ▸ Option.some.inj h
       have hnlt : n < payload.length := by
         have hne : n ≠ payload.length := by
@@ -204,12 +204,12 @@ lemma parseStructuredPaperPrime_append {ts : List ℕ} {φ : Sentence} {rest : L
       rw [readStructuredLength_append hr tail]
       simp only [Option.bind_some]
       have hlen' : n ≤ payload.length + tail.length := by omega
-      rw [if_pos (by simpa using hlen')]
+      rw [ite_eq_left (by simpa using hlen')]
       rw [List.take_append_of_le_length hlen, hp]
       simp only
-      rw [List.getD_append _ _ _ _ hnlt, hterm, if_pos rfl,
+      rw [List.getD_append _ _ _ _ hnlt, hterm, ite_eq_left rfl,
         List.drop_append_of_le_length (by omega : n + 1 ≤ payload.length)]
-    · rw [if_neg hterm] at h
+    · rw [ite_eq_right hterm] at h
       contradiction
   · simp at h
 
@@ -336,17 +336,17 @@ lemma parseStructuredArithmeticFormula_consumed_lt :
       · simp [parseStructuredArithmeticFormula] at h
       rw [parseStructuredArithmeticFormula] at h
       by_cases h9 : t = 9
-      · rw [if_pos h9] at h
+      · rw [ite_eq_left h9] at h
         obtain ⟨-, rfl⟩ := Prod.mk.injEq .. ▸ Option.some.inj h
         exact ⟨[t], rfl, by simp [h9]⟩
-      rw [if_neg h9] at h
+      rw [ite_eq_right h9] at h
       by_cases h10 : t = 10
-      · rw [if_pos h10] at h
+      · rw [ite_eq_left h10] at h
         obtain ⟨-, rfl⟩ := Prod.mk.injEq .. ▸ Option.some.inj h
         exact ⟨[t], rfl, by simp [h10]⟩
-      rw [if_neg h10] at h
+      rw [ite_eq_right h10] at h
       by_cases hrel : t = 11 ∨ t = 12 ∨ t = 13 ∨ t = 14
-      · rw [if_pos hrel] at h
+      · rw [ite_eq_left hrel] at h
         rcases hp : parseStructuredArithmeticTerm fuel ts with _ | p <;> simp [hp] at h
         rcases hq : parseStructuredArithmeticTerm fuel p.2 with _ | q <;> simp [hq] at h
         obtain ⟨a, rfl, -⟩ := h
@@ -359,9 +359,9 @@ lemma parseStructuredArithmeticFormula_consumed_lt :
         · rcases List.mem_append.mp hx' with hx₁ | hx₂
           · have := hw₁ x hx₁; omega
           · have := hw₂ x hx₂; omega
-      rw [if_neg hrel] at h
+      rw [ite_eq_right hrel] at h
       by_cases hbin : t = 15 ∨ t = 16
-      · rw [if_pos hbin] at h
+      · rw [ite_eq_left hbin] at h
         rcases hp : parseStructuredArithmeticFormula fuel ts with _ | p <;> simp [hp] at h
         rcases hq : parseStructuredArithmeticFormula fuel p.2 with _ | q <;> simp [hq] at h
         obtain ⟨a, rfl, -⟩ := h
@@ -374,9 +374,9 @@ lemma parseStructuredArithmeticFormula_consumed_lt :
         · rcases List.mem_append.mp hx' with hx₁ | hx₂
           · exact hw₁ x hx₁
           · exact hw₂ x hx₂
-      rw [if_neg hbin] at h
+      rw [ite_eq_right hbin] at h
       by_cases hquant : t = 17 ∨ t = 18
-      · rw [if_pos hquant] at h
+      · rw [ite_eq_left hquant] at h
         rcases hp : parseStructuredArithmeticFormula fuel ts with _ | p <;> simp [hp] at h
         rcases h with ⟨-, hrest⟩
         subst rest
@@ -386,9 +386,9 @@ lemma parseStructuredArithmeticFormula_consumed_lt :
         rcases List.mem_cons.mp hx with rfl | hx'
         · omega
         · exact hw₁ x hx'
-      rw [if_neg hquant] at h
+      rw [ite_eq_right hquant] at h
       by_cases h20 : t = 20
-      · rw [if_pos h20] at h
+      · rw [ite_eq_left h20] at h
         rcases hp : parseStructuredArithmeticFormula fuel ts with _ | p <;> simp [hp] at h
         rcases h with ⟨-, hrest⟩
         subst rest
@@ -398,9 +398,9 @@ lemma parseStructuredArithmeticFormula_consumed_lt :
         rcases List.mem_cons.mp hx with rfl | hx'
         · omega
         · exact hw₁ x hx'
-      rw [if_neg h20] at h
+      rw [ite_eq_right h20] at h
       by_cases h21 : t = 21
-      · rw [if_pos h21] at h
+      · rw [ite_eq_left h21] at h
         rcases hp : parseStructuredArithmeticFormula fuel ts with _ | p <;> simp [hp] at h
         rcases hq : parseStructuredArithmeticFormula fuel p.2 with _ | q <;> simp [hq] at h
         obtain ⟨a, rfl, -⟩ := h
@@ -413,9 +413,9 @@ lemma parseStructuredArithmeticFormula_consumed_lt :
         · rcases List.mem_append.mp hx' with hx₁ | hx₂
           · exact hw₁ x hx₁
           · exact hw₂ x hx₂
-      rw [if_neg h21] at h
+      rw [ite_eq_right h21] at h
       by_cases h22 : t = 22
-      · rw [if_pos h22] at h
+      · rw [ite_eq_left h22] at h
         rcases hp : parseStructuredArithmeticFormula fuel ts with _ | p <;> simp [hp] at h
         rcases hq : parseStructuredArithmeticFormula fuel p.2 with _ | q <;> simp [hq] at h
         obtain ⟨a, rfl, -⟩ := h
@@ -428,7 +428,7 @@ lemma parseStructuredArithmeticFormula_consumed_lt :
         · rcases List.mem_append.mp hx' with hx₁ | hx₂
           · exact hw₁ x hx₁
           · exact hw₂ x hx₂
-      rw [if_neg h22] at h
+      rw [ite_eq_right h22] at h
       simp at h
 
 /-! ### Suffix corollaries
@@ -477,7 +477,7 @@ lemma parseStructuredPaperPrime_span {ts : List ℕ} {φ : Sentence} {rest : Lis
         some (Formula.atom (Nat.pair 5 (Nat.pair polarity code)), payload.drop (n + 1))
       else none) = some (φ, rest) at h
     by_cases hterm : payload.getD n 0 = 19
-    · rw [if_pos hterm] at h
+    · rw [ite_eq_left hterm] at h
       obtain ⟨-, rfl⟩ := Prod.mk.injEq .. ▸ Option.some.inj h
       have hnlt : n < payload.length := by
         have hne : n ≠ payload.length := by
@@ -510,7 +510,7 @@ lemma parseStructuredPaperPrime_span {ts : List ℕ} {φ : Sentence} {rest : Lis
             · omega
             · rw [hw] at hx₃
               exact hwlt x hx₃
-    · rw [if_neg hterm] at h
+    · rw [ite_eq_right hterm] at h
       contradiction
   · simp at h
 
@@ -555,13 +555,13 @@ lemma parseStructuredPaperPrime_first19 (w : List ℕ) (hw : ∀ x ∈ w, x ≠ 
   rcases w with _ | ⟨polarity, fr⟩
   · simp only [List.nil_append]
     rw [parseStructuredPaperPrime, parseStructuredPaperPrime]
-    rw [if_neg (by omega), if_neg (by omega)]
+    rw [ite_eq_right (by omega), ite_eq_right (by omega)]
     rfl
   have hfr19 : ∀ x ∈ fr, x ≠ 19 := fun x hx => hw x (List.mem_cons_of_mem _ hx)
   simp only [List.cons_append]
   rw [parseStructuredPaperPrime, parseStructuredPaperPrime]
   by_cases hpol : polarity ≤ 1
-  · rw [if_pos hpol, if_pos hpol]
+  · rw [ite_eq_left hpol, ite_eq_left hpol]
     rcases readStructuredLength_cases fr with ⟨k, rfl⟩ | hnone | ⟨n, fr', rfl, hsome⟩
     · rw [readStructuredLength_replicate_19 k tail,
         readStructuredLength_replicate_19 k []]
@@ -573,7 +573,7 @@ lemma parseStructuredPaperPrime_first19 (w : List ℕ) (hw : ∀ x ∈ w, x ≠ 
       rw [hsome (19 :: tail), hsome [19]]
       simp only [Option.bind_some]
       by_cases hn : n ≤ fr'.length + 1
-      · rw [if_pos (by simp; omega), if_pos (by simp; omega)]
+      · rw [ite_eq_left (by simp; omega), ite_eq_left (by simp; omega)]
         have hwin : (fr' ++ 19 :: tail).take n = (fr' ++ [19]).take n := by
           rw [List.take_append, List.take_append]
           rcases Nat.lt_or_ge n (fr'.length + 1) with hlt | hge
@@ -599,7 +599,7 @@ lemma parseStructuredPaperPrime_first19 (w : List ℕ) (hw : ∀ x ∈ w, x ≠ 
           have hne19 : fr'[n]'hnL ≠ 19 := hfr' _ (List.getElem_mem hnL)
           change (if List.getD (fr' ++ 19 :: tail) n 0 = 19 then _ else none) =
             Option.map _ (if List.getD (fr' ++ [19]) n 0 = 19 then _ else none)
-          rw [hgd (19 :: tail), hgd [19], if_neg hne19, if_neg hne19]
+          rw [hgd (19 :: tail), hgd [19], ite_eq_right hne19, ite_eq_right hne19]
           rfl
         · by_cases hnL1 : n = fr'.length
           · change (if List.getD (fr' ++ 19 :: tail) n 0 = 19 then
@@ -628,9 +628,9 @@ lemma parseStructuredPaperPrime_first19 (w : List ℕ) (hw : ∀ x ∈ w, x ≠ 
             rw [hv] at h19
             exact hvlt 19 h19 rfl
       · have hR : ¬ n ≤ (fr' ++ [19]).length := by simp; omega
-        conv_rhs => rw [if_neg hR]
+        conv_rhs => rw [ite_eq_right hR]
         by_cases hn2 : n ≤ (fr' ++ 19 :: tail).length
-        · rw [if_pos hn2]
+        · rw [ite_eq_left hn2]
           rcases hp : parseStructuredArithmeticFormula n
               ((fr' ++ 19 :: tail).take n) with _ | ⟨code, r⟩
           · rfl
@@ -648,9 +648,9 @@ lemma parseStructuredPaperPrime_first19 (w : List ℕ) (hw : ∀ x ∈ w, x ≠ 
             exact List.mem_cons_self ..
           rw [hv] at h19
           exact hvlt 19 h19 rfl
-        · rw [if_neg hn2]
+        · rw [ite_eq_right hn2]
           rfl
-  · rw [if_neg hpol, if_neg hpol]
+  · rw [ite_eq_right hpol, ite_eq_right hpol]
     rfl
 
 /-- A successful parse consumes at least one token and returns a strict suffix. -/
@@ -662,12 +662,12 @@ lemma parseRpn_length_lt : ∀ (fuel : ℕ) (ts : List ℕ) (φ : Sentence) (res
       intro h
       rw [parseRpn_cons] at h
       by_cases h0 : t = 0
-      · rw [if_pos h0] at h
+      · rw [ite_eq_left h0] at h
         obtain ⟨-, rfl⟩ := Prod.mk.injEq .. ▸ Option.some.inj h
         simp
-      rw [if_neg h0] at h
+      rw [ite_eq_right h0] at h
       by_cases h1 : t = 1
-      · rw [if_pos h1] at h
+      · rw [ite_eq_left h1] at h
         rcases ts with _ | ⟨c, ts'⟩
         · simp at h
         cases c with
@@ -681,7 +681,7 @@ lemma parseRpn_length_lt : ∀ (fuel : ℕ) (ts : List ℕ) (φ : Sentence) (res
             · simp only [hdec, Option.map_some] at h
               obtain ⟨-, rfl⟩ := Prod.mk.injEq .. ▸ Option.some.inj h
               simp
-      rw [if_neg h1] at h
+      rw [ite_eq_right h1] at h
       have hbin : ∀ (hb : (parseRpn fuel ts).bind
             (fun p => (parseRpn fuel p.2).bind fun q =>
               some (Formula.imp p.1 q.1, q.2)) = some (φ, rest) ∨
@@ -715,17 +715,17 @@ lemma parseRpn_length_lt : ∀ (fuel : ℕ) (ts : List ℕ) (φ : Sentence) (res
         simp only [List.length_cons]
         omega
       by_cases h2 : t = 2
-      · rw [if_pos h2] at h
+      · rw [ite_eq_left h2] at h
         exact hbin (Or.inl h)
-      rw [if_neg h2] at h
+      rw [ite_eq_right h2] at h
       by_cases h3 : t = 3
-      · rw [if_pos h3] at h
+      · rw [ite_eq_left h3] at h
         exact hbin (Or.inr (Or.inl h))
-      rw [if_neg h3] at h
+      rw [ite_eq_right h3] at h
       by_cases h4 : t = 4
-      · rw [if_pos h4] at h
+      · rw [ite_eq_left h4] at h
         exact hbin (Or.inr (Or.inr h))
-      rw [if_neg h4] at h
+      rw [ite_eq_right h4] at h
       obtain ⟨-, rfl⟩ := Prod.mk.injEq .. ▸ Option.some.inj h
       simp
 
@@ -745,11 +745,11 @@ lemma parseRpn_mono : ∀ {fuel fuel' : ℕ} (ts : List ℕ) {out : Sentence × 
           | t :: rest =>
               rw [parseRpn_cons] at h ⊢
               by_cases h0 : t = 0
-              · rwa [if_pos h0] at h ⊢
-              rw [if_neg h0] at h ⊢
+              · rwa [ite_eq_left h0] at h ⊢
+              rw [ite_eq_right h0] at h ⊢
               by_cases h1 : t = 1
-              · rwa [if_pos h1] at h ⊢
-              rw [if_neg h1] at h ⊢
+              · rwa [ite_eq_left h1] at h ⊢
+              rw [ite_eq_right h1] at h ⊢
               have hbin : ∀ (mk : Sentence → Sentence → Sentence),
                   (parseRpn fuel rest).bind
                     (fun p => (parseRpn fuel p.2).bind fun q =>
@@ -772,17 +772,17 @@ lemma parseRpn_mono : ∀ {fuel fuel' : ℕ} (ts : List ℕ) {out : Sentence × 
                 rw [ih r1 hle' hp2]
                 exact hb
               by_cases h2 : t = 2
-              · rw [if_pos h2] at h ⊢
+              · rw [ite_eq_left h2] at h ⊢
                 exact hbin Formula.imp h
-              rw [if_neg h2] at h ⊢
+              rw [ite_eq_right h2] at h ⊢
               by_cases h3 : t = 3
-              · rw [if_pos h3] at h ⊢
+              · rw [ite_eq_left h3] at h ⊢
                 exact hbin Formula.and h
-              rw [if_neg h3] at h ⊢
+              rw [ite_eq_right h3] at h ⊢
               by_cases h4 : t = 4
-              · rw [if_pos h4] at h ⊢
+              · rw [ite_eq_left h4] at h ⊢
                 exact hbin Formula.or h
-              rw [if_neg h4] at h ⊢
+              rw [ite_eq_right h4] at h ⊢
               exact h
 
 /-! ## Round trips -/
@@ -799,21 +799,21 @@ lemma parseRpn_rpn : ∀ (φ : Sentence) (rest : List ℕ) {fuel : ℕ},
       match fuel, hfuel with
       | fuel + 1, _ =>
           rw [rpn, List.cons_append, List.nil_append, parseRpn_cons,
-            if_neg (by omega), if_neg (by omega), if_neg (by omega),
-            if_neg (by omega), if_neg (by omega)]
+            ite_eq_right (by omega), ite_eq_right (by omega), ite_eq_right (by omega),
+            ite_eq_right (by omega), ite_eq_right (by omega)]
           norm_num
   | falsum =>
       intro rest fuel hfuel
       match fuel, hfuel with
       | fuel + 1, _ =>
-          rw [rpn, List.cons_append, List.nil_append, parseRpn_cons, if_pos rfl]
+          rw [rpn, List.cons_append, List.nil_append, parseRpn_cons, ite_eq_left rfl]
   | and φ ψ ihφ ihψ =>
       intro rest fuel hfuel
       rw [rpn] at hfuel
       match fuel, hfuel with
       | fuel + 1, hfuel =>
           rw [rpn, List.cons_append, parseRpn_cons,
-            if_neg (by omega), if_neg (by omega), if_neg (by omega), if_pos rfl,
+            ite_eq_right (by omega), ite_eq_right (by omega), ite_eq_right (by omega), ite_eq_left rfl,
             List.append_assoc,
             ihφ (rpn ψ ++ rest) (fuel := fuel) (by
               simp only [List.length_cons, List.length_append] at hfuel ⊢
@@ -829,8 +829,8 @@ lemma parseRpn_rpn : ∀ (φ : Sentence) (rest : List ℕ) {fuel : ℕ},
       match fuel, hfuel with
       | fuel + 1, hfuel =>
           rw [rpn, List.cons_append, parseRpn_cons,
-            if_neg (by omega), if_neg (by omega), if_neg (by omega),
-            if_neg (by omega), if_pos rfl,
+            ite_eq_right (by omega), ite_eq_right (by omega), ite_eq_right (by omega),
+            ite_eq_right (by omega), ite_eq_left rfl,
             List.append_assoc,
             ihφ (rpn ψ ++ rest) (fuel := fuel) (by
               simp only [List.length_cons, List.length_append] at hfuel ⊢
@@ -846,7 +846,7 @@ lemma parseRpn_rpn : ∀ (φ : Sentence) (rest : List ℕ) {fuel : ℕ},
       match fuel, hfuel with
       | fuel + 1, hfuel =>
           rw [rpn, List.cons_append, parseRpn_cons,
-            if_neg (by omega), if_neg (by omega), if_pos rfl,
+            ite_eq_right (by omega), ite_eq_right (by omega), ite_eq_left rfl,
             List.append_assoc,
             ihφ (rpn ψ ++ rest) (fuel := fuel) (by
               simp only [List.length_cons, List.length_append] at hfuel ⊢
@@ -862,7 +862,7 @@ lemma parseRpn_escape (φ : Sentence) (rest : List ℕ) {fuel : ℕ} (hfuel : 1 
     parseRpn fuel (1 :: Encodable.encode φ :: rest) = some (φ, rest) := by
   match fuel, hfuel with
   | fuel + 1, _ =>
-      rw [parseRpn_cons, if_neg (by omega), if_pos rfl]
+      rw [parseRpn_cons, ite_eq_right (by omega), ite_eq_left rfl]
       have hc : Encodable.encode φ ≠ 0 := by
         change FFL.Propositional.Formula.toNat φ ≠ 0
         cases φ <;> simp [FFL.Propositional.Formula.toNat]
@@ -888,12 +888,12 @@ lemma parseRpn_append : ∀ (fuel : ℕ) (ts : List ℕ) {φ : Sentence} {r : Li
           rw [parseRpn_cons] at h
           rw [List.cons_append, parseRpn_cons]
           by_cases h0 : t = 0
-          · rw [if_pos h0] at h ⊢
+          · rw [ite_eq_left h0] at h ⊢
             obtain ⟨rfl, rfl⟩ := Prod.mk.injEq .. ▸ Option.some.inj h
             rfl
-          · rw [if_neg h0] at h ⊢
+          · rw [ite_eq_right h0] at h ⊢
             by_cases h1 : t = 1
-            · rw [if_pos h1] at h ⊢
+            · rw [ite_eq_left h1] at h ⊢
               match rest with
               | [] => simp at h
               | c :: rest' =>
@@ -907,7 +907,7 @@ lemma parseRpn_append : ∀ (fuel : ℕ) (ts : List ℕ) {φ : Sentence} {r : Li
                           simp [hdec] at h ⊢
                           obtain ⟨rfl, rfl⟩ := h
                           exact ⟨rfl, rfl⟩
-            · rw [if_neg h1] at h ⊢
+            · rw [ite_eq_right h1] at h ⊢
               have hbin : ∀ (mk : Sentence → Sentence → Sentence),
                   ((parseRpn fuel rest).bind fun p =>
                     (parseRpn fuel p.2).bind fun q =>
@@ -933,14 +933,14 @@ lemma parseRpn_append : ∀ (fuel : ℕ) (ts : List ℕ) {φ : Sentence} {r : Li
                         simp only [Option.bind_some]
                         rw [h1', h2']
               by_cases h2 : t = 2
-              · rw [if_pos h2] at h ⊢; exact hbin _ h
-              · rw [if_neg h2] at h ⊢
+              · rw [ite_eq_left h2] at h ⊢; exact hbin _ h
+              · rw [ite_eq_right h2] at h ⊢
                 by_cases h3 : t = 3
-                · rw [if_pos h3] at h ⊢; exact hbin _ h
-                · rw [if_neg h3] at h ⊢
+                · rw [ite_eq_left h3] at h ⊢; exact hbin _ h
+                · rw [ite_eq_right h3] at h ⊢
                   by_cases h4 : t = 4
-                  · rw [if_pos h4] at h ⊢; exact hbin _ h
-                  · rw [if_neg h4] at h ⊢
+                  · rw [ite_eq_left h4] at h ⊢; exact hbin _ h
+                  · rw [ite_eq_right h4] at h ⊢
                     obtain ⟨rfl, rfl⟩ := Prod.mk.injEq .. ▸ Option.some.inj h
                     rfl
 
@@ -965,7 +965,7 @@ lemma parseRpn_and_blocks {a b : List ℕ} {φ ψ : Sentence}
     parseRpn (3 :: (a ++ b)).length (3 :: (a ++ b)) = some (φ ⋏ ψ, []) := by
   have hlen : (3 :: (a ++ b)).length = a.length + b.length + 1 := by simp
   rw [hlen, parseRpn_cons]
-  rw [if_neg (by norm_num), if_neg (by norm_num), if_neg (by norm_num), if_pos rfl]
+  rw [ite_eq_right (by norm_num), ite_eq_right (by norm_num), ite_eq_right (by norm_num), ite_eq_left rfl]
   rw [parseRpn_block_head ha b (by omega)]
   simp only [Option.bind_some]
   rw [parseRpn_mono b (show b.length ≤ a.length + b.length by omega) hb]
@@ -1026,13 +1026,13 @@ lemma parseRpn_strip : ∀ (fuel : ℕ) (ts : List ℕ) {φ : Sentence} {rest : 
       | t :: ts' =>
           rw [parseRpn_cons] at h
           by_cases h0 : t = 0
-          · rw [if_pos h0] at h
+          · rw [ite_eq_left h0] at h
             obtain ⟨rfl, rfl⟩ := Prod.mk.injEq .. ▸ Option.some.inj h
             subst h0
             exact ⟨[0], rfl, rfl⟩
-          · rw [if_neg h0] at h
+          · rw [ite_eq_right h0] at h
             by_cases h1 : t = 1
-            · rw [if_pos h1] at h
+            · rw [ite_eq_left h1] at h
               match ts' with
               | [] => simp at h
               | c₀ :: ts'' =>
@@ -1046,7 +1046,7 @@ lemma parseRpn_strip : ∀ (fuel : ℕ) (ts : List ℕ) {φ : Sentence} {rest : 
                       refine ⟨1 :: 0 :: (w ++ [19]), by simp, ?_⟩
                       rw [show (1 :: 0 :: (w ++ [19])).length =
                         (w.length + 2) + 1 by simp, parseRpn_cons,
-                        if_neg (by norm_num), if_pos rfl]
+                        ite_eq_right (by norm_num), ite_eq_left rfl]
                       show parseStructuredPaperPrime (w ++ [19]) = some (φ, [])
                       have hfirst := parseStructuredPaperPrime_first19 w hw rest
                       rw [h] at hfirst
@@ -1077,7 +1077,7 @@ lemma parseRpn_strip : ∀ (fuel : ℕ) (ts : List ℕ) {φ : Sentence} {rest : 
                           rw [show ([1, c₀ + 1] : List ℕ).length = 1 + 1 from rfl,
                             parseRpn_cons]
                           simp [hdec]
-            · rw [if_neg h1] at h
+            · rw [ite_eq_right h1] at h
               have hbin : ∀ (mk : Sentence → Sentence → Sentence),
                   ((parseRpn fuel ts').bind fun p =>
                     (parseRpn fuel p.2).bind fun q =>
@@ -1113,38 +1113,38 @@ lemma parseRpn_strip : ∀ (fuel : ℕ) (ts : List ℕ) {φ : Sentence} {rest : 
                         rw [List.cons_append,
                           show (t :: (blk₁ ++ blk₂)).length =
                             (blk₁.length + blk₂.length) + 1 by simp,
-                          parseRpn_cons, if_neg h0, if_neg h1]
+                          parseRpn_cons, ite_eq_right h0, ite_eq_right h1]
                         rcases ht with ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩
-                        · rw [if_pos rfl, hb1]
+                        · rw [ite_eq_left rfl, hb1]
                           simp only [Option.bind_some]
                           rw [hb2]
                           simp only [Option.bind_some, ← hφ]
-                        · rw [if_neg (by omega), if_pos rfl, hb1]
+                        · rw [ite_eq_right (by omega), ite_eq_left rfl, hb1]
                           simp only [Option.bind_some]
                           rw [hb2]
                           simp only [Option.bind_some, ← hφ]
-                        · rw [if_neg (by omega), if_neg (by omega), if_pos rfl,
+                        · rw [ite_eq_right (by omega), ite_eq_right (by omega), ite_eq_left rfl,
                             hb1]
                           simp only [Option.bind_some]
                           rw [hb2]
                           simp only [Option.bind_some, ← hφ]
               by_cases h2 : t = 2
-              · rw [if_pos h2] at h
+              · rw [ite_eq_left h2] at h
                 exact hbin _ h (Or.inl ⟨h2, rfl⟩)
-              · rw [if_neg h2] at h
+              · rw [ite_eq_right h2] at h
                 by_cases h3 : t = 3
-                · rw [if_pos h3] at h
+                · rw [ite_eq_left h3] at h
                   exact hbin _ h (Or.inr (Or.inl ⟨h3, rfl⟩))
-                · rw [if_neg h3] at h
+                · rw [ite_eq_right h3] at h
                   by_cases h4 : t = 4
-                  · rw [if_pos h4] at h
+                  · rw [ite_eq_left h4] at h
                     exact hbin _ h (Or.inr (Or.inr ⟨h4, rfl⟩))
-                  · rw [if_neg h4] at h
+                  · rw [ite_eq_right h4] at h
                     obtain ⟨rfl, rfl⟩ := Prod.mk.injEq .. ▸ Option.some.inj h
                     refine ⟨[t], rfl, ?_⟩
                     rw [show ([t] : List ℕ).length = 0 + 1 from rfl,
-                      parseRpn_cons, if_neg h0, if_neg h1, if_neg h2, if_neg h3,
-                      if_neg h4]
+                      parseRpn_cons, ite_eq_right h0, ite_eq_right h1, ite_eq_right h2, ite_eq_right h3,
+                      ite_eq_right h4]
 
 /-! ### Contraction transparency
 
@@ -1207,7 +1207,7 @@ lemma unRpnTokens_congr_aux : ∀ (n : ℕ) (ts : List ℕ), ts.length ≤ n →
           simp only [List.length_cons] at hn hf hf'
           rw [unRpnTokens_cons, unRpnTokens_cons]
           by_cases h0 : t = 0
-          · rw [if_pos h0, if_pos h0]
+          · rw [ite_eq_left h0, ite_eq_left h0]
             rcases hp : parseRpn rest.length rest with _ | ⟨φ, r1⟩
             · rfl
             rcases r1 with _ | ⟨d, r2⟩
@@ -1217,34 +1217,34 @@ lemma unRpnTokens_congr_aux : ∀ (n : ℕ) (ts : List ℕ), ts.length ≤ n →
             simp only [List.length_cons] at hlen
             rw [unRpnTokens_congr_aux n r2 (by omega) fuel fuel' (by omega)
               (by omega)]
-          rw [if_neg h0, if_neg h0]
+          rw [ite_eq_right h0, ite_eq_right h0]
           by_cases h6 : t = 6
-          · rw [if_pos h6, if_pos h6]
+          · rw [ite_eq_left h6, ite_eq_left h6]
             rcases hp : parseRpn rest.length rest with _ | ⟨φ, r1⟩
             · rfl
             simp only []
             have hlen := parseRpn_length_lt _ _ _ _ hp
             rw [unRpnTokens_congr_aux n r1 (by omega) fuel fuel' (by omega)
               (by omega)]
-          rw [if_neg h6, if_neg h6]
+          rw [ite_eq_right h6, ite_eq_right h6]
           by_cases h1 : t = 1
-          · rw [if_pos h1, if_pos h1]
+          · rw [ite_eq_left h1, ite_eq_left h1]
             rcases rest with _ | ⟨c, r⟩
             · rfl
             simp only []
             simp only [List.length_cons] at hn hf hf'
             rw [unRpnTokens_congr_aux n r (by omega) fuel fuel' (by omega)
               (by omega)]
-          rw [if_neg h1, if_neg h1]
+          rw [ite_eq_right h1, ite_eq_right h1]
           by_cases h7 : t = 7
-          · rw [if_pos h7, if_pos h7]
+          · rw [ite_eq_left h7, ite_eq_left h7]
             rcases rest with _ | ⟨c, r⟩
             · rfl
             simp only []
             simp only [List.length_cons] at hn hf hf'
             rw [unRpnTokens_congr_aux n r (by omega) fuel fuel' (by omega)
               (by omega)]
-          rw [if_neg h7, if_neg h7]
+          rw [ite_eq_right h7, ite_eq_right h7]
           rw [unRpnTokens_congr_aux n rest (by omega) fuel fuel' (by omega)
             (by omega)]
 
@@ -1263,7 +1263,7 @@ lemma unRpn_price_chunk_block {b : List ℕ} {φ : Sentence}
     (hb : parseRpn b.length b = some (φ, [])) (d : ℕ) (rest : List ℕ) :
     unRpn (0 :: (b ++ d :: rest)) =
       0 :: Encodable.encode φ :: d :: unRpn rest := by
-  rw [unRpn, List.length_cons, unRpnTokens_cons, if_pos rfl,
+  rw [unRpn, List.length_cons, unRpnTokens_cons, ite_eq_left rfl,
     parseRpn_block_head hb (d :: rest) (by simp)]
   simp only []
   rw [unRpnTokens_congr rest
@@ -1277,7 +1277,7 @@ lemma unRpn_trade_chunk_block {b : List ℕ} {φ : Sentence}
     unRpn (6 :: (b ++ rest)) =
       6 :: Encodable.encode φ :: unRpn rest := by
   rw [unRpn, List.length_cons, unRpnTokens_cons,
-    if_neg (by norm_num), if_pos rfl,
+    ite_eq_right (by norm_num), ite_eq_left rfl,
     parseRpn_block_head hb rest (by simp)]
   simp only []
   rw [unRpnTokens_congr rest
@@ -1289,13 +1289,13 @@ lemma unRpn_payload_chunk (t c : ℕ) (ht : t = 1 ∨ t = 7) (rest : List ℕ) :
     unRpn (t :: c :: rest) = t :: c :: unRpn rest := by
   rcases ht with rfl | rfl
   · rw [unRpn, List.length_cons, unRpnTokens_cons,
-      if_neg (by norm_num), if_neg (by norm_num), if_pos rfl]
+      ite_eq_right (by norm_num), ite_eq_right (by norm_num), ite_eq_left rfl]
     simp only []
     rw [unRpnTokens_congr rest (by simp only [List.length_cons]; omega) le_rfl]
     rfl
   · rw [unRpn, List.length_cons, unRpnTokens_cons,
-      if_neg (by norm_num), if_neg (by norm_num), if_neg (by norm_num),
-      if_pos rfl]
+      ite_eq_right (by norm_num), ite_eq_right (by norm_num), ite_eq_right (by norm_num),
+      ite_eq_left rfl]
     simp only []
     rw [unRpnTokens_congr rest (by simp only [List.length_cons]; omega) le_rfl]
     rfl
@@ -1306,7 +1306,7 @@ lemma unRpn_single_chunk (t : ℕ) (ht : t ≠ 0 ∧ t ≠ 1 ∧ t ≠ 6 ∧ t �
     unRpn (t :: rest) = t :: unRpn rest := by
   obtain ⟨h0, h1, h6, h7⟩ := ht
   rw [unRpn, List.length_cons, unRpnTokens_cons,
-    if_neg h0, if_neg h6, if_neg h1, if_neg h7]
+    ite_eq_right h0, ite_eq_right h6, ite_eq_right h1, ite_eq_right h7]
   rw [unRpnTokens_congr rest (by omega) le_rfl]
   rfl
 
@@ -1372,7 +1372,7 @@ lemma parseRpn_escape' {c : ℕ} {φ : Sentence}
     parseRpn fuel (1 :: c :: rest) = some (φ, rest) := by
   match fuel, hfuel with
   | fuel + 1, _ =>
-      rw [parseRpn_cons, if_neg (by omega), if_pos rfl]
+      rw [parseRpn_cons, ite_eq_right (by omega), ite_eq_left rfl]
       have hc : c ≠ 0 := by
         intro hc
         subst c
@@ -1390,7 +1390,7 @@ lemma parseRpn_escape_none {c : ℕ}
   match fuel with
   | 0 => rfl
   | fuel + 1 =>
-      rw [parseRpn_cons, if_neg (by omega), if_pos rfl]
+      rw [parseRpn_cons, ite_eq_right (by omega), ite_eq_left rfl]
       rcases c with _ | c
       · contradiction
       · simp [hdec]
@@ -1400,7 +1400,7 @@ lemma parseRpn_structured_poison (rest : List ℕ) (fuel : ℕ) :
   cases fuel with
   | zero => rfl
   | succ fuel =>
-      rw [parseRpn_cons, if_neg (by norm_num), if_pos rfl]
+      rw [parseRpn_cons, ite_eq_right (by norm_num), ite_eq_left rfl]
       simp [parseStructuredPaperPrime]
 
 /-! ## The escape expansion
@@ -1484,7 +1484,7 @@ lemma escExpandTokens_congr_aux : ∀ (n : ℕ) (ts : List ℕ), ts.length ≤ n
           simp only [List.length_cons] at hn hf hf'
           rw [escExpandTokens_cons, escExpandTokens_cons]
           by_cases h0 : t = 0
-          · rw [if_pos h0, if_pos h0]
+          · rw [ite_eq_left h0, ite_eq_left h0]
             rcases rest with _ | ⟨c, r1⟩
             · rfl
             rcases r1 with _ | ⟨d, r2⟩
@@ -1493,34 +1493,34 @@ lemma escExpandTokens_congr_aux : ∀ (n : ℕ) (ts : List ℕ), ts.length ≤ n
             simp only [List.length_cons] at hn hf hf'
             rw [escExpandTokens_congr_aux n r2 (by omega) fuel fuel' (by omega)
               (by omega)]
-          rw [if_neg h0, if_neg h0]
+          rw [ite_eq_right h0, ite_eq_right h0]
           by_cases h6 : t = 6
-          · rw [if_pos h6, if_pos h6]
+          · rw [ite_eq_left h6, ite_eq_left h6]
             rcases rest with _ | ⟨c, r⟩
             · rfl
             simp only []
             simp only [List.length_cons] at hn hf hf'
             rw [escExpandTokens_congr_aux n r (by omega) fuel fuel' (by omega)
               (by omega)]
-          rw [if_neg h6, if_neg h6]
+          rw [ite_eq_right h6, ite_eq_right h6]
           by_cases h1 : t = 1
-          · rw [if_pos h1, if_pos h1]
+          · rw [ite_eq_left h1, ite_eq_left h1]
             rcases rest with _ | ⟨c, r⟩
             · rfl
             simp only []
             simp only [List.length_cons] at hn hf hf'
             rw [escExpandTokens_congr_aux n r (by omega) fuel fuel' (by omega)
               (by omega)]
-          rw [if_neg h1, if_neg h1]
+          rw [ite_eq_right h1, ite_eq_right h1]
           by_cases h7 : t = 7
-          · rw [if_pos h7, if_pos h7]
+          · rw [ite_eq_left h7, ite_eq_left h7]
             rcases rest with _ | ⟨c, r⟩
             · rfl
             simp only []
             simp only [List.length_cons] at hn hf hf'
             rw [escExpandTokens_congr_aux n r (by omega) fuel fuel' (by omega)
               (by omega)]
-          rw [if_neg h7, if_neg h7]
+          rw [ite_eq_right h7, ite_eq_right h7]
           rw [escExpandTokens_congr_aux n rest (by omega) fuel fuel' (by omega)
             (by omega)]
 
@@ -1533,24 +1533,24 @@ lemma escExpandTokens_congr (ts : List ℕ) {fuel fuel' : ℕ}
 
 lemma escExpand_price_chunk (c d : ℕ) (hc : c ≠ 0) (r2 : List ℕ) :
     escExpand (0 :: c :: d :: r2) = 0 :: 1 :: c :: d :: escExpand r2 := by
-  rw [escExpand, List.length_cons, escExpandTokens_cons, if_pos rfl]
+  rw [escExpand, List.length_cons, escExpandTokens_cons, ite_eq_left rfl]
   simp only []
-  rw [if_neg hc]
+  rw [ite_eq_right hc]
   rw [escExpandTokens_congr r2 (by simp only [List.length_cons]; omega) le_rfl]
   rfl
 
 lemma escExpand_trade_chunk (c : ℕ) (hc : c ≠ 0) (r : List ℕ) :
     escExpand (6 :: c :: r) = 6 :: 1 :: c :: escExpand r := by
   rw [escExpand, List.length_cons, escExpandTokens_cons,
-    if_neg (by norm_num), if_pos rfl]
+    ite_eq_right (by norm_num), ite_eq_left rfl]
   simp only []
-  rw [if_neg hc]
+  rw [ite_eq_right hc]
   rw [escExpandTokens_congr r (by simp only [List.length_cons]; omega) le_rfl]
   rfl
 
 lemma escExpand_price_zero_chunk (d : ℕ) (r : List ℕ) :
     escExpand (0 :: 0 :: d :: r) = 0 :: 1 :: 0 :: 2 :: d :: escExpand r := by
-  rw [escExpand, List.length_cons, escExpandTokens_cons, if_pos rfl]
+  rw [escExpand, List.length_cons, escExpandTokens_cons, ite_eq_left rfl]
   simp only [↓reduceIte]
   rw [escExpandTokens_congr r (by simp only [List.length_cons]; omega) le_rfl]
   rfl
@@ -1558,7 +1558,7 @@ lemma escExpand_price_zero_chunk (d : ℕ) (r : List ℕ) :
 lemma escExpand_price_truncated (c : ℕ) (hc : c ≠ 0) :
     escExpand [0, c] = [0, 1, c] := by
   rw [escExpand, show ([0, c] : List ℕ).length = 2 from rfl,
-    escExpandTokens_cons, if_pos rfl]
+    escExpandTokens_cons, ite_eq_left rfl]
   simp [hc]
 
 lemma escExpand_price_zero_truncated : escExpand [0, 0] = [0, 1, 0, 2] := rfl
@@ -1566,7 +1566,7 @@ lemma escExpand_price_zero_truncated : escExpand [0, 0] = [0, 1, 0, 2] := rfl
 lemma escExpand_trade_zero_chunk (r : List ℕ) :
     escExpand (6 :: 0 :: r) = 6 :: 1 :: 0 :: 2 :: escExpand r := by
   rw [escExpand, List.length_cons, escExpandTokens_cons,
-    if_neg (by norm_num), if_pos rfl]
+    ite_eq_right (by norm_num), ite_eq_left rfl]
   simp only [↓reduceIte]
   rw [escExpandTokens_congr r (by simp only [List.length_cons]; omega) le_rfl]
   rfl
@@ -1575,12 +1575,12 @@ lemma escExpand_payload_chunk (t c : ℕ) (ht : t = 1 ∨ t = 7) (r : List ℕ) 
     escExpand (t :: c :: r) = t :: c :: escExpand r := by
   rcases ht with rfl | rfl
   · rw [escExpand, List.length_cons, escExpandTokens_cons,
-      if_neg (by norm_num), if_neg (by norm_num), if_pos rfl]
+      ite_eq_right (by norm_num), ite_eq_right (by norm_num), ite_eq_left rfl]
     simp only []
     rw [escExpandTokens_congr r (by simp only [List.length_cons]; omega) le_rfl]
     rfl
   · rw [escExpand, List.length_cons, escExpandTokens_cons,
-      if_neg (by norm_num), if_neg (by norm_num), if_neg (by norm_num), if_pos rfl]
+      ite_eq_right (by norm_num), ite_eq_right (by norm_num), ite_eq_right (by norm_num), ite_eq_left rfl]
     simp only []
     rw [escExpandTokens_congr r (by simp only [List.length_cons]; omega) le_rfl]
     rfl
@@ -1590,7 +1590,7 @@ lemma escExpand_single_chunk (t : ℕ) (ht : t ≠ 0 ∧ t ≠ 1 ∧ t ≠ 6 ∧
     escExpand (t :: r) = t :: escExpand r := by
   obtain ⟨h0, h1, h6, h7⟩ := ht
   rw [escExpand, List.length_cons, escExpandTokens_cons,
-    if_neg h0, if_neg h6, if_neg h1, if_neg h7]
+    ite_eq_right h0, ite_eq_right h6, ite_eq_right h1, ite_eq_right h7]
   rw [escExpandTokens_congr r (by omega) le_rfl]
   rfl
 
@@ -1600,7 +1600,7 @@ lemma unRpn_price_escape {c : ℕ} {φ : Sentence}
     (hdec : Encodable.decode (α := Sentence) c = some φ) (d : ℕ)
     (rest : List ℕ) :
     unRpn (0 :: 1 :: c :: d :: rest) = 0 :: Encodable.encode φ :: d :: unRpn rest := by
-  rw [unRpn, List.length_cons, unRpnTokens_cons, if_pos rfl,
+  rw [unRpn, List.length_cons, unRpnTokens_cons, ite_eq_left rfl,
     parseRpn_escape' hdec (d :: rest) (by simp)]
   simp only []
   rw [unRpnTokens_congr rest (by simp only [List.length_cons]; omega) le_rfl]
@@ -1610,13 +1610,13 @@ lemma unRpn_price_escape_none {c : ℕ}
     (hc : c ≠ 0) (hdec : Encodable.decode (α := Sentence) c = none)
     (d : ℕ) (rest : List ℕ) :
     unRpn (0 :: 1 :: c :: d :: rest) = [0, 0] := by
-  rw [unRpn, List.length_cons, unRpnTokens_cons, if_pos rfl,
+  rw [unRpn, List.length_cons, unRpnTokens_cons, ite_eq_left rfl,
     parseRpn_escape_none hc hdec (d :: rest) _]
 
 lemma unRpn_trade_escape {c : ℕ} {φ : Sentence}
     (hdec : Encodable.decode (α := Sentence) c = some φ) (rest : List ℕ) :
     unRpn (6 :: 1 :: c :: rest) = 6 :: Encodable.encode φ :: unRpn rest := by
-  rw [unRpn, List.length_cons, unRpnTokens_cons, if_neg (by norm_num), if_pos rfl,
+  rw [unRpn, List.length_cons, unRpnTokens_cons, ite_eq_right (by norm_num), ite_eq_left rfl,
     parseRpn_escape' hdec rest (by simp)]
   simp only []
   rw [unRpnTokens_congr rest (by simp only [List.length_cons]; omega) le_rfl]
@@ -1626,12 +1626,12 @@ lemma unRpn_trade_escape_none {c : ℕ}
     (hc : c ≠ 0) (hdec : Encodable.decode (α := Sentence) c = none)
     (rest : List ℕ) :
     unRpn (6 :: 1 :: c :: rest) = [6, 0] := by
-  rw [unRpn, List.length_cons, unRpnTokens_cons, if_neg (by norm_num), if_pos rfl,
+  rw [unRpn, List.length_cons, unRpnTokens_cons, ite_eq_right (by norm_num), ite_eq_left rfl,
     parseRpn_escape_none hc hdec rest _]
 
 lemma unRpn_price_structured_poison (d : ℕ) (rest : List ℕ) :
     unRpn (0 :: 1 :: 0 :: 2 :: d :: rest) = [0, 0] := by
-  rw [unRpn, List.length_cons, unRpnTokens_cons, if_pos rfl,
+  rw [unRpn, List.length_cons, unRpnTokens_cons, ite_eq_left rfl,
     parseRpn_structured_poison (d :: rest)]
 
 lemma unRpn_price_structured_poison_truncated :
@@ -1642,18 +1642,18 @@ lemma unRpn_price_escape_none_truncated {c : ℕ} (hc : c ≠ 0)
     (hdec : Encodable.decode (α := Sentence) c = none) :
     unRpn [0, 1, c] = [0, 0] := by
   rw [unRpn, show ([0, 1, c] : List ℕ).length = 3 from rfl,
-    unRpnTokens_cons, if_pos rfl, parseRpn_escape_none hc hdec []]
+    unRpnTokens_cons, ite_eq_left rfl, parseRpn_escape_none hc hdec []]
 
 lemma unRpn_price_escape_truncated {c : ℕ} {φ : Sentence}
     (hdec : Encodable.decode (α := Sentence) c = some φ) :
     unRpn [0, 1, c] = [0, Encodable.encode φ] := by
   rw [unRpn, show ([0, 1, c] : List ℕ).length = 3 from rfl,
-    unRpnTokens_cons, if_pos rfl, parseRpn_escape' hdec [] (by simp)]
+    unRpnTokens_cons, ite_eq_left rfl, parseRpn_escape' hdec [] (by simp)]
 
 lemma unRpn_trade_structured_poison (rest : List ℕ) :
     unRpn (6 :: 1 :: 0 :: 2 :: rest) = [6, 0] := by
   rw [unRpn, List.length_cons, unRpnTokens_cons,
-    if_neg (by norm_num), if_pos rfl, parseRpn_structured_poison rest]
+    ite_eq_right (by norm_num), ite_eq_left rfl, parseRpn_structured_poison rest]
 
 /-! ## The escape simulation
 
@@ -1847,45 +1847,45 @@ lemma streamReadFrom_unRpn_escExpand : ∀ (n : ℕ) (ts : List ℕ), ts.length 
           exact Or.inl rfl
         · have hmode : st'.1.1 = 0 := by
             simp only [EF.streamStep] at hstep
-            rw [if_neg h0] at hstep
-            rw [if_neg h1] at hstep
+            rw [ite_eq_right h0] at hstep
+            rw [ite_eq_right h1] at hstep
             by_cases ht2 : t = 2
-            · rw [if_pos ht2] at hstep
+            · rw [ite_eq_left ht2] at hstep
               match stack, hstep with
               | b :: a :: rest', hstep =>
                   obtain rfl := Option.some.inj hstep
                   rfl
-            rw [if_neg ht2] at hstep
+            rw [ite_eq_right ht2] at hstep
             by_cases ht3 : t = 3
-            · rw [if_pos ht3] at hstep
+            · rw [ite_eq_left ht3] at hstep
               match stack, hstep with
               | b :: a :: rest', hstep =>
                   obtain rfl := Option.some.inj hstep
                   rfl
-            rw [if_neg ht3] at hstep
+            rw [ite_eq_right ht3] at hstep
             by_cases ht4 : t = 4
-            · rw [if_pos ht4] at hstep
+            · rw [ite_eq_left ht4] at hstep
               match stack, hstep with
               | b :: a :: rest', hstep =>
                   obtain rfl := Option.some.inj hstep
                   rfl
-            rw [if_neg ht4] at hstep
+            rw [ite_eq_right ht4] at hstep
             by_cases ht5 : t = 5
-            · rw [if_pos ht5] at hstep
+            · rw [ite_eq_left ht5] at hstep
               match stack, hstep with
               | a :: rest', hstep =>
                   obtain rfl := Option.some.inj hstep
                   rfl
-            rw [if_neg ht5] at hstep
-            rw [if_neg h6] at hstep
-            rw [if_neg h7] at hstep
+            rw [ite_eq_right ht5] at hstep
+            rw [ite_eq_right h6] at hstep
+            rw [ite_eq_right h7] at hstep
             by_cases ht8 : t = 8
-            · rw [if_pos ht8] at hstep
+            · rw [ite_eq_left ht8] at hstep
               match stack, hstep with
               | body :: x :: rest', hstep =>
                   obtain rfl := Option.some.inj hstep
                   rfl
-            rw [if_neg ht8] at hstep
+            rw [ite_eq_right ht8] at hstep
             exact absurd hstep (by simp)
           obtain ⟨⟨m', pend'⟩, ⟨stack', trades'⟩⟩ := st'
           simp only at hmode
@@ -2123,9 +2123,9 @@ lemma escExpandFold_eq_escExpand : ∀ (n : ℕ) (ts : List ℕ), ts.length ≤ 
       · rw [escExpand_single_chunk t ⟨h0, h1, h6, h7⟩]
         show ((if (0 : ℕ) = 1 ∨ (0 : ℕ) = 3 then [1, t] else [t]) ++
           escExpandFold (escModeStep 0 t) rest) = _
-        rw [if_neg (by norm_num),
+        rw [ite_eq_right (by norm_num),
           show escModeStep 0 t = 0 by
-            rw [escModeStep, if_pos rfl, if_neg h0, if_neg h6, if_neg h1, if_neg h7]]
+            rw [escModeStep, ite_eq_left rfl, ite_eq_right h0, ite_eq_right h6, ite_eq_right h1, ite_eq_right h7]]
         rw [escExpandFold_eq_escExpand n rest (by omega)]
         rfl
 
@@ -2215,12 +2215,12 @@ lemma parseStructuredPaperPrimeC_eq (ts : List ℕ) :
   · rfl
   rcases rest with _ | ⟨x, xs⟩
   · by_cases hterm : payload.getD n 0 = 19
-    · simp only [hterm, if_true, Option.map_some, Option.some.injEq, Prod.mk.injEq,
+    · simp only [hterm, ite_true, Option.map_some, Option.some.injEq, Prod.mk.injEq,
         and_true]
       change Nat.pair 1 (Nat.pair 5 (Nat.pair polarity code)) + 1 =
         (Formula.atom (Nat.pair 5 (Nat.pair polarity code)) : Sentence).toNat
       rfl
-    · simp only [hterm, if_false, Option.map_none]
+    · simp only [hterm, ite_false, Option.map_none]
   · rfl
 
 /-- Code-level parsing computes exactly the encoded sentence-level parse. -/
@@ -2232,11 +2232,11 @@ lemma parseRpnC_eq : ∀ (fuel : ℕ) (ts : List ℕ),
   | fuel + 1, t :: rest => by
       rw [parseRpnC_cons, parseRpn_cons]
       by_cases h0 : t = 0
-      · rw [if_pos h0, if_pos h0]
+      · rw [ite_eq_left h0, ite_eq_left h0]
         rfl
-      rw [if_neg h0, if_neg h0]
+      rw [ite_eq_right h0, ite_eq_right h0]
       by_cases h1 : t = 1
-      · rw [if_pos h1, if_pos h1]
+      · rw [ite_eq_left h1, ite_eq_left h1]
         rcases rest with _ | ⟨c, r⟩
         · rfl
         cases c with
@@ -2245,7 +2245,7 @@ lemma parseRpnC_eq : ∀ (fuel : ℕ) (ts : List ℕ),
             rcases hdec : Encodable.decode (α := Sentence) (c + 1) with _ | φ
             · simp [hdec, Encodable.encode_none]
             · simp [hdec, Encodable.encode_some]
-      rw [if_neg h1, if_neg h1]
+      rw [ite_eq_right h1, ite_eq_right h1]
       have hbin : ∀ (tag : ℕ) (mk : Sentence → Sentence → Sentence),
           (∀ φ ψ, Encodable.encode (mk φ ψ) =
             Nat.pair tag (Nat.pair (Encodable.encode φ) (Encodable.encode ψ)) + 1) →
@@ -2265,17 +2265,17 @@ lemma parseRpnC_eq : ∀ (fuel : ℕ) (ts : List ℕ),
         · rfl
         simp only [Option.map_some, Option.bind_some, hmk]
       by_cases h2 : t = 2
-      · rw [if_pos h2, if_pos h2]
+      · rw [ite_eq_left h2, ite_eq_left h2]
         exact hbin 2 Formula.imp (fun φ ψ => rfl)
-      rw [if_neg h2, if_neg h2]
+      rw [ite_eq_right h2, ite_eq_right h2]
       by_cases h3 : t = 3
-      · rw [if_pos h3, if_pos h3]
+      · rw [ite_eq_left h3, ite_eq_left h3]
         exact hbin 3 Formula.and (fun φ ψ => rfl)
-      rw [if_neg h3, if_neg h3]
+      rw [ite_eq_right h3, ite_eq_right h3]
       by_cases h4 : t = 4
-      · rw [if_pos h4, if_pos h4]
+      · rw [ite_eq_left h4, ite_eq_left h4]
         exact hbin 4 Formula.or (fun φ ψ => rfl)
-      rw [if_neg h4, if_neg h4]
+      rw [ite_eq_right h4, ite_eq_right h4]
       rfl
 
 /-! ### The code-level stream contraction -/
@@ -2338,7 +2338,7 @@ lemma unRpnTokensC_eq : ∀ (fuel : ℕ) (ts : List ℕ),
   | fuel + 1, t :: rest => by
       rw [unRpnTokensC_cons, unRpnTokens_cons]
       by_cases h0 : t = 0
-      · rw [if_pos h0, if_pos h0, parseRpnC_eq]
+      · rw [ite_eq_left h0, ite_eq_left h0, parseRpnC_eq]
         rcases parseRpn rest.length rest with _ | ⟨φ, r1⟩
         · rfl
         simp only [Option.map_some]
@@ -2346,28 +2346,28 @@ lemma unRpnTokensC_eq : ∀ (fuel : ℕ) (ts : List ℕ),
         · rfl
         simp only []
         rw [unRpnTokensC_eq fuel r2]
-      rw [if_neg h0, if_neg h0]
+      rw [ite_eq_right h0, ite_eq_right h0]
       by_cases h6 : t = 6
-      · rw [if_pos h6, if_pos h6, parseRpnC_eq]
+      · rw [ite_eq_left h6, ite_eq_left h6, parseRpnC_eq]
         rcases parseRpn rest.length rest with _ | ⟨φ, r1⟩
         · rfl
         simp only [Option.map_some]
         rw [unRpnTokensC_eq fuel r1]
-      rw [if_neg h6, if_neg h6]
+      rw [ite_eq_right h6, ite_eq_right h6]
       by_cases h1 : t = 1
-      · rw [if_pos h1, if_pos h1]
+      · rw [ite_eq_left h1, ite_eq_left h1]
         rcases rest with _ | ⟨c, r⟩
         · rfl
         simp only []
         rw [unRpnTokensC_eq fuel r]
-      rw [if_neg h1, if_neg h1]
+      rw [ite_eq_right h1, ite_eq_right h1]
       by_cases h7 : t = 7
-      · rw [if_pos h7, if_pos h7]
+      · rw [ite_eq_left h7, ite_eq_left h7]
         rcases rest with _ | ⟨c, r⟩
         · rfl
         simp only []
         rw [unRpnTokensC_eq fuel r]
-      rw [if_neg h7, if_neg h7]
+      rw [ite_eq_right h7, ite_eq_right h7]
       rw [unRpnTokensC_eq fuel rest]
 
 /-- `unRpn` through the code-level contraction. -/

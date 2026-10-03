@@ -140,10 +140,10 @@ lemma map_prob (f : S → T) (P : Distr S) (B : Set T) : (P.map f).prob B = P.pr
       = ∑ s, (if f s = t then (if f s ∈ B then P.mass s else 0) else 0) := by
     intro t
     by_cases ht : t ∈ B
-    · simp only [ht, if_true]
+    · simp only [ht, ite_true]
       refine Finset.sum_congr rfl fun s _ => ?_
       by_cases hs : f s = t <;> simp [hs, ht]
-    · simp only [ht, if_false]
+    · simp only [ht, ite_false]
       refine (Finset.sum_eq_zero fun s _ => ?_).symm
       by_cases hs : f s = t <;> simp [hs, ht]
   rw [Finset.sum_congr rfl fun t _ => h t, Finset.sum_comm]
@@ -303,7 +303,7 @@ lemma Distr.margAt_prod (p : ∀ i, Distr (Ω i)) (i : I) : (Distr.prod p).margA
         = if a = x then (p i).mass a else 0 := by
     intro a
     by_cases ha : a = x
-    · rw [if_pos ha]
+    · rw [ite_eq_left ha]
       calc (∑ g : (∀ j : {j : I // j ≠ i}, Ω j),
               if a = x then (p i).mass a * ∏ j : {j : I // j ≠ i}, (p j).mass (g j) else 0)
           = ∑ g : (∀ j : {j : I // j ≠ i}, Ω j),
@@ -435,9 +435,9 @@ lemma Distr.marg_mass_eq_sum (P : Distr (Pt Ω)) (J : Finset I) (α : PtOn Ω J)
     intro α'
     by_cases h : α' = α
     · subst h
-      rw [if_pos rfl]
+      rw [ite_eq_left rfl]
       exact Finset.sum_congr rfl fun β _ => Set.indicator_of_mem (by simp) _
-    · rw [if_neg h]
+    · rw [ite_eq_right h]
       exact Finset.sum_eq_zero fun β _ => Set.indicator_of_notMem (by simp [h]) _
   rw [Finset.sum_congr rfl fun α' _ => key α']
   simp
@@ -714,7 +714,7 @@ theorem CondIndepEventVar.of_proj_subset {P : Distr (Pt Ω)} {B C : Set (Pt Ω)}
         if Finset.restrict₂ hJ α = α' then D ∩ fiber (proj J) α ∩ C else ∅ := by
     intro D α
     by_cases hα : Finset.restrict₂ hJ α = α'
-    · rw [if_pos hα]
+    · rw [ite_eq_left hα]
       ext ω
       simp only [fiber, Set.mem_inter_iff, Set.mem_setOf_eq, Set.mem_preimage,
         Set.mem_singleton_iff]
@@ -725,7 +725,7 @@ theorem CondIndepEventVar.of_proj_subset {P : Distr (Pt Ω)} {B C : Set (Pt Ω)}
         refine ⟨⟨⟨hD, ?_⟩, hC⟩, hp⟩
         rw [← hα]
         exact congrArg (Finset.restrict₂ hJ) hp
-    · rw [if_neg hα]
+    · rw [ite_eq_right hα]
       ext ω
       simp only [fiber, Set.mem_inter_iff, Set.mem_setOf_eq, Set.mem_preimage,
         Set.mem_singleton_iff, Set.mem_empty_iff_false, iff_false]
@@ -808,9 +808,9 @@ private lemma prob_projSet_sliceAt (J : Finset I) (α : PtOn Ω J) (D : Set (Pt 
   rw [Distr.prob]
   refine Finset.sum_congr rfl fun β _ => ?_
   by_cases hβ : (splitEquiv J).symm (α, β) ∈ D
-  · rw [Set.indicator_of_mem ((mem_projSet_compl_sliceAt J α D β).mpr hβ), if_pos hβ]
+  · rw [Set.indicator_of_mem ((mem_projSet_compl_sliceAt J α D β).mpr hβ), ite_eq_left hβ]
   · rw [Set.indicator_of_notMem fun hc => hβ ((mem_projSet_compl_sliceAt J α D β).mp hc),
-      if_neg hβ]
+      ite_eq_right hβ]
 
 /-- **Slicing (1).** For factorizing `P`: `P(D^α) = P_J(α) · P_{I∖J}(D^α_{I∖J})`.
 
@@ -833,13 +833,13 @@ theorem Factorizes.prob_sliceAt {P : Distr (Pt Ω)} (hP : Factorizes P) (J : Fin
     intro α'
     by_cases hα : α' = α
     · subst hα
-      rw [if_pos rfl]
+      rw [ite_eq_left rfl]
       refine Finset.sum_congr rfl fun β _ => ?_
       by_cases hD : (splitEquiv J).symm (α', β) ∈ D
       · rw [Set.indicator_of_mem (show (splitEquiv J).symm (α', β) ∈ sliceAt J α' D from
-          ⟨hD, by simp [fiber]⟩), if_pos hD, hmass]
-      · rw [Set.indicator_of_notMem fun hc => hD hc.1, if_neg hD, mul_zero]
-    · rw [if_neg hα]
+          ⟨hD, by simp [fiber]⟩), ite_eq_left hD, hmass]
+      · rw [Set.indicator_of_notMem fun hc => hD hc.1, ite_eq_right hD, mul_zero]
+    · rw [ite_eq_right hα]
       refine Finset.sum_eq_zero fun β _ => ?_
       refine Set.indicator_of_notMem (fun hc => hα ?_) _
       simpa [fiber] using hc.2
@@ -865,23 +865,23 @@ theorem Distr.prob_outerCompl_delta (P : Distr (Pt Ω)) (J : Finset I) (α : PtO
     intro α'
     by_cases hα : α' = α
     · subst hα
-      rw [if_pos rfl]
+      rw [ite_eq_left rfl]
       have hm : ∀ β : PtOn Ω Jᶜ,
           (Distr.outerCompl (Distr.delta α') (P.marg Jᶜ)).mass ((splitEquiv J).symm (α', β))
             = (P.marg Jᶜ).mass β := by
         intro β
         rw [Distr.outerCompl_mass, proj_splitEquiv_symm, proj_compl_splitEquiv_symm,
-          Distr.delta_mass, if_pos rfl, one_mul]
+          Distr.delta_mass, ite_eq_left rfl, one_mul]
       refine Finset.sum_congr rfl fun β _ => ?_
       by_cases hD : (splitEquiv J).symm (α', β) ∈ D
-      · rw [Set.indicator_of_mem hD, if_pos hD, hm β]
-      · rw [Set.indicator_of_notMem hD, if_neg hD]
-    · rw [if_neg hα]
+      · rw [Set.indicator_of_mem hD, ite_eq_left hD, hm β]
+      · rw [Set.indicator_of_notMem hD, ite_eq_right hD]
+    · rw [ite_eq_right hα]
       have hm : ∀ β : PtOn Ω Jᶜ,
           (Distr.outerCompl (Distr.delta α) (P.marg Jᶜ)).mass ((splitEquiv J).symm (α', β)) = 0 := by
         intro β
         rw [Distr.outerCompl_mass, proj_splitEquiv_symm, proj_compl_splitEquiv_symm,
-          Distr.delta_mass, if_neg hα, zero_mul]
+          Distr.delta_mass, ite_eq_right hα, zero_mul]
       refine Finset.sum_eq_zero fun β _ => ?_
       by_cases hD : (splitEquiv J).symm (α', β) ∈ D
       · rw [Set.indicator_of_mem hD, hm β]
@@ -982,12 +982,12 @@ lemma Distr.delta_eq_prod (ω : Pt Ω) :
   simp only [Distr.delta_mass]
   by_cases h : ω' = ω
   · subst h; simp
-  · rw [if_neg h]
+  · rw [ite_eq_right h]
     obtain ⟨i, hi⟩ : ∃ i, ω' i ≠ ω i := by
       by_contra hc
       push Not at hc
       exact h (funext hc)
-    exact (Finset.prod_eq_zero (Finset.mem_univ i) (if_neg hi)).symm
+    exact (Finset.prod_eq_zero (Finset.mem_univ i) (ite_eq_right hi)).symm
 
 lemma factorizes_delta (ω : Pt Ω) : Factorizes (Distr.delta ω) := by
   rw [Distr.delta_eq_prod]
@@ -1037,11 +1037,11 @@ lemma outerCompl_delta_eq_prod {J : Finset I} {P : Distr (Pt Ω)} (hP : Factoriz
   · rw [← Finset.prod_coe_sort J]
     rw [Distr.delta_eq_prod (Ω := fun i : J => Ω i) α, Distr.prod_mass]
     exact Finset.prod_congr rfl fun i _ => by
-      rw [dif_pos i.2]
+      rw [dite_eq_left i.2]
       congr 1
   · rw [hP.marg_mass Jᶜ, ← Finset.prod_coe_sort Jᶜ]
     exact (Finset.prod_congr rfl fun i _ => by
-      rw [dif_neg (Finset.mem_compl.mp i.2)]; rfl).symm
+      rw [dite_eq_right (Finset.mem_compl.mp i.2)]; rfl).symm
 
 /-! ## Product distributions and single coordinates -/
 

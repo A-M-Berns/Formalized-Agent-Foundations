@@ -102,7 +102,7 @@ lemma segNest_pos (H : PatAuto.HoleGuards) (S X Y : List Bool → List Bool) :
       rw [segNest]
       by_cases h : SegMatch p (decodeBits (S z))
       · obtain ⟨h₁, h₂⟩ := (segMatch_iff_accepts H p _).mp h
-        rw [if_pos h₁, if_pos h₂]
+        rw [ite_eq_left h₁, ite_eq_left h₂]
       · have hfall : segNest H S X Y l z = X z := by
           refine segNest_pos H S X Y l z ?_
           obtain ⟨q, hq, hqm⟩ := hm
@@ -110,11 +110,11 @@ lemma segNest_pos (H : PatAuto.HoleGuards) (S X Y : List Bool → List Bool) :
           · exact absurd (hc ▸ hqm) h
           · exact ⟨q, hc, hqm⟩
         by_cases h₁ : (SegAuto.segAuto H payRec p).Accepts (decodeBits (S z)) = true
-        · rw [if_pos h₁]
+        · rw [ite_eq_left h₁]
           have h₂ : ¬ (SegCtr.segCtr p).Accepts (decodeBits (S z)) = true :=
             fun hc => h ((segMatch_iff_accepts H p _).mpr ⟨h₁, hc⟩)
-          rw [if_neg h₂]; exact hfall
-        · rw [if_neg h₁]; exact hfall
+          rw [ite_eq_right h₂]; exact hfall
+        · rw [ite_eq_right h₁]; exact hfall
 
 lemma segNest_neg (H : PatAuto.HoleGuards) (S X Y : List Bool → List Bool) :
     ∀ (l : List (List PatSeg)) (z : List Bool),
@@ -128,11 +128,11 @@ lemma segNest_neg (H : PatAuto.HoleGuards) (S X Y : List Bool → List Bool) :
         fun hc => hm ⟨p, List.mem_cons_self .., hc⟩
       rw [segNest]
       by_cases h₁ : (SegAuto.segAuto H payRec p).Accepts (decodeBits (S z)) = true
-      · rw [if_pos h₁]
+      · rw [ite_eq_left h₁]
         have h₂ : ¬ (SegCtr.segCtr p).Accepts (decodeBits (S z)) = true :=
           fun hc => hp ((segMatch_iff_accepts H p _).mpr ⟨h₁, hc⟩)
-        rw [if_neg h₂]; exact hrest
-      · rw [if_neg h₁]; exact hrest
+        rw [ite_eq_right h₂]; exact hrest
+      · rw [ite_eq_right h₁]; exact hrest
 
 /-- The nest returns one of its two branches, whatever the outcome. -/
 lemma segNest_cases (H : PatAuto.HoleGuards) (S X Y : List Bool → List Bool) :
@@ -188,9 +188,9 @@ lemma ifParseFull_mem_FP (H : PatAuto.HoleGuards) (ψ : Sentence)
     funext z
     by_cases hp : parseRpn (decodeBits (S z)).length (decodeBits (S z)) = some (ψ, [])
     · rw [segNest_pos H S X Y _ z ((parseRpn_iff_segMatch ψ (decodeBits (S z))).mp hp),
-        if_pos hp]
+        ite_eq_left hp]
     · rw [segNest_neg H S X Y _ z
-        (fun hc => hp ((parseRpn_iff_segMatch ψ (decodeBits (S z))).mpr hc)), if_neg hp]
+        (fun hc => hp ((parseRpn_iff_segMatch ψ (decodeBits (S z))).mpr hc)), ite_eq_right hp]
   rwa [heq] at h
 
 end LogicalInduction.SegRec

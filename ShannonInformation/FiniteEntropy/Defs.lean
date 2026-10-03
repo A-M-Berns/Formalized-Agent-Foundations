@@ -141,7 +141,7 @@ instance (priority := 100) finiteEntropy_of_finiteRange [MeasurableSingletonClas
         haveI : IsEmpty S := not_nonempty_iff.mp h
         exact hX (measurable_of_subsingleton_codomain X).aemeasurable
       refine ⟨insert (Classical.ofNonempty : S) (FiniteRange.toFinset X), ?_⟩
-      rw [Measure.map_def, dif_neg hX]
+      rw [Measure.map_def, dite_eq_right hX]
       split_ifs
       · simp
       · simp [MeasureTheory.ae_dirac_iff]

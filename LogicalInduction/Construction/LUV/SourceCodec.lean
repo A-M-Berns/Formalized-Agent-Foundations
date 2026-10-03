@@ -329,10 +329,10 @@ private lemma parseStructuredPaperPrime_leaf {positive : Bool} {payload : List �
   rw [parseStructuredPaperPrime.eq_def]
   simp only []
   have hbool : Encodable.encode positive ≤ 1 := by cases positive <;> simp
-  rw [if_pos hbool]
+  rw [ite_eq_left hbool]
   rw [readStructuredLength_replicate]
   simp only [Option.bind_some, List.length_append]
-  rw [if_pos (by omega), List.take_left]
+  rw [ite_eq_left (by omega), List.take_left]
   rw [hpayload]
   simp only [List.getD_append_right _ _ _ _ le_rfl, Nat.sub_self, List.getD_cons_zero]
   rw [List.drop_append]
@@ -810,11 +810,11 @@ lemma encodeArithmeticTermSymbols_binNumeral {k : ℕ} :
   induction v using Nat.strong_induction_on with
   | _ v ih =>
     rcases lt_or_ge v 4 with hv | hv
-    · rw [binNumeral, if_pos hv, binNumeralEnc, if_pos hv]
+    · rw [binNumeral, ite_eq_left hv, binNumeralEnc, ite_eq_left hv]
       exact encodeArithmeticTermSymbols_digitTerm hv
     · have hlt : v / 4 < v := Nat.div_lt_self (by omega) (by omega)
       have hrec := ih _ hlt
-      rw [binNumeral, if_neg (by omega), binNumeralEnc, if_neg (by omega)]
+      rw [binNumeral, ite_eq_right (by omega), binNumeralEnc, ite_eq_right (by omega)]
       show (7 : ℕ) :: (encodeArithmeticTermSymbols
           ((Semiterm.Operator.Mul.mul.comp
             ![fourTerm, binNumeral (v / 4)] : Semiterm.Const ℒₒᵣ).const :
@@ -854,7 +854,7 @@ lemma binNumeralEnc_eq (v : ℕ) :
   induction v using Nat.strong_induction_on with
   | _ v ih =>
     rcases lt_or_ge v 4 with hv | hv
-    · rw [binNumeralEnc, if_pos hv, binNumeralLen_of_lt_four hv]
+    · rw [binNumeralEnc, ite_eq_left hv, binNumeralLen_of_lt_four hv]
       simp [dig4_of_lt_four hv]
     · have hlt : v / 4 < v := Nat.div_lt_self (by omega) (by omega)
       have hrec := ih _ hlt
@@ -878,7 +878,7 @@ lemma binNumeralEnc_eq (v : ℕ) :
           have hj' : K + 1 - j = (K - j) + 1 := by omega
           rw [hj', dig4_succ]
         · simp [dig4_zero]
-      rw [binNumeralEnc, if_neg (by omega), hrec, hLv]
+      rw [binNumeralEnc, ite_eq_right (by omega), hrec, hLv]
       simp only [Nat.add_sub_cancel]
       rw [e1, e2]
       simp [List.append_assoc]
@@ -891,13 +891,13 @@ lemma binNumeralEnc_length (v : ℕ) :
   induction v using Nat.strong_induction_on with
   | _ v ih =>
     rcases lt_or_ge v 4 with hv | hv
-    · rw [binNumeralEnc, if_pos hv, binNumeralLen_of_lt_four hv]
+    · rw [binNumeralEnc, ite_eq_left hv, binNumeralLen_of_lt_four hv]
       rfl
     · have hlt : v / 4 < v := Nat.div_lt_self (by omega) (by omega)
       have hrec := ih _ hlt
       have hLv : binNumeralLen v = binNumeralLen (v / 4) + 1 := binNumeralLen_div hv
       have hp := binNumeralLen_pos (v / 4)
-      rw [binNumeralEnc, if_neg (by omega)]
+      rw [binNumeralEnc, ite_eq_right (by omega)]
       simp only [List.length_append, hrec, hLv, digitEnc, hornerPrefix,
         List.length_cons, List.length_nil]
       omega
@@ -972,14 +972,14 @@ lemma binNumeral_val {M : Type*} [ORingStructure M] [M↓[ℒₒᵣ] ⊧* 𝗣�
   induction v using Nat.strong_induction_on with
   | _ v ih =>
     rcases lt_or_ge v 4 with hv | hv
-    · rw [binNumeral, if_pos hv]; exact hdig v hv
+    · rw [binNumeral, ite_eq_left hv]; exact hdig v hv
     · have hlt : v / 4 < v := Nat.div_lt_self (by omega) (by omega)
       have hrec := ih _ hlt
       have hcast : (v : M) = 4 * ((v / 4 : ℕ) : M) + ((v % 4 : ℕ) : M) := by
         have hvv : v = 4 * (v / 4) + v % 4 := by omega
         calc (v : M) = ((4 * (v / 4) + v % 4 : ℕ) : M) := by rw [← hvv]
           _ = 4 * ((v / 4 : ℕ) : M) + ((v % 4 : ℕ) : M) := by push_cast; ring
-      rw [binNumeral, if_neg (by omega)]
+      rw [binNumeral, ite_eq_right (by omega)]
       simp only [val_add_comp, val_mul_comp, hfour, hrec,
         hdig _ (Nat.mod_lt _ (by norm_num))]
       rw [hcast]
@@ -1096,7 +1096,7 @@ private lemma canonDigits_zero : canonDigits 0 = [0] := rfl
 private lemma canonDigits_cons {v : ℕ} (hv : 4 ≤ v) :
     canonDigits v = v % 4 :: canonDigits (v / 4) := by
   have hq : 0 < v / 4 := Nat.div_pos hv (by norm_num)
-  rw [canonDigits, if_neg (by omega), canonDigits, if_neg (by omega)]
+  rw [canonDigits, ite_eq_right (by omega), canonDigits, ite_eq_right (by omega)]
   cases v with
   | zero => omega
   | succ m => rw [natDigits4]
@@ -1111,7 +1111,7 @@ private lemma binNumeralEnc_eq_canon (v : ℕ) :
   induction v using Nat.strong_induction_on with
   | _ v ih =>
     rcases lt_or_ge v 4 with hv | hv
-    · rw [binNumeralEnc, if_pos hv, binNumeralLen_of_lt_four hv]
+    · rw [binNumeralEnc, ite_eq_left hv, binNumeralLen_of_lt_four hv]
       simp only [Nat.sub_self, List.range_zero, List.flatMap_nil, List.nil_append]
       interval_cases v <;> simp [canonDigits, natDigits4]
     · have hlt : v / 4 < v := Nat.div_lt_self (by omega) (by omega)
@@ -1125,7 +1125,7 @@ private lemma binNumeralEnc_eq_canon (v : ℕ) :
           = hornerPrefix ++ (List.range K).flatMap (fun _ : ℕ => hornerPrefix) := by
         rw [flatMap_range_const, flatMap_range_const, List.replicate_succ,
           List.flatten_cons]
-      rw [binNumeralEnc, if_neg (by omega), ih _ hlt, canonDigits_cons hv, hLv, hK]
+      rw [binNumeralEnc, ite_eq_right (by omega), ih _ hlt, canonDigits_cons hv, hLv, hK]
       simp only [Nat.add_sub_cancel, List.reverse_cons, List.flatMap_append,
         List.flatMap_cons, List.flatMap_nil, List.append_nil]
       rw [hhorner]
@@ -1161,7 +1161,7 @@ private lemma exists_strip_word {v : ℕ → ℕ} (hv : MachineDigits v) (E : �
     (fun W cli b0 b1 b2 => by
       simpa using TokenFold.Strip.stripStep_length_le E W cli b0 b1 b2)
     (Complexity.pair [] [])
-  refine ⟨fun z => sndBlock (TokenFold.dgFold (TokenFold.Strip.stripStep E) []
+  refine ⟨fun z => pairSnd (TokenFold.dgFold (TokenFold.Strip.stripStep E) []
       (Complexity.pair [] []) (bitsToDigits (D (List.replicate z.length true)))),
     by simpa [Function.comp_def] using Complexity.mem_FP_comp hfold sndBlock_mem_FP,
     fun n => ?_⟩
@@ -1172,7 +1172,7 @@ private lemma exists_strip_word {v : ℕ → ℕ} (hv : MachineDigits v) (E : �
   have hval : digitVal cur = v n := by
     rw [← hDv n, hcurw, DigitFP.wordVal_digitsToBits hcur]
   simp only [hrep]
-  rw [hbits, TokenFold.Strip.dgFold_stripStep E [] cur [] [] hcur, sndBlock_pair,
+  rw [hbits, TokenFold.Strip.dgFold_stripStep E [] cur [] [] hcur, pairSnd_pair,
     (TokenFold.Strip.stripAcc_closed E cur).2,
     TokenFold.Strip.trimZeros_eq_natDigits4 cur hcur, hval]
 
@@ -1236,13 +1236,13 @@ lemma machineTokenStream_binNumeralEnc {v : ℕ → ℕ} (hv : MachineDigits v) 
     rw [hrep, hKrv n, hKbv n, TokenFold.flatMap_const_singleton, List.length_reverse,
       List.length_replicate]
     by_cases h0 : v n = 0
-    · rw [if_pos (by rw [h0]; simp [natDigits4]), h0, canonDigits_zero]
+    · rw [ite_eq_left (by rw [h0]; simp [natDigits4]), h0, canonDigits_zero]
       simp
     · have hpos : (natDigits4 (v n)).length ≠ 0 := by
         have hp := len4_pos (Nat.pos_of_ne_zero h0)
         rw [len4] at hp
         omega
-      rw [if_neg hpos, canonDigits, if_neg h0, TokenFold.tokBits_flatMap]
+      rw [ite_eq_right hpos, canonDigits, ite_eq_right h0, TokenFold.tokBits_flatMap]
   have hdigits : MachineTokenStream
       (fun n => (canonDigits (v n)).reverse.flatMap digitEnc) :=
     ⟨_, hGFP, fun n => by rw [hG n]; exact TokenFold.blockWF_tokBits _,
@@ -1264,8 +1264,8 @@ lemma binNumeralEnc_nonconstant (c : List ℕ) : (fun n => binNumeralEnc n) ≠ 
   intro h
   have h0 : binNumeralEnc 0 = c := congrFun h 0
   have h1 : binNumeralEnc 1 = c := congrFun h 1
-  rw [binNumeralEnc, if_pos (by norm_num), digitEnc] at h0
-  rw [binNumeralEnc, if_pos (by norm_num), digitEnc] at h1
+  rw [binNumeralEnc, ite_eq_left (by norm_num), digitEnc] at h0
+  rw [binNumeralEnc, ite_eq_left (by norm_num), digitEnc] at h1
   rw [← h0] at h1
   simp at h1
 

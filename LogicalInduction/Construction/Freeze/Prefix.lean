@@ -346,13 +346,13 @@ lemma sentenceMatches_le_one (target : Sentence) (code : ℕ) :
       cases code with
       | zero => simp [sentenceMatches]
       | succ e =>
-          simp only [sentenceMatches, Nat.succ_ne_zero, if_false, Nat.pred_succ]
+          simp only [sentenceMatches, Nat.succ_ne_zero, ite_false, Nat.pred_succ]
           split <;> omega
   | hatom a =>
       cases code with
       | zero => simp [sentenceMatches]
       | succ e =>
-          simp only [sentenceMatches, Nat.succ_ne_zero, if_false, Nat.pred_succ]
+          simp only [sentenceMatches, Nat.succ_ne_zero, ite_false, Nat.pred_succ]
           by_cases htag : e.unpair.1 = 1
           · by_cases hpayload : e.unpair.2 = a <;> simp [htag, hpayload]
           · simp [htag]
@@ -360,7 +360,7 @@ lemma sentenceMatches_le_one (target : Sentence) (code : ℕ) :
       cases code with
       | zero => simp [sentenceMatches]
       | succ e =>
-          simp only [sentenceMatches, Nat.succ_ne_zero, if_false, Nat.pred_succ]
+          simp only [sentenceMatches, Nat.succ_ne_zero, ite_false, Nat.pred_succ]
           split
           · nlinarith [ihφ e.unpair.2.unpair.1, ihψ e.unpair.2.unpair.2]
           · omega

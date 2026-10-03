@@ -107,15 +107,15 @@ private lemma beliefEntriesNorm_eq (entries : List (Sentence × ℚ)) :
     · let B : RationalBeliefState := ⟨entries, hn, hb⟩
       have hof : RationalBeliefState.ofEntries? entries = some B := by
         simpa [B] using RationalBeliefState.ofEntries?_self B
-      rw [beliefEntriesNorm, if_pos ⟨hn, hb⟩, hof]
+      rw [beliefEntriesNorm, ite_eq_left ⟨hn, hb⟩, hof]
       rfl
     · have hof : RationalBeliefState.ofEntries? entries = none := by
-        rw [RationalBeliefState.ofEntries?, dif_pos hn, dif_neg hb]
-      rw [beliefEntriesNorm, if_neg (by tauto), hof]
+        rw [RationalBeliefState.ofEntries?, dite_eq_left hn, dite_eq_right hb]
+      rw [beliefEntriesNorm, ite_eq_right (by tauto), hof]
       rfl
   · have hof : RationalBeliefState.ofEntries? entries = none := by
       simp [RationalBeliefState.ofEntries?, hn]
-    rw [beliefEntriesNorm, if_neg (by tauto), hof]
+    rw [beliefEntriesNorm, ite_eq_right (by tauto), hof]
     rfl
 
 /-- Normalize a raw natural-number candidate to the exact code of the validated belief
@@ -1190,7 +1190,7 @@ private lemma efRatMachineStep_packed_prim {C : Type*} [Primcodable C]
       simp only [efRatCommandStep]
       by_cases h0 : kind = 0
       · subst kind
-        simp only [if_pos]
+        simp only [ite_eq_left]
         generalize ht : payload.unpair.1 = tag
         by_cases hlt : tag < 8
         · interval_cases tag <;> simp [efRatRawStep, efRatMachineStep, ht]
@@ -1203,29 +1203,29 @@ private lemma efRatMachineStep_packed_prim {C : Type*} [Primcodable C]
               simp [efRatRawStep, efRatMachineStep, ht]
       · by_cases h1 : kind = 1
         · subst kind
-          simp only [h0, if_false, if_pos]
+          simp only [h0, ite_false, ite_eq_left]
           rcases values with _ | ⟨b, tail⟩
           · rfl
           · rcases tail with _ | ⟨a, tail⟩ <;> rfl
         · by_cases h2 : kind = 2
           · subst kind
-            simp only [h0, h1, if_false, if_pos]
+            simp only [h0, h1, ite_false, ite_eq_left]
             rcases values with _ | ⟨b, tail⟩
             · rfl
             · rcases tail with _ | ⟨a, tail⟩ <;> rfl
           · by_cases h3 : kind = 3
             · subst kind
-              simp only [h0, h1, h2, if_false, if_pos]
+              simp only [h0, h1, h2, ite_false, ite_eq_left]
               rcases values with _ | ⟨b, tail⟩
               · rfl
               · rcases tail with _ | ⟨a, tail⟩ <;> rfl
             · by_cases h4 : kind = 4
               · subst kind
-                simp only [h0, h1, h2, h3, if_false, if_pos]
+                simp only [h0, h1, h2, h3, ite_false, ite_eq_left]
                 cases values <;> rfl
               · by_cases h5 : kind = 5
                 · subst kind
-                  simp only [h0, h1, h2, h3, h4, if_false, if_pos]
+                  simp only [h0, h1, h2, h3, h4, ite_false, ite_eq_left]
                   cases values <;> rfl
                 · simp [h0, h1, h2, h3, h4, h5, efRatMachineStep]
 

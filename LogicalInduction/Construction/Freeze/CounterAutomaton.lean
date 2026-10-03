@@ -219,9 +219,9 @@ lemma ctrlSel_eq (p : CtrProgram) {w : List Bool} {i : ℕ} (hi : i ≤ p.Q)
   | (j :: l), hm, hl => by
       rw [ctrlSel]
       by_cases h : w.take (p.Q + 1) = ctrlWord p j
-      · rw [if_pos h]
+      · rw [ite_eq_left h]
         exact (ctrlWord_injOn hi (hl j (List.mem_cons_self ..)) (hw ▸ h)).symm
-      · rw [if_neg h]
+      · rw [ite_eq_right h]
         refine ctrlSel_eq p hi hw l ?_ (fun q hq => hl q (List.mem_cons_of_mem _ hq))
         rcases List.mem_cons.mp hm with hc | hc
         · exact absurd (hc ▸ hw) h
@@ -294,8 +294,8 @@ lemma leafW_mem_FP (p : CtrProgram) (i t : ℕ) : (fun v => leafW p i t (midBloc
     funext v
     rw [leafW]
     by_cases hv : (midBlock v).length = p.Q + 1
-    · rw [if_pos hv, decide_eq_true hv]
-    · rw [if_neg hv, decide_eq_false hv]
+    · rw [ite_eq_left hv, decide_eq_true hv]
+    · rw [ite_eq_right hv, decide_eq_false hv]
   rwa [heq] at h
 
 /-- The inner nest: dispatch on the token's value against each literal below the alphabet
@@ -315,12 +315,12 @@ lemma tokNestC_eq (p : CtrProgram) (i : ℕ) (W cli : List Bool) (cur : List ℕ
       rw [tokNestC, lastBlock_pair, midBlock_pair]
       by_cases h : NumEqBits t (digitsToBits cur)
       · have hv : digitVal cur = t := (numEqBits_spec t cur hcur).mp h
-        rw [if_pos h, if_pos (by rw [hv]; exact List.mem_cons_self ..), hv]
+        rw [ite_eq_left h, ite_eq_left (by rw [hv]; exact List.mem_cons_self ..), hv]
       · have hv : digitVal cur ≠ t := fun hc => h ((numEqBits_spec t cur hcur).mpr hc)
-        rw [if_neg h, tokNestC_eq p i W cli cur hcur l hle]
+        rw [ite_eq_right h, tokNestC_eq p i W cli cur hcur l hle]
         by_cases hm : digitVal cur ∈ l
-        · rw [if_pos hm, if_pos (List.mem_cons_of_mem _ hm)]
-        · rw [if_neg hm, if_neg (by
+        · rw [ite_eq_left hm, ite_eq_left (List.mem_cons_of_mem _ hm)]
+        · rw [ite_eq_right hm, ite_eq_right (by
             intro hc
             rcases List.mem_cons.mp hc with hc | hc
             · exact hv hc
@@ -365,8 +365,8 @@ lemma stNestC_eq (p : CtrProgram) : ∀ (l : List ℕ) (v : List Bool),
   | (i :: l), v => by
       rw [stNestC, ctrlSel]
       by_cases h : (midBlock v).take (p.Q + 1) = ctrlWord p i
-      · rw [if_pos h, if_pos h]
-      · rw [if_neg h, if_neg h, stNestC_eq p l v]
+      · rw [ite_eq_left h, ite_eq_left h]
+      · rw [ite_eq_right h, ite_eq_right h, stNestC_eq p l v]
 
 lemma length_stNestC_le (p : CtrProgram) : ∀ (l : List ℕ) (v : List Bool),
     (stNestC p l v).length ≤ (midBlock v).length + p.Q + 2
@@ -409,9 +409,9 @@ lemma accNest_spec : ∀ (l : List (List Bool)) (w : List Bool),
   | (c :: cs), w => by
       rw [accNest]
       by_cases h : w = c
-      · rw [if_pos h]
+      · rw [ite_eq_left h]
         simp [h]
-      · rw [if_neg h, accNest_spec cs w]
+      · rw [ite_eq_right h, accNest_spec cs w]
         simp [h]
 
 lemma accNest_mem_FP : ∀ (l : List (List Bool)), (fun w => accNest l w) ∈ FP
@@ -480,9 +480,9 @@ def ctrMachine (p : CtrProgram) : RunAuto.BlockMachine where
       wstep]
     congr 1
     by_cases hv : digitVal cur ≤ p.A
-    · rw [if_pos (by simp only [List.mem_range]; omega)]
+    · rw [ite_eq_left (by simp only [List.mem_range]; omega)]
       omega
-    · rw [if_neg (by simp only [List.mem_range]; omega)]
+    · rw [ite_eq_right (by simp only [List.mem_range]; omega)]
       omega
 
 @[simp] lemma ctrMachine_init (p : CtrProgram) :
@@ -535,8 +535,8 @@ lemma ifCtr_mem_FP (p : CtrProgram) {S X Y : List Bool → List Bool}
       = fun z => if p.Accepts (decodeBits (S z)) = true then X z else Y z := by
     funext z
     by_cases hc : p.Accepts (decodeBits (S z)) = true
-    · rw [if_pos ((ctrMachine_accepts p _).mpr hc), if_pos hc]
-    · rw [if_neg (fun hd => hc ((ctrMachine_accepts p _).mp hd)), if_neg hc]
+    · rw [ite_eq_left ((ctrMachine_accepts p _).mpr hc), ite_eq_left hc]
+    · rw [ite_eq_right (fun hd => hc ((ctrMachine_accepts p _).mp hd)), ite_eq_right hc]
   rwa [heq] at h
 
 end LogicalInduction.CtrAuto

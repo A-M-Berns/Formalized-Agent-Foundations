@@ -726,7 +726,7 @@ lemma ifzSel_evaln : ∀ (T i F : ℕ), Nat.pair T (Nat.pair i T) + i + 1 < F �
         refine ih k ?_; omega
       have hri : ifzSelFn T i ≤ T := ifzSelFn_le T i
       have hstep := ifzSel_step T i (ifzSelFn T i) k hIH ?_ ?_
-      · rw [ifzSelFn, if_neg (Nat.succ_ne_zero i)]; exact hstep
+      · rw [ifzSelFn, ite_eq_right (Nat.succ_ne_zero i)]; exact hstep
       · have : Nat.pair T (i + 1) ≤ Nat.pair T (Nat.pair (i + 1) T) :=
           pair_le_pair_right' T (Nat.left_le_pair (i + 1) T)
         omega
@@ -1461,10 +1461,10 @@ lemma divmodc_polyFueled (w : ℕ) (hw : 0 < w) :
       by_cases hcase : w - 1 - j % w = 0
       · have h1 : j + 1 = w * (j / w + 1) + 0 := by rw [Nat.mul_succ]; omega
         obtain ⟨hd, hm⟩ := div_mod_of_decomp hw h1 hw
-        rw [if_pos hcase, hd, hm]
+        rw [ite_eq_left hcase, hd, hm]
       · have h1 : j + 1 = w * (j / w) + (j % w + 1) := by omega
         obtain ⟨hd, hm⟩ := div_mod_of_decomp hw h1 (by omega)
-        rw [if_neg hcase, hd, hm])
+        rw [ite_eq_right hcase, hd, hm])
     hst
   exact ⟨_, (hprec.comp ((PolyFueled.const 0).pair PolyFueled.id)).of_eq
     (fun n => by simp only [Nat.unpair_pair])⟩
@@ -1518,10 +1518,10 @@ lemma divmod1_polyFueled :
       by_cases hcase : w - j % (w + 1) = 0
       · have h1 : j + 1 = (w + 1) * (j / (w + 1) + 1) + 0 := by rw [Nat.mul_succ]; omega
         obtain ⟨hd, hm⟩ := div_mod_of_decomp hw h1 hw
-        rw [if_pos hcase, hd, hm]
+        rw [ite_eq_left hcase, hd, hm]
       · have h1 : j + 1 = (w + 1) * (j / (w + 1)) + (j % (w + 1) + 1) := by omega
         obtain ⟨hd, hm⟩ := div_mod_of_decomp hw h1 (by omega)
-        rw [if_neg hcase, hd, hm])
+        rw [ite_eq_right hcase, hd, hm])
     hst
   exact ⟨_, hprec⟩
 
@@ -1563,12 +1563,12 @@ lemma sqrtc_polyFueled : ∃ c, PolyFueled c Nat.sqrt := by
       have hiff : (j + 1) * (j + 1) ≤ a ↔ j + 1 ≤ Nat.sqrt a := Nat.le_sqrt.symm
       by_cases hc : (j + 1) * (j + 1) - a = 0
       · have : j + 1 ≤ Nat.sqrt a := hiff.mp (by omega)
-        rw [if_pos hc]
+        rw [ite_eq_left hc]
         omega
       · have : ¬ (j + 1 ≤ Nat.sqrt a) := fun hcon => hc (by
           have := hiff.mpr hcon
           omega)
-        rw [if_neg hc]
+        rw [ite_eq_right hc]
         omega)
     hst
   refine ⟨_, (hprec.comp (PolyFueled.id.pair PolyFueled.id)).of_eq (fun a => ?_)⟩
@@ -1591,7 +1591,7 @@ lemma szStep_spec (a j : ℕ) :
     have h1 : a / 2 ^ (j + 1) = 0 :=
       Nat.div_eq_of_lt (lt_of_lt_of_le hlt (Nat.pow_le_pow_right (by norm_num) (by omega)))
     rw [szStep, ifzSelFn]
-    simp only [Nat.unpair_pair, hc, if_true]
+    simp only [Nat.unpair_pair, hc, ite_true]
     rw [h1, Nat.min_eq_right hs, Nat.min_eq_right (by omega)]
   · have h2j : 2 ^ j ≤ a := by
       rw [Nat.div_eq_zero_iff] at hc
@@ -1603,7 +1603,7 @@ lemma szStep_spec (a j : ℕ) :
       omega
     rw [szStep, ifzSelFn]
     simp only [Nat.unpair_pair]
-    rw [if_neg hc, Nat.div_div_eq_div_mul, ← pow_succ,
+    rw [ite_eq_right hc, Nat.div_div_eq_div_mul, ← pow_succ,
       Nat.min_eq_left (by omega), Nat.min_eq_left (by omega)]
 
 lemma sizec_polyFueled : ∃ c, PolyFueled c Nat.size := by
@@ -1667,9 +1667,9 @@ lemma polyFueled_eqConst {cf : Nat.Partrec.Code} {f : ℕ → ℕ}
   simp only [ifzSelFn, Nat.unpair_pair]
   by_cases h : f z = K
   · have hz : (f z - K) + (K - f z) = 0 := by omega
-    rw [if_pos hz, if_pos h]
+    rw [ite_eq_left hz, ite_eq_left h]
   · have hne : (f z - K) + (K - f z) ≠ 0 := by omega
-    rw [if_neg hne, if_neg h]
+    rw [ite_eq_right hne, ite_eq_right h]
 
 /-- Select between two constants on a zero test. -/
 lemma polyFueled_selectConst {cf : Nat.Partrec.Code} {f : ℕ → ℕ}
@@ -1730,8 +1730,8 @@ private lemma euclidStep_iterate_le (a : ℕ) : ∀ j,
       set s := euclidStep^[j] a with hs
       unfold euclidStep
       by_cases hx : s.unpair.1 = 0
-      · rw [if_pos hx]; exact ih
-      · rw [if_neg hx]
+      · rw [ite_eq_left hx]; exact ih
+      · rw [ite_eq_right hx]
         simp only [Nat.unpair_pair]
         exact ⟨le_trans (Nat.mod_le _ _) ih.2, ih.1⟩
 
@@ -1747,8 +1747,8 @@ private lemma euclidStep_iterate_gcd (a : ℕ) : ∀ j,
       set s := euclidStep^[j] a with hs
       unfold euclidStep
       by_cases hx : s.unpair.1 = 0
-      · rw [if_pos hx]; exact ih
-      · rw [if_neg hx]
+      · rw [ite_eq_left hx]; exact ih
+      · rw [ite_eq_right hx]
         simp only [Nat.unpair_pair]
         rw [← ih]
         exact (Nat.gcd_rec s.unpair.1 s.unpair.2).symm
@@ -1766,8 +1766,8 @@ private lemma euclidStep_iterate_fst_zero (a : ℕ) {j : ℕ} (hj : a.unpair.1 �
         set s := euclidStep^[k] a with hs
         unfold euclidStep
         by_cases hx : s.unpair.1 = 0
-        · rw [if_pos hx]; exact Or.inl hx
-        · rw [if_neg hx]
+        · rw [ite_eq_left hx]; exact Or.inl hx
+        · rw [ite_eq_right hx]
           simp only [Nat.unpair_pair]
           have hlt : s.unpair.2 % s.unpair.1 < s.unpair.1 :=
             Nat.mod_lt _ (Nat.pos_of_ne_zero hx)
@@ -1815,8 +1815,8 @@ lemma gcdc_polyFueled : ∃ c, PolyFueled c (fun m => Nat.gcd m.unpair.1 m.unpai
       set s := euclidStep^[j] a with hs
       unfold euclidStep
       by_cases hx : s.unpair.1 = 0
-      · rw [if_pos hx, if_pos hx]
-      · rw [if_neg hx, if_neg hx]
+      · rw [ite_eq_left hx, ite_eq_left hx]
+      · rw [ite_eq_right hx, ite_eq_right hx]
         have h1 : Nat.pred s.unpair.1 + 1 = s.unpair.1 :=
           Nat.succ_pred_eq_of_pos (Nat.pos_of_ne_zero hx)
         rw [h1])
@@ -1901,10 +1901,10 @@ lemma encode_natDiv_polyFueled {cn cd : Nat.Partrec.Code} {nf df : ℕ → ℕ}
     (((PolyFueled.const (Nat.pair 0 1)).pair (h2num.pair denPF)).pair hd)).of_eq (fun m ↦ ?_)⟩
   simp only [Nat.unpair_pair, ifzSelFn]
   by_cases hk0 : df m = 0
-  · rw [if_pos hk0, hk0]
+  · rw [ite_eq_left hk0, hk0]
     norm_num
     rfl
-  · rw [if_neg hk0]
+  · rw [ite_eq_right hk0]
     have hg : 0 < Nat.gcd (nf m) (df m) :=
       Nat.gcd_pos_of_pos_right _ (Nat.pos_of_ne_zero hk0)
     have hg1 : (Nat.gcd (nf m) (df m)).pred + 1 = Nat.gcd (nf m) (df m) :=
@@ -2368,20 +2368,20 @@ lemma ecTok_of_blockStream (Tr : Trader) (head bs tail : List (ℕ → ℕ))
       length_flatMap_const_width _ W (cnt n) (fun j _ => hblockLen n j)
     rcases Nat.lt_or_ge i H with h1 | h1
     · -- head region
-      rw [if_pos (by omega)]
+      rw [ite_eq_left (by omega)]
       rw [List.getD_append _ _ _ _ (by rw [List.length_append, hlenH, hlenB]; omega),
         List.getD_append _ _ _ _ (by omega)]
     · rcases Nat.lt_or_ge i (H + cnt n * W) with h2 | h2
       · -- block region: block index `(i−H)/W`, offset `(i−H)%W`
         have hj : (i - H) / W < cnt n := (Nat.div_lt_iff_lt_mul hW0).mpr (by omega)
-        rw [if_neg (by omega), if_pos (by omega)]
+        rw [ite_eq_right (by omega), ite_eq_left (by omega)]
         rw [List.getD_append _ _ _ _ (by rw [List.length_append, hlenH, hlenB]; omega),
           List.getD_append_right _ _ _ _ (by omega), hlenH,
           getD_flatMap_const_width _ W hW0 (cnt n) (i - H)
             (fun j _ => hblockLen n j) (by omega)]
       · -- tail region
         have hj : cnt n ≤ (i - H) / W := (Nat.le_div_iff_mul_le hW0).mpr (by omega)
-        rw [if_neg (by omega), if_neg (by omega)]
+        rw [ite_eq_right (by omega), ite_eq_right (by omega)]
         rw [List.getD_append_right _ _ _ _
             (by rw [List.length_append, hlenH, hlenB]; omega),
           List.length_append, hlenH, hlenB]
@@ -2512,9 +2512,9 @@ lemma PolySegStream.append {s₁ s₂ : ℕ → List ℕ} (h₁ : PolySegStream 
   intro n i hi
   simp only [Nat.unpair_pair, ifzSelFn]
   rcases Nat.lt_or_ge i (l₁ n) with h | h
-  · rw [if_pos (by omega), htok₁ n i h,
+  · rw [ite_eq_left (by omega), htok₁ n i h,
       List.getD_append _ _ _ _ (by rw [hlen₁ n]; omega)]
-  · rw [if_neg (by omega), htok₂ n (i - l₁ n) (by omega),
+  · rw [ite_eq_right (by omega), htok₂ n (i - l₁ n) (by omega),
       List.getD_append_right _ _ _ _ (by rw [hlen₁ n]; omega), hlen₁ n]
 
 /-- Conditional segment selection with a polynomially fueled Boolean-as-natural test.
@@ -2537,7 +2537,7 @@ lemma PolySegStream.ifZero {s₀ s₁ : ℕ → List ℕ} (h₀ : PolySegStream 
   · intro n i hi
     simp only [Nat.unpair_pair, ifzSelFn]
     by_cases h : test n = 0
-    · simp only [h, if_pos]
+    · simp only [h, ite_eq_left]
       exact htok₀ n i (by simpa [ifzSelFn, h, hlen₀ n] using hi)
     · simp only [h]
       exact htok₁ n i (by simpa [ifzSelFn, h, hlen₁ n] using hi)
@@ -2882,8 +2882,8 @@ lemma segLocate_polyFueled {cl : Nat.Partrec.Code} {lenFn : ℕ → ℕ}
   simp only [Nat.unpair_pair, ifzSelFn]
   rw [segLocate]
   by_cases h : segPrefix lenFn a.unpair.1 (j + 1) ≤ a.unpair.2
-  · rw [if_pos h, if_neg (by omega)]
-  · rw [if_neg h, if_pos (by omega)]
+  · rw [ite_eq_left h, ite_eq_right (by omega)]
+  · rw [ite_eq_right h, ite_eq_left (by omega)]
 
 /-- **Variable-width segment concatenation**: concatenate `cnt n` polynomially emitted
 segments whose individual lengths may depend on both `n` and the segment index.  A
@@ -3020,10 +3020,10 @@ lemma len4_polyFueled : ∃ c, PolyFueled c len4 := by
         have : (0:ℕ) < 4 ^ j := Nat.pow_pos (by norm_num)
         omega
       by_cases h : a / 4 ^ j = 0
-      · rw [if_pos h]
+      · rw [ite_eq_left h]
         have : ¬ j < len4 a := by rw [hiff]; omega
         omega
-      · rw [if_neg h]
+      · rw [ite_eq_right h]
         have : j < len4 a := by rw [hiff]; omega
         omega) hst
   refine ⟨_, (hscan.comp (PolyFueled.id.pair PolyFueled.id)).of_eq (fun t => ?_)⟩
@@ -3055,14 +3055,14 @@ lemma tokenBlock_getD (t j : ℕ) :
     (tokenBlock t).getD j 0 =
       if j < len4 t then t / 4 ^ j % 4 else if j = len4 t then 4 else 0 := by
   by_cases h : j < len4 t
-  · rw [if_pos h, tokenBlock, List.getD_append _ _ _ _ h, natDigits4_getD t j h]
-  · rw [if_neg h, tokenBlock, List.getD_append_right _ _ _ _ (by
+  · rw [ite_eq_left h, tokenBlock, List.getD_append _ _ _ _ h, natDigits4_getD t j h]
+  · rw [ite_eq_right h, tokenBlock, List.getD_append_right _ _ _ _ (by
       simpa [len4] using not_lt.mp h)]
     by_cases he : j = len4 t
-    · rw [if_pos he]
+    · rw [ite_eq_left he]
       have : j - (natDigits4 t).length = 0 := by simp [len4] at he ⊢; omega
       simp [this]
-    · rw [if_neg he]
+    · rw [ite_eq_right he]
       have : 1 ≤ j - (natDigits4 t).length := by
         have h1 : len4 t < j := by omega
         simp only [len4] at h1
@@ -3089,9 +3089,9 @@ lemma PolySegStream.block {ctok : Nat.Partrec.Code} {tokenFn : ℕ → ℕ}
   simp only [Nat.unpair_pair, ifzSelFn]
   rw [tokenBlock_getD]
   by_cases h : j < len4 (tokenFn m)
-  · rw [if_pos h, if_pos (by omega : j + 1 - len4 (tokenFn m) = 0)]
+  · rw [ite_eq_left h, ite_eq_left (by omega : j + 1 - len4 (tokenFn m) = 0)]
   · have hje : j = len4 (tokenFn m) := by omega
-    rw [if_neg h, if_pos hje, if_neg (by omega : ¬ j + 1 - len4 (tokenFn m) = 0)]
+    rw [ite_eq_right h, ite_eq_left hje, ite_eq_right (by omega : ¬ j + 1 - len4 (tokenFn m) = 0)]
 
 /-- **The digit transformer**: the digit stream of a `PolySegStream` is a
 `PolySegStream` — the block family concatenated by the runtime prefix scan.
@@ -3240,12 +3240,12 @@ lemma polyFueled_boundedAny (p : ℕ → ℕ → Bool)
   · have hs : ∃ m < z.unpair.2 + 1, p z.unpair.1 m = true := by
       obtain ⟨m, hm, hpm⟩ := h
       exact ⟨m, by omega, hpm⟩
-    rw [if_pos hs]
+    rw [ite_eq_left hs]
     simp [boundedAny, h]
   · have hs : ¬ ∃ m < z.unpair.2 + 1, p z.unpair.1 m = true := by
       rintro ⟨m, hm, hpm⟩
       exact h ⟨m, by omega, hpm⟩
-    rw [if_neg hs]
+    rw [ite_eq_right hs]
     simp [boundedAny, h]
 
 /-- `boundedNone p i k` says that no certificate appears in the prefix `m ≤ k`. -/
@@ -3287,11 +3287,11 @@ lemma polyFueled_boundedNone (p : ℕ → ℕ → Bool)
   exact ⟨_, hneg.of_eq (fun z => by
     simp only [ifzSelFn, Nat.unpair_pair, boundedNone]
     by_cases h : boundedAny p z.unpair.1 z.unpair.2 = true
-    · simp only [h, if_pos, Bool.not_true, Bool.false_eq_true, if_false]
+    · simp only [h, ite_eq_left, Bool.not_true, Bool.false_eq_true, ite_false]
       norm_num
     · have hf : boundedAny p z.unpair.1 z.unpair.2 = false :=
         Bool.eq_false_of_not_eq_true h
-      simp only [h, Bool.not_false, if_pos]
+      simp only [h, Bool.not_false, ite_eq_left]
       norm_num)⟩
 
 /-- The rational sequence `1/n` is emitted with polynomial fuel (`1/0 = 0` is selected by
@@ -3305,7 +3305,7 @@ lemma encode_inv_nat_polyFueled :
   simp only [Nat.unpair_pair, ifzSelFn]
   rcases n with _ | n
   · simp
-  · simp only [Nat.succ_ne_zero, if_false, one_div]
+  · simp only [Nat.succ_ne_zero, ite_false, one_div]
     simpa using (encode_rat_inv_natCast (Nat.succ_pos n)).symm
 
 end LogicalInduction

@@ -148,10 +148,10 @@ lemma PCWorld.holds_paperPrimeDecompose_neg (v : PCWorld)
   fun_induction paperPrimeDecompose φ with
   | case1 =>
       simp [Semiformula.neg_eq, Semiformula.neg,
-        PCWorld.Holds, FFL.Propositional.Formula.Boolean.val]
+        PCWorld.Holds, FFL.Propositional.Formula.val]
   | case2 =>
       simp [Semiformula.neg_eq, Semiformula.neg,
-        PCWorld.Holds, FFL.Propositional.Formula.Boolean.val]
+        PCWorld.Holds, FFL.Propositional.Formula.val]
   | case3 φ ψ ihφ ihψ =>
       rw [Semiformula.neg_eq] at ihφ ihψ
       simp only [Semiformula.neg_eq, Semiformula.neg, paperPrimeDecompose]
@@ -248,21 +248,21 @@ lemma paperPrimeWorld_holds_decompose (M : Type*) [Nonempty M] [Structure ℒₒ
   | case1 =>
       simp [PCWorld.Holds,
         show (Semiformula.verum : ArithmeticProposition) = ⊤ from rfl,
-        FFL.Propositional.Formula.Boolean.val]
+        FFL.Propositional.Formula.val]
   | case2 =>
       simp [PCWorld.Holds,
         show (Semiformula.falsum : ArithmeticProposition) = ⊥ from rfl,
-        FFL.Propositional.Formula.Boolean.val]
+        FFL.Propositional.Formula.val]
   | case3 φ ψ ihφ ihψ =>
       simpa [PCWorld.Holds, models_iff,
         show Semiformula.and φ ψ = φ ⋏ ψ from rfl,
         LogicalConnective.HomClass.map_and,
-        FFL.Propositional.Formula.Boolean.val] using and_congr ihφ ihψ
+        FFL.Propositional.Formula.val] using and_congr ihφ ihψ
   | case4 φ ψ ihφ ihψ =>
       simpa [PCWorld.Holds, models_iff,
         show Semiformula.or φ ψ = φ ⋎ ψ from rfl,
         LogicalConnective.HomClass.map_or,
-        FFL.Propositional.Formula.Boolean.val] using or_congr ihφ ihψ
+        FFL.Propositional.Formula.val] using or_congr ihφ ihψ
   | case5 arity r v =>
       change paperPrimeWorld M f (paperPrimeCode true (.rel r v)) ↔
         Semiformula.Evalf f (.rel r v)

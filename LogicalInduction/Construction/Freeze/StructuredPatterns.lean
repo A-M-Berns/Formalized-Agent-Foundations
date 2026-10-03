@@ -81,12 +81,12 @@ lemma structBlock_parse {pol fc : ℕ} {b : List ℕ} (h : StructBlock pol fc b)
   rw [hb]
   rw [show (1 :: 0 :: pol :: (List.replicate p.length 1 ++ 0 :: (p ++ [19]))).length =
       (0 :: pol :: (List.replicate p.length 1 ++ 0 :: (p ++ [19]))).length + 1 from rfl,
-    parseRpn_cons, if_neg (by omega), if_pos rfl]
+    parseRpn_cons, ite_eq_right (by omega), ite_eq_left rfl]
   show parseStructuredPaperPrime (pol :: (List.replicate p.length 1 ++ 0 :: (p ++ [19])))
       = _
-  rw [parseStructuredPaperPrime, if_pos hpol, readStructuredLength_replicate]
+  rw [parseStructuredPaperPrime, ite_eq_left hpol, readStructuredLength_replicate]
   simp only [Option.bind_some]
-  rw [if_pos (by simp)]
+  rw [ite_eq_left (by simp)]
   have htake : (p ++ [19]).take p.length = p := List.take_left ..
   rw [htake, hform]
   simp
@@ -120,7 +120,7 @@ lemma parseStructuredPaperPrime_inv {payload : List ℕ} {φ : Sentence} {rest :
         some (Formula.atom (Nat.pair 5 (Nat.pair polarity code)), payload2.drop (n + 1))
       else none) = some (φ, rest) at h
     by_cases hterm : payload2.getD n 0 = 19
-    · rw [if_pos hterm] at h
+    · rw [ite_eq_left hterm] at h
       obtain ⟨hφ, hrest⟩ := Prod.mk.injEq .. ▸ Option.some.inj h
       have hnlt : n < payload2.length := by
         have hne : n ≠ payload2.length := by
@@ -144,7 +144,7 @@ lemma parseStructuredPaperPrime_inv {payload : List ℕ} {φ : Sentence} {rest :
       · rw [readStructuredLength_shape hr, ← hrest, hplen]
         conv_lhs => rw [hpay]
         simp
-    · rw [if_neg hterm] at h
+    · rw [ite_eq_right hterm] at h
       contradiction
   · simp at h
 
@@ -219,14 +219,14 @@ lemma parseRpn_block_inv {b : List ℕ} {ψ : Sentence}
       rw [List.length_cons, parseRpn_cons] at h
       by_cases h0 : t = 0
       · subst h0
-        rw [if_pos rfl] at h
+        rw [ite_eq_left rfl] at h
         obtain ⟨h1, h2⟩ := Prod.mk.inj (Option.some.inj h)
         subst h2
         exact Or.inl ⟨rfl, h1.symm⟩
-      rw [if_neg h0] at h
+      rw [ite_eq_right h0] at h
       by_cases h1 : t = 1
       · subst h1
-        rw [if_pos rfl] at h
+        rw [ite_eq_left rfl] at h
         rcases rest with _ | ⟨c₀, tail⟩
         · simp at h
         cases c₀ with
@@ -244,28 +244,28 @@ lemma parseRpn_block_inv {b : List ℕ} {ψ : Sentence}
             simp only [Option.map_some, Option.some.injEq, Prod.mk.injEq] at h'
             obtain ⟨rfl, rfl⟩ := h'
             exact Or.inr (Or.inl ⟨c + 1, rfl, hdec⟩)
-      rw [if_neg h1] at h
+      rw [ite_eq_right h1] at h
       by_cases h2 : t = 2
       · subst h2
-        rw [if_pos rfl] at h
+        rw [ite_eq_left rfl] at h
         obtain ⟨b₁, b₂, φ₁, φ₂, hsplit, hmk, hp₁, hp₂⟩ := parseRpn_bin_inv h
         exact Or.inr (Or.inr (Or.inr (Or.inl
           ⟨b₁, b₂, φ₁, φ₂, by rw [hsplit], hmk, hp₁, hp₂⟩)))
-      rw [if_neg h2] at h
+      rw [ite_eq_right h2] at h
       by_cases h3 : t = 3
       · subst h3
-        rw [if_pos rfl] at h
+        rw [ite_eq_left rfl] at h
         obtain ⟨b₁, b₂, φ₁, φ₂, hsplit, hmk, hp₁, hp₂⟩ := parseRpn_bin_inv h
         exact Or.inr (Or.inr (Or.inr (Or.inr (Or.inl
           ⟨b₁, b₂, φ₁, φ₂, by rw [hsplit], hmk, hp₁, hp₂⟩))))
-      rw [if_neg h3] at h
+      rw [ite_eq_right h3] at h
       by_cases h4 : t = 4
       · subst h4
-        rw [if_pos rfl] at h
+        rw [ite_eq_left rfl] at h
         obtain ⟨b₁, b₂, φ₁, φ₂, hsplit, hmk, hp₁, hp₂⟩ := parseRpn_bin_inv h
         exact Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inl
           ⟨b₁, b₂, φ₁, φ₂, by rw [hsplit], hmk, hp₁, hp₂⟩)))))
-      rw [if_neg h4] at h
+      rw [ite_eq_right h4] at h
       obtain ⟨hφ, ht⟩ := Prod.mk.inj (Option.some.inj h)
       subst ht
       refine Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inr ⟨t - 5, ?_, hφ.symm⟩)))))
@@ -492,8 +492,8 @@ lemma segPatterns_sound : ∀ (ψ : Sentence), ∀ p ∈ segPatterns ψ, ∀ b :
           subst hb₀'
           rw [show ([a + 5] ++ ([] : List ℕ)) = [a + 5] from rfl,
             show ([a + 5] : List ℕ).length = 0 + 1 from rfl, parseRpn_cons,
-            if_neg (by omega), if_neg (by omega), if_neg (by omega), if_neg (by omega),
-            if_neg (by omega)]
+            ite_eq_right (by omega), ite_eq_right (by omega), ite_eq_right (by omega), ite_eq_right (by omega),
+            ite_eq_right (by omega)]
           simp
         · exact segMatch_escape_parse hb
       · unfold structAlts at hp'
@@ -517,7 +517,7 @@ lemma segPatterns_sound : ∀ (ψ : Sentence), ∀ p ∈ segPatterns ψ, ∀ b :
       · obtain ⟨b₁, b₂, rfl, h₁, h₂⟩ :=
           hbin 2 p₁ p₂ φ χ b hb (fun b₁ h => ihφ p₁ hp₁ b₁ h) (fun b₂ h => ihχ p₂ hp₂ b₂ h)
         rw [show ((2 : ℕ) :: (b₁ ++ b₂)).length = (b₁ ++ b₂).length + 1 by simp,
-          parseRpn_cons, if_neg (by omega), if_neg (by omega), if_pos rfl]
+          parseRpn_cons, ite_eq_right (by omega), ite_eq_right (by omega), ite_eq_left rfl]
         exact parseRpn_bin_body Formula.imp h₁ h₂ le_rfl
   | hand φ χ ihφ ihχ =>
       intro p hp b hb
@@ -527,8 +527,8 @@ lemma segPatterns_sound : ∀ (ψ : Sentence), ∀ p ∈ segPatterns ψ, ∀ b :
       · obtain ⟨b₁, b₂, rfl, h₁, h₂⟩ :=
           hbin 3 p₁ p₂ φ χ b hb (fun b₁ h => ihφ p₁ hp₁ b₁ h) (fun b₂ h => ihχ p₂ hp₂ b₂ h)
         rw [show ((3 : ℕ) :: (b₁ ++ b₂)).length = (b₁ ++ b₂).length + 1 by simp,
-          parseRpn_cons, if_neg (by omega), if_neg (by omega), if_neg (by omega),
-          if_pos rfl]
+          parseRpn_cons, ite_eq_right (by omega), ite_eq_right (by omega), ite_eq_right (by omega),
+          ite_eq_left rfl]
         exact parseRpn_bin_body Formula.and h₁ h₂ le_rfl
   | hor φ χ ihφ ihχ =>
       intro p hp b hb
@@ -538,8 +538,8 @@ lemma segPatterns_sound : ∀ (ψ : Sentence), ∀ p ∈ segPatterns ψ, ∀ b :
       · obtain ⟨b₁, b₂, rfl, h₁, h₂⟩ :=
           hbin 4 p₁ p₂ φ χ b hb (fun b₁ h => ihφ p₁ hp₁ b₁ h) (fun b₂ h => ihχ p₂ hp₂ b₂ h)
         rw [show ((4 : ℕ) :: (b₁ ++ b₂)).length = (b₁ ++ b₂).length + 1 by simp,
-          parseRpn_cons, if_neg (by omega), if_neg (by omega), if_neg (by omega),
-          if_neg (by omega), if_pos rfl]
+          parseRpn_cons, ite_eq_right (by omega), ite_eq_right (by omega), ite_eq_right (by omega),
+          ite_eq_right (by omega), ite_eq_left rfl]
         exact parseRpn_bin_body Formula.or h₁ h₂ le_rfl
 
 /-- **The segment pattern list is exhaustive — unconditionally.**
@@ -589,7 +589,7 @@ lemma segPatterns_complete : ∀ (ψ : Sentence), ∀ b : List ℕ,
         refine ⟨[PatSeg.struct pol fc], ?_, segMatch_single hsb⟩
         refine List.mem_append.mpr (Or.inr ?_)
         unfold structAlts
-        rw [if_pos ⟨h5, by rw [h2]; simpa using hpol⟩]
+        rw [ite_eq_left ⟨h5, by rw [h2]; simpa using hpol⟩]
         rw [h2]
         simp
       · exact absurd hψ (by simp)

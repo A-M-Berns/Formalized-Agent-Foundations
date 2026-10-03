@@ -50,7 +50,7 @@ noncomputable def liaPerturbed (DP : DeductiveProcess) (r : ℚ) : History :=
 
 @[simp] lemma liaPerturbed_at (DP : DeductiveProcess) (r : ℚ) :
     liaPerturbed DP r 0 (FFL.Propositional.Formula.atom 0 : Sentence) = (r : ℝ) := by
-  rw [liaPerturbed, if_pos ⟨rfl, rfl⟩]
+  rw [liaPerturbed, ite_eq_left ⟨rfl, rfl⟩]
 
 /-- Off the moved coordinate the two markets agree. -/
 lemma liaPerturbed_agree (DP : DeductiveProcess) (r : ℚ) :
@@ -60,7 +60,7 @@ lemma liaPerturbed_agree (DP : DeductiveProcess) (r : ℚ) :
   have hne : ¬(d = 0 ∧ φ = (FFL.Propositional.Formula.atom 0 : Sentence)) := by
     intro hc
     exact hmem (by simp [FreezeOracle.pointS, FreezeOracle.exampleSentence, hc.1, hc.2])
-  rw [liaPerturbed, if_neg hne]
+  rw [liaPerturbed, ite_eq_right hne]
 
 /-! ## Computability of the perturbed market -/
 
@@ -118,8 +118,8 @@ theorem computableMarket_liaPerturbed (DP : DeductiveProcess)
     (computable_perturbedQuote r (computable_of_marketCode hcode))
   rw [liaPerturbed, perturbedQuote]
   by_cases hc : n = 0 ∧ φ = (FFL.Propositional.Formula.atom 0 : Sentence)
-  · rw [if_pos hc, if_pos ⟨hc.1, by rw [hc.2]⟩]
-  · rw [if_neg hc, if_neg ?_, hexact n φ]
+  · rw [ite_eq_left hc, ite_eq_left ⟨hc.1, by rw [hc.2]⟩]
+  · rw [ite_eq_right hc, ite_eq_right ?_, hexact n φ]
     intro hd
     exact hc ⟨hd.1, Encodable.encode_injective hd.2⟩
 

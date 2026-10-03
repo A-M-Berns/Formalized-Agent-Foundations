@@ -92,11 +92,11 @@ noncomputable def diracAt (s₀ : S) : ProbDist S where
   univ := by simp
   additive E₀ E₁ h := by
     by_cases h0 : s₀ ∈ E₀
-    · rw [if_pos (Set.mem_union_left _ h0), if_pos h0,
-        if_neg (Set.disjoint_left.1 h h0), add_zero]
+    · rw [ite_eq_left (Set.mem_union_left _ h0), ite_eq_left h0,
+        ite_eq_right (Set.disjoint_left.1 h h0), add_zero]
     · by_cases h1 : s₀ ∈ E₁
-      · rw [if_pos (Set.mem_union_right _ h1), if_neg h0, if_pos h1, zero_add]
-      · rw [if_neg (fun hm => ((Set.mem_union _ _ _).1 hm).elim h0 h1), if_neg h0, if_neg h1,
+      · rw [ite_eq_left (Set.mem_union_right _ h1), ite_eq_right h0, ite_eq_left h1, zero_add]
+      · rw [ite_eq_right (fun hm => ((Set.mem_union _ _ _).1 hm).elim h0 h1), ite_eq_right h0, ite_eq_right h1,
           add_zero]
 
 lemma diracAt_apply (s₀ : S) (E : Set S) : diracAt s₀ E = if s₀ ∈ E then 1 else 0 := rfl
@@ -272,16 +272,16 @@ lemma isDistribution_diracAt [Finite F.B] (s₀ : S) :
   rw [finprod_mem_eq_finite_toFinset_prod _ (Set.toFinite F.B)]
   by_cases hs : s = s₀
   · subst hs
-    rw [ProbDist.diracAt_apply, if_pos (Set.mem_singleton _)]
+    rw [ProbDist.diracAt_apply, ite_eq_left (Set.mem_singleton _)]
     refine (Finset.prod_eq_one fun b _ => ?_).symm
-    rw [ProbDist.diracAt_apply, if_pos (show s ∈ part b s from Setoid.refl' b s)]
-  · rw [ProbDist.diracAt_apply, if_neg (fun h => hs (Set.eq_of_mem_singleton h).symm)]
+    rw [ProbDist.diracAt_apply, ite_eq_left (show s ∈ part b s from Setoid.refl' b s)]
+  · rw [ProbDist.diracAt_apply, ite_eq_right (fun h => hs (Set.eq_of_mem_singleton h).symm)]
     obtain ⟨b, hbB, hb⟩ : ∃ b ∈ F.B, ¬ b s₀ s := by
       by_contra hno
       push Not at hno
       exact hs (F.eq_of_forall_rel fun b hb => hno b hb).symm
     refine (Finset.prod_eq_zero ((Set.Finite.mem_toFinset _).2 hbB) ?_).symm
-    rw [ProbDist.diracAt_apply, if_neg (show s₀ ∉ part b s from hb)]
+    rw [ProbDist.diracAt_apply, ite_eq_right (show s₀ ∉ part b s from hb)]
 
 /-- **Proposition 32** — a distribution on `S` is a distribution on `F` iff `P E = Q^F_E(P)`
 for every `E ⊆ S` (Definition 29's evaluation).

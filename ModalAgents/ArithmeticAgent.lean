@@ -140,8 +140,8 @@ theorem modalAgent_isBehavioral {k : ℕ} {X : Agent}
       show T ⊢ (if h : j < n then Y.app (W ⟨j, h⟩) else (⊥ : ArithmeticSentence)) 🡘
         (if h : j < n then Z.app (W ⟨j, h⟩) else (⊥ : ArithmeticSentence))
       by_cases h : j < n
-      · simp only [dif_pos h]; exact hYZ _
-      · simp only [dif_neg h]; cl_prover
+      · simp only [dite_eq_left h]; exact hYZ _
+      · simp only [dite_eq_right h]; cl_prover
 
 /-! ## CliqueBot (Barasz, §2, Alg 3) and Corollary 4.9
 

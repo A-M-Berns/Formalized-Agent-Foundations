@@ -168,9 +168,9 @@ lemma valueSchema_exclusive_prov (T : ArithmeticTheory) [𝗣𝗔⁻ ⪯ T] (c :
   have hval : (ORingStructure.numeral y : M) = ORingStructure.numeral y' := by
     refine code_uniq (M := M) (c := c) (v := ![(ORingStructure.numeral z : M)]) ?_ ?_
     · simpa [Matrix.comp_vecCons', Function.comp_def, Matrix.constant_eq_singleton,
-        Matrix.empty_eq, Structure.numeral_eq_numeral] using h1
+        Matrix.empty_eq, Tarski.Structure.numeral_eq_numeral] using h1
     · simpa [Matrix.comp_vecCons', Function.comp_def, Matrix.constant_eq_singleton,
-        Matrix.empty_eq, Structure.numeral_eq_numeral] using h2
+        Matrix.empty_eq, Tarski.Structure.numeral_eq_numeral] using h2
   exact hne (by simpa using hval)
 
 end ValueSchema

@@ -300,12 +300,12 @@ decreasing_by exact Γ.size_eraseStep_lt h
 
 open Classical in
 lemma reduce_of_reduced [Fintype N] {Γ : Game N 𝒜} (h : Γ.Reduced) : Γ.reduce = Γ := by
-  rw [reduce.eq_def, dif_pos h]
+  rw [reduce.eq_def, dite_eq_left h]
 
 open Classical in
 lemma reduce_of_not_reduced [Fintype N] {Γ : Game N 𝒜} (h : ¬ Γ.Reduced) :
     Γ.reduce = (Γ.eraseStep h).reduce := by
-  rw [reduce.eq_def, dif_neg h]
+  rw [reduce.eq_def, dite_eq_right h]
 
 /-- `reduce Γ` is reachable from `Γ` by iterated elimination. -/
 lemma elimStar_reduce [Fintype N] (Γ : Game N 𝒜) : Γ.ElimStar Γ.reduce := by
@@ -453,8 +453,8 @@ lemma EqOn.canon_eq {Γ Γ' : Game N 𝒜} (h : Γ.EqOn Γ') : Γ.canon = Γ'.ca
   simp only [canon]
   have hprof : a ∈ Γ.profiles ↔ a ∈ Γ'.profiles := by simp [Game.profiles, h.1]
   by_cases ha : a ∈ Γ.profiles
-  · rw [if_pos ha, if_pos (hprof.1 ha), h.2 a ha i]
-  · rw [if_neg ha, if_neg (fun h' => ha (hprof.2 h'))]
+  · rw [ite_eq_left ha, ite_eq_left (hprof.1 ha), h.2 a ha i]
+  · rw [ite_eq_right ha, ite_eq_right (fun h' => ha (hprof.2 h'))]
 
 end canon
 

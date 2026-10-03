@@ -38,7 +38,7 @@ wherever a rewrite emits a fixed word.
 
 **Import disclosure.** This file imports `Complexitylib.Classes.P.Cobham.Internal`, which the
 fork treats as proof internals (`Cobham.lean` imports it non-publicly).  The fold engine
-(`recFoldClamp_mem_FP`, `recFoldClamp_eq_recFold`), the block projection `fstBlock` and the
+(`recFoldClamp_mem_FP`, `recFoldClamp_eq_recFold`), the block projection `pairFst` and the
 string kit (`pairFn_mem_FP`, `const_nil_mem_FP`, `cons_mem_FP`) live only there; nothing here
 depends on Cobham's algebra itself, only on those `FP` closure lemmas.
 
@@ -91,11 +91,11 @@ lemma recFold_mem_FP {A B W S : List Bool → List Bool}
   have hΦ : (fun z => pair (W z) (S z)) ∈ FP := pairFn_mem_FP hW hS
   have hclamp := recFoldClamp_mem_FP hA hB (E := fun _ => e) (constFn_mem_FP e) p
   have hcomp := mem_FP_comp hΦ hclamp
-  have heq : ((fun y => recFoldClamp A B (p.eval y.length) e (fstBlock y) (sndBlock y))
+  have heq : ((fun y => recFoldClamp A B (p.eval y.length) e (pairFst y) (pairSnd y))
         ∘ fun z => pair (W z) (S z))
       = fun z => recFold A B e (W z) (S z) := by
     funext z
-    simp only [Function.comp_apply, fstBlock_pair, sndBlock_pair]
+    simp only [Function.comp_apply, pairFst_pair, pairSnd_pair]
     refine recFoldClamp_eq_recFold (S z) fun t ht => ?_
     refine le_trans (hbnd z t ht) (polynomial_eval_mono_nat p ?_)
     rw [pair_length]
@@ -110,7 +110,7 @@ is the direction every stream rewriter in the `Construction/` lanes runs in. -/
 
 /-- A left-to-right fold over a bit string, with the step selected by the bit.  The state is
 an arbitrary word; a rewriter packs its automaton state and its output-so-far into it with
-`Complexity.pair` and reads the result back with `sndBlock`. -/
+`Complexity.pair` and reads the result back with `pairSnd`. -/
 def foldlBits (A B : List Bool → List Bool) (W : List Bool) :
     List Bool → List Bool → List Bool
   | st, [] => st
@@ -138,14 +138,14 @@ lemma foldlBits_append_singleton (A B : List Bool → List Bool) (W : List Bool)
 ignore the tail component `recFold` hands it. -/
 lemma recFold_reverse (A B : List Bool → List Bool) (W e : List Bool) :
     ∀ r : List Bool,
-      recFold (A ∘ fstBlock) (B ∘ fstBlock) e W r = foldlBits A B W e r.reverse
+      recFold (A ∘ pairFst) (B ∘ pairFst) e W r = foldlBits A B W e r.reverse
   | [] => rfl
   | b :: t => by
-      show (bif b then B ∘ fstBlock else A ∘ fstBlock)
-          (pair (pair W (recFold (A ∘ fstBlock) (B ∘ fstBlock) e W t)) t) = _
+      show (bif b then B ∘ pairFst else A ∘ pairFst)
+          (pair (pair W (recFold (A ∘ pairFst) (B ∘ pairFst) e W t)) t) = _
       rw [recFold_reverse A B W e t, List.reverse_cons,
         foldlBits_append_singleton A B W b e t.reverse]
-      cases b <;> simp [Function.comp_apply, fstBlock_pair]
+      cases b <;> simp [Function.comp_apply, pairFst_pair]
 
 /-- **`FP` is closed under a left-to-right fold with an `FP` step and a polynomially bounded
 state.**
@@ -164,15 +164,15 @@ lemma foldlBits_mem_FP {A B W S : List Bool → List Bool}
     (hbnd : ∀ z u, u.length ≤ (S z).length →
       (foldlBits A B (W z) e u).length ≤ p.eval ((W z).length + (S z).length)) :
     (fun z => foldlBits A B (W z) e (S z)) ∈ FP := by
-  have hAf : (A ∘ fstBlock) ∈ FP := mem_FP_comp fstBlock_mem_FP hA
-  have hBf : (B ∘ fstBlock) ∈ FP := mem_FP_comp fstBlock_mem_FP hB
+  have hAf : (A ∘ pairFst) ∈ FP := mem_FP_comp fstBlock_mem_FP hA
+  have hBf : (B ∘ pairFst) ∈ FP := mem_FP_comp fstBlock_mem_FP hB
   have hSr : (fun z => (S z).reverse) ∈ FP := mem_FP_comp hS reverse_mem_FP
-  have h := recFold_mem_FP (A := A ∘ fstBlock) (B := B ∘ fstBlock) (W := W)
+  have h := recFold_mem_FP (A := A ∘ pairFst) (B := B ∘ pairFst) (W := W)
     (S := fun z => (S z).reverse) hAf hBf hW hSr e p (fun z t ht => by
       rw [recFold_reverse]
       refine le_trans (hbnd z t.reverse (by simpa using ht)) ?_
       exact polynomial_eval_mono_nat p (by simp))
-  have heq : (fun z => recFold (A ∘ fstBlock) (B ∘ fstBlock) e (W z) ((S z).reverse))
+  have heq : (fun z => recFold (A ∘ pairFst) (B ∘ pairFst) e (W z) ((S z).reverse))
       = fun z => foldlBits A B (W z) e (S z) := by
     funext z
     rw [recFold_reverse, List.reverse_reverse]
@@ -185,7 +185,7 @@ lemma foldlBits_mem_FP {A B W S : List Bool → List Bool}
 A transported trader's output function is `fun x => G (pair (F x) x)`: the original
 `EfficientlyComputable` witness `F` produces the stream, and `G` rewrites it with the raw
 input still beside it.  Since the input is `unaryDay n`, this is how the rewrite learns the
-day `n` — as the length of `sndBlock`.
+day `n` — as the length of `pairSnd`.
 
 Proof kind: `C` composition.  Provenance: (b) `mem_FP_pairWithInput`, `mem_FP_comp`. -/
 lemma mem_FP_withInput {F G : List Bool → List Bool} (hF : F ∈ FP) (hG : G ∈ FP) :

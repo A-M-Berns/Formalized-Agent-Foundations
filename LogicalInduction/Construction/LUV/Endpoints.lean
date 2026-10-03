@@ -368,8 +368,8 @@ lemma truthWorld_consistent_gridStage (n : ℕ) :
   obtain ⟨i, m, j, _, _, _, rfl⟩ := hφ
   unfold gridLiteral
   by_cases hp : L.ThresholdPred (thresholdCode i ((j : ℚ) / (m : ℚ)))
-  · rw [if_pos hp]; exact hp
-  · rw [if_neg hp, PCWorld.holds_neg]; exact hp
+  · rw [ite_eq_left hp]; exact hp
+  · rw [ite_eq_right hp, PCWorld.holds_neg]; exact hp
 
 /-- `hcons` for the scheduled process. -/
 lemma gridDP_hcons (n : ℕ) : ∃ v : PCWorld, v.ConsistentWith ((L.gridDP).D n) :=
@@ -390,9 +390,9 @@ lemma holds_thresholdSentence_iff {v : PCWorld} {m n : ℕ}
   have hholds : v.Holds (L.gridLiteral i j n) := hv _ hmem
   unfold gridLiteral at hholds
   by_cases hp : L.ThresholdPred (thresholdCode i ((j : ℚ) / (n : ℚ)))
-  · rw [if_pos hp] at hholds
+  · rw [ite_eq_left hp] at hholds
     exact ⟨fun _ => hp, fun _ => hholds⟩
-  · rw [if_neg hp, PCWorld.holds_neg] at hholds
+  · rw [ite_eq_right hp, PCWorld.holds_neg] at hholds
     exact ⟨fun h => absurd h hholds, fun h => absurd h hp⟩
 
 /-- **The value-agreement discharge.**  For a world consistent with scheduled stage `m`, any LUV
@@ -688,14 +688,14 @@ private lemma gridStage_eq_list_toFinset (n : ℕ) :
       omega
     · unfold gridEmit
       simp only [Nat.unpair_pair]
-      rw [if_pos ⟨hi, hm, hj⟩]
+      rw [ite_eq_left ⟨hi, hm, hj⟩]
   · rintro ⟨e, _, rfl⟩
     unfold gridEmit
     by_cases hc : e.unpair.1 ≤ n ∧ e.unpair.2.unpair.1 ≤ n + 1
         ∧ e.unpair.2.unpair.2 < e.unpair.2.unpair.1
-    · rw [if_pos hc]
+    · rw [ite_eq_left hc]
       exact ⟨e.unpair.1, e.unpair.2.unpair.1, e.unpair.2.unpair.2, hc.1, hc.2.1, hc.2.2, rfl⟩
-    · rw [if_neg hc]
+    · rw [ite_eq_right hc]
       exact ⟨0, 1, 0, Nat.zero_le n, by omega, Nat.zero_lt_one, rfl⟩
 
 /-- **The scheduled grid process is computable.** -/

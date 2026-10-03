@@ -324,11 +324,11 @@ lemma coordFS_chimera_eq (C : Set (Setoid (Bool × Bool))) (s t : Bool × Bool) 
                              if sndFactor ∈ C then s.2 else t.2) := by
   refine Prod.ext ?_ ?_
   · by_cases h : fstFactor ∈ C
-    · rw [if_pos h]; exact coordFS.chimera_rel_of_mem s t (Or.inl rfl) h
-    · rw [if_neg h]; exact coordFS.chimera_rel_of_notMem s t (Or.inl rfl) h
+    · rw [ite_eq_left h]; exact coordFS.chimera_rel_of_mem s t (Or.inl rfl) h
+    · rw [ite_eq_right h]; exact coordFS.chimera_rel_of_notMem s t (Or.inl rfl) h
   · by_cases h : sndFactor ∈ C
-    · rw [if_pos h]; exact coordFS.chimera_rel_of_mem s t (Or.inr rfl) h
-    · rw [if_neg h]; exact coordFS.chimera_rel_of_notMem s t (Or.inr rfl) h
+    · rw [ite_eq_left h]; exact coordFS.chimera_rel_of_mem s t (Or.inr rfl) h
+    · rw [ite_eq_right h]; exact coordFS.chimera_rel_of_notMem s t (Or.inr rfl) h
 
 /-- The four corners of `χ^F_C((⊤,⊤), (⊥,⊥))` are pairwise distinct. -/
 lemma coordFS_chimera_corners :
@@ -813,8 +813,8 @@ lemma generatesSub_sndOnEfst : coordFS.GeneratesSub {sndFactor} sndOnEfst := by
   rw [coordFS.generatesSub_iff_rel]
   intro s hs t ht
   rw [dom_sndOnEfst] at hs ht
-  rw [coordFS_chimera_eq, if_neg (by simpa using fstFactor_ne_sndFactor),
-    if_pos (Set.mem_singleton _)]
+  rw [coordFS_chimera_eq, ite_eq_right (by simpa using fstFactor_ne_sndFactor),
+    ite_eq_left (Set.mem_singleton _)]
   exact ⟨ht, hs, rfl⟩
 
 /-- And `{fstFactor}` does **not** generate it, so `GeneratesSub` is not total. -/
@@ -824,8 +824,8 @@ lemma not_generatesSub_fst_sndOnEfst : ¬ coordFS.GeneratesSub {fstFactor} sndOn
   have hs : ((true, true) : Bool × Bool) ∈ sndOnEfst.dom := by rw [dom_sndOnEfst]; rfl
   have ht : ((true, false) : Bool × Bool) ∈ sndOnEfst.dom := by rw [dom_sndOnEfst]; rfl
   have key := h _ hs _ ht
-  rw [coordFS_chimera_eq, if_pos (Set.mem_singleton _),
-    if_neg (by simpa using (Ne.symm fstFactor_ne_sndFactor))] at key
+  rw [coordFS_chimera_eq, ite_eq_left (Set.mem_singleton _),
+    ite_eq_right (by simpa using (Ne.symm fstFactor_ne_sndFactor))] at key
   exact Bool.noConfusion key.2.2
 
 /-- Definition 24 computed: `h^F(sndFactor|Efst) = {sndFactor}`, obtained from
@@ -889,8 +889,8 @@ lemma not_generatesSub_fst_indDiag : ¬ coordFS.GeneratesSub {fstFactor} indDiag
   have hs : ((false, false) : Bool × Bool) ∈ indDiag.dom := by rw [dom_indDiag]; rfl
   have ht : ((true, true) : Bool × Bool) ∈ indDiag.dom := by rw [dom_indDiag]; rfl
   have key := h _ hs _ ht
-  rw [coordFS_chimera_eq, if_pos (Set.mem_singleton _),
-    if_neg (by simpa using (Ne.symm fstFactor_ne_sndFactor))] at key
+  rw [coordFS_chimera_eq, ite_eq_left (Set.mem_singleton _),
+    ite_eq_right (by simpa using (Ne.symm fstFactor_ne_sndFactor))] at key
   exact Bool.noConfusion (key.1 : (false : Bool) = true)
 
 /-- **Generation of a subpartition is not superset-monotone.**  `∅` generates `Ind_Ediag`,
@@ -921,8 +921,8 @@ lemma clause7_second_conjunct_loadbearing :
         coordFS.chimeraImage {fstFactor} indDiag.dom indDiag.dom := by
       refine ⟨(false, false), by rw [dom_indDiag]; rfl, (true, true),
         by rw [dom_indDiag]; rfl, ?_⟩
-      rw [coordFS_chimera_eq, if_pos (Set.mem_singleton _),
-        if_neg (by simpa using (Ne.symm fstFactor_ne_sndFactor))]
+      rw [coordFS_chimera_eq, ite_eq_left (Set.mem_singleton _),
+        ite_eq_right (by simpa using (Ne.symm fstFactor_ne_sndFactor))]
     rw [h, dom_indDiag] at hmem
     exact Bool.noConfusion (hmem : (false : Bool) = true)
 
@@ -949,8 +949,8 @@ lemma generatesSub_snd_botInfIndEfalse :
   refine (coordFS.generatesSub_iff_rel _ _).2 fun s hs t ht => ?_
   rw [dom_botInfIndEfalse] at hs ht
   have hchi : coordFS.chimera {sndFactor} s t = s := by
-    rw [coordFS_chimera_eq, if_neg (by simpa using fstFactor_ne_sndFactor),
-      if_pos (Set.mem_singleton _)]
+    rw [coordFS_chimera_eq, ite_eq_right (by simpa using fstFactor_ne_sndFactor),
+      ite_eq_left (Set.mem_singleton _)]
     have h1 : t.1 = s.1 := by rw [(ht : t.1 = false), (hs : s.1 = false)]
     rw [h1]
   rw [hchi]
@@ -1163,14 +1163,14 @@ lemma generatesSub_fstOnEdiag_forces {C : Set (Setoid (Bool × Bool))}
   have h1 : (if fstFactor ∈ C then false else true) = false := hfst
   have hC1 : fstFactor ∈ C := by
     by_contra hc
-    rw [if_neg hc] at h1
+    rw [ite_eq_right hc] at h1
     exact Bool.noConfusion h1
   have h2 : (if fstFactor ∈ C then false else true)
       = (if sndFactor ∈ C then false else true) := hmem
-  rw [if_pos hC1] at h2
+  rw [ite_eq_left hC1] at h2
   have hC2 : sndFactor ∈ C := by
     by_contra hc
-    rw [if_neg hc] at h2
+    rw [ite_eq_right hc] at h2
     exact Bool.noConfusion h2
   exact ⟨hC1, hC2⟩
 
@@ -1185,14 +1185,14 @@ lemma generatesSub_sndOnEdiag_forces {C : Set (Setoid (Bool × Bool))}
   have h1 : (if sndFactor ∈ C then false else true) = false := hsnd
   have hC2 : sndFactor ∈ C := by
     by_contra hc
-    rw [if_neg hc] at h1
+    rw [ite_eq_right hc] at h1
     exact Bool.noConfusion h1
   have h2 : (if fstFactor ∈ C then false else true)
       = (if sndFactor ∈ C then false else true) := hmem
-  rw [if_pos hC2] at h2
+  rw [ite_eq_left hC2] at h2
   have hC1 : fstFactor ∈ C := by
     by_contra hc
-    rw [if_neg hc] at h2
+    rw [ite_eq_right hc] at h2
     exact Bool.noConfusion h2
   exact ⟨hC1, hC2⟩
 
@@ -1570,8 +1570,8 @@ lemma degreeOf_X_mul_X_le_one {a b : Set (Bool × Bool)} (hab : a ≠ b) (v : Se
   refine le_trans (MvPolynomial.degreeOf_mul_le v (X a) (X b)) ?_
   rw [MvPolynomial.degreeOf_X, MvPolynomial.degreeOf_X]
   rcases eq_or_ne v a with rfl | hva
-  · rw [if_pos rfl, if_neg hab]
-  · rw [if_neg hva]; split_ifs <;> simp
+  · rw [ite_eq_left rfl, ite_eq_right hab]
+  · rw [ite_eq_right hva]; split_ifs <;> simp
 
 /-- The squarefreeness Proposition 28's proof turns on, exhibited: **every** variable has
 degree at most one in `Q^F_S`.  This is Corollary 1 doing its work — the four monomials
@@ -1644,18 +1644,18 @@ to the four distinct products `10`, `14`, `15`, `21`. -/
 noncomputable def coordSep : Set (Bool × Bool) → ℝ := fun v =>
   if v = vfst true then 2 else if v = vfst false then 3 else if v = vsnd true then 5 else 7
 
-lemma coordSep_vfst_true : coordSep (vfst true) = 2 := if_pos rfl
+lemma coordSep_vfst_true : coordSep (vfst true) = 2 := ite_eq_left rfl
 
 lemma coordSep_vfst_false : coordSep (vfst false) = 3 := by
-  rw [coordSep, if_neg (Ne.symm vfst_true_ne_false), if_pos rfl]
+  rw [coordSep, ite_eq_right (Ne.symm vfst_true_ne_false), ite_eq_left rfl]
 
 lemma coordSep_vsnd_true : coordSep (vsnd true) = 5 := by
-  rw [coordSep, if_neg (Ne.symm (vfst_ne_vsnd true true)),
-    if_neg (Ne.symm (vfst_ne_vsnd false true)), if_pos rfl]
+  rw [coordSep, ite_eq_right (Ne.symm (vfst_ne_vsnd true true)),
+    ite_eq_right (Ne.symm (vfst_ne_vsnd false true)), ite_eq_left rfl]
 
 lemma coordSep_vsnd_false : coordSep (vsnd false) = 7 := by
-  rw [coordSep, if_neg (Ne.symm (vfst_ne_vsnd true false)),
-    if_neg (Ne.symm (vfst_ne_vsnd false false)), if_neg (Ne.symm vsnd_true_ne_false)]
+  rw [coordSep, ite_eq_right (Ne.symm (vfst_ne_vsnd true false)),
+    ite_eq_right (Ne.symm (vfst_ne_vsnd false false)), ite_eq_right (Ne.symm vsnd_true_ne_false)]
 
 lemma eval_coordSep_mono_coordFS (s : Bool × Bool) :
     MvPolynomial.eval coordSep (mono coordFS.B s) = coordSep (vfst s.1) * coordSep (vsnd s.2) := by
@@ -2068,7 +2068,7 @@ lemma chimeraImage_fst_Efst_univ :
   · rintro ⟨s, hs, t, -, rfl⟩
     rw [coordFS_chimera_eq]
     show (if fstFactor ∈ ({fstFactor} : Set (Setoid (Bool × Bool))) then s.1 else t.1) = true
-    rw [if_pos (Set.mem_singleton _)]
+    rw [ite_eq_left (Set.mem_singleton _)]
     exact hs
   · intro hu
     exact ⟨u, hu, u, Set.mem_univ _, coordFS.chimera_self _ u⟩
@@ -2107,8 +2107,8 @@ lemma prop27_reversed_false :
     ext ⟨a, b⟩
     simp only [Set.mem_univ, iff_true]
     refine ⟨(a, a), Set.mem_univ _, (true, b), rfl, ?_⟩
-    rw [coordFS_chimera_eq, if_pos (Set.mem_singleton _),
-      if_neg (by simpa using Ne.symm fstFactor_ne_sndFactor)]
+    rw [coordFS_chimera_eq, ite_eq_left (Set.mem_singleton _),
+      ite_eq_right (by simpa using Ne.symm fstFactor_ne_sndFactor)]
   rw [hchi]
   intro h
   have h' := congrArg (MvPolynomial.eval coordSep) h
@@ -2912,10 +2912,10 @@ outright — a separating *zero* rather than the separating value `coordSep` sup
 equational clause. -/
 noncomputable def coordZero : Set (Bool × Bool) → ℝ := fun v => if v = vsnd false then -1 else 1
 
-lemma coordZero_vsnd_false : coordZero (vsnd false) = -1 := if_pos rfl
-lemma coordZero_vsnd_true : coordZero (vsnd true) = 1 := if_neg vsnd_true_ne_false
-lemma coordZero_vfst_true : coordZero (vfst true) = 1 := if_neg (vfst_ne_vsnd true false)
-lemma coordZero_vfst_false : coordZero (vfst false) = 1 := if_neg (vfst_ne_vsnd false false)
+lemma coordZero_vsnd_false : coordZero (vsnd false) = -1 := ite_eq_left rfl
+lemma coordZero_vsnd_true : coordZero (vsnd true) = 1 := ite_eq_right vsnd_true_ne_false
+lemma coordZero_vfst_true : coordZero (vfst true) = 1 := ite_eq_right (vfst_ne_vsnd true false)
+lemma coordZero_vfst_false : coordZero (vfst false) = 1 := ite_eq_right (vfst_ne_vsnd false false)
 
 /-- **Lemma 3 clause 2 fails on the diagonal**, so clause 2 is no more total than clause 3
 is: at `z = Ediag` the divisor is `X_{[·]₁=f}X_{[·]₂=f} + X_{[·]₁=t}X_{[·]₂=t}`, which
@@ -2994,7 +2994,7 @@ noncomputable def biased : ProbDist (Bool × Bool) where
   nonneg E := Finset.sum_nonneg fun s _ => by split <;> simp [w_nonneg s]
   empty := by simp
   univ := by
-    simp only [Set.mem_univ, if_true]
+    simp only [Set.mem_univ, ite_true]
     unfold w
     rw [Fintype.sum_prod_type]
     simp
@@ -3143,8 +3143,8 @@ lemma orthogonalGiven_emptyFS (X Y Z : Setoid Empty) : emptyFS.OrthogonalGiven X
 noncomputable def unitDist : ProbDist Unit where
   P E := if E = ∅ then 0 else 1
   nonneg E := by split <;> norm_num
-  empty := if_pos rfl
-  univ := if_neg (by intro h; exact absurd (h ▸ Set.mem_univ ()) (by simp))
+  empty := ite_eq_left rfl
+  univ := ite_eq_right (by intro h; exact absurd (h ▸ Set.mem_univ ()) (by simp))
   additive E₀ E₁ hd := by
     rcases eq_or_ne E₀ ∅ with rfl | h0
     · simp
@@ -3635,9 +3635,9 @@ lemma eventPartition_classes {E : Set S} (hE : E.Nonempty) (hEc : Eᶜ.Nonempty)
     · exact Or.inr rfl
   · rintro (rfl | rfl)
     · obtain ⟨y, hy⟩ := hE
-      exact ⟨y, by rw [eventPartition_part, if_pos hy]⟩
+      exact ⟨y, by rw [eventPartition_part, ite_eq_left hy]⟩
     · obtain ⟨y, hy⟩ := hEc
-      exact ⟨y, by rw [eventPartition_part, if_neg hy]⟩
+      exact ⟨y, by rw [eventPartition_part, ite_eq_right hy]⟩
 
 end EmbeddedAgency
 
@@ -3910,7 +3910,7 @@ lemma observesPartition_fst_snd_nonconstant :
       ⟨vsnd false, vsnd_false_mem_sndFactor_classes⟩, ?_⟩
     show (if (vsnd true) = vsnd true then fstFactor else ⊤)
         ≠ (if (vsnd false) = vsnd true then fstFactor else ⊤)
-    rw [if_pos rfl, if_neg hne]
+    rw [ite_eq_left rfl, ite_eq_right hne]
     exact fstFactor_ne_top
   · refine le_antisymm ?_ ?_
     · refine le_sInf ?_
@@ -3921,17 +3921,17 @@ lemma observesPartition_fst_snd_nonconstant :
       · exact le_top
     · refine sInf_le ⟨⟨vsnd true, vsnd_true_mem_sndFactor_classes⟩, ?_⟩
       show (if (vsnd true) = vsnd true then fstFactor else ⊤) = fstFactor
-      rw [if_pos rfl]
+      rw [ite_eq_left rfl]
   · rintro ⟨x, hx⟩
     rw [classes_sndFactor] at hx
     rcases hx with rfl | rfl
     · show coordFS.OrthogonalGivenSet
         (if (vsnd true) = vsnd true then fstFactor else ⊤) sndFactor (vsnd true)ᶜ
-      rw [if_pos rfl, coordFS.orthogonalGivenSet_def, compl_vsnd_true,
+      rw [ite_eq_left rfl, coordFS.orthogonalGivenSet_def, compl_vsnd_true,
         historySub_snd_restrict_vsnd, Set.inter_empty]
     · show coordFS.OrthogonalGivenSet
         (if (vsnd false) = vsnd true then fstFactor else ⊤) sndFactor (vsnd false)ᶜ
-      rw [if_neg hne]
+      rw [ite_eq_right hne]
       exact coordFS.orthogonalGivenSet_top_left sndFactor _
 
 /-- Definition 47 as a client reads it: orthogonality to `X`, plus a family of sub-agents

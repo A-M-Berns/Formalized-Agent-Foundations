@@ -311,7 +311,7 @@ private lemma evalSucc_prim :
     by_cases hc0 : p.2.2.unpair.1 = 0
     · simp [hc0]
     by_cases hc1 : p.2.2.unpair.1 = 1
-    · simp only [hc1, if_true]
+    · simp only [hc1, ite_true]
       cases p.1.getD p.2.2.unpair.2 false <;> simp
     · simp [hc0, hc1]
 
@@ -729,7 +729,7 @@ lemma MarketComputation.denoteRatComp_eq {P : History} (market : MarketComputati
     market.denoteRatComp fuel e = e.denoteRatWithAtFuel market fuel [] := by
   unfold MarketComputation.denoteRatComp
   by_cases hready : market.readyAtFuel fuel e
-  · rw [if_pos hready]
+  · rw [ite_eq_left hready]
     unfold MarketComputation.readyAtFuel at hready
     rw [List.all_eq_true] at hready
     have hready' : ∀ query ∈ e.priceQueries,
@@ -747,7 +747,7 @@ lemma MarketComputation.denoteRatComp_eq {P : History} (market : MarketComputati
     intro query hq
     unfold MarketComputation.totalQuote
     rw [hready' query hq]; rfl
-  · rw [if_neg hready]
+  · rw [ite_eq_right hready]
     unfold MarketComputation.readyAtFuel at hready
     rw [List.all_eq_true] at hready
     cases hd : e.denoteRatWithAtFuel market fuel [] with

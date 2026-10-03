@@ -390,7 +390,7 @@ open Classical in
 lemma rnRepresentatives_play (t d : ℝ) (b₀ : Two → Base) (ω : (rnRepresentatives t d b₀).Ω) :
     (rnRepresentatives t d b₀).play (negotiation t d) ω = b₀ := by
   show (if negotiation t d = negotiation t d then b₀ else _) = b₀
-  rw [if_pos rfl]
+  rw [ite_eq_left rfl]
 
 /-- **The program game of renegotiation programs**: every player submits an `RnProg`, and
 the execution is `run`, as a pure mixed action. -/

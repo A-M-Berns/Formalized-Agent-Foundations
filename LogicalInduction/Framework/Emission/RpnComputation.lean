@@ -52,12 +52,12 @@ lemma parseRpn_suffix : ∀ (fuel : ℕ) (ts : List ℕ) (φ : Sentence) (rest :
       intro h
       rw [parseRpn_cons] at h
       by_cases h0 : t = 0
-      · rw [if_pos h0] at h
+      · rw [ite_eq_left h0] at h
         obtain ⟨-, rfl⟩ := Prod.mk.injEq .. ▸ Option.some.inj h
         exact (List.suffix_cons t ts)
-      rw [if_neg h0] at h
+      rw [ite_eq_right h0] at h
       by_cases h1 : t = 1
-      · rw [if_pos h1] at h
+      · rw [ite_eq_left h1] at h
         rcases ts with _ | ⟨c, ts'⟩
         · simp at h
         cases c with
@@ -71,7 +71,7 @@ lemma parseRpn_suffix : ∀ (fuel : ℕ) (ts : List ℕ) (φ : Sentence) (rest :
               obtain ⟨-, rfl⟩ := Prod.mk.injEq .. ▸ Option.some.inj h
               exact (List.suffix_cons (c + 1) ts').trans
                 (List.suffix_cons t ((c + 1) :: ts'))
-      rw [if_neg h1] at h
+      rw [ite_eq_right h1] at h
       have hbin : ∀ (mk : Sentence → Sentence → Sentence),
           ((parseRpn fuel ts).bind fun p =>
             (parseRpn fuel p.2).bind fun q =>
@@ -92,17 +92,17 @@ lemma parseRpn_suffix : ∀ (fuel : ℕ) (ts : List ℕ) (φ : Sentence) (rest :
         exact ((parseRpn_suffix fuel r1 φ2 r2 hp2).trans
           (parseRpn_suffix fuel ts φ1 r1 hp1)).trans (List.suffix_cons t ts)
       by_cases h2 : t = 2
-      · rw [if_pos h2] at h
+      · rw [ite_eq_left h2] at h
         exact hbin Formula.imp h
-      rw [if_neg h2] at h
+      rw [ite_eq_right h2] at h
       by_cases h3 : t = 3
-      · rw [if_pos h3] at h
+      · rw [ite_eq_left h3] at h
         exact hbin Formula.and h
-      rw [if_neg h3] at h
+      rw [ite_eq_right h3] at h
       by_cases h4 : t = 4
-      · rw [if_pos h4] at h
+      · rw [ite_eq_left h4] at h
         exact hbin Formula.or h
-      rw [if_neg h4] at h
+      rw [ite_eq_right h4] at h
       obtain ⟨-, rfl⟩ := Prod.mk.injEq .. ▸ Option.some.inj h
       exact (List.suffix_cons t ts)
 
@@ -206,11 +206,11 @@ lemma structuredNatGCore_spec (m : ℕ) (look : ℕ → Option (ℕ × List ℕ)
   rcases hs : Denumerable.ofNat (List ℕ) m.unpair.2 with _ | ⟨t, rest⟩
   · rfl
   simp only [parseStructuredNat]
-  by_cases h0 : t = 0 <;> simp only [h0, if_true, if_false]
-  by_cases h1 : t = 1 <;> simp only [h1, if_true, if_false]
+  by_cases h0 : t = 0 <;> simp only [h0, ite_true, ite_false]
+  by_cases h1 : t = 1 <;> simp only [h1, ite_true, ite_false]
   · rw [hlook _ (structured_smaller_index hf hs), structuredNatF,
       Nat.unpair_pair, Denumerable.ofNat_encode]
-  by_cases h2 : t = 2 <;> simp only [h2, if_true, if_false]
+  by_cases h2 : t = 2 <;> simp only [h2, ite_true, ite_false]
   rw [hlook _ (structured_smaller_index hf hs), structuredNatF,
     Nat.unpair_pair, Denumerable.ofNat_encode]
 
@@ -267,11 +267,11 @@ lemma structuredTermGCore_spec (m : ℕ)
   rcases hs : Denumerable.ofNat (List ℕ) m.unpair.2 with _ | ⟨t, rest⟩
   · rfl
   simp only [parseStructuredArithmeticTerm]
-  by_cases h3 : t = 3 <;> simp only [h3, if_true, if_false]
-  by_cases h4 : t = 4 <;> simp only [h4, if_true, if_false]
-  by_cases h5 : t = 5 <;> simp only [h5, if_true, if_false]
-  by_cases h6 : t = 6 <;> simp only [h6, if_true, if_false]
-  by_cases hb : t = 7 ∨ t = 8 <;> simp only [hb, if_true, if_false]
+  by_cases h3 : t = 3 <;> simp only [h3, ite_true, ite_false]
+  by_cases h4 : t = 4 <;> simp only [h4, ite_true, ite_false]
+  by_cases h5 : t = 5 <;> simp only [h5, ite_true, ite_false]
+  by_cases h6 : t = 6 <;> simp only [h6, ite_true, ite_false]
+  by_cases hb : t = 7 ∨ t = 8 <;> simp only [hb, ite_true, ite_false]
   rw [hlook _ (structured_smaller_index hf hs), structuredTermF,
     Nat.unpair_pair, Denumerable.ofNat_encode]
   rcases hp : parseStructuredArithmeticTerm fuel rest with _ | p
@@ -352,11 +352,11 @@ lemma structuredFormulaGCore_spec (m : ℕ)
   rcases hs : Denumerable.ofNat (List ℕ) m.unpair.2 with _ | ⟨t, rest⟩
   · rfl
   simp only [parseStructuredArithmeticFormula]
-  by_cases h9 : t = 9 <;> simp only [h9, if_true, if_false]
-  by_cases h10 : t = 10 <;> simp only [h10, if_true, if_false]
+  by_cases h9 : t = 9 <;> simp only [h9, ite_true, ite_false]
+  by_cases h10 : t = 10 <;> simp only [h10, ite_true, ite_false]
   by_cases hrel : t = 11 ∨ t = 12 ∨ t = 13 ∨ t = 14 <;>
-    simp only [hrel, if_true, if_false]
-  by_cases hbin : t = 15 ∨ t = 16 <;> simp only [hbin, if_true, if_false]
+    simp only [hrel, ite_true, ite_false]
+  by_cases hbin : t = 15 ∨ t = 16 <;> simp only [hbin, ite_true, ite_false]
   · rw [hlook _ (structured_smaller_index hf hs), structuredFormulaF,
       Nat.unpair_pair, Denumerable.ofNat_encode]
     rcases hp : parseStructuredArithmeticFormula fuel rest with _ | p
@@ -366,13 +366,13 @@ lemma structuredFormulaGCore_spec (m : ℕ)
       (parseStructuredArithmeticFormula_suffix hp)
     rw [hlook _ hidx, structuredFormulaF, Nat.unpair_pair,
       Denumerable.ofNat_encode]
-  by_cases hquant : t = 17 ∨ t = 18 <;> simp only [hquant, if_true, if_false]
+  by_cases hquant : t = 17 ∨ t = 18 <;> simp only [hquant, ite_true, ite_false]
   · rw [hlook _ (structured_smaller_index hf hs), structuredFormulaF,
       Nat.unpair_pair, Denumerable.ofNat_encode]
-  by_cases h20 : t = 20 <;> simp only [h20, if_true, if_false]
+  by_cases h20 : t = 20 <;> simp only [h20, ite_true, ite_false]
   · rw [hlook _ (structured_smaller_index hf hs), structuredFormulaF,
       Nat.unpair_pair, Denumerable.ofNat_encode]
-  by_cases h21 : t = 21 <;> simp only [h21, if_true, if_false]
+  by_cases h21 : t = 21 <;> simp only [h21, ite_true, ite_false]
   · rw [hlook _ (structured_smaller_index hf hs), structuredFormulaF,
       Nat.unpair_pair, Denumerable.ofNat_encode]
     rcases hp : parseStructuredArithmeticFormula fuel rest with _ | p
@@ -382,7 +382,7 @@ lemma structuredFormulaGCore_spec (m : ℕ)
       (parseStructuredArithmeticFormula_suffix hp)
     rw [hlook _ hidx, structuredFormulaF, Nat.unpair_pair,
       Denumerable.ofNat_encode]
-  by_cases h22 : t = 22 <;> simp only [h22, if_true, if_false]
+  by_cases h22 : t = 22 <;> simp only [h22, ite_true, ite_false]
   rw [hlook _ (structured_smaller_index hf hs), structuredFormulaF,
     Nat.unpair_pair, Denumerable.ofNat_encode]
   rcases hp : parseStructuredArithmeticFormula fuel rest with _ | p
@@ -465,14 +465,14 @@ lemma parseGCore_spec (m : ℕ) (look : ℕ → Option (ℕ × List ℕ))
   rw [parseF, hfuel, hts, parseRpnC_cons]
   simp only []
   by_cases h0 : t = 0
-  · rw [if_pos h0, if_pos h0]
-  rw [if_neg h0, if_neg h0]
+  · rw [ite_eq_left h0, ite_eq_left h0]
+  rw [ite_eq_right h0, ite_eq_right h0]
   by_cases h1 : t = 1
-  · rw [if_pos h1, if_pos h1]
+  · rw [ite_eq_left h1, ite_eq_left h1]
     rfl
-  rw [if_neg h1, if_neg h1]
+  rw [ite_eq_right h1, ite_eq_right h1]
   by_cases hb : t = 2 ∨ t = 3 ∨ t = 4
-  · rw [if_pos hb]
+  · rw [ite_eq_left hb]
     have h1st : look (Nat.pair fuel' (Encodable.encode rest)) =
         parseRpnC fuel' rest := by
       rw [hlook _ (hidx _ le_rfl), parseF, Nat.unpair_pair,
@@ -480,11 +480,11 @@ lemma parseGCore_spec (m : ℕ) (look : ℕ → Option (ℕ × List ℕ))
     rw [h1st]
     rcases hp1 : parseRpnC fuel' rest with _ | ⟨e1, r1⟩
     · rcases hb with rfl | rfl | rfl
-      · rw [if_pos rfl]
+      · rw [ite_eq_left rfl]
         rfl
-      · rw [if_neg (by norm_num), if_pos rfl]
+      · rw [ite_eq_right (by norm_num), ite_eq_left rfl]
         rfl
-      · rw [if_neg (by norm_num), if_neg (by norm_num), if_pos rfl]
+      · rw [ite_eq_right (by norm_num), ite_eq_right (by norm_num), ite_eq_left rfl]
         rfl
     · have hsfx := parseRpnC_suffix hp1
       have h2nd : look (Nat.pair fuel' (Encodable.encode r1)) =
@@ -494,13 +494,13 @@ lemma parseGCore_spec (m : ℕ) (look : ℕ → Option (ℕ × List ℕ))
       simp only [Option.bind_some]
       rw [h2nd]
       rcases hb with rfl | rfl | rfl
-      · rw [if_pos rfl]
-      · rw [if_neg (by norm_num), if_pos rfl]
-      · rw [if_neg (by norm_num), if_neg (by norm_num), if_pos rfl]
-  · rw [if_neg hb]
+      · rw [ite_eq_left rfl]
+      · rw [ite_eq_right (by norm_num), ite_eq_left rfl]
+      · rw [ite_eq_right (by norm_num), ite_eq_right (by norm_num), ite_eq_left rfl]
+  · rw [ite_eq_right hb]
     push Not at hb
     obtain ⟨hb2, hb3, hb4⟩ := hb
-    rw [if_neg hb2, if_neg hb3, if_neg hb4]
+    rw [ite_eq_right hb2, ite_eq_right hb3, ite_eq_right hb4]
 
 /-- The strong-recursion step over the value table. -/
 def parseG (prev : List (Option (ℕ × List ℕ))) : Option (Option (ℕ × List ℕ)) :=
@@ -586,7 +586,7 @@ lemma unGCore_spec (m : ℕ) (look : ℕ → List ℕ)
   rw [unF, hfuel, hts, unRpnTokensC_cons]
   simp only []
   by_cases h0 : t = 0
-  · rw [if_pos h0, if_pos h0]
+  · rw [ite_eq_left h0, ite_eq_left h0]
     rcases hp : parseRpnC rest.length rest with _ | ⟨e, r1⟩
     · rfl
     rcases r1 with _ | ⟨d, r2⟩
@@ -595,28 +595,28 @@ lemma unGCore_spec (m : ℕ) (look : ℕ → List ℕ)
     have hsfx : r2 <:+ rest :=
       ((List.suffix_cons d r2).trans (parseRpnC_suffix hp))
     rw [hlookAt r2 hsfx]
-  rw [if_neg h0, if_neg h0]
+  rw [ite_eq_right h0, ite_eq_right h0]
   by_cases h6 : t = 6
-  · rw [if_pos h6, if_pos h6]
+  · rw [ite_eq_left h6, ite_eq_left h6]
     rcases hp : parseRpnC rest.length rest with _ | ⟨e, r1⟩
     · rfl
     simp only []
     rw [hlookAt r1 (parseRpnC_suffix hp)]
-  rw [if_neg h6, if_neg h6]
+  rw [ite_eq_right h6, ite_eq_right h6]
   by_cases h1 : t = 1
-  · rw [if_pos h1, if_pos h1]
+  · rw [ite_eq_left h1, ite_eq_left h1]
     rcases rest with _ | ⟨c, r⟩
     · rfl
     simp only []
     rw [hlookAt r (List.suffix_cons c r)]
-  rw [if_neg h1, if_neg h1]
+  rw [ite_eq_right h1, ite_eq_right h1]
   by_cases h7 : t = 7
-  · rw [if_pos h7, if_pos h7]
+  · rw [ite_eq_left h7, ite_eq_left h7]
     rcases rest with _ | ⟨c, r⟩
     · rfl
     simp only []
     rw [hlookAt r (List.suffix_cons c r)]
-  rw [if_neg h7, if_neg h7]
+  rw [ite_eq_right h7, ite_eq_right h7]
   rw [hlookAt rest List.suffix_rfl]
 
 /-- The strong-recursion step over the value table. -/

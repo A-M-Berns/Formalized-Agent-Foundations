@@ -424,7 +424,7 @@ private lemma ratDecodeNorm_eq (n : ℕ) :
       rw [hsymm]; exact hvalid.mp h
     simp [ratDecodeNorm, h, Encodable.decode_ofEquiv,
       Encodable.decode_sigma_val, hstep, hc']
-    rw [dif_pos hc'.2]
+    rw [dite_eq_left hc'.2]
     simp [Encodable.encode_ofEquiv, Encodable.encode_sigma_val,
       Encodable.Subtype.encode_eq, Nat.pair_unpair]
   · have hc' : ¬(0 < n.unpair.2 ∧
@@ -1742,7 +1742,7 @@ private def strategyOfTrades? (n : ℕ) (trades : List (EF × Sentence)) :
 
 private lemma strategyOfTrades?_self {n : ℕ} (T : Strategy n) :
     strategyOfTrades? n T.trades = some T := by
-  simp only [strategyOfTrades?, dif_pos T.rank_le]
+  simp only [strategyOfTrades?, dite_eq_left T.rank_le]
 
 /-- A strategy is encoded by exactly its finite trade list; its day-rank proof is erased
 and revalidated by the decoder. -/
@@ -1772,11 +1772,11 @@ private lemma strategyTradesNorm_eq (n : ℕ) (trades : List (EF × Sentence)) :
   · let T : Strategy n := ⟨trades, h⟩
     have hof : strategyOfTrades? n trades = some T := by
       simpa [T] using strategyOfTrades?_self T
-    rw [strategyTradesNorm, if_pos h, hof]
+    rw [strategyTradesNorm, ite_eq_left h, hof]
     rfl
   · have hof : strategyOfTrades? n trades = none := by
-      rw [strategyOfTrades?, dif_neg h]
-    rw [strategyTradesNorm, if_neg h, hof]
+      rw [strategyOfTrades?, dite_eq_right h]
+    rw [strategyTradesNorm, ite_eq_right h, hof]
     rfl
 
 private def strategyDecodeNorm (n code : ℕ) : ℕ :=
@@ -3190,12 +3190,12 @@ private lemma parseStructuredPaperPrimeC_prim : Primrec parseStructuredPaperPrim
     · rfl
     simp only [id_eq, parseStructuredPaperPrimeC]
     by_cases hpol : polarity ≤ 1
-    · simp only [hpol, if_true]
+    · simp only [hpol, ite_true]
       rcases hl : readStructuredLength framed with _ | p
       · simp
       simp only [Option.bind_some]
       by_cases hlen : p.1 ≤ p.2.length
-      · simp only [hlen, if_true]
+      · simp only [hlen, ite_true]
         rcases hf : parseStructuredArithmeticFormula p.1 (p.2.take p.1) with
           _ | ⟨code, rest⟩
         · simp

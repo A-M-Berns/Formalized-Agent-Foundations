@@ -102,7 +102,7 @@ lemma runMatches_of_parse {b : List ℕ} {φ target : Sentence}
       (sentenceMatches_eq_one_iff target (Encodable.encode target)).mpr
         (Encodable.encodek target)]
   · have hzero : runMatches target b = 0 := by
-      rw [runMatches, if_neg fun hp => hteq (by
+      rw [runMatches, ite_eq_right fun hp => hteq (by
         rw [hb] at hp
         exact (congrArg Prod.fst (Option.some.inj hp)).symm)]
     rw [hzero]
@@ -230,14 +230,14 @@ lemma unRpn_freezeOn_rewrite_chunk (selRun : List ℕ → ℕ → Bool)
   rw [freezeEmitOn, freezeBodyOn, hs]
   by_cases hd : selCode D (Encodable.encode φ) = true
   · have hsel' : selRun b D = true := by rw [hs]; exact hd
-    rw [if_pos hd, if_pos hd]
+    rw [ite_eq_left hd, ite_eq_left hd]
     have hshape : 0 :: b ++ [D, 1, quoteRun b D, 8] ++ rest =
         0 :: (b ++ D :: 1 :: quoteRun b D :: 8 :: rest) := by simp
     rw [hshape, unRpn_price_chunk_block hb,
       unRpn_payload_chunk 1 _ (Or.inl rfl), unRpn_single_chunk 8 (by norm_num),
       hq b φ hb D hsel']
     simp
-  · rw [if_neg hd, if_neg hd]
+  · rw [ite_eq_right hd, ite_eq_right hd]
     have hshape : 0 :: b ++ [D] ++ rest = 0 :: (b ++ D :: rest) := by simp
     rw [hshape, unRpn_price_chunk_block hb]
     simp

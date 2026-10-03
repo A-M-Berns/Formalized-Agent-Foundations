@@ -209,7 +209,7 @@ private lemma scheduledScan (f : DeferralFunction) (k : ℕ) : ∀ r : ℕ,
       by_cases h : f.f k = r
       · subst h
         simp
-      · simp only [h, if_false, Nat.mul_zero, Nat.add_zero]
+      · simp only [h, ite_false, Nat.mul_zero, Nat.add_zero]
         split_ifs <;> omega
 
 /-- The closed form of the day-bounded lookup. -/

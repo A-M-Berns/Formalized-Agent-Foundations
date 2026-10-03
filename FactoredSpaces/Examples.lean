@@ -160,19 +160,19 @@ private lemma Pdiag_mass (x : Pt Coins) :
         fin_cases v
         · rfl
         · exact h
-    rw [hset, Distr.prob_singleton, unif_mass, if_pos h]
+    rw [hset, Distr.prob_singleton, unif_mass, ite_eq_left h]
   · have hset : (fun b => (fun _ => b : Pt Coins)) ⁻¹' {x} = (∅ : Set Bool) := by
       ext c
       simp only [Set.mem_preimage, Set.mem_singleton_iff, Set.mem_empty_iff_false, iff_false]
       intro hc
       exact h ((congrFun hc 0).symm.trans (congrFun hc 1))
-    rw [hset, Distr.prob_empty, if_neg h]
+    rw [hset, Distr.prob_empty, ite_eq_right h]
 
 private lemma Pdiag_const (b : Bool) : Pdiag.mass (fun _ => b) = (2 : ℝ)⁻¹ := by
-  rw [Pdiag_mass]; exact if_pos rfl
+  rw [Pdiag_mass]; exact ite_eq_left rfl
 
 private lemma Pdiag_of_ne {x : Pt Coins} (h : x 0 ≠ x 1) : Pdiag.mass x = 0 := by
-  rw [Pdiag_mass]; exact if_neg h
+  rw [Pdiag_mass]; exact ite_eq_right h
 
 /-- The point `01` of the two-coin space. -/
 private def coinFT : Pt Coins := fun i => if i = 0 then false else true

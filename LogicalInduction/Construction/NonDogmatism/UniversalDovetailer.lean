@@ -1220,8 +1220,8 @@ lemma state_le (z : ℕ) : ∀ j, state c z j ≤ codeEvalBound c (fuel z) + 2
   | j + 1 => by
       rw [state, ifzSelFn]
       by_cases h : read c (fuel z) j z.unpair.2 = 0
-      · rw [if_pos h, Nat.unpair_pair]; exact state_le z j
-      · rw [if_neg h, Nat.unpair_pair]
+      · rw [ite_eq_left h, Nat.unpair_pair]; exact state_le z j
+      · rw [ite_eq_right h, Nat.unpair_pair]
         have := read_le c (fuel z) j z.unpair.2
         omega
 
@@ -1236,9 +1236,9 @@ lemma state_eq {val : ℕ → ℕ} (hc : ∀ x, c.eval x = Part.some (val x))
   | j + 1 => by
       rw [state, stage, ifzSelFn]
       by_cases h : read c (fuel z) j z.unpair.2 = 0
-      · rw [if_pos h, if_pos h, Nat.unpair_pair]
+      · rw [ite_eq_left h, ite_eq_left h, Nat.unpair_pair]
         exact state_eq hc hval0 z j
-      · rw [if_neg h, if_neg h, Nat.unpair_pair]
+      · rw [ite_eq_right h, ite_eq_right h, Nat.unpair_pair]
         exact read_eq_of_ne_zero hc h
 
 /-- A stage whose reading succeeds is never lost: the recorded stage only grows. -/
@@ -1249,13 +1249,13 @@ lemma le_stage {z j N : ℕ} (hj : j < N) (h : read c (fuel z) j z.unpair.2 ≠ 
   | succ N ih =>
       rw [stage]
       by_cases hN : read c (fuel z) N z.unpair.2 = 0
-      · rw [if_pos hN]
+      · rw [ite_eq_left hN]
         rcases Nat.lt_or_ge j N with hlt | hge
         · exact ih hlt
         · have hjN : j = N := by omega
           subst hjN
           exact absurd hN h
-      · rw [if_neg hN]; omega
+      · rw [ite_eq_right hN]; omega
 
 /-- **Every fixed stage is eventually recorded.**  The clock `⟪⟪n,i⟫,⟪n,i⟫⟫` grows past the
 fuel stage `m` needs, and `le_stage` never lets the recorded stage slip back. -/

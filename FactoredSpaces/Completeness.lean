@@ -282,8 +282,8 @@ private lemma condProb_eq_of_replace {A C : Set (Pt Ω)} (p q : ∀ i, Distr (Ω
   have hfull : (fun j => if j ∈ cohistory A C then q j else p j) = q := by
     funext j
     by_cases hj : j ∈ cohistory A C
-    · rw [if_pos hj]
-    · rw [if_neg hj]
+    · rw [ite_eq_left hj]
+    · rw [ite_eq_right hj]
       exact hagree j fun hc => hj (mem_cohistory_iff.mpr hc)
   have := (key (cohistory A C) Finset.Subset.rfl).2
   rw [hfull] at this
@@ -309,11 +309,11 @@ theorem condProb_eq_of_agree_on_relevant {A C : Set (Pt Ω)} {P Q : Distr (Pt Ω
     fun i => if i ∈ cohistory A C then Distr.uniform else P.margAt i with hq'
   have hstrict : ∀ j, Irrelevant j A C → (q' j).StrictlyPositive := by
     intro j hj
-    simp only [hq', if_pos (mem_cohistory_iff.mpr hj)]
+    simp only [hq', ite_eq_left (mem_cohistory_iff.mpr hj)]
     exact Distr.uniform_strictlyPositive
   have hPq' : ∀ j, ¬ Irrelevant j A C → P.margAt j = q' j := by
     intro j hj
-    simp only [hq', if_neg fun hc => hj (mem_cohistory_iff.mp hc)]
+    simp only [hq', ite_eq_right fun hc => hj (mem_cohistory_iff.mp hc)]
   have h1 : (Distr.prod fun i => P.margAt i).condProb A C = (Distr.prod q').condProb A C :=
     condProb_eq_of_replace _ q' (by rw [← hPe]; exact hPpos) hstrict hPq'
   have h2 : (Distr.prod fun i => Q.margAt i).condProb A C = (Distr.prod q').condProb A C := by
@@ -372,7 +372,7 @@ theorem condIndepEventVar_proj_cohistory (A C : Set (Pt Ω)) (P : Distr (Pt Ω))
   have hRmarg : ∀ j, ¬ Irrelevant j A C → P.margAt j = R.margAt j := by
     intro j hj
     have hjJ : j ∉ J := fun hc => hj (mem_cohistory_iff.mp (hJ ▸ hc))
-    rw [hRprod, Distr.margAt_prod, dif_neg hjJ]
+    rw [hRprod, Distr.margAt_prod, dite_eq_right hjJ]
   -- Lemma C.12 identifies the two conditional probabilities
   have hkey : P.condProb A C = R.condProb A C :=
     condProb_eq_of_agree_on_relevant ⟨hP, hPC⟩ ⟨hRfact, by rw [hRC]; exact hsC⟩ hRmarg
@@ -433,8 +433,8 @@ theorem disintegrates_cohistory (A C : Set (Pt Ω)) : Disintegrates (cohistory A
     ext ω
     simp only [Distr.mem_support_iff, hQdef, condDist_mass, Set.indicator_apply]
     constructor
-    · intro hω; by_contra hc; rw [if_neg hc, zero_div] at hω; exact lt_irrefl 0 hω
-    · intro hω; rw [if_pos hω]; exact div_pos (hPpos ω) hPC
+    · intro hω; by_contra hc; rw [ite_eq_right hc, zero_div] at hω; exact lt_irrefl 0 hω
+    · intro hω; rw [ite_eq_left hω]; exact div_pos (hPpos ω) hPC
   -- `Q` splits as `Q_J ⊗ Q_{I∖J}`, by Lemma C.19 for `P`
   have hQfactor : Q = Distr.outerCompl (Q.marg J) (Q.marg Jᶜ) := by
     ext ω
@@ -495,9 +495,9 @@ theorem cohistory_eq_compl_eventHistory (A C : Set (Pt Ω)) :
         by_contra hnotA
         have hcnot : ((cohistory A C)ᶜ).piecewise a b ∉ A ∩ C := fun hh => hnotA hh.1
         have hdaC : 0 < (Distr.delta a).prob C := by
-          rw [Distr.delta_prob, if_pos haAC.2]; norm_num
+          rw [Distr.delta_prob, ite_eq_left haAC.2]; norm_num
         have hdcC : 0 < (Distr.delta (((cohistory A C)ᶜ).piecewise a b)).prob C := by
-          rw [Distr.delta_prob, if_pos hcC]; norm_num
+          rw [Distr.delta_prob, ite_eq_left hcC]; norm_num
         -- the two deltas agree in every factor relevant to `A` given `C`
         have hagree : ∀ j, ¬ Irrelevant j A C →
             (Distr.delta a).margAt j =
@@ -511,7 +511,7 @@ theorem cohistory_eq_compl_eventHistory (A C : Set (Pt Ω)) :
         have hkey := condProb_eq_of_agree_on_relevant
           ⟨factorizes_delta a, hdaC⟩ ⟨factorizes_delta _, hdcC⟩ hagree
         simp only [Distr.condProb, Distr.delta_prob] at hkey
-        rw [if_pos haAC, if_pos haAC.2, if_neg hcnot, if_pos hcC] at hkey
+        rw [ite_eq_left haAC, ite_eq_left haAC.2, ite_eq_right hcnot, ite_eq_left hcC] at hkey
         norm_num at hkey
     intro i hi
     rw [Finset.mem_compl]

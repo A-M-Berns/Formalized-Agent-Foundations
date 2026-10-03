@@ -314,14 +314,14 @@ lemma deferralImageFlag_eq_one_iff
     deferralImageFlag f m = 1 ↔ ∃ k < m, f k = m := by
   rw [deferralImageFlag]
   by_cases hzero : deferralMatchCount f m = 0
-  · rw [if_pos hzero]
+  · rw [ite_eq_left hzero]
     constructor
     · intro h
       omega
     · intro hex
       have hpos := (deferralMatchCount_pos_iff f m).2 hex
       omega
-  · rw [if_neg hzero]
+  · rw [ite_eq_right hzero]
     constructor
     · intro _
       exact (deferralMatchCount_pos_iff f m).1 (Nat.pos_of_ne_zero hzero)
@@ -398,10 +398,10 @@ noncomputable def AffineCombination.PolySequence.add
       (t := fun z : ℕ => z.unpair.2 + 1 - hA.termCount z.unpair.1)
       htestR).of_eq (fun z ↦ by
       by_cases hjlt : z.unpair.2 < hA.termCount z.unpair.1
-      · rw [if_pos (by omega : (z.unpair.2 + 1) - hA.termCount z.unpair.1 = 0),
-          if_pos hjlt]
-      · rw [if_neg (by omega : ¬ ((z.unpair.2 + 1) - hA.termCount z.unpair.1 = 0)),
-          if_neg hjlt])
+      · rw [ite_eq_left (by omega : (z.unpair.2 + 1) - hA.termCount z.unpair.1 = 0),
+          ite_eq_left hjlt]
+      · rw [ite_eq_right (by omega : ¬ ((z.unpair.2 + 1) - hA.termCount z.unpair.1 = 0)),
+          ite_eq_right hjlt])
   exact {
     termCount := fun n ↦ hA.termCount n + hB.termCount n
     coefficient := fun z ↦ if z.unpair.2 < hA.termCount z.unpair.1 then
@@ -416,8 +416,8 @@ noncomputable def AffineCombination.PolySequence.add
     const_poly := MachineSpliceStream.serialize_add hA.const_poly hB.const_poly
     coefficient_poly := MachineSpliceStream.of_eq hcoeff (fun z ↦ by
       by_cases hjlt : z.unpair.2 < hA.termCount z.unpair.1
-      · rw [if_pos hjlt, if_pos (by omega)]
-      · rw [if_neg hjlt, if_neg (by omega)])
+      · rw [ite_eq_left hjlt, ite_eq_left (by omega)]
+      · rw [ite_eq_right hjlt, ite_eq_right (by omega)])
     sentence_poly := hsentence
     terms_eq := by
       intro n
@@ -440,9 +440,9 @@ noncomputable def AffineCombination.PolySequence.add
       intro n j hjbound
       simp only [Nat.unpair_pair]
       by_cases hjlt : j < hA.termCount n
-      · rw [if_pos hjlt]
+      · rw [ite_eq_left hjlt]
         exact hA.coefficient_rank n j hjlt
-      · rw [if_neg hjlt]
+      · rw [ite_eq_right hjlt]
         exact hB.coefficient_rank n (j - hA.termCount n) (by omega)
     const_closed := by
       intro n ρ V
@@ -452,9 +452,9 @@ noncomputable def AffineCombination.PolySequence.add
     coefficient_closed := by
       intro z ρ V
       by_cases hjlt : z.unpair.2 < hA.termCount z.unpair.1
-      · rw [if_pos hjlt]
+      · rw [ite_eq_left hjlt]
         exact hA.coefficient_closed z ρ V
-      · rw [if_neg hjlt]
+      · rw [ite_eq_right hjlt]
         exact hB.coefficient_closed _ ρ V
   }
 
@@ -785,8 +785,8 @@ noncomputable def PolySequence.blockSum
         htest) (fun z ↦ ?_)
       by_cases hlt : z.unpair.2 % width z.unpair.1 <
           hB.termCount (Nat.pair z.unpair.1 (z.unpair.2 / width z.unpair.1))
-      · rw [if_pos hlt, if_pos (show _ = 0 from by omega)]
-      · rw [if_neg hlt, if_neg (show ¬ _ = 0 from by omega)]
+      · rw [ite_eq_left hlt, ite_eq_left (show _ = 0 from by omega)]
+      · rw [ite_eq_right hlt, ite_eq_right (show ¬ _ = 0 from by omega)]
     exact MachineSpliceStream.serialize_mul
       (hcoeff.comp (f := fun z : ℕ => Nat.pair z.unpair.1
         (z.unpair.2 / width z.unpair.1)) (UnaryRuler.of_polyFueled hkey)) hif
@@ -801,8 +801,8 @@ noncomputable def PolySequence.blockSum
       htest).of_eq (fun z ↦ ?_)
     by_cases hlt : z.unpair.2 % width z.unpair.1 <
         hB.termCount (Nat.pair z.unpair.1 (z.unpair.2 / width z.unpair.1))
-    · rw [if_pos (show _ = 0 from by omega), if_pos hlt]
-    · rw [if_neg (show ¬ _ = 0 from by omega), if_neg hlt]
+    · rw [ite_eq_left (show _ = 0 from by omega), ite_eq_left hlt]
+    · rw [ite_eq_right (show ¬ _ = 0 from by omega), ite_eq_right hlt]
   · intro m
     rw [AffineCombination.blockSum,
       flatMap_range_map_range (cnt m) (width m) (hwidthPos m)]
@@ -818,9 +818,9 @@ noncomputable def PolySequence.blockSum
     simp only [Nat.unpair_pair, EF.rank]
     refine Nat.max_le.mpr ⟨hcoeffRank m (j / width m), ?_⟩
     by_cases hlt : j % width m < hB.termCount (Nat.pair m (j / width m))
-    · rw [if_pos hlt]
+    · rw [ite_eq_left hlt]
       exact hBcoeffRank m (j / width m) (j % width m) hlt
-    · rw [if_neg hlt]
+    · rw [ite_eq_right hlt]
       simp [EF.rank]
   · intro m ρ V
     rw [AffineCombination.blockSum]
@@ -831,8 +831,8 @@ noncomputable def PolySequence.blockSum
     rw [hcoeffClosed _ ρ V]
     by_cases hlt : z.unpair.2 % width z.unpair.1 <
         hB.termCount (Nat.pair z.unpair.1 (z.unpair.2 / width z.unpair.1))
-    · rw [if_pos hlt, hB.coefficient_closed _ ρ V]
-    · rw [if_neg hlt]
+    · rw [ite_eq_left hlt, hB.coefficient_closed _ ρ V]
+    · rw [ite_eq_right hlt]
       simp [EF.denoteWith]
 
 end AffineCombination
@@ -1235,8 +1235,8 @@ noncomputable def LUV.crossPrecisionAffine_polySequence
         (UnaryRuler.of_polyFueled htest')) ?_
     intro z
     by_cases hlt : z.unpair.2 < low z.unpair.1
-    · rw [if_pos hlt, if_pos (by omega)]
-    · rw [if_neg hlt, if_neg (by omega)]
+    · rw [ite_eq_left hlt, ite_eq_left (by omega)]
+    · rw [ite_eq_right hlt, ite_eq_right (by omega)]
   have hsentence : MachineSentenceCodes (fun z ↦
       if z.unpair.2 < low z.unpair.1 then
         (X z.unpair.1).gt ((z.unpair.2 : ℚ) / (low z.unpair.1 : ℚ))
@@ -1255,10 +1255,10 @@ noncomputable def LUV.crossPrecisionAffine_polySequence
       (UnaryRuler.of_polyFueled htest')).of_eq (fun z ↦ ?_)
     simp only [Nat.unpair_pair]
     by_cases hlt : z.unpair.2 < low z.unpair.1
-    · rw [if_pos (show z.unpair.2 + 1 - low z.unpair.1 = 0 from by omega),
-        if_pos hlt]
-    · rw [if_neg (show ¬ z.unpair.2 + 1 - low z.unpair.1 = 0 from by omega),
-        if_neg hlt]
+    · rw [ite_eq_left (show z.unpair.2 + 1 - low z.unpair.1 = 0 from by omega),
+        ite_eq_left hlt]
+    · rw [ite_eq_right (show ¬ z.unpair.2 + 1 - low z.unpair.1 = 0 from by omega),
+        ite_eq_right hlt]
   exact {
     termCount := fun n ↦ low n + high n
     coefficient := fun z ↦ if z.unpair.2 < low z.unpair.1 then

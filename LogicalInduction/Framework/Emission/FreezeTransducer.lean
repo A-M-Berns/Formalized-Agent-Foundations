@@ -631,12 +631,12 @@ lemma strategyOfTokens_freezeTokenRunOn_trades
       by_cases hvalid : ∀ trade ∈ trades, trade.1.rank ≤ n
       · have hfrozenValid := hrank.mpr hvalid
         unfold validatedTrades
-        rw [if_pos hfrozenValid, if_pos hvalid]
+        rw [ite_eq_left hfrozenValid, ite_eq_left hvalid]
       · have hfrozenInvalid : ¬∀ trade ∈ trades.map (fun trade =>
             (trade.1.freezeOn quote sel, trade.2)), trade.1.rank ≤ n :=
           fun h => hvalid (hrank.mp h)
         unfold validatedTrades
-        rw [if_neg hfrozenInvalid, if_neg hvalid]
+        rw [ite_eq_right hfrozenInvalid, ite_eq_right hvalid]
         rfl
 
 /-! ### The day-cutoff instance of the token model

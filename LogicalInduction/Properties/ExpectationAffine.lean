@@ -246,15 +246,15 @@ noncomputable def indicatorAffineSeq_polySequence (Y : ℕ → LUV) (φ : ℕ �
         intro z
         simp only [Nat.unpair_pair]
         by_cases hj : z.unpair.2 < z.unpair.1 + 1
-        · rw [if_pos hj, if_neg (by omega)]
-        · rw [if_neg hj, if_pos (by omega)])
+        · rw [ite_eq_left hj, ite_eq_right (by omega)]
+        · rw [ite_eq_right hj, ite_eq_left (by omega)])
     sentence_poly :=
       (MachineSentenceCodes.ifZero hsen hthr (UnaryRuler.of_polyFueled htest)).of_eq (by
       intro z
       simp only [Nat.unpair_pair]
       by_cases hj : z.unpair.2 < z.unpair.1 + 1
-      · rw [if_pos hj, if_neg (by omega)]
-      · rw [if_neg hj, if_pos (by omega)])
+      · rw [ite_eq_left hj, ite_eq_right (by omega)]
+      · rw [ite_eq_right hj, ite_eq_left (by omega)])
     terms_eq := by
       intro n
       simp only [indicatorAffineSeq, indicatorAffine]
@@ -319,11 +319,11 @@ noncomputable def linearityAffine_polySequence (a b : ℚ) (X Y Z : LUV)
     intro z
     simp only [Nat.unpair_pair]
     by_cases hx : z.unpair.2 < z.unpair.1
-    · rw [if_pos hx, if_pos (by omega)]
-    · rw [if_neg hx, if_neg (by omega)]
+    · rw [ite_eq_left hx, ite_eq_left (by omega)]
+    · rw [ite_eq_right hx, ite_eq_right (by omega)]
       by_cases hy : z.unpair.2 < z.unpair.1 * 2
-      · rw [if_pos hy, if_pos (by omega)]
-      · rw [if_neg hy, if_neg (by omega)]
+      · rw [ite_eq_left hy, ite_eq_left (by omega)]
+      · rw [ite_eq_right hy, ite_eq_right (by omega)]
   have hsX := hX
   have hsY := MachineSentenceCodes.comp hY (UnaryRuler.of_polyFueled hidxY)
   have hsZ := MachineSentenceCodes.comp hZ (UnaryRuler.of_polyFueled hidxZ)
@@ -339,11 +339,11 @@ noncomputable def linearityAffine_polySequence (a b : ℚ) (X Y Z : LUV)
       (UnaryRuler.of_polyFueled htestX)).of_eq (fun z => ?_)
     simp only [Nat.unpair_pair]
     by_cases hx : z.unpair.2 < z.unpair.1
-    · rw [if_pos (show z.unpair.2 + 1 - z.unpair.1 = 0 from by omega), if_pos hx]
-    · rw [if_neg (show ¬ z.unpair.2 + 1 - z.unpair.1 = 0 from by omega), if_neg hx]
+    · rw [ite_eq_left (show z.unpair.2 + 1 - z.unpair.1 = 0 from by omega), ite_eq_left hx]
+    · rw [ite_eq_right (show ¬ z.unpair.2 + 1 - z.unpair.1 = 0 from by omega), ite_eq_right hx]
       by_cases hy : z.unpair.2 < z.unpair.1 * 2
-      · rw [if_pos (show z.unpair.2 + 1 - z.unpair.1 * 2 = 0 from by omega), if_pos hy]
-      · rw [if_neg (show ¬ z.unpair.2 + 1 - z.unpair.1 * 2 = 0 from by omega), if_neg hy]
+      · rw [ite_eq_left (show z.unpair.2 + 1 - z.unpair.1 * 2 = 0 from by omega), ite_eq_left hy]
+      · rw [ite_eq_right (show ¬ z.unpair.2 + 1 - z.unpair.1 * 2 = 0 from by omega), ite_eq_right hy]
   exact {
     termCount := fun n => n * 3
     coefficient := fun z =>
@@ -410,7 +410,7 @@ lemma linearityAffine_terms (a b : ℚ) (X Y Z : LUV) (k : ℕ) :
       have h1 : ¬k + j < k := by omega
       have h2 : k + j < k + k := by omega
       simp only [Function.comp_apply]
-      rw [if_neg h1, if_pos h2]
+      rw [ite_eq_right h1, ite_eq_left h2]
       simp
     · rw [List.map_map, List.map_map]
       apply List.map_congr_left
@@ -419,7 +419,7 @@ lemma linearityAffine_terms (a b : ℚ) (X Y Z : LUV) (k : ℕ) :
       have h1 : ¬k + (k + j) < k := by omega
       have h2 : ¬k + (k + j) < k + k := by omega
       simp only [Function.comp_apply]
-      rw [if_neg h1, if_neg h2]
+      rw [ite_eq_right h1, ite_eq_right h2]
       simp
 
 lemma linearityAffine_price (a b : ℚ) (X Y Z : LUV) (P : History) (n : ℕ) :

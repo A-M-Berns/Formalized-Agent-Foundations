@@ -139,8 +139,8 @@ lemma unDigAux_spec : ∀ (k : ℕ) (u : List Bool), u.length ≤ k →
   | (k + 1), u, h => by
       rw [unDigAux]
       by_cases hu : u.length = k + 1
-      · rw [if_pos hu, hu]
-      · rw [if_neg hu]
+      · rw [ite_eq_left hu, hu]
+      · rw [ite_eq_right hu]
         exact unDigAux_spec k u (by omega)
 
 lemma unDigAux_mem_FP : ∀ (k : ℕ) {A : List Bool → List Bool}, A ∈ FP →
@@ -178,10 +178,10 @@ appends the low digit to `out`.
 Surplus steps are harmless: once both operands are exhausted the step appends the carry
 and then a zero digit forever, and trailing zero digits do not change `digitVal`. -/
 
-private def aCar (v : List Bool) : List Bool := fstBlock (fstBlock v)
-private def aOut (v : List Bool) : List Bool := sndBlock (fstBlock v)
-private def aA (v : List Bool) : List Bool := fstBlock (sndBlock v)
-private def aB (v : List Bool) : List Bool := sndBlock (sndBlock v)
+private def aCar (v : List Bool) : List Bool := pairFst (pairFst v)
+private def aOut (v : List Bool) : List Bool := pairSnd (pairFst v)
+private def aA (v : List Bool) : List Bool := pairFst (pairSnd v)
+private def aB (v : List Bool) : List Bool := pairSnd (pairSnd v)
 
 private def three : List Bool := [false, false, false]
 private def four : List Bool := [false, false, false, false]
@@ -279,11 +279,11 @@ private lemma addStep_addCfg {c : ℕ} (hc : c ≤ 1) (out as bs : List ℕ)
   have hlow : unDig (aLow (addCfg c out as bs)) = digitBits (s % 4) := by
     rw [aLow, hsumlen, hsum]
     by_cases h : s ≤ 3
-    · rw [if_pos h, unDig_spec (by simp; omega)]
+    · rw [ite_eq_left h, unDig_spec (by simp; omega)]
       congr 1
       simp
       omega
-    · rw [if_neg h, unDig_spec (by simp; omega)]
+    · rw [ite_eq_right h, unDig_spec (by simp; omega)]
       congr 1
       simp
       omega
@@ -291,8 +291,8 @@ private lemma addStep_addCfg {c : ℕ} (hc : c ≤ 1) (out as bs : List ℕ)
       = List.replicate (s / 4) true := by
     rw [hsumlen]
     by_cases h : s ≤ 3
-    · rw [if_pos h, show s / 4 = 0 from by omega]; rfl
-    · rw [if_neg h, show s / 4 = 1 from by omega]; rfl
+    · rw [ite_eq_left h, show s / 4 = 0 from by omega]; rfl
+    · rw [ite_eq_right h, show s / 4 = 1 from by omega]; rfl
   rw [addStep, hflag, hOO, hlow, hAA, hBB, drop_digitsToBits, drop_digitsToBits, addCfg,
     digitsToBits_append]
   rfl
@@ -369,7 +369,7 @@ margin; the surplus steps append zero digits.  The width bound has to hold on *e
 input, not just on well-formed configurations, so it is carried by a shape invariant. -/
 
 private def addInit (z : List Bool) : List Bool :=
-  pair (pair [] []) (pair ((fstBlock z).take z.length) ((sndBlock z).take z.length))
+  pair (pair [] []) (pair ((pairFst z).take z.length) ((pairSnd z).take z.length))
 
 private def addRuler (z : List Bool) : List Bool := z ++ [false]
 
@@ -394,11 +394,11 @@ private lemma AddBnd.step {m k : ℕ} {v : List Bool} (h : AddBnd m k v) :
   obtain ⟨c, o, a, b, rfl, hc, ho, ha, hb⟩ := h
   refine ⟨_, _, _, _, rfl, ?_, ?_, ?_, ?_⟩
   · split <;> simp
-  · simp only [aOut, fstBlock_pair, sndBlock_pair, List.length_append, unDig_length]
+  · simp only [aOut, pairFst_pair, pairSnd_pair, List.length_append, unDig_length]
     omega
-  · simp only [aA, fstBlock_pair, sndBlock_pair, List.length_drop]
+  · simp only [aA, pairFst_pair, pairSnd_pair, List.length_drop]
     omega
-  · simp only [aB, sndBlock_pair, List.length_drop]
+  · simp only [aB, pairSnd_pair, List.length_drop]
     omega
 
 private lemma AddBnd.iterate {k : ℕ} : ∀ (n : ℕ) {m : ℕ} {v : List Bool}, AddBnd m k v →
@@ -466,7 +466,7 @@ private lemma addW_core {as bs : List ℕ} (has : ∀ d ∈ as, d < 4) (hbs : �
   have hzlen : (pair (digitsToBits as) (digitsToBits bs)).length
       = 2 * (digitsToBits as).length + 2 + (digitsToBits bs).length := pair_length _ _
   have hinit : addInit (pair (digitsToBits as) (digitsToBits bs)) = addCfg 0 [] as bs := by
-    rw [addInit, fstBlock_pair, sndBlock_pair,
+    rw [addInit, pairFst_pair, pairSnd_pair,
       List.take_of_length_le (by omega), List.take_of_length_le (by omega), addCfg]
     simp
   have hrul : (addRuler (pair (digitsToBits as) (digitsToBits bs))).length
@@ -553,11 +553,11 @@ private lemma AddBnd.stepSub {m k : ℕ} {v : List Bool} (h : AddBnd m k v) :
   obtain ⟨c, o, a, b, rfl, hc, ho, ha, hb⟩ := h
   refine ⟨_, _, _, _, rfl, ?_, ?_, ?_, ?_⟩
   · rw [sBor]; split <;> simp
-  · simp only [aOut, fstBlock_pair, sndBlock_pair, List.length_append, unDig_length]
+  · simp only [aOut, pairFst_pair, pairSnd_pair, List.length_append, unDig_length]
     omega
-  · simp only [aA, fstBlock_pair, sndBlock_pair, List.length_drop]
+  · simp only [aA, pairFst_pair, pairSnd_pair, List.length_drop]
     omega
-  · simp only [aB, sndBlock_pair, List.length_drop]
+  · simp only [aB, pairSnd_pair, List.length_drop]
     omega
 
 private lemma AddBnd.iterateSub {k : ℕ} : ∀ (n : ℕ) {m : ℕ} {v : List Bool}, AddBnd m k v →
@@ -588,7 +588,7 @@ def subW (z : List Bool) : List Bool :=
 
 /-- The comparison `wordVal a ≤ wordVal b`, as `[true]` for yes and `[]` for no. -/
 def leW (z : List Bool) : List Bool :=
-  selectHead (emptyFlag (aCar (subCore (pair (sndBlock z) (fstBlock z))))) [true] []
+  selectHead (emptyFlag (aCar (subCore (pair (pairSnd z) (pairFst z))))) [true] []
 
 /-- The digit word for `1`. -/
 def oneW : List Bool := digitsToBits [1]
@@ -604,10 +604,10 @@ lemma subW_mem_FP : subW ∈ FP := by
   exact selectHeadFn_mem_FP (emptyFlag_mem_FP hc) ho (constFn_mem_FP [])
 
 lemma leW_mem_FP : leW ∈ FP := by
-  have hs : (fun z => subCore (pair (sndBlock z) (fstBlock z))) ∈ FP := by
+  have hs : (fun z => subCore (pair (pairSnd z) (pairFst z))) ∈ FP := by
     simpa [Function.comp_def] using
       mem_FP_comp (pairFn_mem_FP sndBlock_mem_FP fstBlock_mem_FP) subCore_mem_FP
-  have hc : (fun z => aCar (subCore (pair (sndBlock z) (fstBlock z)))) ∈ FP := by
+  have hc : (fun z => aCar (subCore (pair (pairSnd z) (pairFst z)))) ∈ FP := by
     simpa [Function.comp_def] using mem_FP_comp hs aCar_mem_FP
   exact selectHeadFn_mem_FP (emptyFlag_mem_FP hc) (constFn_mem_FP [true]) (constFn_mem_FP [])
 
@@ -646,9 +646,9 @@ private lemma subStep_addCfg {c : ℕ} (hc : c ≤ 1) (out as bs : List ℕ)
   by_cases h : t ≤ da
   · refine ⟨da - t, 0, by omega, by omega, by omega, ?_⟩
     have hbor : sBor (addCfg c out as bs) = List.replicate 0 true := by
-      rw [sBor, hsublen, hdUlen, if_pos h]; rfl
+      rw [sBor, hsublen, hdUlen, ite_eq_left h]; rfl
     have hdif : unDig (sDif (addCfg c out as bs)) = digitBits (da - t) := by
-      rw [sDif, hsublen, hdUlen, if_pos h, hdU, List.drop_replicate,
+      rw [sDif, hsublen, hdUlen, ite_eq_left h, hdU, List.drop_replicate,
         unDig_spec (by simp; omega)]
       simp
     rw [subStep, hbor, hOO, hdif, hAA, hBB, drop_digitsToBits, drop_digitsToBits, addCfg,
@@ -656,11 +656,11 @@ private lemma subStep_addCfg {c : ℕ} (hc : c ≤ 1) (out as bs : List ℕ)
     rfl
   · refine ⟨da + 4 - t, 1, by omega, by omega, by omega, ?_⟩
     have hbor : sBor (addCfg c out as bs) = List.replicate 1 true := by
-      rw [sBor, hsublen, hdUlen, if_neg h]; rfl
+      rw [sBor, hsublen, hdUlen, ite_eq_right h]; rfl
     have hrep : digU (aA (addCfg c out as bs)) ++ rep4 = List.replicate (da + 4) true := by
       rw [hdU, rep4, ← List.replicate_add]
     have hdif : unDig (sDif (addCfg c out as bs)) = digitBits (da + 4 - t) := by
-      rw [sDif, hsublen, hdUlen, if_neg h, hrep, List.drop_replicate,
+      rw [sDif, hsublen, hdUlen, ite_eq_right h, hrep, List.drop_replicate,
         unDig_spec (by simp; omega)]
       simp
     rw [subStep, hbor, hOO, hdif, hAA, hBB, drop_digitsToBits, drop_digitsToBits, addCfg,
@@ -748,7 +748,7 @@ private lemma subCore_core {as bs : List ℕ} (has : ∀ d ∈ as, d < 4) (hbs :
   have hzlen : (pair (digitsToBits as) (digitsToBits bs)).length
       = 2 * (digitsToBits as).length + 2 + (digitsToBits bs).length := pair_length _ _
   have hinit : addInit (pair (digitsToBits as) (digitsToBits bs)) = addCfg 0 [] as bs := by
-    rw [addInit, fstBlock_pair, sndBlock_pair,
+    rw [addInit, pairFst_pair, pairSnd_pair,
       List.take_of_length_le (by omega), List.take_of_length_le (by omega), addCfg]
     simp
   have hrul : (addRuler (pair (digitsToBits as) (digitsToBits bs))).length
@@ -829,13 +829,13 @@ lemma leW_spec {a b : List Bool} (ha : IsDigitWord a) (hb : IsDigitWord b) :
   have hiff := borrow_eq_zero_iff (n := res.length) hbfin rfl hval hlt
   have hrw : leW (pair (digitsToBits as) (digitsToBits bs))
       = selectHead (emptyFlag (List.replicate bfin true)) [true] [] := by
-    rw [leW, sndBlock_pair, fstBlock_pair, hcore, aCar_addCfg]
+    rw [leW, pairSnd_pair, pairFst_pair, hcore, aCar_addCfg]
   rw [hrw, wordVal_digitsToBits has, wordVal_digitsToBits hbs]
   rcases Nat.eq_zero_or_pos bfin with h0 | hpos
-  · rw [h0, if_pos (hiff.mp h0)]
+  · rw [h0, ite_eq_left (hiff.mp h0)]
     exact selectHead_emptyFlag_nil _ _
   · have hb1 : bfin = 1 := by omega
-    rw [hb1, if_neg (fun h => by have := hiff.mpr h; omega)]
+    rw [hb1, ite_eq_right (fun h => by have := hiff.mpr h; omega)]
     exact selectHead_emptyFlag_cons _ _ _ _
 
 /-- **The predecessor is correct.**
@@ -1084,11 +1084,11 @@ private lemma SqBnd.branch {w k q : ℕ} {v : List Bool} (h : SqBnd w k v) :
     SqBnd w k (qBranch q v) := by
   obtain ⟨s, r, rest, W, rfl, hs, hr, hrest, hW⟩ := h
   refine ⟨_, _, _, _, rfl, ?_, ?_, ?_, by simpa [aB] using hW⟩
-  · simp only [aB, sndBlock_pair, List.length_take]
+  · simp only [aB, pairSnd_pair, List.length_take]
     omega
-  · simp only [aB, sndBlock_pair, List.length_take]
+  · simp only [aB, pairSnd_pair, List.length_take]
     omega
-  · simp only [qRest, aA, fstBlock_pair, sndBlock_pair, List.length_take, List.length_drop]
+  · simp only [qRest, aA, pairFst_pair, pairSnd_pair, List.length_take, List.length_drop]
     omega
 
 private lemma SqBnd.step {w k : ℕ} {v : List Bool} (h : SqBnd w k v) :
@@ -1241,9 +1241,9 @@ lemma selectHead_gtFlagW {x y : List Bool} (hx : IsDigitWord x) (hy : IsDigitWor
     selectHead (gtFlagW x y) X Y = if wordVal x ≤ wordVal y then Y else X := by
   rw [gtFlagW, leW_spec hx hy]
   by_cases h : wordVal x ≤ wordVal y
-  · rw [if_pos h, if_pos h]
+  · rw [ite_eq_left h, ite_eq_left h]
     exact selectHead_emptyFlag_cons true [] X Y
-  · rw [if_neg h, if_neg h]
+  · rw [ite_eq_right h, ite_eq_right h]
     exact selectHead_emptyFlag_nil X Y
 
 /-- Cutting a digit word at the ruler's width, when its value fits. -/
@@ -1469,25 +1469,25 @@ lemma sqrtRemW_spec {w : List Bool} (hw : IsDigitWord w) :
 `Nat.unpair` is a case split on the square root and the remainder, both of which
 `sqrtRemW` already carries; no squaring is needed. -/
 
-private lemma sqrtFst_mem_FP : (fun w => fstBlock (sqrtRemW w)) ∈ FP := by
+private lemma sqrtFst_mem_FP : (fun w => pairFst (sqrtRemW w)) ∈ FP := by
   simpa [Function.comp_def] using mem_FP_comp sqrtRemW_mem_FP fstBlock_mem_FP
 
-private lemma sqrtSnd_mem_FP : (fun w => sndBlock (sqrtRemW w)) ∈ FP := by
+private lemma sqrtSnd_mem_FP : (fun w => pairSnd (sqrtRemW w)) ∈ FP := by
   simpa [Function.comp_def] using mem_FP_comp sqrtRemW_mem_FP sndBlock_mem_FP
 
 /-- The first component of `Nat.unpair`, on a digit word. -/
 def unpairFstW (w : List Bool) : List Bool :=
-  selectHead (gtFlagW (fstBlock (sqrtRemW w)) (sndBlock (sqrtRemW w)))
-    (sndBlock (sqrtRemW w)) (fstBlock (sqrtRemW w))
+  selectHead (gtFlagW (pairFst (sqrtRemW w)) (pairSnd (sqrtRemW w)))
+    (pairSnd (sqrtRemW w)) (pairFst (sqrtRemW w))
 
 /-- The second component of `Nat.unpair`, on a digit word. -/
 def unpairSndW (w : List Bool) : List Bool :=
-  selectHead (gtFlagW (fstBlock (sqrtRemW w)) (sndBlock (sqrtRemW w)))
-    (fstBlock (sqrtRemW w))
-    (subW (pair (sndBlock (sqrtRemW w)) (fstBlock (sqrtRemW w))))
+  selectHead (gtFlagW (pairFst (sqrtRemW w)) (pairSnd (sqrtRemW w)))
+    (pairFst (sqrtRemW w))
+    (subW (pair (pairSnd (sqrtRemW w)) (pairFst (sqrtRemW w))))
 
 private lemma gtFlagSq_mem_FP :
-    (fun w => gtFlagW (fstBlock (sqrtRemW w)) (sndBlock (sqrtRemW w))) ∈ FP :=
+    (fun w => gtFlagW (pairFst (sqrtRemW w)) (pairSnd (sqrtRemW w))) ∈ FP :=
   emptyFlag_mem_FP (leWFn_mem_FP sqrtFst_mem_FP sqrtSnd_mem_FP)
 
 lemma unpairFstW_mem_FP : unpairFstW ∈ FP :=
@@ -1520,10 +1520,10 @@ lemma unpairW_spec {w : List Bool} (hw : IsDigitWord w) :
   have hSv' : wordVal S = s := hSv
   have hRv' : wordVal R = n - s * s := by rw [hRv, sq]
   have hFst : unpairFstW w = if s ≤ n - s * s then S else R := by
-    rw [unpairFstW, hpair, fstBlock_pair, sndBlock_pair,
+    rw [unpairFstW, hpair, pairFst_pair, pairSnd_pair,
       selectHead_gtFlagW hSw hRw, hSv', hRv']
   have hSnd : unpairSndW w = if s ≤ n - s * s then subW (pair R S) else S := by
-    rw [unpairSndW, hpair, fstBlock_pair, sndBlock_pair,
+    rw [unpairSndW, hpair, pairFst_pair, pairSnd_pair,
       selectHead_gtFlagW hSw hRw, hSv', hRv']
   have hsub := subW_spec hRw hSw
   have hunpair : Nat.unpair n = if n - s * s < s then (n - s * s, s) else (s, n - s * s - s) := by
@@ -1535,15 +1535,15 @@ lemma unpairW_spec {w : List Bool} (hw : IsDigitWord w) :
     · exact hSw
   · rw [hFst, hunpair]
     by_cases h : s ≤ n - s * s
-    · rw [if_pos h, if_neg (by omega)]
+    · rw [ite_eq_left h, ite_eq_right (by omega)]
       exact hSv'
-    · rw [if_neg h, if_pos (by omega)]
+    · rw [ite_eq_right h, ite_eq_left (by omega)]
       exact hRv'
   · rw [hSnd, hunpair]
     by_cases h : s ≤ n - s * s
-    · rw [if_pos h, if_neg (by omega)]
+    · rw [ite_eq_left h, ite_eq_right (by omega)]
       rw [hsub.2, hRv', hSv']
-    · rw [if_neg h, if_pos (by omega)]
+    · rw [ite_eq_right h, ite_eq_left (by omega)]
       exact hSv'
 
 /-! ## Multiplication
@@ -1633,10 +1633,10 @@ private lemma SqBnd.branchMul {w k q : ℕ} {v : List Bool} (h : SqBnd w k v) :
     SqBnd w k (mBranch q v) := by
   obtain ⟨s, r, rest, W, rfl, hs, hr, hrest, hW⟩ := h
   refine ⟨_, _, _, _, rfl, ?_, ?_, ?_, by simpa [aB] using hW⟩
-  · simp only [aB, sndBlock_pair, List.length_take]
+  · simp only [aB, pairSnd_pair, List.length_take]
     omega
   · simpa [aOut] using hr
-  · simp only [qRest, aA, fstBlock_pair, sndBlock_pair, List.length_take, List.length_drop]
+  · simp only [qRest, aA, pairFst_pair, pairSnd_pair, List.length_take, List.length_drop]
     omega
 
 private lemma SqBnd.stepMul {w k : ℕ} {v : List Bool} (h : SqBnd w k v) :
@@ -1660,7 +1660,7 @@ private lemma SqBnd.iterateMul {w k : ℕ} : ∀ (n : ℕ) {v : List Bool}, SqBn
 /-! ### `mulW` -/
 
 private def mulInit (z : List Bool) : List Bool :=
-  pair (pair [] (fstBlock z)) (pair (sndBlock z) (fstBlock z ++ sndBlock z))
+  pair (pair [] (pairFst z)) (pair (pairSnd z) (pairFst z ++ pairSnd z))
 
 private def mulWidth (z : List Bool) : List Bool :=
   List.replicate ((addRuler z).length * (List.replicate 24 true).length) false
@@ -1676,7 +1676,7 @@ private lemma mulWidth_mem_FP : mulWidth ∈ FP :=
 well-formed input, and wide enough for the product, since `⟦a⟧·⟦b⟧ < 4 ^ (|a| + |b|)` in
 digits. -/
 private lemma mulInit_bnd (z : List Bool) : SqBnd (2 * z.length) z.length (mulInit z) := by
-  refine ⟨[], fstBlock z, sndBlock z, fstBlock z ++ sndBlock z, rfl, by simp, ?_, ?_, ?_⟩
+  refine ⟨[], pairFst z, pairSnd z, pairFst z ++ pairSnd z, rfl, by simp, ?_, ?_, ?_⟩
   · have := fstBlock_length_le z
     omega
   · exact sndBlock_length_le z
@@ -1847,7 +1847,7 @@ private lemma mulW_core {as bs : List ℕ} (has : ∀ d ∈ as, d < 4) (hbs : �
   have hinit : mulInit (pair (digitsToBits as) (digitsToBits bs))
       = pair (pair (digitsToBits ([] : List ℕ)) (digitsToBits as))
           (pair (digitsToBits bs) (digitsToBits as ++ digitsToBits bs)) := by
-    rw [mulInit, fstBlock_pair, sndBlock_pair]
+    rw [mulInit, pairFst_pair, pairSnd_pair]
     simp
   have hcap : digitVal ([] : List ℕ) * 4 ^ bs.length + digitVal bs * digitVal as
       < 4 ^ (as.length + bs.length) := by

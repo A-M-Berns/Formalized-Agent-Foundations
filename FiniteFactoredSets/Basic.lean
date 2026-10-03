@@ -234,11 +234,11 @@ theorem eq_of_part_eq {b₀ b₁ : Setoid S} (h₀ : b₀ ∈ F.B) (h₁ : b₁ 
         else Quotient.mk (b : Setoid S) t := fun b => congrFun (F.coord.apply_symm_apply _) b
   have hr0 : b₀ r u := by
     have := hcoord ⟨b₀, h₀⟩
-    rw [if_pos rfl] at this
+    rw [ite_eq_left rfl] at this
     exact Quotient.exact this
   have hr1 : b₁ r t := by
     have := hcoord ⟨b₁, h₁⟩
-    rw [if_neg (Ne.symm hne)] at this
+    rw [ite_eq_right (Ne.symm hne)] at this
     exact Quotient.exact this
   have hmem : r ∈ part b₀ s := h ▸ (mem_part.2 hr1 : r ∈ part b₁ t)
   exact hus (b₀.trans' (b₀.symm' hr0) (mem_part.1 hmem))
@@ -286,13 +286,13 @@ Proposition 4 itself is assembled in `chimera_spec`. -/
 lemma chimera_rel_of_mem {C : Set (Setoid S)} (s t : S) {b : Setoid S}
     (hb : b ∈ F.B) (hbC : b ∈ C) : b (F.chimera C s t) s := by
   have := F.coord_chimera C s t ⟨b, hb⟩
-  rw [if_pos hbC] at this
+  rw [ite_eq_left hbC] at this
   exact Quotient.exact this
 
 lemma chimera_rel_of_notMem {C : Set (Setoid S)} (s t : S) {b : Setoid S}
     (hb : b ∈ F.B) (hbC : b ∉ C) : b (F.chimera C s t) t := by
   have := F.coord_chimera C s t ⟨b, hb⟩
-  rw [if_neg hbC] at this
+  rw [ite_eq_right hbC] at this
   exact Quotient.exact this
 
 private lemma chimera_ext {x y : S} (h : ∀ b : F.B, F.coord x b = F.coord y b) : x = y :=

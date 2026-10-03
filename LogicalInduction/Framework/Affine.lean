@@ -471,14 +471,14 @@ This is the shape every fixed-width term-stream lookup in the affine syntax redu
 lemma getD_map_range_ite {α : Type*} (n : ℕ) (g : ℕ → α) (o : ℕ) (d : α) :
     ((List.range n).map g).getD o d = if o < n then g o else d := by
   by_cases ho : o < n
-  · rw [if_pos ho, List.getD_eq_getElem _ _ (by simpa using ho)]
+  · rw [ite_eq_left ho, List.getD_eq_getElem _ _ (by simpa using ho)]
     simp
-  · rw [if_neg ho, List.getD_eq_default _ _ (by simpa using Nat.le_of_not_lt ho)]
+  · rw [ite_eq_right ho, List.getD_eq_default _ _ (by simpa using Nat.le_of_not_lt ho)]
 
 /-- Reading a tabulated column below its length returns the tabulated value. -/
 lemma getD_map_range {α : Type*} (f : ℕ → α) (d : α) {k m : ℕ} (h : m < k) :
     ((List.range k).map f).getD m d = f m := by
-  rw [getD_map_range_ite, if_pos h]
+  rw [getD_map_range_ite, ite_eq_left h]
 
 /-- Every coefficient of member `n` mentions no price beyond day `n`. -/
 lemma PolySequence.terms_rank {As : ℕ → AffineCombination} (h : PolySequence As)

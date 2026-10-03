@@ -114,17 +114,17 @@ private lemma parseFormula_consumed_lt_23 :
       · simp [parseStructuredArithmeticFormula] at h
       rw [parseStructuredArithmeticFormula] at h
       by_cases h9 : t = 9
-      · rw [if_pos h9] at h
+      · rw [ite_eq_left h9] at h
         obtain ⟨-, rfl⟩ := Prod.mk.injEq .. ▸ Option.some.inj h
         exact ⟨[t], rfl, by simp [h9]⟩
-      rw [if_neg h9] at h
+      rw [ite_eq_right h9] at h
       by_cases h10 : t = 10
-      · rw [if_pos h10] at h
+      · rw [ite_eq_left h10] at h
         obtain ⟨-, rfl⟩ := Prod.mk.injEq .. ▸ Option.some.inj h
         exact ⟨[t], rfl, by simp [h10]⟩
-      rw [if_neg h10] at h
+      rw [ite_eq_right h10] at h
       by_cases hrel : t = 11 ∨ t = 12 ∨ t = 13 ∨ t = 14
-      · rw [if_pos hrel] at h
+      · rw [ite_eq_left hrel] at h
         rcases hp : parseStructuredArithmeticTerm fuel ts with _ | q <;> simp [hp] at h
         rcases hq : parseStructuredArithmeticTerm fuel q.2 with _ | r <;> simp [hq] at h
         obtain ⟨a, rfl, -⟩ := h
@@ -137,9 +137,9 @@ private lemma parseFormula_consumed_lt_23 :
         · rcases List.mem_append.mp hx' with hx₁ | hx₂
           · have := hw₁ x hx₁; omega
           · have := hw₂ x hx₂; omega
-      rw [if_neg hrel] at h
+      rw [ite_eq_right hrel] at h
       by_cases hbin : t = 15 ∨ t = 16
-      · rw [if_pos hbin] at h
+      · rw [ite_eq_left hbin] at h
         rcases hp : parseStructuredArithmeticFormula fuel ts with _ | q <;> simp [hp] at h
         rcases hq : parseStructuredArithmeticFormula fuel q.2 with _ | r <;> simp [hq] at h
         obtain ⟨a, rfl, -⟩ := h
@@ -152,9 +152,9 @@ private lemma parseFormula_consumed_lt_23 :
         · rcases List.mem_append.mp hx' with hx₁ | hx₂
           · exact hw₁ x hx₁
           · exact hw₂ x hx₂
-      rw [if_neg hbin] at h
+      rw [ite_eq_right hbin] at h
       by_cases hquant : t = 17 ∨ t = 18
-      · rw [if_pos hquant] at h
+      · rw [ite_eq_left hquant] at h
         rcases hp : parseStructuredArithmeticFormula fuel ts with _ | q <;> simp [hp] at h
         rcases h with ⟨-, hrest⟩
         subst rest
@@ -164,9 +164,9 @@ private lemma parseFormula_consumed_lt_23 :
         rcases List.mem_cons.mp hx with rfl | hx'
         · omega
         · exact hw₁ x hx'
-      rw [if_neg hquant] at h
+      rw [ite_eq_right hquant] at h
       by_cases h20 : t = 20
-      · rw [if_pos h20] at h
+      · rw [ite_eq_left h20] at h
         rcases hp : parseStructuredArithmeticFormula fuel ts with _ | q <;> simp [hp] at h
         rcases h with ⟨-, hrest⟩
         subst rest
@@ -176,9 +176,9 @@ private lemma parseFormula_consumed_lt_23 :
         rcases List.mem_cons.mp hx with rfl | hx'
         · omega
         · exact hw₁ x hx'
-      rw [if_neg h20] at h
+      rw [ite_eq_right h20] at h
       by_cases h21 : t = 21
-      · rw [if_pos h21] at h
+      · rw [ite_eq_left h21] at h
         rcases hp : parseStructuredArithmeticFormula fuel ts with _ | q <;> simp [hp] at h
         rcases hq : parseStructuredArithmeticFormula fuel q.2 with _ | r <;> simp [hq] at h
         obtain ⟨a, rfl, -⟩ := h
@@ -191,9 +191,9 @@ private lemma parseFormula_consumed_lt_23 :
         · rcases List.mem_append.mp hx' with hx₁ | hx₂
           · exact hw₁ x hx₁
           · exact hw₂ x hx₂
-      rw [if_neg h21] at h
+      rw [ite_eq_right h21] at h
       by_cases h22 : t = 22
-      · rw [if_pos h22] at h
+      · rw [ite_eq_left h22] at h
         rcases hp : parseStructuredArithmeticFormula fuel ts with _ | q <;> simp [hp] at h
         rcases hq : parseStructuredArithmeticFormula fuel q.2 with _ | r <;> simp [hq] at h
         obtain ⟨a, rfl, -⟩ := h
@@ -206,7 +206,7 @@ private lemma parseFormula_consumed_lt_23 :
         · rcases List.mem_append.mp hx' with hx₁ | hx₂
           · exact hw₁ x hx₁
           · exact hw₂ x hx₂
-      rw [if_neg h22] at h
+      rw [ite_eq_right h22] at h
       exact absurd h (by simp)
 
 lemma payload_tokens_lt_23 {q : List ℕ} {fc : ℕ}
@@ -234,11 +234,11 @@ lemma rowStep_range (f : ℕ → ℕ) : ∀ (n d t : ℕ),
       rw [List.range_succ, List.map_append, rowStep_append, rowStep_range f n]
       simp only [List.map_cons, List.map_nil, rowStep, litGuard, decide_eq_true_eq]
       by_cases h1 : t < n
-      · rw [if_pos h1, if_pos (show t < n + 1 by omega)]
-      · rw [if_neg h1]
+      · rw [ite_eq_left h1, ite_eq_left (show t < n + 1 by omega)]
+      · rw [ite_eq_right h1]
         by_cases h2 : t = n
-        · rw [if_pos h2, if_pos (show t < n + 1 by omega), h2]
-        · rw [if_neg h2, if_neg (show ¬ t < n + 1 by omega)]
+        · rw [ite_eq_left h2, ite_eq_left (show t < n + 1 by omega), h2]
+        · rw [ite_eq_right h2, ite_eq_right (show ¬ t < n + 1 by omega)]
 
 /-! ## The state encoding
 
@@ -373,8 +373,8 @@ lemma step_rej (t : ℕ) : (segAuto H R p).step (segQ R p) t = segQ R p := by
   have hKe := segK_eq p
   have hrow : segRows H R p (segQ R p) = ⟨[], segQ R p⟩ := by
     unfold segRows
-    rw [if_neg (by omega), if_neg (by omega), if_neg (by omega), if_neg (by omega),
-      if_neg (by omega)]
+    rw [ite_eq_right (by omega), ite_eq_right (by omega), ite_eq_right (by omega), ite_eq_right (by omega),
+      ite_eq_right (by omega)]
   rw [segAuto_step_eq, hrow]
   simp [rowStep]
 
@@ -387,7 +387,7 @@ lemma step_pos_end (t : ℕ) : (segAuto H R p).step p.length t = segQ R p := by
   have hKe := segK_eq p
   have hrow : segRows H R p p.length = ⟨[], segQ R p⟩ := by
     unfold segRows
-    rw [if_pos (by omega), List.getElem?_eq_none (le_refl _)]
+    rw [ite_eq_left (by omega), List.getElem?_eq_none (le_refl _)]
   rw [segAuto_step_eq, hrow]
   simp [rowStep]
 
@@ -397,7 +397,7 @@ lemma step_pos_lit {k t₀ : ℕ} (hk : k < p.length) (hs : p[k] = StructPat.Pat
   have hKe := segK_eq p
   have hrow : segRows H R p k = ⟨[(litGuard t₀, k + 1)], segQ R p⟩ := by
     unfold segRows
-    rw [if_pos (by omega), List.getElem?_eq_getElem hk, hs]
+    rw [ite_eq_left (by omega), List.getElem?_eq_getElem hk, hs]
   rw [segAuto_step_eq, hrow]
   simp only [rowStep, litGuard, decide_eq_true_eq]
   split_ifs <;> omega
@@ -409,7 +409,7 @@ lemma step_pos_hole {k : ℕ} {χ : Sentence} (hk : k < p.length)
   have hKe := segK_eq p
   have hrow : segRows H R p k = ⟨[(H.guard χ, k + 1)], segQ R p⟩ := by
     unfold segRows
-    rw [if_pos (by omega), List.getElem?_eq_getElem hk, hs]
+    rw [ite_eq_left (by omega), List.getElem?_eq_getElem hk, hs]
   rw [segAuto_step_eq, hrow]
   simp only [rowStep]
   split_ifs <;> omega
@@ -421,7 +421,7 @@ lemma step_pos_struct {k pol fc : ℕ} (hk : k < p.length)
   have hKe := segK_eq p
   have hrow : segRows H R p k = ⟨[(litGuard 1, segK p + k)], segQ R p⟩ := by
     unfold segRows
-    rw [if_pos (by omega), List.getElem?_eq_getElem hk, hs]
+    rw [ite_eq_left (by omega), List.getElem?_eq_getElem hk, hs]
   rw [segAuto_step_eq, hrow]
   simp only [rowStep, litGuard, decide_eq_true_eq]
   split_ifs <;> omega
@@ -433,7 +433,7 @@ lemma step_s1 {k : ℕ} (hk : k < p.length) (t : ℕ) :
   have hrow : segRows H R p (segK p + k) = ⟨[(litGuard 0, 2 * segK p + k)], segQ R p⟩ := by
     unfold segRows
     have hsub : segK p + k - segK p = k := by omega
-    rw [if_neg (by omega), if_pos (by omega), hsub]
+    rw [ite_eq_right (by omega), ite_eq_left (by omega), hsub]
   rw [segAuto_step_eq, hrow]
   simp only [rowStep, litGuard, decide_eq_true_eq]
   split_ifs <;> omega
@@ -448,10 +448,10 @@ lemma step_s2 {k pol fc : ℕ} (hk : k < p.length)
   have hrow : segRows H R p (2 * segK p + k)
       = ⟨[(litGuard pol, 3 * segK p + k)], segQ R p⟩ := by
     unfold segRows
-    rw [if_neg (by omega), if_neg (by omega), if_pos (by omega), hsub,
+    rw [ite_eq_right (by omega), ite_eq_right (by omega), ite_eq_left (by omega), hsub,
       List.getElem?_eq_getElem hk, hs]
     dsimp only
-    rw [if_pos hpol]
+    rw [ite_eq_left hpol]
   rw [segAuto_step_eq, hrow]
   simp only [rowStep, litGuard, decide_eq_true_eq]
   split_ifs <;> omega
@@ -464,10 +464,10 @@ lemma step_s2_bad {k pol fc : ℕ} (hk : k < p.length)
   have hsub : 2 * segK p + k - 2 * segK p = k := by omega
   have hrow : segRows H R p (2 * segK p + k) = ⟨[], segQ R p⟩ := by
     unfold segRows
-    rw [if_neg (by omega), if_neg (by omega), if_pos (by omega), hsub,
+    rw [ite_eq_right (by omega), ite_eq_right (by omega), ite_eq_left (by omega), hsub,
       List.getElem?_eq_getElem hk, hs]
     dsimp only
-    rw [if_neg hpol]
+    rw [ite_eq_right hpol]
   rw [segAuto_step_eq, hrow]
   simp [rowStep]
 
@@ -484,19 +484,19 @@ lemma step_slen {k pol fc : ℕ} (hk : k < p.length)
       ⟨[(litGuard 1, 3 * segK p + k),
         (litGuard 0, 4 * segK p + (segM R p * k + (R fc).init))], segQ R p⟩ := by
     unfold segRows
-    rw [if_neg (by omega), if_neg (by omega), if_neg (by omega), if_pos (by omega), hsub,
+    rw [ite_eq_right (by omega), ite_eq_right (by omega), ite_eq_right (by omega), ite_eq_left (by omega), hsub,
       List.getElem?_eq_getElem hk, hs]
   have hinit : segM R p * k + (R fc).init < segM R p * segK p :=
     spay_lt (by omega) (by have := payQ_lt_segM R hk hs; have := (R fc).init_le; omega)
   rw [segAuto_step_eq, hrow]
   simp only [rowStep, litGuard, decide_eq_true_eq]
   by_cases h1 : t = 1
-  · rw [if_pos h1]; omega
-  · rw [if_neg h1]
+  · rw [ite_eq_left h1]; omega
+  · rw [ite_eq_right h1]
     by_cases h0 : t = 0
-    · rw [if_pos h0]
+    · rw [ite_eq_left h0]
       exact Nat.min_eq_left (Nat.le_of_lt (Nat.add_lt_add_left hinit (4 * segK p)))
-    · rw [if_neg h0]; omega
+    · rw [ite_eq_right h0]; omega
 
 lemma step_spay {k q pol fc : ℕ} (hk : k < p.length)
     (hs : p[k] = StructPat.PatSeg.struct pol fc) (hq : q ≤ (R fc).Q) (t : ℕ) :
@@ -521,25 +521,25 @@ lemma step_spay {k q pol fc : ℕ} (hk : k < p.length)
             if t = 19 then (if (R fc).accept q = true then k + 1 else segQ R p)
             else 4 * segK p + (segM R p * k + (R fc).step q t))), segQ R p⟩ := by
     unfold segRows
-    rw [if_neg (by omega), if_neg (by omega), if_neg (by omega), if_neg (by omega),
-      if_pos (show 4 * segK p + (segM R p * k + q) < segQ R p from
+    rw [ite_eq_right (by omega), ite_eq_right (by omega), ite_eq_right (by omega), ite_eq_right (by omega),
+      ite_eq_left (show 4 * segK p + (segM R p * k + q) < segQ R p from
         Nat.add_lt_add_left hlt (4 * segK p)), hsub, hdiv, hmod,
       List.getElem?_eq_getElem hk, hs]
   rw [segAuto_step_eq, hrow]
   simp only [rowStep_range]
   by_cases h23 : t < 23
-  · rw [if_pos h23]
+  · rw [ite_eq_left h23]
     by_cases h19 : t = 19
-    · rw [if_pos h19]
+    · rw [ite_eq_left h19]
       by_cases ha : (R fc).accept q = true
-      · rw [if_pos ha]; omega
-      · rw [if_neg ha]; omega
-    · rw [if_neg h19]
+      · rw [ite_eq_left ha]; omega
+      · rw [ite_eq_right ha]; omega
+    · rw [ite_eq_right h19]
       have hstep : (R fc).step q t ≤ (R fc).Q := (R fc).step_le q t hq
       have hlt' : segM R p * k + (R fc).step q t < segM R p * segK p :=
         spay_lt (by omega) (by have := payQ_lt_segM R hk hs; omega)
       exact Nat.min_eq_left (Nat.le_of_lt (Nat.add_lt_add_left hlt' (4 * segK p)))
-  · rw [if_neg h23]; omega
+  · rw [ite_eq_right h23]; omega
 
 /-! ### Non-accepting states
 
@@ -591,12 +591,12 @@ lemma foldl_spay {k pol fc : ℕ} (hk : k < p.length)
   | (t :: b), q, hq => by
       rw [List.foldl_cons, step_spay hk hs hq t]
       by_cases h23 : t < 23
-      · rw [if_pos h23]
+      · rw [ite_eq_left h23]
         by_cases h19 : t = 19
         · subst h19
-          rw [if_pos rfl]
+          rw [ite_eq_left rfl]
           by_cases ha : (R fc).accept q = true
-          · rw [if_pos ha]
+          · rw [ite_eq_left ha]
             constructor
             · intro h
               exact ⟨[], b, rfl, by simp, by simp, by simpa using ha, h⟩
@@ -610,7 +610,7 @@ lemma foldl_spay {k pol fc : ℕ} (hk : k < p.length)
                   rw [List.cons_append] at hb
                   obtain ⟨rfl, -⟩ := List.cons.inj hb
                   exact absurd (List.mem_cons_self ..) hn
-          · rw [if_neg ha, foldl_rej]
+          · rw [ite_eq_right ha, foldl_rej]
             constructor
             · intro h; exact absurd h rej_ne
             · rintro ⟨q', rest, hb, hn, -, hacc, -⟩
@@ -622,7 +622,7 @@ lemma foldl_spay {k pol fc : ℕ} (hk : k < p.length)
                   rw [List.cons_append] at hb
                   obtain ⟨rfl, -⟩ := List.cons.inj hb
                   exact absurd (List.mem_cons_self ..) hn
-        · rw [if_neg h19]
+        · rw [ite_eq_right h19]
           rw [foldl_spay hk hs b ((R fc).step q t) ((R fc).step_le q t hq)]
           constructor
           · rintro ⟨q'', rest, rfl, hn, hlt, hacc, hfin⟩
@@ -647,7 +647,7 @@ lemma foldl_spay {k pol fc : ℕ} (hk : k < p.length)
                 refine ⟨q'', rest, rfl, fun hc => hn (List.mem_cons_of_mem _ hc),
                   fun x hx => hlt x (List.mem_cons_of_mem _ hx), ?_, hfin⟩
                 rwa [List.foldl_cons] at hacc
-      · rw [if_neg h23, foldl_rej]
+      · rw [ite_eq_right h23, foldl_rej]
         constructor
         · intro h; exact absurd h rej_ne
         · rintro ⟨q', rest, hb, -, hlt, -, -⟩
@@ -679,7 +679,7 @@ lemma foldl_slen {k pol fc : ℕ} (hk : k < p.length)
       rw [List.foldl_cons, step_slen hk hs t]
       by_cases h1 : t = 1
       · subst h1
-        rw [if_pos rfl, foldl_slen hk hs b]
+        rw [ite_eq_left rfl, foldl_slen hk hs b]
         constructor
         · rintro ⟨L, rest, rfl, hfin⟩
           exact ⟨L + 1, rest, by simp [List.replicate_succ], hfin⟩
@@ -690,10 +690,10 @@ lemma foldl_slen {k pol fc : ℕ} (hk : k < p.length)
               rw [List.replicate_succ, List.cons_append] at hb
               obtain ⟨-, rfl⟩ := List.cons.inj hb
               exact ⟨L, rest, rfl, hfin⟩
-      · rw [if_neg h1]
+      · rw [ite_eq_right h1]
         by_cases h0 : t = 0
         · subst h0
-          rw [if_pos rfl]
+          rw [ite_eq_left rfl]
           constructor
           · intro h; exact ⟨0, b, by simp, h⟩
           · rintro ⟨L, rest, hb, hfin⟩
@@ -705,7 +705,7 @@ lemma foldl_slen {k pol fc : ℕ} (hk : k < p.length)
             | succ L =>
                 rw [List.replicate_succ, List.cons_append] at hb
                 exact absurd (List.cons.inj hb).1 h1
-        · rw [if_neg h0, foldl_rej]
+        · rw [ite_eq_right h0, foldl_rej]
           constructor
           · intro h; exact absurd h rej_ne
           · rintro ⟨L, rest, hb, -⟩
@@ -733,13 +733,13 @@ lemma foldl_s2 {k pol fc : ℕ} (hk : k < p.length)
     | cons t b =>
         rw [List.foldl_cons, step_s2 hk hs hpol t]
         by_cases h : t = pol
-        · rw [if_pos h]
+        · rw [ite_eq_left h]
           constructor
           · intro hh; exact ⟨hpol, b, by rw [h], hh⟩
           · rintro ⟨-, rest, hb, hr⟩
             obtain ⟨-, rfl⟩ := List.cons.inj hb
             exact hr
-        · rw [if_neg h, foldl_rej]
+        · rw [ite_eq_right h, foldl_rej]
           constructor
           · intro hh; exact absurd hh rej_ne
           · rintro ⟨-, rest, hb, -⟩
@@ -770,13 +770,13 @@ lemma foldl_s1 {k : ℕ} (hk : k < p.length) (b : List ℕ) :
   | cons t b =>
       rw [List.foldl_cons, step_s1 hk t]
       by_cases h : t = 0
-      · rw [if_pos h]
+      · rw [ite_eq_left h]
         constructor
         · intro hh; exact ⟨b, by rw [h], hh⟩
         · rintro ⟨rest, hb, hr⟩
           obtain ⟨-, rfl⟩ := List.cons.inj hb
           exact hr
-      · rw [if_neg h, foldl_rej]
+      · rw [ite_eq_right h, foldl_rej]
         constructor
         · intro hh; exact absurd hh rej_ne
         · rintro ⟨rest, hb, -⟩
@@ -804,7 +804,7 @@ lemma foldl_pos_struct {k pol fc : ℕ} (hk : k < p.length)
       rw [List.foldl_cons, step_pos_struct hk hs t]
       by_cases h1 : t = 1
       · subst h1
-        rw [if_pos rfl, foldl_s1 hk b]
+        rw [ite_eq_left rfl, foldl_s1 hk b]
         constructor
         · rintro ⟨rest, rfl, hrest⟩
           rw [foldl_s2 hk hs] at hrest
@@ -827,7 +827,7 @@ lemma foldl_pos_struct {k pol fc : ℕ} (hk : k < p.length)
           rw [foldl_spay hk hs _ _ (R fc).init_le]
           exact ⟨q', b₂, by simp, hn, payload_tokens_lt_23 hparse,
             ((R fc).spec q').mpr hparse, hfin⟩
-      · rw [if_neg h1, foldl_rej]
+      · rw [ite_eq_right h1, foldl_rej]
         constructor
         · intro h; exact absurd h rej_ne
         · rintro ⟨b₁, b₂, ⟨L, q', rfl, -, -, -⟩, -, hb⟩
@@ -870,7 +870,7 @@ lemma foldl_segAuto (H : PatAuto.HoleGuards) (R : ∀ fc, PayRec fc)
             | lit t₀ =>
                 rw [List.foldl_cons, step_pos_lit hlt hseg]
                 by_cases hgt : t = t₀
-                · rw [if_pos hgt, ih b hbn (k + 1) (by omega)]
+                · rw [ite_eq_left hgt, ih b hbn (k + 1) (by omega)]
                   constructor
                   · intro h
                     exact ⟨[t], b, by rw [PatSeg.MatchesRelaxed, hgt], h, rfl⟩
@@ -880,7 +880,7 @@ lemma foldl_segAuto (H : PatAuto.HoleGuards) (R : ∀ fc, PayRec fc)
                     rw [List.singleton_append] at heq
                     obtain ⟨-, rfl⟩ := List.cons.inj heq
                     exact h2
-                · rw [if_neg hgt, foldl_rej]
+                · rw [ite_eq_right hgt, foldl_rej]
                   constructor
                   · intro h; exact absurd h rej_ne
                   · rintro ⟨b₁, b₂, hm, -, heq⟩
@@ -891,7 +891,7 @@ lemma foldl_segAuto (H : PatAuto.HoleGuards) (R : ∀ fc, PayRec fc)
             | hole χ =>
                 rw [List.foldl_cons, step_pos_hole hlt hseg]
                 by_cases hgt : (H.guard χ).P t = true
-                · rw [if_pos hgt, ih b hbn (k + 1) (by omega)]
+                · rw [ite_eq_left hgt, ih b hbn (k + 1) (by omega)]
                   constructor
                   · intro h
                     exact ⟨[t], b, ⟨t, rfl, (H.guard_spec χ t).mp hgt⟩, h, rfl⟩
@@ -899,7 +899,7 @@ lemma foldl_segAuto (H : PatAuto.HoleGuards) (R : ∀ fc, PayRec fc)
                     rw [List.singleton_append] at heq
                     obtain ⟨-, rfl⟩ := List.cons.inj heq
                     exact h2
-                · rw [if_neg hgt, foldl_rej]
+                · rw [ite_eq_right hgt, foldl_rej]
                   constructor
                   · intro h; exact absurd h rej_ne
                   · rintro ⟨b₁, b₂, ⟨c, rfl, hc⟩, -, heq⟩
