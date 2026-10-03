@@ -59,7 +59,7 @@ numeric form of the same information — one above the largest index in this set
 
 section AtomCodes
 
-open LO.Propositional
+open FFL.Propositional
 
 /-- The atom indices occurring in a propositional sentence. -/
 def sentenceAtomCodes : Sentence → Finset ℕ :=
@@ -316,15 +316,15 @@ def FiniteWorld.payoutRat {B : ℕ} (u : FiniteWorld B) (φ : Sentence) : ℚ :=
 @[simp] lemma eval_eq_true_iff_holds (v : BoolPCWorld) (φ : Sentence) :
     eval v φ = true ↔ v.toPCWorld.Holds φ := by
   induction φ with
-  | atom a => simp [eval, toPCWorld, PCWorld.Holds, LO.Propositional.Formula.Boolean.val]
-  | falsum => simp [eval, PCWorld.Holds, LO.Propositional.Formula.Boolean.val]
+  | atom a => simp [eval, toPCWorld, PCWorld.Holds, FFL.Propositional.Formula.Boolean.val]
+  | falsum => simp [eval, PCWorld.Holds, FFL.Propositional.Formula.Boolean.val]
   | imp φ ψ ihφ ihψ =>
       cases hφ : eval v φ <;> cases hψ : eval v ψ <;>
-        simp_all [eval, PCWorld.Holds, LO.Propositional.Formula.Boolean.val]
+        simp_all [eval, PCWorld.Holds, FFL.Propositional.Formula.Boolean.val]
   | and φ ψ ihφ ihψ =>
-      simp [eval, PCWorld.Holds, LO.Propositional.Formula.Boolean.val, ihφ, ihψ]
+      simp [eval, PCWorld.Holds, FFL.Propositional.Formula.Boolean.val, ihφ, ihψ]
   | or φ ψ ihφ ihψ =>
-      simp [eval, PCWorld.Holds, LO.Propositional.Formula.Boolean.val, ihφ, ihψ]
+      simp [eval, PCWorld.Holds, FFL.Propositional.Formula.Boolean.val, ihφ, ihψ]
 
 /-- The executable finite-world payout is the exact rational payout of its extended
 proposition-valued world. -/

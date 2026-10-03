@@ -70,8 +70,8 @@ semantics: `∼φ = φ 🡒 ⊥`, so `Holds (∼φ) ↔ ¬ Holds φ`). -/
 lemma PCWorld.payout_of_disprovable (v : PCWorld) (φ : Sentence) (h : v.Holds (∼φ)) :
     v.payout φ = 0 := by
   have : ¬ v.Holds φ := by
-    simpa [PCWorld.Holds, LO.Propositional.Formula.Boolean.val,
-      LO.Propositional.Formula.neg_def] using h
+    simpa [PCWorld.Holds, FFL.Propositional.Formula.Boolean.val,
+      FFL.Propositional.Formula.neg_def] using h
   rw [PCWorld.payout, if_neg this]
 
 /-- The trader that sells one share of `φ` every day (buys `-1`). -/

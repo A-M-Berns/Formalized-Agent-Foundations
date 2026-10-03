@@ -369,8 +369,12 @@ theorem chicken_no_perfectCoordinationSPI :
     have h := (ae_coin_iff _).1 hspi
     intro ω
     cases ω
-    · simpa [chickenRepresentatives_play] using h.2
-    · simpa [chickenRepresentatives_play] using h.1
+    · have h2 : chicken.u (chickenRepresentatives.play chicken false) ≤
+          T.ue (chickenRepresentatives.play T.game false) := h.2
+      erw [chickenRepresentatives_play] at h2; exact h2
+    · have h1 : chicken.u (chickenRepresentatives.play chicken true) ≤
+          T.ue (chickenRepresentatives.play T.game true) := h.1
+      erw [chickenRepresentatives_play] at h1; exact h1
   -- the token outcomes' values are feasible
   have hfeas : ∀ ω, T.ue (chickenRepresentatives.play T.game ω) ∈ chicken.feasible :=
     fun ω => T.ue_mem _ (chickenRepresentatives.toPlay.mem T.game ω)

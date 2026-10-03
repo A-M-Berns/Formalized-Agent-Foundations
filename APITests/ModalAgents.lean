@@ -2,7 +2,7 @@ import ModalAgents.API
 
 namespace APITests.ModalAgents
 
-open LO LO.Modal
+open FFL FFL.Modal
 open scoped ModalAgent
 
 /-- A client-defined rank-zero agent that asks for two nested proofs of cooperation. -/
@@ -42,7 +42,7 @@ rather than restating one. -/
 
 section Arithmetic
 
-open LO.Entailment LO.FirstOrder LO.FirstOrder.Arithmetic
+open FFL.Entailment FFL.FirstOrder FFL.FirstOrder.Arithmetic
 
 variable {T : ArithmeticTheory} [T.Δ₁] [𝗣𝗔 ⪯ T]
 

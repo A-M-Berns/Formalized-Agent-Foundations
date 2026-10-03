@@ -160,7 +160,7 @@ lemma AEFunctionOf.pi {ι : Type*} [Countable ι] {R : ι → Type*} [∀ i, Mea
     {Z : ∀ i, Ω → R i} (h : ∀ i, AEFunctionOf X (Z i) μ) :
     AEFunctionOf X (fun ω i => Z i ω) μ := by
   choose f hf hfX using h
-  refine ⟨fun s i => f i s, measurable_pi_lambda _ hf, ?_⟩
+  refine ⟨fun s i => f i s, measurable_pi_iff.mpr hf, ?_⟩
   rw [← ae_all_iff] at hfX
   filter_upwards [hfX] with ω hω
   exact funext hω
@@ -262,7 +262,7 @@ lemma condEntropy_comp_measurePreserving [Countable S] [MeasurableSingletonClass
     [ShannonInformation.FiniteEntropyOf X μΩ] [ShannonInformation.FiniteEntropyOf Y μΩ] :
     H[X ∘ π | Y ∘ π ; μΛ] = H[X | Y ; μΩ] := by
   haveI : IsProbabilityMeasure μΩ :=
-    hπ.map_eq ▸ Measure.isProbabilityMeasure_map hπ.measurable.aemeasurable
+    hπ.map_eq ▸ (inferInstance : IsProbabilityMeasure (μΛ.map π))
   haveI : ShannonInformation.FiniteEntropyOf (X ∘ π) μΛ :=
     ShannonInformation.finiteEntropyOf_pullback hπ hX
   haveI : ShannonInformation.FiniteEntropyOf (Y ∘ π) μΛ :=

@@ -8,8 +8,8 @@
 
 import ModalAgents.Cooperation
 
-open LO LO.Modal
-open LO.Entailment LO.Modal.Entailment
+open FFL FFL.Modal
+open FFL.Entailment FFL.Modal.Entailment
 
 /-- GL-level behavioral equivalence restricted to modal agents. -/
 def BehavEquiv (X X' : ModalAgent) : Prop :=

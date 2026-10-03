@@ -61,7 +61,7 @@ on the declarations below, not on this header.
 
 namespace LogicalInduction
 
-open LO.Propositional Filter Topology
+open FFL.Propositional Filter Topology
 
 namespace UPrefix
 

@@ -378,7 +378,7 @@ private lemma condEntropy_strictAbove_transfer {Λ₀ : Type u₀} [MeasurableSp
     H[Y B | (fun l (C : ↥(strictAbove B.toFinset)) => Y (C : PPlus I) l) ; P₀]
       = H[L.Y B | L.jointStrictAbove B.toFinset ; L.P] := by
   have hjm : Measurable (fun l (C : ↥(strictAbove B.toFinset)) => Y (C : PPlus I) l) :=
-    measurable_pi_lambda _ fun C => hY _
+    measurable_pi_iff.mpr fun C => hY _
   haveI : ShannonInformation.FiniteEntropyOf (Y B) P₀ :=
     ShannonInformation.finiteEntropyMeasure_map P₀ (hY B)
   haveI : ShannonInformation.FiniteEntropyOf

@@ -41,7 +41,7 @@ the relaxed and counter halves, and through them by `SegRec.ifParseFull_mem_FP`.
 
 namespace LogicalInduction
 
-open LO.Propositional
+open FFL.Propositional
 
 namespace StructPat
 
@@ -468,7 +468,7 @@ lemma segPatterns_sound : ∀ (ψ : Sentence), ∀ p ∈ segPatterns ψ, ∀ b :
     obtain ⟨c₁, c₂, rfl, hm₁, hm₂⟩ := segMatch_append_inv p₁ p₂ b' hrest
     exact ⟨c₁, c₂, by simp, h₁ c₁ hm₁, h₂ c₂ hm₂⟩
   intro ψ
-  induction ψ using LO.Propositional.Formula.rec' with
+  induction ψ using FFL.Propositional.Formula.rec' with
   | hfalsum =>
       intro p hp b hb
       simp only [segPatterns, List.mem_cons, List.not_mem_nil, or_false] at hp
@@ -560,7 +560,7 @@ lemma segPatterns_complete : ∀ (ψ : Sentence), ∀ b : List ℕ,
     refine ⟨_, escape_mem_segPatterns ψ, ?_⟩
     exact segMatch_cons (b₁ := [1]) rfl (segMatch_single ⟨c, rfl, hd⟩)
   intro ψ
-  induction ψ using LO.Propositional.Formula.rec' with
+  induction ψ using FFL.Propositional.Formula.rec' with
   | hfalsum =>
       intro b hb
       rcases parseRpn_block_inv hb with

@@ -297,7 +297,7 @@ theorem lic_limitingBelief_gaifman
       have hrange : List.range 1 = [0] := by decide
       rw [hrange]
       simp [singleton, PCWorld.payout, PCWorld.Holds,
-        LO.Propositional.Formula.Boolean.val])
+        FFL.Propositional.Formula.Boolean.val])
     simpa [singleton] using h
 
 /-! ## Consequences of Gaifman coherence
@@ -317,10 +317,10 @@ include hL
 lemma bot_eq_zero : L (⊥ : Sentence) = 0 := by
   have hadd := GaifmanCoherent.disjoint_add hL (φ := (⊥ : Sentence)) (ψ := ⊥) (by
     intro v
-    simp [PCWorld.Holds, LO.Propositional.Formula.Boolean.val])
+    simp [PCWorld.Holds, FFL.Propositional.Formula.Boolean.val])
   have hcongr : L ((⊥ : Sentence) ⋎ ⊥) = L ⊥ := GaifmanCoherent.congr hL (by
     intro v
-    simp [PCWorld.Holds, LO.Propositional.Formula.Boolean.val])
+    simp [PCWorld.Holds, FFL.Propositional.Formula.Boolean.val])
   linarith
 
 /-- Finite additivity for a pairwise-disjoint list of sentence events. -/
@@ -417,7 +417,7 @@ noncomputable def booleanCube (I : Finset ℕ) (x : I → Bool) : Sentence :=
 @[simp] lemma holds_booleanLiteral (v : BoolPCWorld) (i : ℕ) (b : Bool) :
     v.toPCWorld.Holds (booleanLiteral i b) ↔ v i = b := by
   cases b <;> simp [booleanLiteral, BoolPCWorld.toPCWorld, PCWorld.Holds,
-    LO.Propositional.Formula.Boolean.val]
+    FFL.Propositional.Formula.Boolean.val]
 
 @[simp] lemma holds_booleanCube (v : BoolPCWorld) (I : Finset ℕ) (x : I → Bool) :
     v.toPCWorld.Holds (booleanCube I x) ↔ I.restrict v = x := by
@@ -462,7 +462,7 @@ noncomputable def gaifmanFinitePMF (L : Valuation) (hL : GaifmanCoherent L)
       intro v
       constructor
       · intro hv
-        simp [PCWorld.Holds, LO.Propositional.Formula.Boolean.val]
+        simp [PCWorld.Holds, FFL.Propositional.Formula.Boolean.val]
       · intro hv
         let x : I → Bool := I.restrict (BoolPCWorld.ofPCWorld v)
         apply (holds_sentenceDisjunction v cubes).mpr

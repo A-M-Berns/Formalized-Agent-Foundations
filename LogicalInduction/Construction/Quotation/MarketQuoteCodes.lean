@@ -45,7 +45,7 @@ syntax and the quantity it names is derived rather than supplied by the caller.
 namespace LogicalInduction
 
 open Nat.Partrec (Code)
-open LO LO.FirstOrder LO.FirstOrder.Arithmetic LO.Entailment
+open FFL FFL.FirstOrder FFL.FirstOrder.Arithmetic FFL.Entailment
 open Filter Topology
 
 /-! ## The threshold emitter for code-indexed quotation LUVs -/

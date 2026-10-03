@@ -736,7 +736,7 @@ model — an atom valuation `ℕ → Prop` read through `Formula.Boolean.val` �
 /-- A propositionally consistent world (`def:world` + p.c.): an assignment to the atoms,
 whose truth value on a compound sentence is fixed by Foundation's classical Boolean
 semantics. -/
-def PCWorld : Type := LO.Propositional.Boolean.Valuation ℕ
+def PCWorld : Type := FFL.Propositional.Boolean.Valuation ℕ
 
 namespace PCWorld
 
@@ -744,7 +744,7 @@ open Classical
 
 /-- Whether `φ` is true in the p.c. world `v` (Foundation's Boolean evaluation). -/
 def Holds (v : PCWorld) (φ : Sentence) : Prop :=
-  LO.Propositional.Formula.Boolean.val v φ
+  FFL.Propositional.Formula.Boolean.val v φ
 
 /-- The truth value of `φ` in `v` as a real number in `{0, 1}` — the payout of a
 `φ`-share in world `v`. Used to value a trader's holdings. -/
@@ -768,14 +768,14 @@ rewriting because each of them splits the goal. -/
 
 /-- A world holds an atom exactly when its valuation does. -/
 @[simp] lemma holds_atom (v : PCWorld) (m : ℕ) :
-    v.Holds (LO.Propositional.Formula.atom m) ↔ v m := Iff.rfl
+    v.Holds (FFL.Propositional.Formula.atom m) ↔ v m := Iff.rfl
 
 /-- Every world holds `⊤` (Foundation: `⊤ = ⊥ 🡒 ⊥`). -/
 lemma holds_top (v : PCWorld) : v.Holds (⊤ : Sentence) := fun h => h
 
 /-- `∼χ`-worlds falsify `χ` (Foundation: `∼χ = χ 🡒 ⊥`). -/
 @[simp] lemma holds_neg (v : PCWorld) (χ : Sentence) : v.Holds (∼χ) ↔ ¬ v.Holds χ := by
-  simp [PCWorld.Holds, LO.Propositional.Formula.Boolean.val]
+  simp [PCWorld.Holds, FFL.Propositional.Formula.Boolean.val]
 
 /-- A world holds a disjunction exactly when it holds one of the disjuncts. -/
 lemma holds_or (v : PCWorld) (φ ψ : Sentence) :
@@ -813,7 +813,7 @@ def sentenceDisjunction : List Sentence → Sentence
 @[simp] lemma holds_sentenceConjunction (v : PCWorld) (l : List Sentence) :
     v.Holds (sentenceConjunction l) ↔ ∀ φ ∈ l, v.Holds φ := by
   induction l with
-  | nil => simp [sentenceConjunction, PCWorld.Holds, LO.Propositional.Formula.Boolean.val]
+  | nil => simp [sentenceConjunction, PCWorld.Holds, FFL.Propositional.Formula.Boolean.val]
   | cons φ l ih =>
       have hstep : v.Holds (sentenceConjunction (φ :: l)) ↔
           v.Holds φ ∧ v.Holds (sentenceConjunction l) := Iff.rfl
@@ -822,7 +822,7 @@ def sentenceDisjunction : List Sentence → Sentence
 @[simp] lemma holds_sentenceDisjunction (v : PCWorld) (l : List Sentence) :
     v.Holds (sentenceDisjunction l) ↔ ∃ φ ∈ l, v.Holds φ := by
   induction l with
-  | nil => simp [sentenceDisjunction, PCWorld.Holds, LO.Propositional.Formula.Boolean.val]
+  | nil => simp [sentenceDisjunction, PCWorld.Holds, FFL.Propositional.Formula.Boolean.val]
   | cons φ l ih =>
       have hstep : v.Holds (sentenceDisjunction (φ :: l)) ↔
           v.Holds φ ∨ v.Holds (sentenceDisjunction l) := Iff.rfl
@@ -1740,7 +1740,7 @@ a literal pair code).  The grammar defs live here beside the serializers; the le
 corpus is `Framework/Emission/RpnSentence.lean`. -/
 
 section
-open LO.Propositional
+open FFL.Propositional
 
 /-- Polish-notation symbol run of a sentence (no escapes: the canonical form). -/
 def rpn : Sentence → List ℕ

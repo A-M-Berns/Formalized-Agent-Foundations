@@ -135,7 +135,7 @@ lemma demandRandom_play (ω : demandRandomRepresentatives.Ω) :
 lemma demandRandom_play_ne :
     demandRandomRepresentatives.play demandGame true ≠
       demandRandomRepresentatives.play demandGame false := by
-  rw [demandRandom_play, demandRandom_play]
+  erw [demandRandom_play, demandRandom_play]
   intro h
   have := congrFun h Two.two
   simp [demandPages, Two.pair] at this
@@ -248,7 +248,11 @@ lemma pdCooperateMixed_ne_defect (i : Two) (ω : Unit) :
       (pdRepresentatives.toPlay.mem prisonersDilemma ω i) := by
   intro h
   have := congrArg (fun p => p.val ⟨PD.cooperate, Finset.mem_univ _⟩) h
-  simp [pdCooperateMixed, Game.pureMixed_val, pdRepresentatives_play] at this
+  simp only [Game.pureMixed_val] at this
+  erw [pdRepresentatives_play] at this
+  simp only [pdCooperateMixed] at this
+  erw [Game.pureMixed_val] at this
+  simp at this
 
 /-- **Participation independence is not constant-true**: in the Prisoner's Dilemma, an
 instruction that punishes non-participation with `Cooperate` is not participation
@@ -320,7 +324,7 @@ lemma demandGame_algorithm2_not_participationIndependent :
   refine not_participationIndependent_algorithm2 demandRandomRepresentatives _ _ Two.one
     (j := Two.two) (by decide) ⟨true, ?_⟩
   have hplay : demandRandomRepresentatives.play demandGame true Two.one = DAct.RM := by
-    rw [demandRandom_play]; rfl
+    erw [demandRandom_play]; rfl
   intro h
   exact demandGame_minimax_two_one_ne_RM (by rw [h]; congr 1)
 

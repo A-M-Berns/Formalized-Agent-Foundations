@@ -38,7 +38,7 @@ Paper node: `def:ec` (token-metered sentence slots).
 
 namespace LogicalInduction
 
-open Encodable LO.Propositional
+open Encodable FFL.Propositional
 
 /-! ## Suffix discipline of the parser -/
 

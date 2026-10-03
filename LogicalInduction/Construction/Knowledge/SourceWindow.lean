@@ -50,7 +50,7 @@ the paper asks only for recursive enumerability. -/
 
 namespace LogicalInduction
 
-open LO LO.FirstOrder LO.FirstOrder.Arithmetic
+open FFL FFL.FirstOrder FFL.FirstOrder.Arithmetic
 
 /-! ## Splicing written sources -/
 

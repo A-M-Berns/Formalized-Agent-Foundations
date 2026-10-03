@@ -190,94 +190,94 @@ def sentenceMatches : Sentence → ℕ → ℕ
 lemma sentenceMatches_eq_one_iff (target : Sentence) (code : ℕ) :
     sentenceMatches target code = 1 ↔
       Encodable.decode (α := Sentence) code = some target := by
-  induction target using LO.Propositional.Formula.rec' generalizing code with
+  induction target using FFL.Propositional.Formula.rec' generalizing code with
   | hfalsum =>
       cases code with
       | zero => simp [sentenceMatches, decode_sentence_eq_ofNat,
-          LO.Propositional.Formula.ofNat]
+          FFL.Propositional.Formula.ofNat]
       | succ e =>
           rcases htag : e.unpair.1 with _ | tag
           · simp [sentenceMatches, decode_sentence_eq_ofNat,
-              LO.Propositional.Formula.ofNat, htag]
+              FFL.Propositional.Formula.ofNat, htag]
           · rcases tag with _ | _ | _ | _ | tag <;>
               simp [sentenceMatches, decode_sentence_eq_ofNat,
-                LO.Propositional.Formula.ofNat, htag, Option.bind_eq_some_iff]
+                FFL.Propositional.Formula.ofNat, htag, Option.bind_eq_some_iff]
   | hatom a =>
       cases code with
       | zero => simp [sentenceMatches, decode_sentence_eq_ofNat,
-          LO.Propositional.Formula.ofNat]
+          FFL.Propositional.Formula.ofNat]
       | succ e =>
           rcases htag : e.unpair.1 with _ | _ | tag
           · simp [sentenceMatches, decode_sentence_eq_ofNat,
-              LO.Propositional.Formula.ofNat, htag]
+              FFL.Propositional.Formula.ofNat, htag]
           · simp [sentenceMatches, decode_sentence_eq_ofNat,
-              LO.Propositional.Formula.ofNat, htag]
+              FFL.Propositional.Formula.ofNat, htag]
           · rcases tag with _ | _ | _ | tag <;>
               simp [sentenceMatches, decode_sentence_eq_ofNat,
-                LO.Propositional.Formula.ofNat, htag, Option.bind_eq_some_iff]
+                FFL.Propositional.Formula.ofNat, htag, Option.bind_eq_some_iff]
   | himp φ ψ ihφ ihψ =>
       cases code with
       | zero => simp [sentenceMatches, decode_sentence_eq_ofNat,
-          LO.Propositional.Formula.ofNat]
+          FFL.Propositional.Formula.ofNat]
       | succ e =>
           rcases htag : e.unpair.1 with _ | _ | _ | tag
           · simp [sentenceMatches, decode_sentence_eq_ofNat,
-              LO.Propositional.Formula.ofNat, htag]
+              FFL.Propositional.Formula.ofNat, htag]
           · simp [sentenceMatches, decode_sentence_eq_ofNat,
-              LO.Propositional.Formula.ofNat, htag]
+              FFL.Propositional.Formula.ofNat, htag]
           · simp [sentenceMatches, decode_sentence_eq_ofNat,
-              LO.Propositional.Formula.ofNat, htag, ihφ, ihψ,
+              FFL.Propositional.Formula.ofNat, htag, ihφ, ihψ,
               Option.bind_eq_some_iff]
-            cases hleft : LO.Propositional.Formula.ofNat (α := ℕ) e.unpair.2.unpair.1 <;>
-              cases hright : LO.Propositional.Formula.ofNat (α := ℕ)
+            cases hleft : FFL.Propositional.Formula.ofNat (α := ℕ) e.unpair.2.unpair.1 <;>
+              cases hright : FFL.Propositional.Formula.ofNat (α := ℕ)
                 e.unpair.2.unpair.2 <;>
-              simp [LO.Propositional.Formula.imp_inj]
+              simp [FFL.Propositional.Formula.imp_inj]
           · rcases tag with _ | _ | tag <;>
               simp [sentenceMatches, decode_sentence_eq_ofNat,
-                LO.Propositional.Formula.ofNat, htag, Option.bind_eq_some_iff]
+                FFL.Propositional.Formula.ofNat, htag, Option.bind_eq_some_iff]
   | hand φ ψ ihφ ihψ =>
       cases code with
       | zero => simp [sentenceMatches, decode_sentence_eq_ofNat,
-          LO.Propositional.Formula.ofNat]
+          FFL.Propositional.Formula.ofNat]
       | succ e =>
           rcases htag : e.unpair.1 with _ | _ | _ | _ | tag
           · simp [sentenceMatches, decode_sentence_eq_ofNat,
-              LO.Propositional.Formula.ofNat, htag]
+              FFL.Propositional.Formula.ofNat, htag]
           · simp [sentenceMatches, decode_sentence_eq_ofNat,
-              LO.Propositional.Formula.ofNat, htag]
+              FFL.Propositional.Formula.ofNat, htag]
           · simp [sentenceMatches, decode_sentence_eq_ofNat,
-              LO.Propositional.Formula.ofNat, htag, Option.bind_eq_some_iff]
+              FFL.Propositional.Formula.ofNat, htag, Option.bind_eq_some_iff]
           · simp [sentenceMatches, decode_sentence_eq_ofNat,
-              LO.Propositional.Formula.ofNat, htag, ihφ, ihψ]
-            cases hleft : LO.Propositional.Formula.ofNat (α := ℕ) e.unpair.2.unpair.1 <;>
-              cases hright : LO.Propositional.Formula.ofNat (α := ℕ)
+              FFL.Propositional.Formula.ofNat, htag, ihφ, ihψ]
+            cases hleft : FFL.Propositional.Formula.ofNat (α := ℕ) e.unpair.2.unpair.1 <;>
+              cases hright : FFL.Propositional.Formula.ofNat (α := ℕ)
                 e.unpair.2.unpair.2 <;>
-              simp [LO.Propositional.Formula.and_inj]
+              simp [FFL.Propositional.Formula.and_inj]
           · rcases tag with _ | tag <;>
               simp [sentenceMatches, decode_sentence_eq_ofNat,
-                LO.Propositional.Formula.ofNat, htag, Option.bind_eq_some_iff]
+                FFL.Propositional.Formula.ofNat, htag, Option.bind_eq_some_iff]
   | hor φ ψ ihφ ihψ =>
       cases code with
       | zero => simp [sentenceMatches, decode_sentence_eq_ofNat,
-          LO.Propositional.Formula.ofNat]
+          FFL.Propositional.Formula.ofNat]
       | succ e =>
           rcases htag : e.unpair.1 with _ | _ | _ | _ | _ | tag
           · simp [sentenceMatches, decode_sentence_eq_ofNat,
-              LO.Propositional.Formula.ofNat, htag]
+              FFL.Propositional.Formula.ofNat, htag]
           · simp [sentenceMatches, decode_sentence_eq_ofNat,
-              LO.Propositional.Formula.ofNat, htag]
+              FFL.Propositional.Formula.ofNat, htag]
           · simp [sentenceMatches, decode_sentence_eq_ofNat,
-              LO.Propositional.Formula.ofNat, htag, Option.bind_eq_some_iff]
+              FFL.Propositional.Formula.ofNat, htag, Option.bind_eq_some_iff]
           · simp [sentenceMatches, decode_sentence_eq_ofNat,
-              LO.Propositional.Formula.ofNat, htag, Option.bind_eq_some_iff]
+              FFL.Propositional.Formula.ofNat, htag, Option.bind_eq_some_iff]
           · simp [sentenceMatches, decode_sentence_eq_ofNat,
-              LO.Propositional.Formula.ofNat, htag, ihφ, ihψ]
-            cases hleft : LO.Propositional.Formula.ofNat (α := ℕ) e.unpair.2.unpair.1 <;>
-              cases hright : LO.Propositional.Formula.ofNat (α := ℕ)
+              FFL.Propositional.Formula.ofNat, htag, ihφ, ihψ]
+            cases hleft : FFL.Propositional.Formula.ofNat (α := ℕ) e.unpair.2.unpair.1 <;>
+              cases hright : FFL.Propositional.Formula.ofNat (α := ℕ)
                 e.unpair.2.unpair.2 <;>
-              simp [LO.Propositional.Formula.or_inj]
+              simp [FFL.Propositional.Formula.or_inj]
           · simp [sentenceMatches, decode_sentence_eq_ofNat,
-              LO.Propositional.Formula.ofNat, htag]
+              FFL.Propositional.Formula.ofNat, htag]
 
 /-- The binary-node case of `sentenceMatches_polyFueled`, shared by the three connectives:
 the matcher at a node with tag `tag` is a zero test on the code, a tag comparison, and the
@@ -314,7 +314,7 @@ private lemma sentenceMatchesBinary_polyFueled (tag : ℕ) {φ ψ : Sentence}
 
 lemma sentenceMatches_polyFueled (target : Sentence) :
     ∃ c, PolyFueled c (sentenceMatches target) := by
-  induction target using LO.Propositional.Formula.rec' with
+  induction target using FFL.Propositional.Formula.rec' with
   | hfalsum =>
       have htag := PolyFueled.left.comp predc_polyFueled
       obtain ⟨ceq, heq⟩ := polyFueled_eqConst htag 0
@@ -341,7 +341,7 @@ lemma sentenceMatches_polyFueled (target : Sentence) :
 
 lemma sentenceMatches_le_one (target : Sentence) (code : ℕ) :
     sentenceMatches target code ≤ 1 := by
-  induction target using LO.Propositional.Formula.rec' generalizing code with
+  induction target using FFL.Propositional.Formula.rec' generalizing code with
   | hfalsum =>
       cases code with
       | zero => simp [sentenceMatches]

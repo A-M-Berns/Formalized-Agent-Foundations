@@ -68,7 +68,7 @@ process construction, and `[𝗥₀ ⪯ T]` with `[Entailment.Consistent T]` on 
 
 namespace LogicalInduction
 
-open LO.FirstOrder LO.FirstOrder.Arithmetic
+open FFL.FirstOrder FFL.FirstOrder.Arithmetic
 
 namespace ComputableLUV
 
@@ -80,7 +80,7 @@ variable (L : ComputableLUV)
 atom `⌜X_i > 0⌝`, whose code carries `i`).  A LUV outside the `toLUV` image tags to `0`. -/
 def _root_.LogicalInduction.LUV.tagIndex (X : LUV) : ℕ :=
   match X.gt 0 with
-  | LO.Propositional.Formula.atom m => codeIdx m
+  | FFL.Propositional.Formula.atom m => codeIdx m
   | _ => 0
 
 @[simp] lemma toLUV_tagIndex (i : ℕ) : (toLUV i).tagIndex = i := by
@@ -191,7 +191,7 @@ end LogicalInduction
 
 namespace LogicalInduction
 
-open LO LO.FirstOrder LO.FirstOrder.Arithmetic LO.Entailment
+open FFL FFL.FirstOrder FFL.FirstOrder.Arithmetic FFL.Entailment
 
 namespace ComputableLUV
 
@@ -202,8 +202,8 @@ variable (L : ComputableLUV) (T : ArithmeticTheory)
 /-- The public literal a threshold event contributes: tag `0` asserts `⌜X > r⌝`, tag `1` denies
 it. -/
 noncomputable def luvEventAtom (e : ℕ) : Sentence :=
-  if e.unpair.1 = 0 then LO.Propositional.Formula.atom e.unpair.2
-  else ∼ LO.Propositional.Formula.atom e.unpair.2
+  if e.unpair.1 = 0 then FFL.Propositional.Formula.atom e.unpair.2
+  else ∼ FFL.Propositional.Formula.atom e.unpair.2
 
 /-- The `Θ`-provability obligation a threshold event fires on.  Tag `1` is the **literal
 negation of the same sentence** tag `0` fires on, not a separate complementary schema; that

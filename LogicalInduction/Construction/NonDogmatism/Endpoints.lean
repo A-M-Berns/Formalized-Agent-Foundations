@@ -41,8 +41,8 @@ process, and the substantive layer is the `_paperDP` family.
 
 namespace LogicalInduction
 
-open LO LO.FirstOrder LO.FirstOrder.Arithmetic LO.Entailment
-open LO.Propositional
+open FFL FFL.FirstOrder FFL.FirstOrder.Arithmetic FFL.Entailment
+open FFL.Propositional
 open Filter Topology
 
 /-! ## The empty deductive process -/
@@ -139,7 +139,7 @@ the module header. -/
 
 section PaperBitAtoms
 
-open LO LO.FirstOrder LO.FirstOrder.Arithmetic
+open FFL FFL.FirstOrder FFL.FirstOrder.Arithmetic
 
 variable (T : ArithmeticTheory)
 
@@ -251,7 +251,7 @@ end PaperBitAtoms
 
 section PaperDomination
 
-open LO LO.FirstOrder LO.FirstOrder.Arithmetic
+open FFL FFL.FirstOrder FFL.FirstOrder.Arithmetic
 
 variable (T : ArithmeticTheory)
 

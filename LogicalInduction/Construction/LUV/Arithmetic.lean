@@ -61,7 +61,7 @@ decoded from its canonical `num`/`den` at the propositional naming layer.
 
 namespace LogicalInduction
 
-open LO.FirstOrder LO.FirstOrder.Arithmetic
+open FFL.FirstOrder FFL.FirstOrder.Arithmetic
 
 /-! ## The computable `[0,1]`-valued function family -/
 
@@ -300,7 +300,7 @@ end Provability
 
 /-- The public propositional sentence naming the query `⌜X_i > r⌝`. -/
 def thresholdSentence (i : ℕ) (r : ℚ) : Sentence :=
-  LO.Propositional.Formula.atom (thresholdCode i r)
+  FFL.Propositional.Formula.atom (thresholdCode i r)
 
 /-- The `Framework.LUV` for the `i`-th computable-function LUV: its threshold sentences are the
 propositional names of the arithmetic queries.

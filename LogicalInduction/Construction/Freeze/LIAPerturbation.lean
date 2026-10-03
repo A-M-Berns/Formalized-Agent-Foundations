@@ -34,7 +34,7 @@ namespace LogicalInduction.LIAPerturbation
 open LogicalInduction.FreezeOracle
 
 /-- The frozen coordinate's sentence code. -/
-abbrev atomCode : ℕ := Encodable.encode (LO.Propositional.Formula.atom 0 : Sentence)
+abbrev atomCode : ℕ := Encodable.encode (FFL.Propositional.Formula.atom 0 : Sentence)
 
 /-! ## The perturbed market -/
 
@@ -45,11 +45,11 @@ def perturbedQuote (mq : ℕ → ℕ → ℚ) (r : ℚ) : ℕ → ℕ → ℚ :=
 /-- `liaHistory DP` with the single coordinate `(0, atom 0)` moved to `r`. -/
 noncomputable def liaPerturbed (DP : DeductiveProcess) (r : ℚ) : History :=
   fun n φ =>
-    if n = 0 ∧ φ = (LO.Propositional.Formula.atom 0 : Sentence) then (r : ℝ)
+    if n = 0 ∧ φ = (FFL.Propositional.Formula.atom 0 : Sentence) then (r : ℝ)
     else liaHistory DP n φ
 
 @[simp] lemma liaPerturbed_at (DP : DeductiveProcess) (r : ℚ) :
-    liaPerturbed DP r 0 (LO.Propositional.Formula.atom 0 : Sentence) = (r : ℝ) := by
+    liaPerturbed DP r 0 (FFL.Propositional.Formula.atom 0 : Sentence) = (r : ℝ) := by
   rw [liaPerturbed, if_pos ⟨rfl, rfl⟩]
 
 /-- Off the moved coordinate the two markets agree. -/
@@ -57,7 +57,7 @@ lemma liaPerturbed_agree (DP : DeductiveProcess) (r : ℚ) :
     ∀ d φ, (d, φ) ∉ FreezeOracle.pointS FreezeOracle.exampleSentence →
       liaHistory DP d φ = liaPerturbed DP r d φ := by
   intro d φ hmem
-  have hne : ¬(d = 0 ∧ φ = (LO.Propositional.Formula.atom 0 : Sentence)) := by
+  have hne : ¬(d = 0 ∧ φ = (FFL.Propositional.Formula.atom 0 : Sentence)) := by
     intro hc
     exact hmem (by simp [FreezeOracle.pointS, FreezeOracle.exampleSentence, hc.1, hc.2])
   rw [liaPerturbed, if_neg hne]
@@ -117,7 +117,7 @@ theorem computableMarket_liaPerturbed (DP : DeductiveProcess)
   refine ComputableMarket.ofComputableTable (perturbedQuote mq r) hrange' (fun n φ => ?_)
     (computable_perturbedQuote r (computable_of_marketCode hcode))
   rw [liaPerturbed, perturbedQuote]
-  by_cases hc : n = 0 ∧ φ = (LO.Propositional.Formula.atom 0 : Sentence)
+  by_cases hc : n = 0 ∧ φ = (FFL.Propositional.Formula.atom 0 : Sentence)
   · rw [if_pos hc, if_pos ⟨hc.1, by rw [hc.2]⟩]
   · rw [if_neg hc, if_neg ?_, hexact n φ]
     intro hd
@@ -129,8 +129,8 @@ theorem computableMarket_liaPerturbed (DP : DeductiveProcess)
 single real, so it cannot equal both `0` and `1`. -/
 lemma exists_perturbation_value (DP : DeductiveProcess) :
     ∃ r : ℚ, 0 ≤ r ∧ r ≤ 1 ∧
-      ((r : ℝ) ≠ liaHistory DP 0 (LO.Propositional.Formula.atom 0 : Sentence)) := by
-  by_cases h : ((0 : ℚ) : ℝ) = liaHistory DP 0 (LO.Propositional.Formula.atom 0 : Sentence)
+      ((r : ℝ) ≠ liaHistory DP 0 (FFL.Propositional.Formula.atom 0 : Sentence)) := by
+  by_cases h : ((0 : ℚ) : ℝ) = liaHistory DP 0 (FFL.Propositional.Formula.atom 0 : Sentence)
   · refine ⟨1, by norm_num, le_refl 1, ?_⟩
     rw [← h]
     norm_num
@@ -139,9 +139,9 @@ lemma exists_perturbation_value (DP : DeductiveProcess) :
 /-- The moved coordinate really moves: at a quote value the market's own single real value
 cannot equal. -/
 lemma liaPerturbed_ne (DP : DeductiveProcess) {r : ℚ}
-    (hr : (r : ℝ) ≠ liaHistory DP 0 (LO.Propositional.Formula.atom 0 : Sentence)) :
-    liaPerturbed DP r 0 (LO.Propositional.Formula.atom 0 : Sentence)
-      ≠ liaHistory DP 0 (LO.Propositional.Formula.atom 0 : Sentence) := by
+    (hr : (r : ℝ) ≠ liaHistory DP 0 (FFL.Propositional.Formula.atom 0 : Sentence)) :
+    liaPerturbed DP r 0 (FFL.Propositional.Formula.atom 0 : Sentence)
+      ≠ liaHistory DP 0 (FFL.Propositional.Formula.atom 0 : Sentence) := by
   rw [liaPerturbed_at]
   exact hr
 
@@ -179,8 +179,8 @@ theorem exists_informative_liaPerturbation (DP : DeductiveProcess)
     ∃ P' : History,
       ComputableMarket P' ∧
       IsLogicalInductor P' DP ∧
-      P' 0 (LO.Propositional.Formula.atom 0 : Sentence)
-        ≠ liaHistory DP 0 (LO.Propositional.Formula.atom 0 : Sentence) ∧
+      P' 0 (FFL.Propositional.Formula.atom 0 : Sentence)
+        ≠ liaHistory DP 0 (FFL.Propositional.Formula.atom 0 : Sentence) ∧
       (∀ d φ, (d, φ) ∉ FreezeOracle.pointS FreezeOracle.exampleSentence →
         liaHistory DP d φ = P' d φ) := by
   obtain ⟨r, h0, h1, hr⟩ := exists_perturbation_value DP

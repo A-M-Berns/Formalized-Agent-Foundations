@@ -100,14 +100,14 @@ lemma sentenceBool_eq_true_iff (u : ℕ → Bool) (φ : Sentence) :
     sentenceBool u φ = true ↔ (boolPCWorld u).Holds φ := by
   induction φ with
   | atom a => rfl
-  | falsum => simp [sentenceBool, PCWorld.Holds, LO.Propositional.Formula.Boolean.val]
+  | falsum => simp [sentenceBool, PCWorld.Holds, FFL.Propositional.Formula.Boolean.val]
   | and φ ψ ihφ ihψ =>
-      simp [sentenceBool, PCWorld.Holds, LO.Propositional.Formula.Boolean.val, ihφ, ihψ]
+      simp [sentenceBool, PCWorld.Holds, FFL.Propositional.Formula.Boolean.val, ihφ, ihψ]
   | or φ ψ ihφ ihψ =>
-      simp [sentenceBool, PCWorld.Holds, LO.Propositional.Formula.Boolean.val, ihφ, ihψ]
+      simp [sentenceBool, PCWorld.Holds, FFL.Propositional.Formula.Boolean.val, ihφ, ihψ]
   | imp φ ψ ihφ ihψ =>
       cases hφ : sentenceBool u φ <;> cases hψ : sentenceBool u ψ <;>
-        simp_all [sentenceBool, PCWorld.Holds, LO.Propositional.Formula.Boolean.val]
+        simp_all [sentenceBool, PCWorld.Holds, FFL.Propositional.Formula.Boolean.val]
 
 lemma sentenceBool_congr_of_atoms {u v : ℕ → Bool} {φ : Sentence}
     (h : ∀ a ∈ φ.atoms, u a = v a) : sentenceBool u φ = sentenceBool v φ := by

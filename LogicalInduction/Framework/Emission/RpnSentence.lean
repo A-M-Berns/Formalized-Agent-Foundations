@@ -55,7 +55,7 @@ own class).
 
 namespace LogicalInduction
 
-open LO.Propositional
+open FFL.Propositional
 
 /-! ## The block parser
 
@@ -864,8 +864,8 @@ lemma parseRpn_escape (φ : Sentence) (rest : List ℕ) {fuel : ℕ} (hfuel : 1 
   | fuel + 1, _ =>
       rw [parseRpn_cons, if_neg (by omega), if_pos rfl]
       have hc : Encodable.encode φ ≠ 0 := by
-        change LO.Propositional.Formula.toNat φ ≠ 0
-        cases φ <;> simp [LO.Propositional.Formula.toNat]
+        change FFL.Propositional.Formula.toNat φ ≠ 0
+        cases φ <;> simp [FFL.Propositional.Formula.toNat]
       rcases he : Encodable.encode φ with _ | c
       · exact absurd he hc
       · have henc := Encodable.encodek φ
@@ -1082,9 +1082,9 @@ lemma parseRpn_strip : ∀ (fuel : ℕ) (ts : List ℕ) {φ : Sentence} {rest : 
                   ((parseRpn fuel ts').bind fun p =>
                     (parseRpn fuel p.2).bind fun q =>
                       some (mk p.1 q.1, q.2)) = some (φ, rest) →
-                  ((t = 2 ∧ mk = LO.Propositional.Formula.imp) ∨
-                    (t = 3 ∧ mk = LO.Propositional.Formula.and) ∨
-                    (t = 4 ∧ mk = LO.Propositional.Formula.or)) →
+                  ((t = 2 ∧ mk = FFL.Propositional.Formula.imp) ∨
+                    (t = 3 ∧ mk = FFL.Propositional.Formula.and) ∨
+                    (t = 4 ∧ mk = FFL.Propositional.Formula.or)) →
                   ∃ blk, t :: ts' = blk ++ rest ∧
                     parseRpn blk.length blk = some (φ, []) := by
                 intro mk hh ht
@@ -1376,8 +1376,8 @@ lemma parseRpn_escape' {c : ℕ} {φ : Sentence}
       have hc : c ≠ 0 := by
         intro hc
         subst c
-        change LO.Propositional.Formula.ofNat 0 = some φ at hdec
-        simp [LO.Propositional.Formula.ofNat] at hdec
+        change FFL.Propositional.Formula.ofNat 0 = some φ at hdec
+        simp [FFL.Propositional.Formula.ofNat] at hdec
       rcases c with _ | c
       · contradiction
       · simp [hdec]

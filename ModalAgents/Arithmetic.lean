@@ -16,19 +16,19 @@ import ModalAgents.FixedPoint
 import ProvabilityLogic.ProvabilityLogic.GL.Basic
 import Foundation.FirstOrder.Incompleteness.Löb
 
-open LO LO.Modal
-open LO.Entailment LO.Modal.Entailment
+open FFL FFL.Modal
+open FFL.Entailment FFL.Modal.Entailment
 
 /-! ## Löb's Theorem (Barasz, §1) -/
 
-open LO.FirstOrder LO.FirstOrder.Arithmetic in
+open FFL.FirstOrder FFL.FirstOrder.Arithmetic in
 /-- **Löb's Theorem.** For a formal system `T` including Peano Arithmetic, writing
 `Bootstrapping.provabilityPred T σ` for the arithmetized "there is a `T`-proof of `σ`"
 in a fixed Gödel numbering (available because `T` is `Δ₁`-definable): if `T` proves
 `□σ 🡒 σ` then `T` proves `σ`.
 
 This is a citation, not a reproof: it is Foundation's
-`LO.FirstOrder.Arithmetic.löb_theorem`, which is stated there slightly more generally,
+`FFL.FirstOrder.Arithmetic.löb_theorem`, which is stated there slightly more generally,
 for every `Δ₁` theory extending `𝗜𝚺₁`. The hypothesis is specialized to `𝗣𝗔 ⪯ T` here
 to match the paper's "a formal system which includes Peano Arithmetic" verbatim.
 
@@ -40,7 +40,7 @@ theorem lob_theorem {T : ArithmeticTheory} [T.Δ₁] [𝗣𝗔 ⪯ T] {σ : Arit
     (h : T ⊢ Bootstrapping.provabilityPred T σ 🡒 σ) : T ⊢ σ :=
   haveI : (𝗜𝚺₁ : ArithmeticTheory) ⪯ T :=
     Entailment.WeakerThan.trans (𝓣 := (𝗣𝗔 : ArithmeticTheory)) inferInstance inferInstance
-  LO.FirstOrder.Arithmetic.löb_theorem h
+  FFL.FirstOrder.Arithmetic.löb_theorem h
 
 /-! ## Reading a modal formula arithmetically
 
@@ -60,7 +60,7 @@ than a normalization fight. -/
 
 section Interpretation
 
-open LO.FirstOrder LO.FirstOrder.ProvabilityAbstraction
+open FFL.FirstOrder FFL.FirstOrder.ProvabilityAbstraction
 
 variable {L : FirstOrder.Language} [L.ReferenceableBy L]
   {T₀ T : FirstOrder.Theory L} {𝔅 : Provability T₀ T}
@@ -144,7 +144,7 @@ is `𝔅.ext`, which is exactly where the base theory reappears and is discharge
 
 section Substitution
 
-open LO.FirstOrder LO.FirstOrder.ProvabilityAbstraction
+open FFL.FirstOrder FFL.FirstOrder.ProvabilityAbstraction
 
 variable {L : FirstOrder.Language} [L.ReferenceableBy L] [L.DecidableEq]
   {T₀ T : FirstOrder.Theory L} [T₀ ⪯ T] {𝔅 : Provability T₀ T} [𝔅.HBL]
@@ -178,7 +178,7 @@ end Substitution
 
 section ArithmeticUniqueness
 
-open LO.FirstOrder LO.FirstOrder.ProvabilityAbstraction
+open FFL.FirstOrder FFL.FirstOrder.ProvabilityAbstraction
 
 variable {L : FirstOrder.Language} [L.ReferenceableBy L] [L.DecidableEq]
   {T U : FirstOrder.Theory L} [FirstOrder.ProvabilityAbstraction.Diagonalization T]
@@ -188,8 +188,8 @@ variable {L : FirstOrder.Language} [L.ReferenceableBy L] [L.DecidableEq]
 private lemma notMem_atoms_of_freshAtom_le {φ : Modal.Formula ℕ} {k : ℕ}
     (h : φ.freshAtom ≤ k) : k ∉ φ.atoms := by
   intro hk
-  have hle := LO.Modal.Formula.le_max_atoms_of_mem_atoms hk
-  have hlt := LO.Modal.Formula.le_max_atoms_freshAtom (φ := φ) ⟨k, hk⟩
+  have hle := FFL.Modal.Formula.le_max_atoms_of_mem_atoms hk
+  have hlt := FFL.Modal.Formula.le_max_atoms_freshAtom (φ := φ) ⟨k, hk⟩
   omega
 
 /-- **Uniqueness of arithmetic fixed points.** If the modal formula `φ` is modalized in

@@ -2,7 +2,7 @@ import LogicalInduction.Construction.Paper.Market
 import LogicalInduction.Construction.Quotation.ProductDefinition
 import LogicalInduction.Construction.Paper.FiniteEntailment
 import LogicalInduction.Properties.FinitePerturbationCounterexample
-import Foundation.FirstOrder.Incompleteness.InductionSchemeDelta1
+import Foundation.FirstOrder.Arithmetic.Bootstrapping.Syntax.Theory
 import LogicalInduction.Framework.Emission.WriteOut
 
 /-!
@@ -58,8 +58,8 @@ a refutation belongs to the node it refutes, and is audited exactly like any oth
 namespace LogicalInduction
 namespace FinitePerturbationCounterexample
 
-open LO LO.FirstOrder LO.FirstOrder.Arithmetic LO.Entailment
-open LO.Propositional
+open FFL FFL.FirstOrder FFL.FirstOrder.Arithmetic FFL.Entailment
+open FFL.Propositional
 open Filter Topology
 
 -- `𝗜𝚺₁` is charged here because this file's `cxQuote` runs the `thm:lp` diagonal
@@ -459,7 +459,7 @@ private def advTag (c : ℕ) : ℕ :=
 private def advIdx (c : ℕ) : ℕ := (c - 1).unpair.2.unpair.2
 
 private lemma encode_atom_code (x : ℕ) :
-    Encodable.encode (LO.Propositional.Formula.atom x : Sentence) = Nat.pair 1 x + 1 := rfl
+    Encodable.encode (FFL.Propositional.Formula.atom x : Sentence) = Nat.pair 1 x + 1 := rfl
 
 private lemma advTag_schedAtom (m : ℕ) : advTag (Encodable.encode (schedAtom m)) = 7 := by
   simp [advTag, schedAtom, encode_atom_code, Nat.unpair_pair]
@@ -476,7 +476,7 @@ private lemma advIdx_signAtom (m : ℕ) : advIdx (Encodable.encode (signAtom m))
 /-- A nonzero tag identifies the code as that of a tagged atom. -/
 private lemma eq_atom_of_advTag {c t : ℕ} (ht : t ≠ 0) (h : advTag c = t) :
     c = Encodable.encode
-      (LO.Propositional.Formula.atom (Nat.pair t (advIdx c)) : Sentence) := by
+      (FFL.Propositional.Formula.atom (Nat.pair t (advIdx c)) : Sentence) := by
   by_cases hc : (c - 1).unpair.1 = 1
   · have h6 : (c - 1).unpair.2.unpair.1 = t := by rw [advTag, if_pos hc] at h; exact h
     have hc0 : c ≠ 0 := by

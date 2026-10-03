@@ -1395,17 +1395,17 @@ lemma parse_of_runWalk {a b s : ℕ} {exit : ℕ → ℕ}
                   rw [hlen', hsplit]
                   rw [parseRpn_cons, if_neg (by omega), if_neg ht1]
                   rcases htop with rfl | rfl | rfl
-                  · exact ⟨LO.Propositional.Formula.imp φ1 φ2, by
+                  · exact ⟨FFL.Propositional.Formula.imp φ1 φ2, by
                       rw [if_pos rfl, hb1]
                       simp only [Option.bind_some]
                       rw [hb2]
                       simp only [Option.bind_some]⟩
-                  · exact ⟨LO.Propositional.Formula.and φ1 φ2, by
+                  · exact ⟨FFL.Propositional.Formula.and φ1 φ2, by
                       rw [if_neg (by omega), if_pos rfl, hb1]
                       simp only [Option.bind_some]
                       rw [hb2]
                       simp only [Option.bind_some]⟩
-                  · exact ⟨LO.Propositional.Formula.or φ1 φ2, by
+                  · exact ⟨FFL.Propositional.Formula.or φ1 φ2, by
                       rw [if_neg (by omega), if_neg (by omega), if_pos rfl, hb1]
                       simp only [Option.bind_some]
                       rw [hb2]
@@ -1492,10 +1492,10 @@ lemma parse_of_runWalk {a b s : ℕ} {exit : ℕ → ℕ}
                   omega
               subst hu'
               by_cases ht0 : t = 0
-              · exact Or.inl ⟨LO.Propositional.Formula.falsum, by
+              · exact Or.inl ⟨FFL.Propositional.Formula.falsum, by
                   subst ht0
                   rfl⟩
-              · exact Or.inl ⟨LO.Propositional.Formula.atom (t - 5), by
+              · exact Or.inl ⟨FFL.Propositional.Formula.atom (t - 5), by
                   rw [show ([t] : List ℕ).length = 0 + 1 from rfl, parseRpn_cons,
                     if_neg ht0, if_neg ht1, if_neg (by omega), if_neg (by omega),
                     if_neg (by omega)]⟩

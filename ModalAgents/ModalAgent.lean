@@ -13,7 +13,7 @@
 
 import ModalAgents.GL
 
-open LO LO.Modal
+open FFL FFL.Modal
 
 /-! ## Fully modalized formulas -/
 

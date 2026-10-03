@@ -409,8 +409,7 @@ strategy realizes `𝐛₀ = Π(Γ₀)`. -/
 noncomputable def rnDefault (t d : ℝ) (b₀ : Two → Base) : (rnProgramGame t d b₀).DefaultInstr where
   default i := .base (b₀ i)
   plays_default ω i b := by
-    simp only [rnProgramGame_exec, Game.pureMixed_val, rnRepresentatives_play]
-    rfl
+    simp only [rnProgramGame_exec, Game.pureMixed_val, rnRepresentatives_play, realized, run_base]
 
 /-- Against a counterpart at her default, a renegotiation program realizes its base
 strategy, i.e. exactly what the all-default profile realizes. -/
@@ -429,7 +428,7 @@ lemma rn_participationIndependent (t d : ℝ) (b₀ : Two → Base) (c : Two →
     {L : Logic} (hc : c i = .rn (b₀ i) L) :
     (rnProgramGame t d b₀).ParticipationIndependent (rnDefault t d b₀) c i := by
   intro j hj ω
-  rw [rnProgramGame_exec, rnProgramGame_exec]
+  rw [rnProgramGame_exec t d b₀ _ ω, rnProgramGame_exec t d b₀ _ ω]
   congr 1
   exact realized_update_rn b₀ c i hc j hj
 
@@ -474,7 +473,8 @@ lemma fairHawkRn_participationIndependent (t d : ℝ) (i : Two) :
 lemma fairHawkRn_plays (t d : ℝ) :
     (rnProgramGame t d fairHawk).Plays fairHawkRn fun _ => pair (.s50, .none) (.s80, .none) := by
   intro ω i b
-  rw [rnProgramGame_exec, Game.pureMixed_val]
+  rw [rnProgramGame_exec t d fairHawk _ ω]
+  erw [Game.pureMixed_val]
   cases i <;> rfl
 
 /-- The policy that submits `rn(𝐛)` uninformed and the base strategy `𝐛` itself on learning
@@ -497,7 +497,7 @@ lemma rnFallbackPolicy_foreknowledgeIndependent (t d : ℝ) (b₀ : Two → Base
     (rnProgramGame t d b₀).ForeknowledgeIndependent (rnDefault t d b₀) c
       (rnFallbackPolicy t d b₀ i b) := by
   intro j hj ω
-  rw [rnProgramGame_exec, rnProgramGame_exec]
+  rw [rnProgramGame_exec t d b₀ _ ω, rnProgramGame_exec t d b₀ _ ω]
   congr 1
   have hji : j = i.other := eq_other_of_ne hj
   subst hji

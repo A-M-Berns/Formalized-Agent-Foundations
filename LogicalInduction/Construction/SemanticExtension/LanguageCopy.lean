@@ -89,7 +89,7 @@ product factor, and thence `lic_no_expected_net_update_conditional_exact_canonic
 namespace LogicalInduction
 
 section
-open LO LO.Propositional LO.FirstOrder LO.FirstOrder.Arithmetic
+open FFL FFL.Propositional FFL.FirstOrder FFL.FirstOrder.Arithmetic
 
 /-! ## The fixed renaming -/
 
@@ -244,7 +244,7 @@ decreasing_by
       Encodable.encode (liftSentence phi) := by
   induction phi <;>
     simp_all [encode_sentence_eq_toNat, liftSentenceCode, liftSentence,
-      Formula.subst, oldAtom, publicBotCode, LO.Propositional.Formula.toNat]
+      Formula.subst, oldAtom, publicBotCode, FFL.Propositional.Formula.toNat]
 
 private def liftSentenceCodeSucc (prior : List ℕ) (e : ℕ) : ℕ :=
   let tag := e.unpair.1
@@ -790,7 +790,7 @@ lemma entailedSourcePrefix_eventually_of_threshold
 end
 
 section
-open LO LO.Propositional
+open FFL FFL.Propositional
 
 -- Both registry predicates are `List.range` dovetails.
 -- The proofs below reach them only through their monotonicity and characterization

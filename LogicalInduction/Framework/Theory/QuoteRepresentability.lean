@@ -1,7 +1,7 @@
 import LogicalInduction.Framework.Theory.RepresentsComputations
 import Foundation.FirstOrder.Arithmetic.R0.Representation
 import Foundation.FirstOrder.Arithmetic.PeanoMinus.Basic
-import Foundation.FirstOrder.Arithmetic.Induction
+import Foundation.FirstOrder.Arithmetic.Induction.Basic
 
 /-!
 # One code formula, two value fibers: provable exclusivity for quoted decisions
@@ -37,7 +37,7 @@ quotation layer.
 
 namespace LogicalInduction
 
-open LO LO.FirstOrder LO.FirstOrder.Arithmetic LO.Entailment
+open FFL FFL.FirstOrder FFL.FirstOrder.Arithmetic FFL.Entailment
 
 /-! ## Single-valuedness of a code formula -/
 

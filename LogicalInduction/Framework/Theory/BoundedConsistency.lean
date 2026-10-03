@@ -62,7 +62,7 @@ paraphrase that recovers uniformity: `Θ′ₙ := Θ₀ ∪ {σₙ}` is inconsis
 
 namespace LogicalInduction
 
-open LO LO.FirstOrder LO.FirstOrder.Arithmetic LO.FirstOrder.Arithmetic.Bootstrapping
+open FFL FFL.FirstOrder FFL.FirstOrder.Arithmetic FFL.FirstOrder.Arithmetic.Bootstrapping
 
 variable (T : ArithmeticTheory) [T.Δ₁]
 
@@ -316,7 +316,7 @@ Kind `C` (composition).  Provenance: (b) Foundation citations —
 lemma not_consistent_adjoin_iff (σ : ArithmeticSentence) :
     ¬Entailment.Consistent (σ ∷ T) ↔ T ⊢ ∼σ := by
   rw [Entailment.not_consistent_iff_inconsistent, Entailment.inconsistent_iff_provable_bot,
-    Entailment.deduction_iff, ← LO.Entailment.N!_iff_CO!]
+    Entailment.deduction_iff, ← FFL.Entailment.N!_iff_CO!]
 
 /-- `⊤` is provable in every theory, so the provability predicate is not constantly false. -/
 lemma provableCode_quote_verum : ProvableCode T ⌜(⊤ : ArithmeticSentence)⌝ := by
@@ -420,7 +420,7 @@ lemma provable_neg_listConj_of_not_consistent {l : List ArithmeticSentence}
     (∅ : ArithmeticTheory) ⊢ ∼listConj l := by
   rw [Entailment.not_consistent_iff_inconsistent,
     Entailment.inconsistent_iff_provable_bot] at h
-  rw [LO.Entailment.N!_iff_CO!]
+  rw [FFL.Entailment.N!_iff_CO!]
   exact provable_listConj_imply l ⊥ h
 
 omit [T.Δ₁] in

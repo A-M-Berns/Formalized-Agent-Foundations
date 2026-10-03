@@ -1,7 +1,7 @@
 import LogicalInduction.Properties.MetaLearning
 import Foundation.FirstOrder.Arithmetic.R0.Representation
 import Foundation.Syntax.Predicate.Rew
-import Foundation.FirstOrder.Bootstrapping.Syntax.Theory
+import Foundation.FirstOrder.Arithmetic.Bootstrapping.Syntax.Theory
 import Mathlib.Computability.Ackermann
 import LogicalInduction.Framework.Emission.WriteOut
 import LogicalInduction.Framework.Theory.SubstOccurrence
@@ -32,7 +32,7 @@ those negative literals is the job of the paper's own representability premise
 
 namespace LogicalInduction
 
-open LO.FirstOrder LO.FirstOrder.Arithmetic
+open FFL.FirstOrder FFL.FirstOrder.Arithmetic
 
 /-! ## Foundation bridge: soundness-free Σ₁ completeness
 
@@ -257,7 +257,7 @@ lemma ComputationClaim.godelCode_injective :
 
 /-- The public propositional sentence naming a quoted arithmetic computation claim. -/
 def computationClaimSentence (claim : ComputationClaim) : Sentence :=
-  LO.Propositional.Formula.atom claim.godelCode
+  FFL.Propositional.Formula.atom claim.godelCode
 
 /-- **Tag ownership.**  A claim sentence is a single atom, whose payload tag is the claim's
 own kind — which is what every freshness proof about a constructed process appeals to. -/
@@ -373,7 +373,7 @@ paper's representability premise, not weak Σ₁-representation: see
 Paper node: `thm:pac`, `thm:pazfc`, `thm:halts`, `thm:loops`, `thm:dontwait` -/
 structure ComputationTheoryPresentation
     (DP : DeductiveProcess) (T : ArithmeticTheory) where
-  theory_deltaOne : LO.FirstOrder.Theory.Δ₁ T
+  theory_deltaOne : FFL.FirstOrder.Theory.Δ₁ T
   process : DeductiveProcessComputation DP
   halting_enters : ∀ z : ℕ,
     T ⊢ universalHaltingSchema/[↑z] →

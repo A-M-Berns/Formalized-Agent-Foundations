@@ -23,9 +23,9 @@
 
 import ModalAgents.Arithmetic
 
-open LO LO.Modal
-open LO.Entailment LO.Modal.Entailment
-open LO.FirstOrder LO.FirstOrder.Arithmetic LO.FirstOrder.ProvabilityAbstraction
+open FFL FFL.Modal
+open FFL.Entailment FFL.Modal.Entailment
+open FFL.FirstOrder FFL.FirstOrder.Arithmetic FFL.FirstOrder.ProvabilityAbstraction
 
 /-! ## Agents -/
 

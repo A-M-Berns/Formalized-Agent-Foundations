@@ -54,8 +54,8 @@ conditions.
 
 namespace LogicalInduction
 
-open LO LO.FirstOrder LO.FirstOrder.Arithmetic LO.Entailment
-open scoped LO.FirstOrder.Arithmetic
+open FFL FFL.FirstOrder FFL.FirstOrder.Arithmetic FFL.Entailment
+open scoped FFL.FirstOrder.Arithmetic
 
 /-! ## The product formula -/
 
@@ -71,8 +71,8 @@ only under `Rew.castLE`, which is index-preserving, so the emitted symbol run of
 product is the two factors' runs plus a fixed constant prefix — that is what keeps the
 sequence layer's `def:ec` certificate cheap. -/
 def paperProductFormula (Xf Wf : ArithmeticSemisentence 1) : ArithmeticSemisentence 1 :=
-  ∃⁰ ((Rew.castLE (by omega) ▹ Xf) ⋏
-    (∃⁰ ((Rew.castLE (by omega) ▹ Wf) ⋏ paperProductPairing)))
+  ∃¹ ((Rew.castLE (by omega) ▹ Xf) ⋏
+    (∃¹ ((Rew.castLE (by omega) ▹ Wf) ⋏ paperProductPairing)))
 
 /-- The intended reading of the product formula in any model. -/
 lemma paperProductFormula_eval {M : Type} [ORingStructure M]
@@ -152,11 +152,11 @@ private lemma prod_cross_lt {M : Type} [ORingStructure M]
     (R : M) * (b * d) < (a * c) * (Rd : M) := by
   have hRd' : (0 : M) < (Rd : M) := by exact_mod_cast hRd
   have hapos : (0 : M) < a * (Pd : M) :=
-    lt_of_le_of_lt (LO.FirstOrder.Arithmetic.zero_le _) hX
+    lt_of_le_of_lt (FFL.FirstOrder.Arithmetic.zero_le _) hX
   have h3 : ((P : M) * (S : M)) * (b * d) < (a * c) * ((Pd : M) * (Sd : M)) := calc
     ((P : M) * (S : M)) * (b * d) = ((P : M) * b) * ((S : M) * d) := by ac_rfl
     _ ≤ (a * (Pd : M)) * ((S : M) * d) :=
-        mul_le_mul_of_nonneg_right hX.le (LO.FirstOrder.Arithmetic.zero_le _)
+        mul_le_mul_of_nonneg_right hX.le (FFL.FirstOrder.Arithmetic.zero_le _)
     _ < (a * (Pd : M)) * (c * (Sd : M)) := mul_lt_mul_of_pos_left hW hapos
     _ = (a * c) * ((Pd : M) * (Sd : M)) := by ac_rfl
   have hcross' : (R : M) * ((Pd : M) * (Sd : M)) ≤ ((P : M) * (S : M)) * (Rd : M) := by
@@ -166,11 +166,11 @@ private lemma prod_cross_lt {M : Type} [ORingStructure M]
     ((R : M) * (b * d)) * ((Pd : M) * (Sd : M))
         = ((R : M) * ((Pd : M) * (Sd : M))) * (b * d) := by ac_rfl
     _ ≤ (((P : M) * (S : M)) * (Rd : M)) * (b * d) :=
-        mul_le_mul_of_nonneg_right hcross' (LO.FirstOrder.Arithmetic.zero_le _)
+        mul_le_mul_of_nonneg_right hcross' (FFL.FirstOrder.Arithmetic.zero_le _)
     _ = (((P : M) * (S : M)) * (b * d)) * (Rd : M) := by ac_rfl
     _ < ((a * c) * ((Pd : M) * (Sd : M))) * (Rd : M) := mul_lt_mul_of_pos_right h3 hRd'
     _ = ((a * c) * (Rd : M)) * ((Pd : M) * (Sd : M)) := by ac_rfl
-  exact lt_of_mul_lt_mul_right hchain (LO.FirstOrder.Arithmetic.zero_le _)
+  exact lt_of_mul_lt_mul_right hchain (FFL.FirstOrder.Arithmetic.zero_le _)
 
 private lemma prod_cross_le {M : Type} [ORingStructure M]
     [M↓[ℒₒᵣ] ⊧* 𝗜𝗢𝗽𝗲𝗻] {P Pd S Sd R Rd : ℕ} {a b c d : M}
@@ -185,18 +185,18 @@ private lemma prod_cross_le {M : Type} [ORingStructure M]
   have h3 : (a * c) * ((Pd : M) * (Sd : M)) ≤ ((P : M) * (S : M)) * (b * d) := calc
     (a * c) * ((Pd : M) * (Sd : M)) = (a * (Pd : M)) * (c * (Sd : M)) := by ac_rfl
     _ ≤ ((P : M) * b) * ((S : M) * d) :=
-        mul_le_mul hX hW (LO.FirstOrder.Arithmetic.zero_le _)
-          (LO.FirstOrder.Arithmetic.zero_le _)
+        mul_le_mul hX hW (FFL.FirstOrder.Arithmetic.zero_le _)
+          (FFL.FirstOrder.Arithmetic.zero_le _)
     _ = ((P : M) * (S : M)) * (b * d) := by ac_rfl
   have hchain : ((a * c) * (Rd : M)) * ((Pd : M) * (Sd : M)) ≤
       ((R : M) * (b * d)) * ((Pd : M) * (Sd : M)) := calc
     ((a * c) * (Rd : M)) * ((Pd : M) * (Sd : M))
         = ((a * c) * ((Pd : M) * (Sd : M))) * (Rd : M) := by ac_rfl
     _ ≤ (((P : M) * (S : M)) * (b * d)) * (Rd : M) :=
-        mul_le_mul_of_nonneg_right h3 (LO.FirstOrder.Arithmetic.zero_le _)
+        mul_le_mul_of_nonneg_right h3 (FFL.FirstOrder.Arithmetic.zero_le _)
     _ = (((P : M) * (S : M)) * (Rd : M)) * (b * d) := by ac_rfl
     _ ≤ ((R : M) * ((Pd : M) * (Sd : M))) * (b * d) :=
-        mul_le_mul_of_nonneg_right hcross' (LO.FirstOrder.Arithmetic.zero_le _)
+        mul_le_mul_of_nonneg_right hcross' (FFL.FirstOrder.Arithmetic.zero_le _)
     _ = ((R : M) * (b * d)) * ((Pd : M) * (Sd : M)) := by ac_rfl
   exact le_of_mul_le_mul_right hchain (mul_pos hPd' hSd')
 
@@ -226,7 +226,7 @@ Paper node: `def:luv` -/
 def paperProductPaperLUV [𝗜𝚺₁ ⪯ T] (X W : PaperLUV T) : PaperLUV T where
   formula := paperProductFormula X.formula W.formula
   unique := by
-    apply LO.FirstOrder.Arithmetic.complete T
+    apply FFL.FirstOrder.Arithmetic.complete T
     intro (M : Type) _ hM
     haveI := models_iOpen_of_models T M
     have hexX := models_of_provable hM X.unique
@@ -249,7 +249,7 @@ def paperProductPaperLUV [𝗜𝚺₁ ⪯ T] (X W : PaperLUV T) : PaperLUV T whe
     obtain ⟨rfl, rfl⟩ := h2
     rfl
   unit := by
-    apply LO.FirstOrder.Arithmetic.complete T
+    apply FFL.FirstOrder.Arithmetic.complete T
     intro (M : Type) _ hM
     haveI := models_iOpen_of_models T M
     have hunitX := models_of_provable hM X.unit
@@ -263,8 +263,8 @@ def paperProductPaperLUV [𝗜𝚺₁ ⪯ T] (X W : PaperLUV T) : PaperLUV T whe
     obtain ⟨rfl, rfl⟩ := hab
     obtain ⟨rfl, rfl⟩ := hcd
     exact ⟨a * c, b * d, rfl, mul_pos hb hd,
-      mul_le_mul hab' hcd' (LO.FirstOrder.Arithmetic.zero_le _)
-        (LO.FirstOrder.Arithmetic.zero_le _)⟩
+      mul_le_mul hab' hcd' (FFL.FirstOrder.Arithmetic.zero_le _)
+        (FFL.FirstOrder.Arithmetic.zero_le _)⟩
 
 /-- The defining formula of the product LUV is the product formula of the factors'
 defining formulas — the field projection, in `simp` normal form. -/
@@ -278,7 +278,7 @@ lemma paperProduct_threshold_provable [𝗜𝚺₁ ⪯ T] (X W : PaperLUV T) {p 
     (hp : 0 ≤ p) (hs : 0 ≤ s) (hr : r ≤ p * s) :
     T ⊢ (X.thresholdFormula p 🡒 (W.thresholdFormula s 🡒
       (paperProductPaperLUV X W).thresholdFormula r)) := by
-  apply LO.FirstOrder.Arithmetic.complete T
+  apply FFL.FirstOrder.Arithmetic.complete T
   intro (M : Type) _ hM
   haveI := models_iOpen_of_models T M
   have hunitX := models_of_provable hM X.unit
@@ -286,7 +286,7 @@ lemma paperProduct_threshold_provable [𝗜𝚺₁ ⪯ T] (X W : PaperLUV T) {p 
   simp [models_iff, paperRatUnitDef] at hunitX hunitW
   simp only [models_iff, thresholdFormula, paperProductPaperLUV_formula]
   simp [paperProductFormula_eval, paperRatGtDef, not_lt.mpr hp, not_lt.mpr hs,
-    LO.FirstOrder.Arithmetic.numeral_eq_natCast]
+    FFL.FirstOrder.Arithmetic.numeral_eq_natCast]
   intro hP hS q a b ha c d hc hq
   obtain ⟨a₁, b₁, hab, hb, hltp⟩ := hP _ ha
   obtain ⟨c₁, d₁, hcd, hd, hlts⟩ := hS _ hc
@@ -298,7 +298,7 @@ lemma paperProduct_threshold_provable [𝗜𝚺₁ ⪯ T] (X W : PaperLUV T) {p 
   · simp [hr0, paperRatDef, pairDef, ← pair_graph]
     exact ⟨hb, hd⟩
   · have hr0' : 0 ≤ r := not_lt.mp hr0
-    simp [hr0, pairDef, ← pair_graph, LO.FirstOrder.Arithmetic.numeral_eq_natCast]
+    simp [hr0, pairDef, ← pair_graph, FFL.FirstOrder.Arithmetic.numeral_eq_natCast]
     exact ⟨⟨hb, hd⟩,
       prod_cross_lt hltp hlts r.den_pos (rat_cross_prod_le hp hs hr0' hr)⟩
 
@@ -309,7 +309,7 @@ lemma paperProduct_threshold_refutable [𝗜𝚺₁ ⪯ T] (X W : PaperLUV T) {p
     T ⊢ (∼X.thresholdFormula p 🡒 (∼W.thresholdFormula s 🡒
       ∼(paperProductPaperLUV X W).thresholdFormula r)) := by
   have hr0 : ¬ r < 0 := not_lt.mpr (le_trans (mul_nonneg hp hs) hr)
-  apply LO.FirstOrder.Arithmetic.complete T
+  apply FFL.FirstOrder.Arithmetic.complete T
   intro (M : Type) _ hM
   haveI := models_iOpen_of_models T M
   have hunitX := models_of_provable hM X.unit
@@ -317,7 +317,7 @@ lemma paperProduct_threshold_refutable [𝗜𝚺₁ ⪯ T] (X W : PaperLUV T) {p
   simp [models_iff, paperRatUnitDef] at hunitX hunitW
   simp only [models_iff, thresholdFormula, paperProductPaperLUV_formula]
   simp [paperProductFormula_eval, paperRatGtDef, not_lt.mpr hp, not_lt.mpr hs, hr0,
-    pairDef, ← pair_graph, LO.FirstOrder.Arithmetic.numeral_eq_natCast]
+    pairDef, ← pair_graph, FFL.FirstOrder.Arithmetic.numeral_eq_natCast]
   intro qx hqx hnp qw hqw hns
   obtain ⟨a, b, hab, hb, -⟩ := hunitX _ hqx
   obtain ⟨c, d, hcd, hd, -⟩ := hunitW _ hqw

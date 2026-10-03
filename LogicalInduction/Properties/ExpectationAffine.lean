@@ -564,10 +564,10 @@ that is false of markets in general: the criterion is what closes the gap. -/
 lemma expectation_indicator_not_identity :
     ∃ (P : History) (n : ℕ) (φ : Sentence), (LUV.indicatorOf φ).expect P n ≠ P n φ := by
   classical
-  refine ⟨fun _ ψ => if ψ = (LO.Propositional.Formula.atom 0 : Sentence) then 0 else 1, 0,
-    LO.Propositional.Formula.atom 0, ?_⟩
-  have hne : (LUV.indicatorOf (LO.Propositional.Formula.atom 0 : Sentence)).gt 0
-      ≠ (LO.Propositional.Formula.atom 0 : Sentence) :=
+  refine ⟨fun _ ψ => if ψ = (FFL.Propositional.Formula.atom 0 : Sentence) then 0 else 1, 0,
+    FFL.Propositional.Formula.atom 0, ?_⟩
+  have hne : (LUV.indicatorOf (FFL.Propositional.Formula.atom 0 : Sentence)).gt 0
+      ≠ (FFL.Propositional.Formula.atom 0 : Sentence) :=
     LUV.indicatorOf_gt_ne _ le_rfl (by norm_num)
   simp [LUV.expect, LUV.expectApprox, hne]
 

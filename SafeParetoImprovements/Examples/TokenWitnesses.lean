@@ -216,7 +216,7 @@ lemma conflictRepresentatives_play_hat (ω : conflictRepresentatives.Ω) :
     conflictRepresentatives.toPlay.play conflictTokenCopy ω =
       conflictBookIso.map (conflictPages ω) := by
   show conflictBook.playReduced conflictTokenCopy.reduce ω = _
-  rw [Game.reduce_of_reduced conflictTokenCopy_reduced,
+  erw [Game.reduce_of_reduced conflictTokenCopy_reduced,
     ← Book.chosenIso_symm_map_page conflictBook conflictTokenCopy conflictGame.cls
       conflictTokenCopy_cls ω, conflictBook_page]
   rfl

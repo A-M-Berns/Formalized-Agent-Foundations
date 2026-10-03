@@ -620,8 +620,8 @@ lemma LUV.indicatorOf_gt_ne (φ : Sentence) {r : ℚ} (h0 : 0 ≤ r) (h1 : r < 1
     (LUV.indicatorOf φ).gt r ≠ φ := by
   simp only [LUV.indicatorOf, if_neg (not_lt.mpr h0), if_pos h1]
   intro h
-  have hc := congrArg LO.Propositional.Formula.complexity h
-  simp [LO.Propositional.Formula.complexity] at hc
+  have hc := congrArg FFL.Propositional.Formula.complexity h
+  simp [FFL.Propositional.Formula.complexity] at hc
   omega
 
 /-- **`LUV.indicatorOf φ` really is an indicator family for `φ`** — in *every* world and over
@@ -642,7 +642,7 @@ lemma LUV.indicatorOf_isIndicator (φ : Sentence) (DP : DeductiveProcess) :
   · have hn1 : ¬ r < 1 := fun hc => (not_lt.mpr h) (hr1.mpr hc)
     have hn0 : ¬ r < 0 := fun hc => hn1 (hc.trans (by norm_num))
     simp [LUV.indicatorOf, hn0, hn1, PCWorld.Holds,
-      LO.Propositional.Formula.Boolean.val]
+      FFL.Propositional.Formula.Boolean.val]
 
 /-! ### Non-vacuity of `LUV.IsIndicator` (kind `N+`)
 
@@ -655,8 +655,8 @@ completed-theory form the paper's `app:ei` argument uses. -/
 
 /-- The equivalence `atom 0 ↔ atom 1` the witness process reveals. -/
 def indicatorWitnessLink : Sentence :=
-  ((LO.Propositional.Formula.atom 0).imp (LO.Propositional.Formula.atom 1)).and
-    ((LO.Propositional.Formula.atom 1).imp (LO.Propositional.Formula.atom 0))
+  ((FFL.Propositional.Formula.atom 0).imp (FFL.Propositional.Formula.atom 1)).and
+    ((FFL.Propositional.Formula.atom 1).imp (FFL.Propositional.Formula.atom 0))
 
 /-- The revealing process for the indicator witness: from day `1` on, the theory asserts
 `atom 0 ↔ atom 1`; day `0` asserts nothing. -/
@@ -674,30 +674,30 @@ atom `1`, thresholds at `≥ 1` are `⊥`.  Note the thresholds mention `atom 1`
 indicated sentence `atom 0`. -/
 def indicatorWitnessLUV : LUV where
   gt := fun r =>
-    if r < 0 then (LO.Propositional.Formula.falsum).imp LO.Propositional.Formula.falsum
-    else if r < 1 then LO.Propositional.Formula.atom 1
-    else LO.Propositional.Formula.falsum
+    if r < 0 then (FFL.Propositional.Formula.falsum).imp FFL.Propositional.Formula.falsum
+    else if r < 1 then FFL.Propositional.Formula.atom 1
+    else FFL.Propositional.Formula.falsum
 
 /-- **Non-vacuity for `LUV.IsIndicator` (kind `N+`).**  The witness really is an indicator
 family for `atom 0` over `indicatorWitnessDP`, with thresholds distinct from the indicated
 sentence. -/
 lemma indicatorWitness_isIndicator :
-    indicatorWitnessLUV.IsIndicator (LO.Propositional.Formula.atom 0) indicatorWitnessDP := by
+    indicatorWitnessLUV.IsIndicator (FFL.Propositional.Formula.atom 0) indicatorWitnessDP := by
   intro v hv r
   have hmem : indicatorWitnessLink ∈ indicatorWitnessDP.D 1 := by
     simp [indicatorWitnessDP]
   have hlink := hv 1 _ hmem
   simp only [indicatorWitnessLink, PCWorld.Holds,
-    LO.Propositional.Formula.Boolean.val] at hlink
-  have hiff : v.Holds (LO.Propositional.Formula.atom 1) ↔
-      v.Holds (LO.Propositional.Formula.atom 0) := by
-    simp only [PCWorld.Holds, LO.Propositional.Formula.Boolean.val] at hlink ⊢
+    FFL.Propositional.Formula.Boolean.val] at hlink
+  have hiff : v.Holds (FFL.Propositional.Formula.atom 1) ↔
+      v.Holds (FFL.Propositional.Formula.atom 0) := by
+    simp only [PCWorld.Holds, FFL.Propositional.Formula.Boolean.val] at hlink ⊢
     exact ⟨hlink.2, hlink.1⟩
   have hr0 : ((r : ℝ) < 0) ↔ r < 0 := by exact_mod_cast Iff.rfl
   have hr1 : ((r : ℝ) < 1) ↔ r < 1 := by exact_mod_cast Iff.rfl
   refine ⟨fun h => ?_, fun hlo hhi => ?_, fun h => ?_⟩
   · simp [indicatorWitnessLUV, hr0.mp h, PCWorld.Holds,
-      LO.Propositional.Formula.Boolean.val]
+      FFL.Propositional.Formula.Boolean.val]
   · have hnneg : ¬ (r < 0) := by
       intro hc; exact absurd (hr0.mpr hc) (not_lt.mpr hlo)
     simp only [indicatorWitnessLUV, if_neg hnneg, if_pos (hr1.mp hhi)]
@@ -705,7 +705,7 @@ lemma indicatorWitness_isIndicator :
   · have hn1 : ¬ (r < 1) := fun hc => absurd (hr1.mpr hc) (not_lt.mpr h)
     have hn0 : ¬ (r < 0) := fun hc => hn1 (hc.trans (by norm_num))
     simp [indicatorWitnessLUV, if_neg hn0, if_neg hn1, PCWorld.Holds,
-      LO.Propositional.Formula.Boolean.val]
+      FFL.Propositional.Formula.Boolean.val]
 
 /-- **The stage-quantified reading of `LUV.IsIndicator` is strictly too narrow.**  Demanding
 the `[0,1)` equivalence already in `pcworlds(DP.D n)` for *every* `n` excludes
@@ -718,13 +718,13 @@ lemma indicatorWitness_not_stagewise :
     ¬ ∀ n (v : PCWorld), v.ConsistentWith (indicatorWitnessDP.D n) → ∀ r : ℚ,
       0 ≤ (r : ℝ) → (r : ℝ) < 1 →
         (v.Holds (indicatorWitnessLUV.gt r) ↔
-          v.Holds (LO.Propositional.Formula.atom 0)) := by
+          v.Holds (FFL.Propositional.Formula.atom 0)) := by
   intro h
   have hv : (show PCWorld from fun i => i = 1).ConsistentWith (indicatorWitnessDP.D 0) := by
     simp [indicatorWitnessDP, PCWorld.ConsistentWith]
   have := h 0 _ hv 0 (by norm_num) (by norm_num)
   simp [indicatorWitnessLUV, PCWorld.Holds,
-    LO.Propositional.Formula.Boolean.val] at this
+    FFL.Propositional.Formula.Boolean.val] at this
 
 
 section RationalCut

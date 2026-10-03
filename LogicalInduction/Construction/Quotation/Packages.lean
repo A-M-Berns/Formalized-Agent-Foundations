@@ -4,7 +4,7 @@ import LogicalInduction.Framework.Theory.QuoteRepresentability
 import LogicalInduction.Construction.Primcodable
 import LogicalInduction.Construction.Quotation.DeferralFibre
 import LogicalInduction.Properties.Introspection
-import Foundation.FirstOrder.Bootstrapping.FixedPoint
+import Foundation.FirstOrder.Arithmetic.Bootstrapping.FixedPoint
 
 /-!
 # Arithmetic quotation and affine-package construction
@@ -71,7 +71,7 @@ slack-carrying product, `dd:fuel` for the emission certificates.
 namespace LogicalInduction
 
 open Filter Topology
-open LO.FirstOrder LO.FirstOrder.Arithmetic
+open FFL.FirstOrder FFL.FirstOrder.Arithmetic
 
 /-! ## Compact public names and the proof bridge -/
 
@@ -86,7 +86,7 @@ def quotationClaimCode (positive negative : ArithmeticSemisentence 1) (input : �
 input: the atom whose payload is `quotationClaimCode`. -/
 def quotationClaimSentence (positive negative : ArithmeticSemisentence 1)
     (input : ℕ) : Sentence :=
-  LO.Propositional.Formula.atom (quotationClaimCode positive negative input)
+  FFL.Propositional.Formula.atom (quotationClaimCode positive negative input)
 
 lemma quotationClaimSentence_poly
     (positive negative : ArithmeticSemisentence 1)
@@ -1044,7 +1044,7 @@ arithmetic sentence, not a stipulated relation, backs the quoted decision. -/
 lemma ParameterizedDiagonalQuoteCode.diagonal_law
     {T : ArithmeticTheory} [𝗜𝚺₁ ⪯ T] {truth : ℕ → Prop}
     (q : ParameterizedDiagonalQuoteCode T truth) :
-    T ⊢ ∀⁰ (parameterizedFixedpoint q.body 🡘
+    T ⊢ ∀¹ (parameterizedFixedpoint q.body 🡘
       q.body/[⌜parameterizedFixedpoint q.body⌝, #0]) := by
   simpa using parameterized_diagonal₁ (T := T) q.body
 

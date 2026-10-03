@@ -345,9 +345,9 @@ variable [FiniteEntropyMeasure (ρ.map Prod.fst)] [FiniteEntropyMeasure (ρ.map 
 lemma measureEntropy_prod_le_add :
     Hm[ρ] ≤ Hm[ρ.map Prod.fst] + Hm[ρ.map Prod.snd] := by
   haveI : IsProbabilityMeasure (ρ.map Prod.fst) :=
-    Measure.isProbabilityMeasure_map measurable_fst.aemeasurable
+    inferInstance
   haveI : IsProbabilityMeasure (ρ.map Prod.snd) :=
-    Measure.isProbabilityMeasure_map measurable_snd.aemeasurable
+    inferInstance
   haveI : FiniteEntropyMeasure ρ := finiteEntropyMeasure_prod ρ
   rw [measureEntropy_of_isProbabilityMeasure, measureEntropy_of_isProbabilityMeasure,
     measureEntropy_of_isProbabilityMeasure]
@@ -365,9 +365,9 @@ lemma measureEntropy_prod_eq_add_iff :
     Hm[ρ] = Hm[ρ.map Prod.fst] + Hm[ρ.map Prod.snd]
       ↔ ρ = (ρ.map Prod.fst).prod (ρ.map Prod.snd) := by
   haveI : IsProbabilityMeasure (ρ.map Prod.fst) :=
-    Measure.isProbabilityMeasure_map measurable_fst.aemeasurable
+    inferInstance
   haveI : IsProbabilityMeasure (ρ.map Prod.snd) :=
-    Measure.isProbabilityMeasure_map measurable_snd.aemeasurable
+    inferInstance
   haveI : FiniteEntropyMeasure ρ := finiteEntropyMeasure_prod ρ
   rw [measureEntropy_of_isProbabilityMeasure, measureEntropy_of_isProbabilityMeasure,
     measureEntropy_of_isProbabilityMeasure]
@@ -435,8 +435,8 @@ lemma finiteEntropyOf_cond [MeasurableSingletonClass S]
     exact finiteEntropyMeasure_zero
   · haveI : IsProbabilityMeasure (μ[|Z ⁻¹' {z}]) := cond_isProbabilityMeasure hz
     haveI : IsProbabilityMeasure ((μ[|Z ⁻¹' {z}]).map X) :=
-      Measure.isProbabilityMeasure_map hX.aemeasurable
-    haveI : IsProbabilityMeasure (μ.map X) := Measure.isProbabilityMeasure_map hX.aemeasurable
+      inferInstance
+    haveI : IsProbabilityMeasure (μ.map X) := inferInstance
     refine FiniteEntropyMeasure.of_summable_real ?_
     have hP : 0 < μ.real (Z ⁻¹' {z}) := ENNReal.toReal_pos hz (measure_ne_top _ _)
     have hq : ∀ x, (μ.map X).real {x} = μ.real (X ⁻¹' {x}) := fun x ↦
@@ -497,7 +497,7 @@ lemma entropy_pair_le_add (hX : Measurable X) (hY : Measurable Y)
   rcases eq_zero_or_isProbabilityMeasure μ with rfl | hμ
   · simp [entropy_zero_measure]
   haveI : IsProbabilityMeasure (μ.map (⟨X, Y⟩ : Ω → S × T)) :=
-    Measure.isProbabilityMeasure_map (hX.prodMk hY).aemeasurable
+    inferInstance
   haveI : FiniteEntropyMeasure ((μ.map (⟨X, Y⟩ : Ω → S × T)).map Prod.fst) :=
     by rw [map_pair_fst hX hY]; infer_instance
   haveI : FiniteEntropyMeasure ((μ.map (⟨X, Y⟩ : Ω → S × T)).map Prod.snd) :=
@@ -523,7 +523,7 @@ lemma mutualInfo_eq_zero (hX : Measurable X) (hY : Measurable Y)
     rw [indepFun_iff_map_prod_eq_prod_map_map hX.aemeasurable hY.aemeasurable]
     simp
   haveI : IsProbabilityMeasure (μ.map (⟨X, Y⟩ : Ω → S × T)) :=
-    Measure.isProbabilityMeasure_map (hX.prodMk hY).aemeasurable
+    inferInstance
   haveI : FiniteEntropyMeasure ((μ.map (⟨X, Y⟩ : Ω → S × T)).map Prod.fst) :=
     by rw [map_pair_fst hX hY]; infer_instance
   haveI : FiniteEntropyMeasure ((μ.map (⟨X, Y⟩ : Ω → S × T)).map Prod.snd) :=

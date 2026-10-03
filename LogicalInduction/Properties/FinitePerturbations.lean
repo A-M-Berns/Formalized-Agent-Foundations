@@ -478,15 +478,15 @@ is a finite list of `(day, sentence, price)` rows, whereas under mere day agreem
 rewritten row carries infinitely many prices and no such table exists.
 
 Proof kind: `N-` negative witness.  Provenance: (a) `Infinite.exists_notMem_finset`;
-(b) `LO.Propositional.Formula.atom` injective.
+(b) `FFL.Propositional.Formula.atom` injective.
 Paper node: `app:ifp` -/
 lemma tailAgree_not_finiteSupport :
     ∃ P P' : History, (∀ d, 1 ≤ d → ∀ φ, P d φ = P' d φ) ∧
       ¬ FiniteSupportPerturbation P P' := by
   classical
   haveI : Infinite Sentence :=
-    Infinite.of_injective (LO.Propositional.Formula.atom (α := ℕ))
-      (fun _ _ h => LO.Propositional.Formula.atom.inj h)
+    Infinite.of_injective (FFL.Propositional.Formula.atom (α := ℕ))
+      (fun _ _ h => FFL.Propositional.Formula.atom.inj h)
   refine ⟨fun _ _ => 0, fun d _ => if d = 0 then 1 else 0, ?_, ?_⟩
   · intro d hd _
     show (0 : ℝ) = if d = 0 then 1 else 0

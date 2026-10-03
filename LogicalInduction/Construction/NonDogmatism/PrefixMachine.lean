@@ -70,7 +70,7 @@ instance; neither subsumes the other, and both are kept.
 
 namespace LogicalInduction
 
-open LO.Propositional Filter Topology
+open FFL.Propositional Filter Topology
 
 /-! ## The self-delimiting integer code -/
 

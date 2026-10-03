@@ -41,7 +41,7 @@ Consumed by `AxiomAudit.lean` (all `_arith`, `_arith_unconditional` and
 
 namespace LogicalInduction
 
-open LO LO.FirstOrder LO.FirstOrder.Arithmetic LO.Entailment Filter Topology
+open FFL FFL.FirstOrder FFL.FirstOrder.Arithmetic FFL.Entailment Filter Topology
 
 /-! ## Expectation provability induction at the paper's premise (`thm:expprovind`) -/
 
@@ -604,11 +604,11 @@ private noncomputable def gridEmit (n e : ℕ) : Sentence :=
 
 attribute [local irreducible] Nat.sqrt in
 private lemma gridEmit_computable : Computable₂ (L.gridEmit) := by
-  have hatom : Primrec (fun c : ℕ => (LO.Propositional.Formula.atom c : Sentence)) :=
+  have hatom : Primrec (fun c : ℕ => (FFL.Propositional.Formula.atom c : Sentence)) :=
     Primrec.encode_iff.mp
       ((Primrec.succ.comp (Primrec₂.natPair.comp (Primrec.const 1) Primrec.id)).of_eq
         (fun c => (encode_atom c).symm))
-  have hneg : Primrec (fun c : ℕ => (∼(LO.Propositional.Formula.atom c) : Sentence)) :=
+  have hneg : Primrec (fun c : ℕ => (∼(FFL.Propositional.Formula.atom c) : Sentence)) :=
     Primrec.encode_iff.mp
       ((Primrec.succ.comp (Primrec₂.natPair.comp (Primrec.const 2)
         (Primrec₂.natPair.comp

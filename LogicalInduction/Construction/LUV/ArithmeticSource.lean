@@ -81,7 +81,7 @@ structure would need a bracket-counting scan over the payload; no consumer here 
 
 namespace LogicalInduction
 
-open LO LO.FirstOrder LO.FirstOrder.Arithmetic
+open FFL FFL.FirstOrder FFL.FirstOrder.Arithmetic
 open Nat.Partrec (Code)
 
 /-! ## Negation on Foundation codes -/
@@ -123,7 +123,7 @@ lemma negFormulaCode_spec {k : ℕ} (φ : ArithmeticSemiformula ℕ k) :
       rw [negFormulaCode]
       simp only [Nat.unpair_pair]
       norm_num
-      simp only [← LO.FirstOrder.Semiformula.encode_eq_toNat]
+      simp only [← FFL.FirstOrder.Semiformula.encode_eq_toNat]
       rw [ihφ, ihψ]
       rfl
   | or φ ψ ihφ ihψ =>
@@ -131,7 +131,7 @@ lemma negFormulaCode_spec {k : ℕ} (φ : ArithmeticSemiformula ℕ k) :
       rw [negFormulaCode]
       simp only [Nat.unpair_pair]
       norm_num
-      simp only [← LO.FirstOrder.Semiformula.encode_eq_toNat]
+      simp only [← FFL.FirstOrder.Semiformula.encode_eq_toNat]
       rw [ihφ, ihψ]
       rfl
   | all φ ih =>
@@ -139,7 +139,7 @@ lemma negFormulaCode_spec {k : ℕ} (φ : ArithmeticSemiformula ℕ k) :
       rw [negFormulaCode]
       simp only [Nat.unpair_pair]
       norm_num
-      simp only [← LO.FirstOrder.Semiformula.encode_eq_toNat]
+      simp only [← FFL.FirstOrder.Semiformula.encode_eq_toNat]
       rw [ih]
       rfl
   | exs φ ih =>
@@ -147,7 +147,7 @@ lemma negFormulaCode_spec {k : ℕ} (φ : ArithmeticSemiformula ℕ k) :
       rw [negFormulaCode]
       simp only [Nat.unpair_pair]
       norm_num
-      simp only [← LO.FirstOrder.Semiformula.encode_eq_toNat]
+      simp only [← FFL.FirstOrder.Semiformula.encode_eq_toNat]
       rw [ih]
       rfl
 
@@ -1277,7 +1277,7 @@ def invPaperLUV (T : ArithmeticTheory) [T.Δ₁] [𝗜𝚺₁ ⪯ T]
     PaperLUV T where
   formula := invFormula d
   unique := by
-    apply LO.FirstOrder.Arithmetic.complete T
+    apply FFL.FirstOrder.Arithmetic.complete T
     intro (M : Type) _ hM
     letI : 𝗜𝗢𝗽𝗲𝗻 ⪯ T :=
       Entailment.WeakerThan.trans (𝓣 := 𝗜𝚺₁) inferInstance inferInstance
@@ -1288,7 +1288,7 @@ def invPaperLUV (T : ArithmeticTheory) [T.Δ₁] [𝗜𝚺₁ ⪯ T]
     · simp [h1, Nat.not_le.mpr h1]
     · simp [Nat.not_lt.mpr h1, h1]
   unit := by
-    apply LO.FirstOrder.Arithmetic.complete T
+    apply FFL.FirstOrder.Arithmetic.complete T
     intro (M : Type) _ hM
     letI : 𝗜𝗢𝗽𝗲𝗻 ⪯ T :=
       Entailment.WeakerThan.trans (𝓣 := 𝗜𝚺₁) inferInstance inferInstance
@@ -1741,7 +1741,7 @@ def invPaperLUVWith (T : ArithmeticTheory) [T.Δ₁] [𝗜𝚺₁ ⪯ T]
     PaperLUV T where
   formula := invFormula d ⋏ ψ
   unique := by
-    apply LO.FirstOrder.Arithmetic.complete T
+    apply FFL.FirstOrder.Arithmetic.complete T
     intro (M : Type) _ hM
     letI : 𝗜𝗢𝗽𝗲𝗻 ⪯ T :=
       Entailment.WeakerThan.trans (𝓣 := 𝗜𝚺₁) inferInstance inferInstance
@@ -1752,7 +1752,7 @@ def invPaperLUVWith (T : ArithmeticTheory) [T.Δ₁] [𝗜𝚺₁ ⪯ T]
     · simp [h1, Nat.not_le.mpr h1]
     · simp [Nat.not_lt.mpr h1, h1]
   unit := by
-    apply LO.FirstOrder.Arithmetic.complete T
+    apply FFL.FirstOrder.Arithmetic.complete T
     intro (M : Type) _ hM
     letI : 𝗜𝗢𝗽𝗲𝗻 ⪯ T :=
       Entailment.WeakerThan.trans (𝓣 := 𝗜𝚺₁) inferInstance inferInstance

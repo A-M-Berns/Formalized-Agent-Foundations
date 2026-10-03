@@ -79,7 +79,7 @@ process that runs both of them on each product job is
 
 namespace LogicalInduction
 
-open LO LO.Propositional LO.FirstOrder LO.FirstOrder.Arithmetic
+open FFL FFL.Propositional FFL.FirstOrder FFL.FirstOrder.Arithmetic
 
 -- Keep the pairing decoder opaque while elaborating fixed job syntax.
 attribute [local irreducible] Nat.sqrt
@@ -478,13 +478,13 @@ lemma semanticFreshIncreasing_not_jointly_reflected (Xhat : PresentedLUVSeq) :
     rw [← PresentedLUVSeq.gt_eq]
     have h := hreflect 0 0
     simpa [semanticFreshIncreasingLUVSeq_gt, PCWorld.Holds,
-      LO.Propositional.Formula.Boolean.val] using not_congr h
+      FFL.Propositional.Formula.Boolean.val] using not_congr h
   have hone : v.Holds (semanticPrimeSentence Xhat.thresholdSchema
       (Nat.pair 0 (Encodable.encode (1 : ℚ)))) := by
     rw [← PresentedLUVSeq.gt_eq]
     exact (hreflect 0 1).mpr (by
       simp [semanticFreshIncreasingLUVSeq_gt, PCWorld.Holds,
-        LO.Propositional.Formula.Boolean.val])
+        FFL.Propositional.Formula.Boolean.val])
   exact semanticProductDP_no_increasing_factor_assignment hv
     Xhat.thresholdSchema Xhat.thresholdSchema 0 hone hone hzero hzero
 

@@ -47,7 +47,7 @@ module — `liftedCCEEBaseDP_computable`, `liftedCCEEBaseWorld_hworld`,
 
 namespace LogicalInduction
 
-open LO LO.Propositional LO.FirstOrder LO.FirstOrder.Arithmetic
+open FFL FFL.Propositional FFL.FirstOrder FFL.FirstOrder.Arithmetic
 open Classical
 
 /-! ## The lifted quotation base -/

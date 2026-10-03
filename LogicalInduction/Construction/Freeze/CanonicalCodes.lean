@@ -46,7 +46,7 @@ annotation.
 
 namespace LogicalInduction
 
-open LO.Propositional PrefixPatchCompile
+open FFL.Propositional PrefixPatchCompile
 
 /-! ## `⊥`-freeness -/
 
@@ -158,7 +158,7 @@ lemma decode_eq_some_iff_of_botFree :
   intro φ hφ c
   refine ⟨?_, fun h => by subst h; exact Encodable.encodek φ⟩
   revert c
-  induction φ using LO.Propositional.Formula.rec' with
+  induction φ using FFL.Propositional.Formula.rec' with
   | hfalsum => exact absurd hφ id
   | hatom a =>
       intro c hc

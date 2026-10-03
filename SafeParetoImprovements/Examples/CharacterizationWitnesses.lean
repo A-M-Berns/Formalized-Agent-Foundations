@@ -90,7 +90,7 @@ lemma conflict_tokenValue_strict (i : Two) :
   rw [conflict_tokenValue]
   show 2⁻¹ * (conflictStrictUe (conflictRepresentatives.toPlay.play conflictTokenCopy true) i
     + conflictStrictUe (conflictRepresentatives.toPlay.play conflictTokenCopy false) i) = 1
-  rw [conflictRepresentatives_play_hat, conflictRepresentatives_play_hat,
+  erw [conflictRepresentatives_play_hat, conflictRepresentatives_play_hat,
     conflictStrictUe_heads, conflictStrictUe_tails]
   show 2⁻¹ * (conflictImproved i + conflictGame.u (conflictPages false) i) = 1
   cases i <;> norm_num [conflictImproved, conflictPages, conflictGame_u_inl, conflictPayoff]
@@ -104,7 +104,7 @@ lemma conflict_tokenValue_plain_eq (i : Two) :
       (conflictRepresentatives.toPlay.play conflictTokenCopy true)) i
     + conflictGame.u (conflictBookIso.symm.map
       (conflictRepresentatives.toPlay.play conflictTokenCopy false)) i) = _
-  rw [conflictRepresentatives_play_hat, conflictRepresentatives_play_hat,
+  erw [conflictRepresentatives_play_hat, conflictRepresentatives_play_hat,
     conflictBookIso.symm_map_map (conflictPages_mem true),
     conflictBookIso.symm_map_map (conflictPages_mem false)]
 
@@ -141,7 +141,7 @@ lemma conflict_plain_not_constant_ue (T : TokenGame conflictGame) (c : Two → �
   have h1 : conflictRepresentatives.tokenValue conflictGame T Two.one = c Two.one := by
     rw [conflict_tokenValue, hc, hc]; ring
   have h2 := ((ae_coin_iff _).1 hspi).2
-  rw [conflictRepresentatives_play, hc] at h2
+  erw [conflictRepresentatives_play, hc] at h2
   have h3 : (1 : ℝ) ≤ c Two.one := by
     have := h2 Two.one
     simpa [conflictPages, conflictGame_u_inl, conflictPayoff] using this
@@ -256,7 +256,7 @@ noncomputable def mixRepresentatives : Representatives.{0, 0, 0} Two MixUniverse
   toPlay := mixPlay
   measurableSet_fiber _ _ := trivial
 
-lemma mixRepresentatives_play_base (ω : mixRepresentatives.Ω) :
+lemma mixRepresentatives_play_base (ω : Bool) :
     mixRepresentatives.play mixBase ω = pair 0 0 := by
   funext i
   show (if 3 ≤ (mixBase.S i).card ∧ ω = true then (mixBase.S i).max' (mixBase.nonempty i)
@@ -316,7 +316,7 @@ lemma mixToken_isSPI : mixToken.IsSPI mixRepresentatives.toPlay mixRepresentativ
   refine Filter.Eventually.of_forall fun ω => ?_
   show mixBase.u (mixRepresentatives.play mixBase ω) ≤
     mixToken.ue (mixRepresentatives.play mixTok ω)
-  rw [mixRepresentatives_play_base]
+  erw [mixRepresentatives_play_base]
   cases ω
   · rw [show mixToken.ue (mixRepresentatives.play mixTok false) = mixBase.u (pair 0 0) from
       mixToken_ue_false]
@@ -326,7 +326,7 @@ lemma mixToken_isSPI : mixToken.IsSPI mixRepresentatives.toPlay mixRepresentativ
 
 lemma mixRepresentatives_fiber_base :
     mixRepresentatives.fiber mixBase (pair 0 0) = Set.univ := by
-  ext ω; simp [Representatives.fiber, mixRepresentatives_play_base]
+  ext ω; exact ⟨fun _ => Set.mem_univ _, fun _ => mixRepresentatives_play_base ω⟩
 
 lemma mixBase_mem_support : (pair 0 0 : ∀ i, MixUniverse i) ∈ mixRepresentatives.support mixBase := by
   show mixRepresentatives.μ {ω | mixRepresentatives.play mixBase ω = pair 0 0} ≠ 0

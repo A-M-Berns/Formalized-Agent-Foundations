@@ -69,7 +69,7 @@ private lemma finiteEntropyOf_piFin_aux (μ : Measure Ω) [IsProbabilityMeasure 
     haveI hZ : FiniteEntropyOf (fun ω j ↦ X ((0 : Fin (n + 1)).succAbove j) ω) μ :=
       ih (fun j ↦ hX _) (fun j ↦ hfe _)
     have hZm : Measurable fun ω j ↦ X ((0 : Fin (n + 1)).succAbove j) ω :=
-      measurable_pi_lambda _ fun j ↦ hX _
+      measurable_pi_iff.mpr fun j ↦ hX _
     haveI := finiteEntropyOf_pair (μ := μ) (hX 0) hZm
     have hpair : Measurable fun ω ↦ (X 0 ω, fun j ↦ X ((0 : Fin (n + 1)).succAbove j) ω) :=
       (hX 0).prodMk hZm
@@ -113,7 +113,7 @@ lemma finiteEntropyOf_pi {I : Type*} [Fintype I] {R : I → Type*} [∀ i, Measu
   haveI : FiniteEntropyOf (fun ω (k : Fin (Fintype.card I)) ↦ X (e.symm k) ω) μ :=
     finiteEntropyOf_piFin (fun k ↦ hX _)
   have hm : Measurable fun ω (k : Fin (Fintype.card I)) ↦ X (e.symm k) ω :=
-    measurable_pi_lambda _ fun k ↦ hX _
+    measurable_pi_iff.mpr fun k ↦ hX _
   have key : (fun ω i ↦ X i ω) =
       E ∘ fun ω (k : Fin (Fintype.card I)) ↦ X (e.symm k) ω := by
     funext ω

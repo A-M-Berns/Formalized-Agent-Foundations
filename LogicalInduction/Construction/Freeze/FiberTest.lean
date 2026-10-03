@@ -167,7 +167,7 @@ Proof kind: `C` composition.  Provenance: (a) `DigitFP.unpairFstW_mem_FP`,
 Paper node: `app:ifp` -/
 lemma fiberW_mem_FP : ∀ χ : Sentence, fiberW χ ∈ FP := by
   intro χ
-  induction χ using LO.Propositional.Formula.rec' with
+  induction χ using FFL.Propositional.Formula.rec' with
   | hfalsum =>
       have h := ifNumEq_mem_FP idFn_mem_FP 0 (constFn_mem_FP [])
         (ifNumEq_mem_FP tagW_mem_FP 0 (constFn_mem_FP [true]) (constFn_mem_FP []))
@@ -258,7 +258,7 @@ Proof kind: `P` proved.  Provenance: (a) `numEqBits_iff_wordVal`, `wordVal_tagW`
 lemma length_fiberW_eq_one : ∀ (χ : Sentence) {w : List Bool}, IsDigitWord w →
     ((fiberW χ w).length = 1 ↔ sentenceMatches χ (wordVal w) = 1) := by
   intro χ
-  induction χ using LO.Propositional.Formula.rec' with
+  induction χ using FFL.Propositional.Formula.rec' with
   | hfalsum =>
       intro w hw
       simp only [fiberW, sentenceMatches]

@@ -49,11 +49,11 @@ namespace LogicalInduction
 
 section SettlementCompile
 
-open LO.Propositional
+open FFL.Propositional
 
 /-- `atomBound` on a Gödel code, `Option`-encoded (`0` = does not decode). -/
 private def atomBoundNorm (n : ℕ) : ℕ :=
-  match (@LO.Propositional.Formula.ofNat ℕ inferInstance n : Option Sentence) with
+  match (@FFL.Propositional.Formula.ofNat ℕ inferInstance n : Option Sentence) with
   | none => 0
   | some φ => BoolPCWorld.atomBound φ + 1
 
@@ -124,7 +124,7 @@ private lemma atomBoundList_prim : Primrec atomBoundList :=
     atomBoundSucc_prim).of_eq fun prior => by simp only [atomBoundList]
 
 private lemma atomBoundNorm_zero : atomBoundNorm 0 = 0 := by
-  simp [atomBoundNorm, LO.Propositional.Formula.ofNat]
+  simp [atomBoundNorm, FFL.Propositional.Formula.ofNat]
 
 private lemma atomBoundHistory_getD {n k : ℕ} (hk : k < n) :
     ((List.range n).map atomBoundNorm).getD k 0 = atomBoundNorm k := by
@@ -136,22 +136,22 @@ connectives: `atomBound` maxes its children regardless of which one it is. -/
 private lemma atomBoundBinary_history (payload n : ℕ)
     (hleft : payload.unpair.1 < n) (hright : payload.unpair.2 < n) :
     atomBoundBinary ((List.range n).map atomBoundNorm) payload =
-      match (@LO.Propositional.Formula.ofNat ℕ inferInstance payload.unpair.1 : Option Sentence),
-          (@LO.Propositional.Formula.ofNat ℕ inferInstance payload.unpair.2 : Option Sentence) with
+      match (@FFL.Propositional.Formula.ofNat ℕ inferInstance payload.unpair.1 : Option Sentence),
+          (@FFL.Propositional.Formula.ofNat ℕ inferInstance payload.unpair.2 : Option Sentence) with
       | some φ, some ψ => max (BoolPCWorld.atomBound φ) (BoolPCWorld.atomBound ψ) + 1
       | _, _ => 0 := by
   unfold atomBoundBinary
   rw [atomBoundHistory_getD hleft, atomBoundHistory_getD hright]
-  cases hL : (@LO.Propositional.Formula.ofNat ℕ inferInstance
+  cases hL : (@FFL.Propositional.Formula.ofNat ℕ inferInstance
       payload.unpair.1 : Option Sentence) <;>
-    cases hR : (@LO.Propositional.Formula.ofNat ℕ inferInstance
+    cases hR : (@FFL.Propositional.Formula.ofNat ℕ inferInstance
       payload.unpair.2 : Option Sentence) <;>
     simp [atomBoundNorm, hL, hR]
 
 private lemma atomBoundList_history (n : ℕ) :
     atomBoundList ((List.range n).map atomBoundNorm) = atomBoundNorm n := by
   cases n with
-  | zero => simp [atomBoundList, atomBoundNorm, LO.Propositional.Formula.ofNat]
+  | zero => simp [atomBoundList, atomBoundNorm, FFL.Propositional.Formula.ofNat]
   | succ e =>
       have hleft : e.unpair.2.unpair.1 < e + 1 :=
         Nat.lt_succ_iff.mpr <|
@@ -162,10 +162,10 @@ private lemma atomBoundList_history (n : ℕ) :
       have hbin := atomBoundBinary_history e.unpair.2 (e + 1) hleft hright
       by_cases h0 : e.unpair.1 = 0
       · simp [atomBoundList, atomBoundSucc, atomBoundNorm, BoolPCWorld.atomBound,
-          LO.Propositional.Formula.ofNat, h0]
+          FFL.Propositional.Formula.ofNat, h0]
       by_cases h1 : e.unpair.1 = 1
       · simp [atomBoundList, atomBoundSucc, atomBoundNorm, BoolPCWorld.atomBound,
-          LO.Propositional.Formula.ofNat, h1]
+          FFL.Propositional.Formula.ofNat, h1]
       -- The three binary tags run the same script; only the numeral `ofNat` rebuilds on
       -- differs, so the script is written once and instantiated at each tag.
       have hbinTag : ∀ t : ℕ, t = 2 ∨ t = 3 ∨ t = 4 → e.unpair.1 = t →
@@ -176,10 +176,10 @@ private lemma atomBoundList_history (n : ℕ) :
           simp only [atomBoundList, List.length_map, List.length_range, atomBoundSucc,
             ht, ↓reduceIte]
           rw [hbin]
-          simp only [atomBoundNorm, LO.Propositional.Formula.ofNat, ht]
-          cases (@LO.Propositional.Formula.ofNat ℕ inferInstance
+          simp only [atomBoundNorm, FFL.Propositional.Formula.ofNat, ht]
+          cases (@FFL.Propositional.Formula.ofNat ℕ inferInstance
               e.unpair.2.unpair.1 : Option Sentence) <;>
-            cases (@LO.Propositional.Formula.ofNat ℕ inferInstance
+            cases (@FFL.Propositional.Formula.ofNat ℕ inferInstance
               e.unpair.2.unpair.2 : Option Sentence) <;>
             simp [BoolPCWorld.atomBound]
       by_cases h2 : e.unpair.1 = 2
@@ -190,7 +190,7 @@ private lemma atomBoundList_history (n : ℕ) :
       · exact hbinTag 4 (by tauto) h4
       · have htag : 5 ≤ e.unpair.1 := by omega
         simp [atomBoundList, atomBoundSucc, atomBoundNorm,
-          LO.Propositional.Formula.ofNat, h0, h1, h2, h3, h4]
+          FFL.Propositional.Formula.ofNat, h0, h1, h2, h3, h4]
 
 private lemma atomBoundNorm_prim : Primrec atomBoundNorm := by
   have hstep : Primrec₂ (fun (_ : Unit) (prior : List ℕ) =>
@@ -207,7 +207,7 @@ lemma atomBound_prim : Primrec BoolPCWorld.atomBound := by
     Primrec.nat_sub.comp (atomBoundNorm_prim.comp Primrec.encode) (Primrec.const 1)
   exact h.of_eq fun φ => by
     simp only [atomBoundNorm, Encodable.encode,
-      LO.Propositional.Formula.ofNat_toNat φ, Nat.add_sub_cancel]
+      FFL.Propositional.Formula.ofNat_toNat φ, Nat.add_sub_cancel]
 
 /-! ### Evaluation
 
@@ -232,7 +232,7 @@ private def evalOp (tag : ℕ) (a b : Bool) : Bool :=
 /-- `eval` on a Gödel code, `Option`-encoded (`0` = does not decode, `1` = false,
 `2` = true). -/
 private def evalNorm (l : List Bool) (n : ℕ) : ℕ :=
-  match (@LO.Propositional.Formula.ofNat ℕ inferInstance n : Option Sentence) with
+  match (@FFL.Propositional.Formula.ofNat ℕ inferInstance n : Option Sentence) with
   | none => 0
   | some φ => if BoolPCWorld.eval (BoolPCWorld.bitsWorld l) φ then 2 else 1
 
@@ -328,7 +328,7 @@ private lemma evalList_prim :
   exact h.of_eq fun p => by simp only [evalList]
 
 private lemma evalNorm_zero (l : List Bool) : evalNorm l 0 = 0 := by
-  simp [evalNorm, LO.Propositional.Formula.ofNat]
+  simp [evalNorm, FFL.Propositional.Formula.ofNat]
 
 private lemma evalHistory_getD (l : List Bool) {n k : ℕ} (hk : k < n) :
     ((List.range n).map (evalNorm l)).getD k 0 = evalNorm l k := by
@@ -338,17 +338,17 @@ private lemma evalHistory_getD (l : List Bool) {n k : ℕ} (hk : k < n) :
 private lemma evalBinary_history (tag : ℕ) (l : List Bool) (payload n : ℕ)
     (hleft : payload.unpair.1 < n) (hright : payload.unpair.2 < n) :
     evalBinary tag ((List.range n).map (evalNorm l)) payload =
-      match (@LO.Propositional.Formula.ofNat ℕ inferInstance payload.unpair.1 : Option Sentence),
-          (@LO.Propositional.Formula.ofNat ℕ inferInstance payload.unpair.2 : Option Sentence) with
+      match (@FFL.Propositional.Formula.ofNat ℕ inferInstance payload.unpair.1 : Option Sentence),
+          (@FFL.Propositional.Formula.ofNat ℕ inferInstance payload.unpair.2 : Option Sentence) with
       | some φ, some ψ =>
           if evalOp tag (BoolPCWorld.eval (BoolPCWorld.bitsWorld l) φ)
             (BoolPCWorld.eval (BoolPCWorld.bitsWorld l) ψ) then 2 else 1
       | _, _ => 0 := by
   unfold evalBinary
   rw [evalHistory_getD l hleft, evalHistory_getD l hright]
-  cases hL : (@LO.Propositional.Formula.ofNat ℕ inferInstance
+  cases hL : (@FFL.Propositional.Formula.ofNat ℕ inferInstance
       payload.unpair.1 : Option Sentence) <;>
-    cases hR : (@LO.Propositional.Formula.ofNat ℕ inferInstance
+    cases hR : (@FFL.Propositional.Formula.ofNat ℕ inferInstance
       payload.unpair.2 : Option Sentence) <;>
     simp only [evalNorm, hL, hR] <;>
     [skip; skip; skip;
@@ -359,7 +359,7 @@ private lemma evalBinary_history (tag : ℕ) (l : List Bool) (payload n : ℕ)
 private lemma evalList_history (l : List Bool) (n : ℕ) :
     evalList l ((List.range n).map (evalNorm l)) = evalNorm l n := by
   cases n with
-  | zero => simp [evalList, evalNorm, LO.Propositional.Formula.ofNat]
+  | zero => simp [evalList, evalNorm, FFL.Propositional.Formula.ofNat]
   | succ e =>
       have hleft : e.unpair.2.unpair.1 < e + 1 :=
         Nat.lt_succ_iff.mpr <| le_trans (Nat.unpair_left_le _) (Nat.unpair_right_le _)
@@ -367,10 +367,10 @@ private lemma evalList_history (l : List Bool) (n : ℕ) :
         Nat.lt_succ_iff.mpr <| le_trans (Nat.unpair_right_le _) (Nat.unpair_right_le _)
       by_cases h0 : e.unpair.1 = 0
       · simp [evalList, evalSucc, evalNorm, BoolPCWorld.eval,
-          LO.Propositional.Formula.ofNat, h0]
+          FFL.Propositional.Formula.ofNat, h0]
       by_cases h1 : e.unpair.1 = 1
       · simp [evalList, evalSucc, evalNorm, BoolPCWorld.eval, BoolPCWorld.bitsWorld,
-          LO.Propositional.Formula.ofNat, h1]
+          FFL.Propositional.Formula.ofNat, h1]
       -- The three binary tags run the same script; only the numeral `ofNat` rebuilds on
       -- differs, so the script is written once and instantiated at each tag.
       have hbinTag : ∀ t : ℕ, t = 2 ∨ t = 3 ∨ t = 4 → e.unpair.1 = t →
@@ -382,10 +382,10 @@ private lemma evalList_history (l : List Bool) (n : ℕ) :
           simp only [evalList, List.length_map, List.length_range, evalSucc,
             ht, ↓reduceIte]
           rw [hrw]
-          simp only [evalNorm, LO.Propositional.Formula.ofNat, ht]
-          cases (@LO.Propositional.Formula.ofNat ℕ inferInstance
+          simp only [evalNorm, FFL.Propositional.Formula.ofNat, ht]
+          cases (@FFL.Propositional.Formula.ofNat ℕ inferInstance
               e.unpair.2.unpair.1 : Option Sentence) <;>
-            cases (@LO.Propositional.Formula.ofNat ℕ inferInstance
+            cases (@FFL.Propositional.Formula.ofNat ℕ inferInstance
               e.unpair.2.unpair.2 : Option Sentence) <;>
             simp [BoolPCWorld.eval, evalOp]
       by_cases h2 : e.unpair.1 = 2
@@ -396,7 +396,7 @@ private lemma evalList_history (l : List Bool) (n : ℕ) :
       · exact hbinTag 4 (by tauto) h4
       · have htag : 5 ≤ e.unpair.1 := by omega
         simp [evalList, evalSucc, evalNorm,
-          LO.Propositional.Formula.ofNat, h0, h1, h2, h3, h4]
+          FFL.Propositional.Formula.ofNat, h0, h1, h2, h3, h4]
 
 private lemma evalNorm_prim : Primrec₂ evalNorm := by
   have hstep : Primrec₂ (fun (l : List Bool) (prior : List ℕ) =>
@@ -417,7 +417,7 @@ lemma evalBits_prim : Primrec₂ fun (l : List Bool) (φ : Sentence) =>
       (evalNorm_prim.comp Primrec.fst (Primrec.encode.comp Primrec.snd))
       (Primrec.const 2)).decide
   exact h.to₂.of_eq fun l φ => by
-    simp only [evalNorm, Encodable.encode, LO.Propositional.Formula.ofNat_toNat φ]
+    simp only [evalNorm, Encodable.encode, FFL.Propositional.Formula.ofNat_toNat φ]
     cases BoolPCWorld.eval (BoolPCWorld.bitsWorld l) φ <;> simp
 
 /-! ### The stage quantifier
@@ -488,7 +488,7 @@ opaque encoded `EF`.  Reconstruct the token list via `PolySegStream.primrec`, th
 existing primitive-recursive trade-stream decoder to invert `EF.serialize`. -/
 
 private def serializationMarkerSentence : Sentence :=
-  LO.Propositional.Formula.atom 0
+  FFL.Propositional.Formula.atom 0
 
 /-- Decode one serialized feature by appending a dummy trade frame and reusing the canonical
 trade-stream decoder.  Malformed streams totalize to the zero feature. -/

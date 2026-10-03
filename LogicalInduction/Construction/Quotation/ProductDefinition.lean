@@ -98,7 +98,7 @@ schema is stated over.
 
 namespace LogicalInduction
 
-open LO LO.Propositional LO.FirstOrder LO.FirstOrder.Arithmetic LO.Entailment
+open FFL FFL.Propositional FFL.FirstOrder FFL.FirstOrder.Arithmetic FFL.Entailment
 open Filter Topology
 
 /-! ## The fresh product atoms -/

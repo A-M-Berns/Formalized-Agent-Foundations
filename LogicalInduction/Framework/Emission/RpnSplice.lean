@@ -140,7 +140,7 @@ lemma RpnSentenceCodes.or {φ ψ : ℕ → Sentence}
 two blocks, which the prefix parser consumes in order. -/
 lemma RpnSentenceCodes.imp {φ ψ : ℕ → Sentence}
     (hφ : RpnSentenceCodes φ) (hψ : RpnSentenceCodes ψ) :
-    RpnSentenceCodes (fun z => LO.Propositional.Formula.imp (φ z) (ψ z)) := by
+    RpnSentenceCodes (fun z => FFL.Propositional.Formula.imp (φ z) (ψ z)) := by
   obtain ⟨a, ha, hpa⟩ := hφ
   obtain ⟨b, hb, hpb⟩ := hψ
   have h2 : PolySegStream (fun _ : ℕ => [2]) :=

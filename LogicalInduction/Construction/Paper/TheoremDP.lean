@@ -1,9 +1,9 @@
 import LogicalInduction.Construction.Paper.FirstOrder
 import LogicalInduction.Construction.Paper.ComputationDP
 import LogicalInduction.Construction.Conditioning.Presentation
-import Foundation.FirstOrder.Bootstrapping.Syntax.Proof.Coding
-import Foundation.FirstOrder.Bootstrapping.DerivabilityCondition.D1
-import Foundation.FirstOrder.Completeness.CounterModel
+import Foundation.FirstOrder.Arithmetic.Bootstrapping.Syntax.Proof.Coding
+import Foundation.FirstOrder.Arithmetic.Bootstrapping.DerivabilityCondition.D1
+import Foundation.FirstOrder.LK.Completeness.CounterModel
 
 /-!
 # A fixed public process for first-order theorems, and the single paper-facing market
@@ -46,8 +46,8 @@ this module imports `Construction/Conditioning/Presentation.lean` for
 
 namespace LogicalInduction
 
-open LO LO.FirstOrder LO.FirstOrder.Arithmetic LO.Entailment
-open LO.Propositional
+open FFL FFL.FirstOrder FFL.FirstOrder.Arithmetic FFL.Entailment
+open FFL.Propositional
 
 variable (T : ArithmeticTheory)
 
@@ -104,14 +104,14 @@ lemma derivation2_evalf_of_model
     {M : Type*} [Nonempty M] [Structure ℒₒᵣ M]
     (hT : M ↓[ℒₒᵣ] ⊧* T) {Γ : Finset ArithmeticProposition}
     (d : T ⟹₂ Γ) (f : ℕ → M) : ∃ φ ∈ Γ, φ.Evalf f := by
-  rcases LO.FirstOrder.Derivation2.toProofData d with ⟨A, hA, b⟩
-  obtain ⟨φ, hmem, htruth⟩ := LO.FirstOrder.Derivation.sound f b
+  rcases FFL.FirstOrder.Derivation2.toProofData d with ⟨A, hA, b⟩
+  obtain ⟨φ, hmem, htruth⟩ := FFL.FirstOrder.Derivation.sound f b
   simp only [List.mem_append] at hmem
   rcases hmem with hΓ | hneg
   · exact ⟨φ, by simpa using hΓ, htruth⟩
   · exfalso
     have hex : ∃ ψ ∈ A, (ψ : ArithmeticProposition) = ∼φ := by
-      simpa [LO.FirstOrder.Sequent.embed] using hneg
+      simpa [FFL.FirstOrder.Sequent.embed] using hneg
     rcases hex with ⟨ψ, hψ, hcoe⟩
     have hψT : ψ.Realize M := by
       exact hT.models _ (hA ψ hψ)
@@ -132,7 +132,7 @@ lemma provable_proposition_evalf_of_model
     (hT : M ↓[ℒₒᵣ] ⊧* T) (f : ℕ → M) {φ : ArithmeticProposition}
     (hφ : Bootstrapping.Provable T (Encodable.encode φ)) : φ.Evalf f := by
   have hquote : Bootstrapping.Provable T (⌜φ⌝ : ℕ) := by
-    simpa [LO.FirstOrder.Semiformula.quote_eq_encode] using hφ
+    simpa [FFL.FirstOrder.Semiformula.quote_eq_encode] using hφ
   have hsound : Nonempty (T ⟹₂ ({φ} : Finset ArithmeticProposition)) := by
     exact ⟨Bootstrapping.Provable.sound2 (T := T) hquote⟩
   rcases hsound with ⟨d⟩
@@ -170,7 +170,7 @@ lemma paperTheoryDP_covers_outer_provable [T.Δ₁] (φ : ArithmeticSentence) (h
     Bootstrapping.provable_iff_provable.mpr hφ
   apply paperTheoryDP_covers_provable T φ
   have hencode : Encodable.encode (φ : ArithmeticProposition) = (⌜φ⌝ : ℕ) := by
-    simpa using (LO.FirstOrder.Sentence.quote_eq_encode (V := ℕ) φ).symm
+    simpa using (FFL.FirstOrder.Sentence.quote_eq_encode (V := ℕ) φ).symm
   rw [hencode]
   exact hquote
 
@@ -198,7 +198,7 @@ lemma paperFormulaCode_has_proposition {formulaCode : ℕ}
     (hwf : Bootstrapping.IsFormula ℒₒᵣ formulaCode) :
     ∃ φ : ArithmeticProposition, Encodable.encode φ = formulaCode := by
   rcases hwf.sound with ⟨φ, hφ⟩
-  exact ⟨φ, by simpa [LO.FirstOrder.Semiformula.quote_eq_encode] using hφ⟩
+  exact ⟨φ, by simpa [FFL.FirstOrder.Semiformula.quote_eq_encode] using hφ⟩
 
 /-- A fired event code names a proposition, and that proposition is `T`-provable. -/
 lemma paperTheoremFires_has_proposition [T.Δ₁] {formulaCode : ℕ}
@@ -251,9 +251,9 @@ explicit completed world.  Thus the universal theorem stream is not merely synta
 computable; it is non-vacuous. -/
 lemma paperTheoryDP_nonvacuous [T.Δ₁] [Entailment.Consistent T] :
     ∃ v : PCWorld, v.ConsistentWithTheory (paperTheoryDP T) := by
-  have hs : LO.FirstOrder.Satisfiable T :=
-    LO.FirstOrder.Theory.small_satisfiable_of_consistent (T := T) inferInstance
-  rcases LO.FirstOrder.satisfiable_iff.mp hs with ⟨M, hMne, hMstr, hT⟩
+  have hs : FFL.FirstOrder.Satisfiable T :=
+    FFL.FirstOrder.Theory.small_satisfiable_of_consistent (T := T) inferInstance
+  rcases FFL.FirstOrder.satisfiable_iff.mp hs with ⟨M, hMne, hMstr, hT⟩
   letI : Nonempty M := hMne
   letI : Structure ℒₒᵣ M := hMstr
   let f : ℕ → M := fun _ => Classical.choice hMne
@@ -405,9 +405,9 @@ lemma paperDP_hworld_of_model [T.Δ₁] [𝗣𝗔⁻ ⪯ T] [Entailment.Consiste
 extension world is consistent with every stage. -/
 lemma paperDP_nonvacuous [T.Δ₁] [𝗣𝗔⁻ ⪯ T] [Entailment.Consistent T] :
     ∃ v : PCWorld, v.ConsistentWithTheory (paperDP T) := by
-  have hs : LO.FirstOrder.Satisfiable T :=
-    LO.FirstOrder.Theory.small_satisfiable_of_consistent (T := T) inferInstance
-  rcases LO.FirstOrder.satisfiable_iff.mp hs with ⟨M, hMne, hMstr, hT⟩
+  have hs : FFL.FirstOrder.Satisfiable T :=
+    FFL.FirstOrder.Theory.small_satisfiable_of_consistent (T := T) inferInstance
+  rcases FFL.FirstOrder.satisfiable_iff.mp hs with ⟨M, hMne, hMstr, hT⟩
   letI : Nonempty M := hMne
   letI : Structure ℒₒᵣ M := hMstr
   let f : ℕ → M := fun _ => Classical.choice hMne

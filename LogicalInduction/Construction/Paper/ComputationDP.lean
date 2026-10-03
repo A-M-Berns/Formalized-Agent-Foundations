@@ -4,7 +4,7 @@ import LogicalInduction.Construction.Quotation.Packages
 import LogicalInduction.Construction.LIACompiler
 import Foundation.FirstOrder.Incompleteness.Halting
 -- for `ISigma1_delta1Definable`; not reachable through `Incompleteness.Halting`
-import Foundation.FirstOrder.Incompleteness.InductionSchemeDelta1
+import Foundation.FirstOrder.Arithmetic.Bootstrapping.Syntax.Theory
 import LogicalInduction.Framework.Emission.WriteOut
 
 /-!
@@ -68,8 +68,8 @@ non-vacuity; that is the whole premise set.
 
 namespace LogicalInduction
 
-open LO LO.FirstOrder LO.FirstOrder.Arithmetic LO.Entailment
-open LO.Propositional
+open FFL FFL.FirstOrder FFL.FirstOrder.Arithmetic FFL.Entailment
+open FFL.Propositional
 open Filter Topology
 
 /-! ## Provability of schema instances is recursively enumerable -/
@@ -274,8 +274,8 @@ lemma theoremDP_hworld [T.Δ₁] [𝗣𝗔⁻ ⪯ T] [Entailment.Consistent T] (
       (by cl_prover [hpos, hfires, hexc])
   · -- default tag: atom is ⊤, always held
     simp only [eventAtom, h]
-    show LO.Propositional.Formula.Boolean.val (provabilityWorld T) ⊤
-    simp [LO.Propositional.Formula.Boolean.val]
+    show FFL.Propositional.Formula.Boolean.val (provabilityWorld T) ⊤
+    simp [FFL.Propositional.Formula.Boolean.val]
 
 /-! ## Computability of the stage enumerator
 

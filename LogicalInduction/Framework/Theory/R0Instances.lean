@@ -1,7 +1,7 @@
 import LogicalInduction.Framework.Theory.QuoteRepresentability
 import Foundation.FirstOrder.Arithmetic.R0.Representation
 import Foundation.FirstOrder.Arithmetic.PeanoMinus.Basic
-import Foundation.FirstOrder.Arithmetic.Induction
+import Foundation.FirstOrder.Arithmetic.Induction.Basic
 
 /-!
 # Non-vacuity of `RepresentsComputations`: the standard arithmetical theories satisfy it
@@ -60,7 +60,7 @@ only `𝗥₀`.
 
 namespace LogicalInduction
 
-open LO LO.FirstOrder LO.FirstOrder.Arithmetic LO.Entailment
+open FFL FFL.FirstOrder FFL.FirstOrder.Arithmetic FFL.Entailment
 
 section Representation
 
@@ -115,7 +115,7 @@ Kind `C` (composition) over `eval_code_iff`. -/
 private lemma models_repr_sentence {M : Type*} [ORingStructure M] [M↓[ℒₒᵣ] ⊧* 𝗣𝗔⁻]
     {c : Code 1} {g : List.Vector ℕ 1 →. ℕ} (hc : c.eval g) {n y : ℕ}
     (hy : y ∈ g (List.Vector.ofFn ![n])) :
-    M↓[ℒₒᵣ] ⊧ (∀⁰ (Semiformula.subst (swapArgs (code c)) ![‘↑n’, #0] 🡘
+    M↓[ℒₒᵣ] ⊧ (∀¹ (Semiformula.subst (swapArgs (code c)) ![‘↑n’, #0] 🡘
       (“#0 = ↑y” : ArithmeticSemisentence 1))) := by
   rw [subst_swapArgs]
   simp only [models_iff, Semiformula.eval_all, LogicalConnective.HomClass.map_iff,

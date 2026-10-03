@@ -45,7 +45,7 @@ growing form says something.
 
 namespace LogicalInduction
 
-open LO.Propositional
+open FFL.Propositional
 
 /-! ## Canonical finite conjunction -/
 
@@ -60,10 +60,10 @@ presentation in this file is discharged by. -/
     (v : PCWorld) (stage : Finset Sentence) :
     v.Holds (deductiveStageCondition stage) ↔ v.ConsistentWith stage := by
   have hlist (l : List Sentence) :
-      LO.Propositional.Formula.Boolean.val v l.conj₂ ↔
-        ∀ φ ∈ l, LO.Propositional.Formula.Boolean.val v φ := by
+      FFL.Propositional.Formula.Boolean.val v l.conj₂ ↔
+        ∀ φ ∈ l, FFL.Propositional.Formula.Boolean.val v φ := by
     induction l using List.induction_with_singleton' <;>
-      simp_all [LO.Propositional.Formula.Boolean.val]
+      simp_all [FFL.Propositional.Formula.Boolean.val]
   simpa [deductiveStageCondition, PCWorld.Holds, PCWorld.ConsistentWith,
     Finset.conj] using hlist stage.toList
 
@@ -242,7 +242,7 @@ instead, for the reason recorded at the prefix-conjunction section below.
 -/
 
 /-- The atoms adjoined by `growingConditionProcess`. -/
-def growingConditionAtom (i : ℕ) : Sentence := LO.Propositional.Formula.atom i
+def growingConditionAtom (i : ℕ) : Sentence := FFL.Propositional.Formula.atom i
 
 /-- The two adjoined atoms are distinct, which is what makes the growing stages strict. -/
 lemma growingConditionAtom_zero_ne_one :

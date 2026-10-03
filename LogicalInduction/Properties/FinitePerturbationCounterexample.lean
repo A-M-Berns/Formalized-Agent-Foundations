@@ -464,10 +464,10 @@ to a separate development and never enter this market.
 -/
 
 /-- The schedule-gate advice atom for day `n`, on the fresh tag `7`. -/
-def schedAtom (n : ℕ) : Sentence := LO.Propositional.Formula.atom (Nat.pair 7 n)
+def schedAtom (n : ℕ) : Sentence := FFL.Propositional.Formula.atom (Nat.pair 7 n)
 
 /-- The sign advice atom for day `n`, on the fresh tag `8`. -/
-def signAtom (n : ℕ) : Sentence := LO.Propositional.Formula.atom (Nat.pair 8 n)
+def signAtom (n : ℕ) : Sentence := FFL.Propositional.Formula.atom (Nat.pair 8 n)
 
 @[simp] lemma schedAtom_inj {m n : ℕ} : schedAtom m = schedAtom n ↔ m = n := by
   simp [schedAtom, Nat.pair_eq_pair]

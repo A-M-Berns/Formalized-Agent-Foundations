@@ -66,7 +66,7 @@ in `scripts/coverage-classification.md` cites.
 
 namespace LogicalInduction
 
-open LO LO.FirstOrder LO.FirstOrder.Arithmetic LO.Propositional
+open FFL FFL.FirstOrder FFL.FirstOrder.Arithmetic FFL.Propositional
 
 /-! ## Structured naturals and arithmetic syntax
 
@@ -165,8 +165,8 @@ lemma parseStructuredArithmeticTerm_encode
             parseStructuredArithmeticTerm]
           rw [parseStructuredNat_encode x tail (by
             simpa [encodeArithmeticTermSymbols] using hfuel)]
-          simp [LO.FirstOrder.Semiterm.encode_eq_toNat,
-            LO.FirstOrder.Semiterm.toNat]
+          simp [FFL.FirstOrder.Semiterm.encode_eq_toNat,
+            FFL.FirstOrder.Semiterm.toNat]
   | fvar x =>
       cases fuel with
       | zero => simp [encodeArithmeticTermSymbols] at hfuel
@@ -182,14 +182,14 @@ lemma parseStructuredArithmeticTerm_encode
         cases fuel <;>
           simp [encodeArithmeticTermSymbols, parseStructuredArithmeticTerm,
             arithmeticFuncCode, henc,
-            LO.FirstOrder.Semiterm.encode_eq_toNat,
-            LO.FirstOrder.Semiterm.toNat, Matrix.vecToNat] at hfuel ⊢
+            FFL.FirstOrder.Semiterm.encode_eq_toNat,
+            FFL.FirstOrder.Semiterm.toNat, Matrix.vecToNat] at hfuel ⊢
       · have henc : Encodable.encode Language.ORing.Func.one = 1 := rfl
         cases fuel <;>
           simp [encodeArithmeticTermSymbols, parseStructuredArithmeticTerm,
             arithmeticFuncCode, henc,
-            LO.FirstOrder.Semiterm.encode_eq_toNat,
-            LO.FirstOrder.Semiterm.toNat, Matrix.vecToNat] at hfuel ⊢
+            FFL.FirstOrder.Semiterm.encode_eq_toNat,
+            FFL.FirstOrder.Semiterm.toNat, Matrix.vecToNat] at hfuel ⊢
       · cases fuel with
         | zero => simp [encodeArithmeticTermSymbols] at hfuel
         | succ fuel =>
@@ -218,11 +218,11 @@ lemma parseStructuredArithmeticFormula_encode
       (encodeArithmeticFormulaSymbols φ ++ tail) = some (Encodable.encode φ, tail) := by
   induction φ generalizing fuel tail with
   | verum => cases fuel <;> simp [encodeArithmeticFormulaSymbols,
-      parseStructuredArithmeticFormula, LO.FirstOrder.Semiformula.encode_eq_toNat,
-      LO.FirstOrder.Semiformula.toNat] at hfuel ⊢
+      parseStructuredArithmeticFormula, FFL.FirstOrder.Semiformula.encode_eq_toNat,
+      FFL.FirstOrder.Semiformula.toNat] at hfuel ⊢
   | falsum => cases fuel <;> simp [encodeArithmeticFormulaSymbols,
-      parseStructuredArithmeticFormula, LO.FirstOrder.Semiformula.encode_eq_toNat,
-      LO.FirstOrder.Semiformula.toNat] at hfuel ⊢
+      parseStructuredArithmeticFormula, FFL.FirstOrder.Semiformula.encode_eq_toNat,
+      FFL.FirstOrder.Semiformula.toNat] at hfuel ⊢
   | rel r v =>
       rcases r with _ | _ <;> cases fuel with
       | zero => simp [encodeArithmeticFormulaSymbols] at hfuel

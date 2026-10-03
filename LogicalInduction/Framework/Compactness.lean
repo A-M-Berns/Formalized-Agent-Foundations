@@ -36,7 +36,7 @@ carries no paper node of its own.
 
 namespace LogicalInduction
 
-open LO.Propositional
+open FFL.Propositional
 
 namespace PCWorld
 

@@ -23,7 +23,7 @@ Boolean test `stageEntails` decides.
 
 namespace LogicalInduction
 
-open LO LO.Propositional
+open FFL FFL.Propositional
 
 /-- The atoms needed to decide whether a finite stage entails one sentence. -/
 def stageEntailmentAtoms (D : Finset Sentence) (phi : Sentence) : List ℕ :=

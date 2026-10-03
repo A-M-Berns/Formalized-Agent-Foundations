@@ -73,8 +73,8 @@ or not the declaration lists it.
 
 namespace LogicalInduction
 
-open LO LO.FirstOrder LO.FirstOrder.Arithmetic LO.Entailment
-open LO.Propositional
+open FFL FFL.FirstOrder FFL.FirstOrder.Arithmetic FFL.Entailment
+open FFL.Propositional
 open Filter Topology
 
 variable (T : ArithmeticTheory)

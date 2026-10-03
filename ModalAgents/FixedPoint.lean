@@ -24,8 +24,8 @@ import ModalAgents.ModalAgent
 import ProvabilityLogic.Logic.GL.Fixedpoint
 import Foundation.Modal.Kripke.Logic.GL.Unnecessitation
 
-open LO LO.Modal
-open LO.Entailment LO.Modal.Entailment
+open FFL FFL.Modal
+open FFL.Entailment FFL.Modal.Entailment
 
 /-- Substitution replacing atom `p` with `ψ`, identity elsewhere. -/
 abbrev diag (p : ℕ) (ψ : Modal.Formula ℕ) : Modal.Substitution ℕ :=
@@ -74,8 +74,8 @@ def ofSeq : _root_.Formula ℕ → Modal.Formula ℕ
   | .box A => .box (ofSeq A)
 
 @[simp] lemma ofSeq_toSeq (A : Modal.Formula ℕ) : ofSeq (toSeq A) = A := by
-  induction A <;> simp_all [toSeq, ofSeq, LO.Modal.Formula.falsum_eq,
-    LO.Modal.Formula.imp_eq, LO.Modal.Formula.box_eq]
+  induction A <;> simp_all [toSeq, ofSeq, FFL.Modal.Formula.falsum_eq,
+    FFL.Modal.Formula.imp_eq, FFL.Modal.Formula.box_eq]
 
 @[simp] lemma toSeq_ofSeq (A : _root_.Formula ℕ) : toSeq (ofSeq A) = A := by
   induction A <;> simp [toSeq, ofSeq, *]
@@ -86,11 +86,11 @@ lemma modalized_iff {p : ℕ} {A : Modal.Formula ℕ} :
 
 lemma atoms_toSeq (A : Modal.Formula ℕ) :
     (toSeq A).atoms = A.atoms := by
-  induction A <;> simp_all [toSeq, _root_.Formula.atoms, LO.Modal.Formula.atoms]
+  induction A <;> simp_all [toSeq, _root_.Formula.atoms, FFL.Modal.Formula.atoms]
 
 lemma atoms_ofSeq (A : _root_.Formula ℕ) :
     (ofSeq A).atoms = A.atoms := by
-  induction A <;> simp_all [ofSeq, _root_.Formula.atoms, LO.Modal.Formula.atoms]
+  induction A <;> simp_all [ofSeq, _root_.Formula.atoms, FFL.Modal.Formula.atoms]
 
 lemma toSeq_diag (p : ℕ) (A B : Modal.Formula ℕ) :
     toSeq (A⟦diag p B⟧) =
@@ -99,20 +99,20 @@ lemma toSeq_diag (p : ℕ) (A B : Modal.Formula ℕ) :
   | hatom a => by_cases ha : a = p <;> simp [diag, toSeq,
       _root_.Formula.Substitution.single, ha]
   | hfalsum => rfl
-  | himp A C ihA ihC => simp [LO.Modal.Formula.subst, toSeq, ihA, ihC]
-  | hbox A ih => simp [LO.Modal.Formula.subst, toSeq, ih]
+  | himp A C ihA ihC => simp [FFL.Modal.Formula.subst, toSeq, ihA, ihC]
+  | hbox A ih => simp [FFL.Modal.Formula.subst, toSeq, ih]
 
-private lemma forces_translation {M : LO.Modal.Kripke.Model} (x : M.World)
+private lemma forces_translation {M : FFL.Modal.Kripke.Model} (x : M.World)
     (A : Modal.Formula ℕ) :
     let N : _root_.Model M.World ℕ := ⟨M.Rel, fun w a => M.Val a w⟩
     _root_.Model.World.Forces (M := N) x (toSeq A) ↔
-      LO.Modal.Formula.Kripke.Satisfies M x A := by
+      FFL.Modal.Formula.Kripke.Satisfies M x A := by
   induction A generalizing x <;> simp_all [toSeq, _root_.Model.World.Forces,
-    LO.Modal.Formula.Kripke.Satisfies]
+    FFL.Modal.Formula.Kripke.Satisfies]
 
 lemma provable_of_mem_logicGL {A : Modal.Formula ℕ}
     (h : toSeq A ∈ (_root_.LogicGL : _root_.Logic ℕ)) : Modal.GL ⊢ A := by
-  apply LO.Modal.GL.Kripke.finite_completeness_TFAE.out 3 0 |>.mp
+  apply FFL.Modal.GL.Kripke.finite_completeness_TFAE.out 3 0 |>.mp
   intro M _ _ _ _
   let N : _root_.Model M.World ℕ := ⟨M.Rel, fun w a => M.Val a w⟩
   let _instN : _root_.Model.IsFiniteGL N :=
@@ -130,14 +130,14 @@ lemma mem_logicGL_of_provable {A : Modal.Formula ℕ} (h : Modal.GL ⊢ A) :
     toSeq A ∈ (_root_.LogicGL : _root_.Logic ℕ) := by
   apply (_root_.LogicGL.iff_forces (A := toSeq A)).mpr
   intro κ _ N _ x
-  let M : LO.Modal.Kripke.Model :=
+  let M : FFL.Modal.Kripke.Model :=
     { World := κ, Rel := N.Rel, Val := fun a w => N.Val w a }
   haveI : Finite M.World := inferInstanceAs (Finite N.World)
   haveI : IsTrans M.World M.Rel := inferInstanceAs (IsTrans κ N.Rel)
   haveI : Std.Irrefl M.Rel := inferInstanceAs (Std.Irrefl N.Rel)
   haveI hGL : M.toFrame.IsFiniteGL := {}
-  have hM : LO.Modal.Kripke.FrameClass.finite_GL ⊧ A :=
-    LO.Modal.GL.Kripke.finite_completeness_TFAE.out 0 1 |>.mp h
+  have hM : FFL.Modal.Kripke.FrameClass.finite_GL ⊧ A :=
+    FFL.Modal.GL.Kripke.finite_completeness_TFAE.out 0 1 |>.mp h
   exact (forces_translation (M := M) x A).mpr (hM hGL M.Val x)
 
 end GlFixedPointBridge
@@ -159,8 +159,8 @@ theorem glFixedPoint_thm42 {p : ℕ} {φ : Modal.Formula ℕ} (h : Modalized p �
     intro hq
     have hqφ : q ∈ φ.atoms := by
       simpa [GlFixedPointBridge.atoms_toSeq] using hq
-    have hle := LO.Modal.Formula.le_max_atoms_of_mem_atoms hqφ
-    have hlt := LO.Modal.Formula.le_max_atoms_freshAtom
+    have hle := FFL.Modal.Formula.le_max_atoms_of_mem_atoms hqφ
+    have hlt := FFL.Modal.Formula.le_max_atoms_freshAtom
       (φ := φ) (show φ.atoms.Nonempty from ⟨q, hqφ⟩)
     have hq_lt : q < φ.freshAtom := lt_of_le_of_lt hle hlt
     simp [q] at hq_lt

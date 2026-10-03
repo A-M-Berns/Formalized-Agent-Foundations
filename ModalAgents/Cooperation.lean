@@ -10,8 +10,8 @@
 import ModalAgents.FixedPoint
 import ProvabilityLogic.ProvabilityLogic.GL.Basic
 
-open LO LO.Modal
-open LO.Entailment LO.Modal.Entailment
+open FFL FFL.Modal
+open FFL.Entailment FFL.Modal.Entailment
 
 /-- Substitute atom 0 ↦ `β`, atoms 1,…,m ↦ `refs 0,…,refs (m-1)`;
 atoms > m unchanged. -/

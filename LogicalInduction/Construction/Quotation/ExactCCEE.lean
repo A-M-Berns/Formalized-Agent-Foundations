@@ -36,7 +36,7 @@ binders, not client exercises; `PaperLUVSeq` itself is documented consumer inter
 
 namespace LogicalInduction
 
-open LO LO.FirstOrder LO.FirstOrder.Arithmetic LO.Entailment
+open FFL FFL.FirstOrder FFL.FirstOrder.Arithmetic FFL.Entailment
 open Filter Topology
 
 variable (T : ArithmeticTheory)

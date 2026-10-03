@@ -44,7 +44,7 @@ reason.
 
 namespace LogicalInduction
 
-open LO LO.Propositional LO.FirstOrder LO.FirstOrder.Arithmetic
+open FFL FFL.Propositional FFL.FirstOrder FFL.FirstOrder.Arithmetic
 
 -- Deep `PolyFueled` compositions over paired inputs loop `whnf` on `Nat.sqrt`; keep it
 -- opaque (the standing `dd:fuel` safeguard, as in `Framework/Emission/CodeSource.lean`).
@@ -477,7 +477,7 @@ lemma semanticRegistryProductExtensionWorld_downward {DP : DeductiveProcess}
             simpa [semanticQuoteFactorLink, lowInput, semanticQuoteDefSentence_job] using hlink
           have hclaim' : v₀.Holds (quoteAtom (Nat.pair schema.unpair.2 lowInput)) := by
             simpa [semanticQuoteFactorClaim, semanticQuoteSchema, lowInput] using hclaim
-          simp only [PCWorld.Holds, LO.Propositional.Formula.Boolean.val] at hlink' hclaim' ⊢
+          simp only [PCWorld.Holds, FFL.Propositional.Formula.Boolean.val] at hlink' hclaim' ⊢
           exact hlink' hclaim'
         simpa [semanticQuoteLeaf, hschemaEq] using hleaf
       apply (semanticRegistryProductExtensionWorld_leaf base (semanticSourceExtensionWorld v₀)
@@ -497,7 +497,7 @@ lemma semanticRegistryProductExtensionWorld_downward {DP : DeductiveProcess}
           simpa [semanticQuoteFactorLink, highInput, semanticQuoteDefSentence_job] using hlink
         have hhigh' : v₀.Holds (semanticQuoteLeaf schema.unpair.2 highInput) := by
           simpa [semanticQuoteLeaf, hschemaEq] using hhigh₀
-        simp only [PCWorld.Holds, LO.Propositional.Formula.Boolean.val] at hlink' hhigh' ⊢
+        simp only [PCWorld.Holds, FFL.Propositional.Formula.Boolean.val] at hlink' hhigh' ⊢
         exact hlink' hhigh'
       exfalso
       exact (PCWorld.holds_neg v₀ _).mp

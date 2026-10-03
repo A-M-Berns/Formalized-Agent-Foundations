@@ -43,7 +43,7 @@ over `paperDP T` (`Endpoints.lean`).
 
 namespace LogicalInduction
 
-open LO.Propositional
+open FFL.Propositional
 
 /-! ## Literal conjunctions and their exact semantics -/
 
@@ -60,7 +60,7 @@ def bitPrefixSentence (atom : ℕ → Sentence) (σ : List Bool) : Sentence :=
     (v : PCWorld) (atom : ℕ → Sentence) (k : ℕ) (b : Bool) :
     v.Holds (bitPrefixLiteral atom k b) ↔ (v.Holds (atom k) ↔ b = true) := by
   cases b <;>
-    simp [bitPrefixLiteral, PCWorld.Holds, LO.Propositional.Formula.Boolean.val]
+    simp [bitPrefixLiteral, PCWorld.Holds, FFL.Propositional.Formula.Boolean.val]
 
 /-- Exact Boolean semantics of the literal conjunction, including the empty prefix. -/
 @[simp] lemma PCWorld.holds_bitPrefixSentence
@@ -68,16 +68,16 @@ def bitPrefixSentence (atom : ℕ → Sentence) (σ : List Bool) : Sentence :=
     v.Holds (bitPrefixSentence atom σ) ↔
       ∀ k : Fin σ.length, (v.Holds (atom k) ↔ σ.get k = true) := by
   have hlist (l : List Sentence) :
-      LO.Propositional.Formula.Boolean.val v l.conj ↔
-        ∀ φ ∈ l, LO.Propositional.Formula.Boolean.val v φ := by
+      FFL.Propositional.Formula.Boolean.val v l.conj ↔
+        ∀ φ ∈ l, FFL.Propositional.Formula.Boolean.val v φ := by
     induction l with
-    | nil => simp [List.conj, LO.Propositional.Formula.Boolean.val]
+    | nil => simp [List.conj, FFL.Propositional.Formula.Boolean.val]
     | cons φ l ih =>
-        simp [List.conj, LO.Propositional.Formula.Boolean.val, ih]
+        simp [List.conj, FFL.Propositional.Formula.Boolean.val, ih]
   rw [bitPrefixSentence, show v.Holds
       (List.ofFn fun k : Fin σ.length ↦
         bitPrefixLiteral atom k (σ.get k)).conj =
-      LO.Propositional.Formula.Boolean.val v
+      FFL.Propositional.Formula.Boolean.val v
         (List.ofFn fun k : Fin σ.length ↦
           bitPrefixLiteral atom k (σ.get k)).conj from rfl]
   rw [hlist, List.forall_mem_ofFn_iff]
@@ -118,7 +118,7 @@ something, is therefore **not exercised** by this witness; what is exercised is 
 `lic_domination_universalSemimeasure_ofIndependentAtoms` is proved for an arbitrary
 deductive process, so the degeneracy bounds the witness, not the theorem. -/
 def ordinaryIndependentBitAtoms : IndependentBitAtoms emptyBitDeductiveProcess where
-  atom := LO.Propositional.Formula.atom
+  atom := FFL.Propositional.Formula.atom
   realizable := by
     intro n f
     refine ⟨fun a ↦ f a = true, ?_, ?_⟩

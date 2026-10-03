@@ -1,4 +1,4 @@
-import Foundation.FirstOrder.Bootstrapping.Syntax.Proof.Basic
+import Foundation.FirstOrder.Arithmetic.Bootstrapping.Syntax.Proof.Basic
 import Mathlib.Computability.Partrec
 import Mathlib.Computability.Primrec.List
 import Mathlib.Data.Nat.Size
@@ -627,7 +627,7 @@ private lemma not_two_dvd_iff_testBit {s i q : ℕ}
   rw [Nat.testBit_eq_decide_div_mod_eq, Nat.div_eq_of_lt_le h1 h2, decide_eq_true_eq]
   exact Nat.two_dvd_ne_zero
 
-open LO LO.FirstOrder LO.FirstOrder.Arithmetic LO.FirstOrder.Arithmetic.Bootstrapping
+open FFL FFL.FirstOrder FFL.FirstOrder.Arithmetic FFL.FirstOrder.Arithmetic.Bootstrapping
 
 /-- Foundation's `Exp.exp` is `2 ^ ·` at the standard model. -/
 lemma exp_nat_eq : ∀ n : ℕ, Exp.exp n = 2 ^ n

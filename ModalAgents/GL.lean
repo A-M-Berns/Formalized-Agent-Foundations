@@ -13,8 +13,8 @@
 
 import Foundation.Modal.Kripke.Logic.GL.Unnecessitation
 
-open LO LO.Modal
-open LO.Entailment LO.Modal.Entailment
+open FFL FFL.Modal
+open FFL.Entailment FFL.Modal.Entailment
 
 variable {φ A B : Formula ℕ}
 

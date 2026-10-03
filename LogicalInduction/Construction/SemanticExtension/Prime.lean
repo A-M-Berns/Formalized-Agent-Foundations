@@ -64,7 +64,7 @@ all five.
 namespace LogicalInduction
 
 section
-open LO LO.Propositional LO.FirstOrder LO.FirstOrder.Arithmetic
+open FFL FFL.Propositional FFL.FirstOrder FFL.FirstOrder.Arithmetic
 
 /-! ## The compact handle -/
 
@@ -197,7 +197,7 @@ end PresentedLUVSeq
 end
 
 section
-open LO LO.Propositional
+open FFL FFL.Propositional
 
 private lemma natPair_zero_zero : Nat.pair 0 0 = 0 := by rfl
 
@@ -280,7 +280,7 @@ lemma semanticValuedDiagonalLUVSeq_isIndicator (DP : DeductiveProcess) (n : ℕ)
   · have hn1 : ¬ r < 1 := fun h' => (not_lt.mpr h) (hr1.mpr h')
     have hn0 : ¬ r < 0 := fun h' => hn1 (h'.trans (by norm_num))
     simp [semanticValuedDiagonalLUVSeq_gt, hn0, hn1, PCWorld.Holds,
-      LO.Propositional.Formula.Boolean.val]
+      FFL.Propositional.Formula.Boolean.val]
 
 /-- Hence the valued diagonal satisfies the closed CCEE `source_valued` premise for every
 process, at the Boolean value of its defining indicator proposition. -/

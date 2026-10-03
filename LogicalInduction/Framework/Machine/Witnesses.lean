@@ -71,7 +71,7 @@ machine data alone.
 
 namespace LogicalInduction
 
-open LO.Propositional
+open FFL.Propositional
 
 /-- A family that takes two different values is not a constant sequence. The `_nonconstant`
 companions below are all this lemma at an explicit pair of days. -/

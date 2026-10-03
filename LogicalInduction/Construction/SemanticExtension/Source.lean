@@ -221,15 +221,15 @@ lemma semanticFreshIncreasing_no_cutCertificate (DP : DeductiveProcess)
   have hcut := C.rationalCutAt hv 0
   have hone : v.Holds ((semanticFreshIncreasingLUVSeq 0).gt 1) := by
     simp [semanticFreshIncreasingLUVSeq_gt, PCWorld.Holds,
-      LO.Propositional.Formula.Boolean.val]
+      FFL.Propositional.Formula.Boolean.val]
   have hzero := hcut.downward 0 1 (by norm_num) hone
   simp [semanticFreshIncreasingLUVSeq_gt, PCWorld.Holds,
-    LO.Propositional.Formula.Boolean.val] at hzero
+    FFL.Propositional.Formula.Boolean.val] at hzero
 
 end
 
 section
-open LO LO.Propositional
+open FFL FFL.Propositional
 
 attribute [local irreducible] Nat.sqrt
 
@@ -1076,7 +1076,7 @@ lemma semanticSourcePrefixValidAtFuel_downward {DP : DeductiveProcess}
 end
 
 section
-open LO LO.Propositional LO.FirstOrder LO.FirstOrder.Arithmetic
+open FFL FFL.Propositional FFL.FirstOrder FFL.FirstOrder.Arithmetic
 
 attribute [local irreducible] Nat.sqrt
 

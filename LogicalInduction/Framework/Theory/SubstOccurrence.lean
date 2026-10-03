@@ -1,13 +1,13 @@
-import Foundation.FirstOrder.Basic.Syntax.Rew
+import Foundation.FirstOrder.Syntax.Classical.Rew
 
 /-!
 # Bound-variable occurrence for semiformulas
 
-Foundation records the bound variables of a *term* (`LO.FirstOrder.Semiterm.bv`) but
+Foundation records the bound variables of a *term* (`FFL.FirstOrder.Semiterm.bv`) but
 offers no occurrence notion for formulas. This module supplies one.
 
 * `Semiformula.Mentions φ k` says that `#k` occurs in `φ`, counted under quantifiers, so
-  that `(∀⁰ φ).Mentions k ↔ φ.Mentions (k + 1)`. It comes with a full `@[simp]` equation
+  that `(∀¹ φ).Mentions k ↔ φ.Mentions (k + 1)`. It comes with a full `@[simp]` equation
   set on the NNF constructors, plus `mentions_neg` for the meta-level involution.
 * It rests on two term-level transport lemmas, `Semiterm.rew_eq_of_bvEqOn` and
   `Semiterm.eq_of_rew_eq_of_mem_bv`.
@@ -24,7 +24,7 @@ discharges the occurrence side condition of the syntactic-separation family
 (`representedClaimSentence_ne_of_const_ne`, `conClaimSentence_ne_of_day_ne`).
 -/
 
-namespace LO.FirstOrder
+namespace FFL.FirstOrder
 
 variable {L : Language} {ξ : Type*} {n m : ℕ}
 
@@ -74,7 +74,7 @@ namespace Semiformula
 /-! ## Occurrence in formulas -/
 
 /-- `φ.Mentions k` : the bound variable `#k` occurs in `φ`, counting under quantifiers,
-so that `(∀⁰ φ).Mentions k ↔ φ.Mentions (k + 1)`. -/
+so that `(∀¹ φ).Mentions k ↔ φ.Mentions (k + 1)`. -/
 def Mentions : {n : ℕ} → Semiformula L ξ n → ℕ → Prop
   | _,        ⊤, _ => False
   | _,        ⊥, _ => False
@@ -82,8 +82,8 @@ def Mentions : {n : ℕ} → Semiformula L ξ n → ℕ → Prop
   | _, nrel _ v, k => ∃ i, ∃ x ∈ (v i).bv, (x : ℕ) = k
   | _,    φ ⋏ ψ, k => φ.Mentions k ∨ ψ.Mentions k
   | _,    φ ⋎ ψ, k => φ.Mentions k ∨ ψ.Mentions k
-  | _,     ∀⁰ φ, k => φ.Mentions (k + 1)
-  | _,     ∃⁰ φ, k => φ.Mentions (k + 1)
+  | _,     ∀¹ φ, k => φ.Mentions (k + 1)
+  | _,     ∃¹ φ, k => φ.Mentions (k + 1)
 
 @[simp] lemma mentions_verum {k : ℕ} : ¬(⊤ : Semiformula L ξ n).Mentions k := id
 
@@ -102,10 +102,10 @@ def Mentions : {n : ℕ} → Semiformula L ξ n → ℕ → Prop
     (φ ⋎ ψ).Mentions k ↔ φ.Mentions k ∨ ψ.Mentions k := Iff.rfl
 
 @[simp] lemma mentions_all (φ : Semiformula L ξ (n + 1)) (k : ℕ) :
-    (∀⁰ φ).Mentions k ↔ φ.Mentions (k + 1) := Iff.rfl
+    (∀¹ φ).Mentions k ↔ φ.Mentions (k + 1) := Iff.rfl
 
 @[simp] lemma mentions_exs (φ : Semiformula L ξ (n + 1)) (k : ℕ) :
-    (∃⁰ φ).Mentions k ↔ φ.Mentions (k + 1) := Iff.rfl
+    (∃¹ φ).Mentions k ↔ φ.Mentions (k + 1) := Iff.rfl
 
 @[simp] lemma mentions_neg {φ : Semiformula L ξ n} {k : ℕ} :
     (∼φ).Mentions k ↔ φ.Mentions k := by
@@ -244,4 +244,4 @@ lemma subst_eq_of_not_mentions {σ : Semiformula L ξ 1} (hσ : ¬σ.Mentions 0)
 
 end Semiformula
 
-end LO.FirstOrder
+end FFL.FirstOrder

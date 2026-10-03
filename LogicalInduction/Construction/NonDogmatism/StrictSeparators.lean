@@ -453,7 +453,7 @@ lemma holds_separatorConstraintAux (v : PCWorld) (atom : ℕ → Sentence) (n : 
   induction e with
   | zero =>
       simp [separatorConstraintAux, PCWorld.Holds,
-        LO.Propositional.Formula.Boolean.val]
+        FFL.Propositional.Formula.Boolean.val]
   | succ e ih =>
       rcases hb : kleeneDecide n e with _ | b
       · rw [show separatorConstraintAux atom n (e + 1) =

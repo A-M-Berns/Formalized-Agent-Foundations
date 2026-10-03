@@ -330,10 +330,10 @@ example (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP] :
     IsLogicalInductor
       (conditionedHistory P
         (fun n => sentenceConjunction
-          ((List.range (n + 1)).map (fun i => (LO.Propositional.Formula.atom i : Sentence)))))
-      (DP.union (prefixProcess (fun i => (LO.Propositional.Formula.atom i : Sentence)))) :=
+          ((List.range (n + 1)).map (fun i => (FFL.Propositional.Formula.atom i : Sentence)))))
+      (DP.union (prefixProcess (fun i => (FFL.Propositional.Formula.atom i : Sentence)))) :=
   lic_conditioned_growing_ofSequence P DP
-    (fun i => (LO.Propositional.Formula.atom i : Sentence)) machineSentenceCodes_atom
+    (fun i => (FFL.Propositional.Formula.atom i : Sentence)) machineSentenceCodes_atom
 
 end ConditioningCompile
 
@@ -341,8 +341,8 @@ end LogicalInduction
 
 namespace LogicalInduction
 
-open LO LO.FirstOrder LO.FirstOrder.Arithmetic LO.Entailment
-open LO.Propositional
+open FFL FFL.FirstOrder FFL.FirstOrder.Arithmetic FFL.Entailment
+open FFL.Propositional
 open Filter Topology
 
 /-- `thm:scon` over the constructed `LIA` at a caller-supplied conditioning compiler: the

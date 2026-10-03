@@ -386,7 +386,7 @@ so the perturbation it licenses moves an actual price. -/
 /-- An atom is recognizable as soon as it is not the reserved shape; `BotFree` is free. -/
 lemma recognizable_atom (a : ℕ)
     (ha : ∀ pol fc : ℕ, a ≠ Nat.pair 5 (Nat.pair pol fc)) :
-    Recognizable (LO.Propositional.Formula.atom a) where
+    Recognizable (FFL.Propositional.Formula.atom a) where
   botFree := botFree_atom a
   noReserved := ha
 
@@ -399,7 +399,7 @@ lemma atom_zero_noReserved : ∀ pol fc : ℕ, (0 : ℕ) ≠ Nat.pair 5 (Nat.pai
   omega
 
 /-- The sentence the worked example freezes: the unreserved atom `0`. -/
-def exampleSentence : Sentence := LO.Propositional.Formula.atom 0
+def exampleSentence : Sentence := FFL.Propositional.Formula.atom 0
 
 /-- A one-row frozen table, at an arbitrary quote value.
 
@@ -787,11 +787,11 @@ lemma pointHistory_ne_at (φ : Sentence) :
 
 /-- The rational quote table at the `atom 0` coordinate. -/
 def twoPointQuote (q : ℚ) : ℕ → ℕ → ℚ :=
-  pointQuote (LO.Propositional.Formula.atom 0 : Sentence) q
+  pointQuote (FFL.Propositional.Formula.atom 0 : Sentence) q
 
 /-- The market it presents. -/
 def twoPointHistory (q : ℚ) : History :=
-  pointHistory (LO.Propositional.Formula.atom 0 : Sentence) q
+  pointHistory (FFL.Propositional.Formula.atom 0 : Sentence) q
 
 /-- **Both markets are honest `ComputableMarket`s.**
 
@@ -822,8 +822,8 @@ lemma twoPointHistory_exact (q : ℚ) :
 Kind `N+` non-vacuity witness.
 Paper node: `app:ifp` -/
 lemma twoPointHistory_ne_at :
-    twoPointHistory (1 / 2) 0 (LO.Propositional.Formula.atom 0 : Sentence)
-      ≠ twoPointHistory (1 / 3) 0 (LO.Propositional.Formula.atom 0 : Sentence) :=
+    twoPointHistory (1 / 2) 0 (FFL.Propositional.Formula.atom 0 : Sentence)
+      ≠ twoPointHistory (1 / 3) 0 (FFL.Propositional.Formula.atom 0 : Sentence) :=
   pointHistory_ne_at _
 
 /-- **The corrected `thm:ifp`, at a concrete pair of genuinely different computable
@@ -862,12 +862,12 @@ coordinates. -/
 
 /-- A target with a `⊥` subformula: fails `BotFree`, so its escape leaf has infinitely many
 codes (`decode_falsum_noncanonical`) and no finite spelling list is exhaustive. -/
-def hardSentence : Sentence := (LO.Propositional.Formula.atom 0 : Sentence) ⋏ ⊥
+def hardSentence : Sentence := (FFL.Propositional.Formula.atom 0 : Sentence) ⋏ ⊥
 
 /-- A reserved atom: fails `NoReserved`, so a structured paper-prime block denotes it and
 the structured branch of `parseRpn` is reachable at that leaf. -/
 def reservedSentence : Sentence :=
-  LO.Propositional.Formula.atom (Nat.pair 5 (Nat.pair 0 0))
+  FFL.Propositional.Formula.atom (Nat.pair 5 (Nat.pair 0 0))
 
 /-- **`hardSentence` fails `BotFree`.**
 

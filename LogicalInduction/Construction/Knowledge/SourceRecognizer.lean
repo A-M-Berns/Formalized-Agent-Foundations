@@ -51,7 +51,7 @@ which is exactly the image of `encodeStructuredNat`.
 
 namespace LogicalInduction
 
-open LO LO.FirstOrder LO.FirstOrder.Arithmetic
+open FFL FFL.FirstOrder FFL.FirstOrder.Arithmetic
 
 /-! ## Canonical structured naturals -/
 
@@ -310,9 +310,9 @@ lemma exists_source_of_sourceRun : ∀ {fuel k : ℕ} {ts rest : List ℕ},
               LogicalConnective.HomClass.map_neg]⟩
       · obtain ⟨a, τa, ha, hca⟩ := ih h
         rcases hq with rfl | rfl
-        · exact ⟨.all a, ∀⁰ τa, by rw [ha]; simp [ArithSource.sourceTokens],
+        · exact ⟨.all a, ∀¹ τa, by rw [ha]; simp [ArithSource.sourceTokens],
             by simp only [ArithSource.compile, hca, Rewriting.app_all, Rew.q_emb]; rfl⟩
-        · exact ⟨.exs a, ∃⁰ τa, by rw [ha]; simp [ArithSource.sourceTokens],
+        · exact ⟨.exs a, ∃¹ τa, by rw [ha]; simp [ArithSource.sourceTokens],
             by simp only [ArithSource.compile, hca, Rewriting.app_exs, Rew.q_emb]; rfl⟩
       · obtain ⟨a, τa, ha, hca⟩ := ih h
         exact ⟨.not a, ∼τa, by rw [ha, h20]; simp [ArithSource.sourceTokens],
@@ -416,13 +416,13 @@ private lemma coe_or {k : ℕ} (τ σ : ArithmeticSemisentence k) :
 private lemma coe_all' {k : ℕ} (τ : ArithmeticSemisentence (k + 1)) :
     (Rewriting.emb (Semiformula.all τ) : ArithmeticSemiformula ℕ k) =
       Semiformula.all (Rewriting.emb τ : ArithmeticSemiformula ℕ (k + 1)) := by
-  rw [show Semiformula.all τ = ∀⁰ τ from rfl, Rewriting.app_all, Rew.q_emb]
+  rw [show Semiformula.all τ = ∀¹ τ from rfl, Rewriting.app_all, Rew.q_emb]
   rfl
 
 private lemma coe_exs' {k : ℕ} (τ : ArithmeticSemisentence (k + 1)) :
     (Rewriting.emb (Semiformula.exs τ) : ArithmeticSemiformula ℕ k) =
       Semiformula.exs (Rewriting.emb τ : ArithmeticSemiformula ℕ (k + 1)) := by
-  rw [show Semiformula.exs τ = ∃⁰ τ from rfl, Rewriting.app_exs, Rew.q_emb]
+  rw [show Semiformula.exs τ = ∃¹ τ from rfl, Rewriting.app_exs, Rew.q_emb]
   rfl
 
 private lemma encodeArithmeticFormulaSymbols_ne_nil {k : ℕ}

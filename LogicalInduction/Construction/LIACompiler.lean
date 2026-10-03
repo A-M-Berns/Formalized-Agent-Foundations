@@ -54,7 +54,7 @@ not named there is implementation detail of this compiler.
 
 namespace LogicalInduction
 
-open LO.Propositional
+open FFL.Propositional
 
 /-! ## Proof-erased finite rational belief states -/
 
@@ -1767,13 +1767,13 @@ private lemma formulaAtomOccurrencesStep_prim :
       simp only [formulaAtomOccurrencesStep]
 
 private def formulaAtomOccurrencesDecoded (n : ℕ) : Option (List ℕ) :=
-  (LO.Propositional.Formula.ofNat (α := ℕ) n).map sentenceAtomOccurrences
+  (FFL.Propositional.Formula.ofNat (α := ℕ) n).map sentenceAtomOccurrences
 
 private lemma formulaAtomOccurrencesHistory_getD {n k : ℕ} (hk : k < n) :
     ((List.range n).map formulaAtomOccurrencesDecoded).getD k none =
       formulaAtomOccurrencesDecoded k := by
   have hzero : formulaAtomOccurrencesDecoded 0 = none := by
-    simp [formulaAtomOccurrencesDecoded, LO.Propositional.Formula.ofNat]
+    simp [formulaAtomOccurrencesDecoded, FFL.Propositional.Formula.ofNat]
   rw [← hzero, List.getD_map]
   simp [hk]
 
@@ -1782,14 +1782,14 @@ private lemma formulaAtomOccurrencesBinary_history
     (hright : payload.unpair.2 < n) :
     formulaAtomOccurrencesBinary
         ((List.range n).map formulaAtomOccurrencesDecoded) payload =
-      ((LO.Propositional.Formula.ofNat (α := ℕ) payload.unpair.1).bind fun φ =>
-        (LO.Propositional.Formula.ofNat (α := ℕ) payload.unpair.2).map fun ψ =>
+      ((FFL.Propositional.Formula.ofNat (α := ℕ) payload.unpair.1).bind fun φ =>
+        (FFL.Propositional.Formula.ofNat (α := ℕ) payload.unpair.2).map fun ψ =>
           sentenceAtomOccurrences φ ++ sentenceAtomOccurrences ψ) := by
   unfold formulaAtomOccurrencesBinary
   rw [formulaAtomOccurrencesHistory_getD hleft,
     formulaAtomOccurrencesHistory_getD hright]
-  cases hL : LO.Propositional.Formula.ofNat (α := ℕ) payload.unpair.1 <;>
-    cases hR : LO.Propositional.Formula.ofNat (α := ℕ) payload.unpair.2 <;>
+  cases hL : FFL.Propositional.Formula.ofNat (α := ℕ) payload.unpair.1 <;>
+    cases hR : FFL.Propositional.Formula.ofNat (α := ℕ) payload.unpair.2 <;>
     simp [formulaAtomOccurrencesDecoded, hL, hR]
 
 private lemma formulaAtomOccurrencesStep_history (n : ℕ) :
@@ -1799,7 +1799,7 @@ private lemma formulaAtomOccurrencesStep_history (n : ℕ) :
   cases n with
   | zero =>
       simp [formulaAtomOccurrencesStep, formulaAtomOccurrencesDecoded,
-        LO.Propositional.Formula.ofNat]
+        FFL.Propositional.Formula.ofNat]
   | succ e =>
       let tag := e.unpair.1
       let payload := e.unpair.2
@@ -1813,11 +1813,11 @@ private lemma formulaAtomOccurrencesStep_history (n : ℕ) :
           le_trans (Nat.unpair_right_le _) (Nat.unpair_right_le _)
       by_cases h0 : tag = 0
       · simp [formulaAtomOccurrencesStep, formulaAtomOccurrencesSucc,
-          formulaAtomOccurrencesDecoded, LO.Propositional.Formula.ofNat,
+          formulaAtomOccurrencesDecoded, FFL.Propositional.Formula.ofNat,
           tag, h0, sentenceAtomOccurrences]
       by_cases h1 : tag = 1
       · simp [formulaAtomOccurrencesStep, formulaAtomOccurrencesSucc,
-          formulaAtomOccurrencesDecoded, LO.Propositional.Formula.ofNat,
+          formulaAtomOccurrencesDecoded, FFL.Propositional.Formula.ofNat,
           tag, h1, sentenceAtomOccurrences]
       by_cases h2 : tag = 2
       · subst tag
@@ -1825,10 +1825,10 @@ private lemma formulaAtomOccurrencesStep_history (n : ℕ) :
         simp only [formulaAtomOccurrencesStep, List.length_map, List.length_range,
           formulaAtomOccurrencesSucc, h2, ↓reduceIte]
         rw [hb]
-        simp only [formulaAtomOccurrencesDecoded, LO.Propositional.Formula.ofNat,
+        simp only [formulaAtomOccurrencesDecoded, FFL.Propositional.Formula.ofNat,
           h2]
-        cases LO.Propositional.Formula.ofNat (α := ℕ) payload.unpair.1 <;>
-          cases LO.Propositional.Formula.ofNat (α := ℕ) payload.unpair.2 <;>
+        cases FFL.Propositional.Formula.ofNat (α := ℕ) payload.unpair.1 <;>
+          cases FFL.Propositional.Formula.ofNat (α := ℕ) payload.unpair.2 <;>
           rfl
       by_cases h3 : tag = 3
       · subst tag
@@ -1836,10 +1836,10 @@ private lemma formulaAtomOccurrencesStep_history (n : ℕ) :
         simp only [formulaAtomOccurrencesStep, List.length_map, List.length_range,
           formulaAtomOccurrencesSucc, h3, ↓reduceIte]
         rw [hb]
-        simp only [formulaAtomOccurrencesDecoded, LO.Propositional.Formula.ofNat,
+        simp only [formulaAtomOccurrencesDecoded, FFL.Propositional.Formula.ofNat,
           h3]
-        cases LO.Propositional.Formula.ofNat (α := ℕ) payload.unpair.1 <;>
-          cases LO.Propositional.Formula.ofNat (α := ℕ) payload.unpair.2 <;>
+        cases FFL.Propositional.Formula.ofNat (α := ℕ) payload.unpair.1 <;>
+          cases FFL.Propositional.Formula.ofNat (α := ℕ) payload.unpair.2 <;>
           rfl
       by_cases h4 : tag = 4
       · subst tag
@@ -1847,14 +1847,14 @@ private lemma formulaAtomOccurrencesStep_history (n : ℕ) :
         simp only [formulaAtomOccurrencesStep, List.length_map, List.length_range,
           formulaAtomOccurrencesSucc, h4, ↓reduceIte]
         rw [hb]
-        simp only [formulaAtomOccurrencesDecoded, LO.Propositional.Formula.ofNat,
+        simp only [formulaAtomOccurrencesDecoded, FFL.Propositional.Formula.ofNat,
           h4]
-        cases LO.Propositional.Formula.ofNat (α := ℕ) payload.unpair.1 <;>
-          cases LO.Propositional.Formula.ofNat (α := ℕ) payload.unpair.2 <;>
+        cases FFL.Propositional.Formula.ofNat (α := ℕ) payload.unpair.1 <;>
+          cases FFL.Propositional.Formula.ofNat (α := ℕ) payload.unpair.2 <;>
           rfl
       · have htag : 5 ≤ tag := by omega
         simp [formulaAtomOccurrencesStep, formulaAtomOccurrencesSucc,
-          formulaAtomOccurrencesDecoded, LO.Propositional.Formula.ofNat,
+          formulaAtomOccurrencesDecoded, FFL.Propositional.Formula.ofNat,
           tag, h0, h1, h2, h3, h4]
 
 private lemma formulaAtomOccurrencesDecoded_prim :
@@ -1880,9 +1880,9 @@ lemma sentenceAtomOccurrences_prim :
       Primrec₂.right).of_eq fun o => by cases o <;> rfl
   exact (hget.comp hdecoded).of_eq fun φ => by
     rw [show Encodable.encode φ =
-      LO.Propositional.Formula.toNat φ by rfl]
+      FFL.Propositional.Formula.toNat φ by rfl]
     simp [formulaAtomOccurrencesDecoded,
-      LO.Propositional.Formula.ofNat_toNat]
+      FFL.Propositional.Formula.ofNat_toNat]
 
 /-- The occurrence list carries exactly the sentence's atoms. -/
 @[simp] lemma mem_sentenceAtomOccurrences :
@@ -2174,7 +2174,7 @@ private lemma formulaBoolStep_prim : Primrec₂ formulaBoolStep := by
 
 private def formulaBoolDecoded
     (env : List ℕ × List Bool) (n : ℕ) : Option Bool :=
-  (LO.Propositional.Formula.ofNat (α := ℕ) n).map
+  (FFL.Propositional.Formula.ofNat (α := ℕ) n).map
     (sentenceBoolFromAtomList env.1 env.2)
 
 private lemma formulaBoolHistory_getD
@@ -2182,7 +2182,7 @@ private lemma formulaBoolHistory_getD
     ((List.range n).map (formulaBoolDecoded env)).getD k none =
       formulaBoolDecoded env k := by
   have hzero : formulaBoolDecoded env 0 = none := by
-    simp [formulaBoolDecoded, LO.Propositional.Formula.ofNat]
+    simp [formulaBoolDecoded, FFL.Propositional.Formula.ofNat]
   rw [← hzero, List.getD_map]
   simp [hk]
 
@@ -2190,14 +2190,14 @@ private lemma formulaBoolBinary_history (op : Bool → Bool → Bool)
     (env : List ℕ × List Bool) (payload n : ℕ)
     (hleft : payload.unpair.1 < n) (hright : payload.unpair.2 < n) :
     formulaBoolBinary op ((List.range n).map (formulaBoolDecoded env)) payload =
-      ((LO.Propositional.Formula.ofNat (α := ℕ) payload.unpair.1).bind fun φ =>
-        (LO.Propositional.Formula.ofNat (α := ℕ) payload.unpair.2).map fun ψ =>
+      ((FFL.Propositional.Formula.ofNat (α := ℕ) payload.unpair.1).bind fun φ =>
+        (FFL.Propositional.Formula.ofNat (α := ℕ) payload.unpair.2).map fun ψ =>
           op (sentenceBoolFromAtomList env.1 env.2 φ)
             (sentenceBoolFromAtomList env.1 env.2 ψ)) := by
   unfold formulaBoolBinary
   rw [formulaBoolHistory_getD env hleft, formulaBoolHistory_getD env hright]
-  cases hL : LO.Propositional.Formula.ofNat (α := ℕ) payload.unpair.1 <;>
-    cases hR : LO.Propositional.Formula.ofNat (α := ℕ) payload.unpair.2 <;>
+  cases hL : FFL.Propositional.Formula.ofNat (α := ℕ) payload.unpair.1 <;>
+    cases hR : FFL.Propositional.Formula.ofNat (α := ℕ) payload.unpair.2 <;>
     simp [formulaBoolDecoded, hL, hR]
 
 private lemma formulaBoolStep_history
@@ -2207,7 +2207,7 @@ private lemma formulaBoolStep_history
   cases n with
   | zero =>
       simp [formulaBoolStep, formulaBoolDecoded,
-        LO.Propositional.Formula.ofNat]
+        FFL.Propositional.Formula.ofNat]
   | succ e =>
       let tag := e.unpair.1
       let payload := e.unpair.2
@@ -2221,11 +2221,11 @@ private lemma formulaBoolStep_history
           le_trans (Nat.unpair_right_le _) (Nat.unpair_right_le _)
       by_cases h0 : tag = 0
       · simp [formulaBoolStep, formulaBoolSucc, formulaBoolDecoded,
-          LO.Propositional.Formula.ofNat, tag, h0,
+          FFL.Propositional.Formula.ofNat, tag, h0,
           sentenceBoolFromAtomList, sentenceBool]
       by_cases h1 : tag = 1
       · simp [formulaBoolStep, formulaBoolSucc, formulaBoolDecoded,
-          LO.Propositional.Formula.ofNat, tag, h1,
+          FFL.Propositional.Formula.ofNat, tag, h1,
           sentenceBoolFromAtomList, sentenceBool]
       by_cases h2 : tag = 2
       · subst tag
@@ -2235,10 +2235,10 @@ private lemma formulaBoolStep_history
         simp only [formulaBoolStep, List.length_map, List.length_range,
           formulaBoolSucc, h2, ↓reduceIte]
         rw [hb]
-        simp only [formulaBoolDecoded, LO.Propositional.Formula.ofNat,
+        simp only [formulaBoolDecoded, FFL.Propositional.Formula.ofNat,
           h2]
-        cases LO.Propositional.Formula.ofNat (α := ℕ) payload.unpair.1 <;>
-          cases LO.Propositional.Formula.ofNat (α := ℕ) payload.unpair.2 <;>
+        cases FFL.Propositional.Formula.ofNat (α := ℕ) payload.unpair.1 <;>
+          cases FFL.Propositional.Formula.ofNat (α := ℕ) payload.unpair.2 <;>
           rfl
       by_cases h3 : tag = 3
       · subst tag
@@ -2247,10 +2247,10 @@ private lemma formulaBoolStep_history
         simp only [formulaBoolStep, List.length_map, List.length_range,
           formulaBoolSucc, h3, ↓reduceIte]
         rw [hb]
-        simp only [formulaBoolDecoded, LO.Propositional.Formula.ofNat,
+        simp only [formulaBoolDecoded, FFL.Propositional.Formula.ofNat,
           h3]
-        cases LO.Propositional.Formula.ofNat (α := ℕ) payload.unpair.1 <;>
-          cases LO.Propositional.Formula.ofNat (α := ℕ) payload.unpair.2 <;>
+        cases FFL.Propositional.Formula.ofNat (α := ℕ) payload.unpair.1 <;>
+          cases FFL.Propositional.Formula.ofNat (α := ℕ) payload.unpair.2 <;>
           rfl
       by_cases h4 : tag = 4
       · subst tag
@@ -2259,14 +2259,14 @@ private lemma formulaBoolStep_history
         simp only [formulaBoolStep, List.length_map, List.length_range,
           formulaBoolSucc, h4, ↓reduceIte]
         rw [hb]
-        simp only [formulaBoolDecoded, LO.Propositional.Formula.ofNat,
+        simp only [formulaBoolDecoded, FFL.Propositional.Formula.ofNat,
           h4]
-        cases LO.Propositional.Formula.ofNat (α := ℕ) payload.unpair.1 <;>
-          cases LO.Propositional.Formula.ofNat (α := ℕ) payload.unpair.2 <;>
+        cases FFL.Propositional.Formula.ofNat (α := ℕ) payload.unpair.1 <;>
+          cases FFL.Propositional.Formula.ofNat (α := ℕ) payload.unpair.2 <;>
           rfl
       · have htag : 5 ≤ tag := by omega
         simp [formulaBoolStep, formulaBoolSucc, formulaBoolDecoded,
-          LO.Propositional.Formula.ofNat, tag, h0, h1, h2, h3, h4]
+          FFL.Propositional.Formula.ofNat, tag, h0, h1, h2, h3, h4]
 
 private lemma formulaBoolDecoded_prim : Primrec₂ formulaBoolDecoded := by
   have hstep : Primrec₂ fun (env : List ℕ × List Bool)
@@ -2288,8 +2288,8 @@ private lemma sentenceBoolFromAtomList_prim : Primrec fun p :
   exact (hget.comp hdecoded).of_eq fun p => by
     rcases p with ⟨env, φ⟩
     rw [show Encodable.encode φ =
-      LO.Propositional.Formula.toNat φ by rfl]
-    simp [formulaBoolDecoded, LO.Propositional.Formula.ofNat_toNat]
+      FFL.Propositional.Formula.toNat φ by rfl]
+    simp [formulaBoolDecoded, FFL.Propositional.Formula.ofNat_toNat]
 
 private def tableConsistentFromAtomList
     (atoms : List ℕ) (xs : List Bool) (D : Finset Sentence) : Bool :=

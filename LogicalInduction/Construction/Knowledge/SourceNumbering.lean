@@ -38,7 +38,7 @@ efficiency claim lives entirely on the emission side, at
 
 namespace LogicalInduction
 
-open LO LO.FirstOrder LO.FirstOrder.Arithmetic
+open FFL FFL.FirstOrder FFL.FirstOrder.Arithmetic
 
 /-! ## Inverting the naming map -/
 

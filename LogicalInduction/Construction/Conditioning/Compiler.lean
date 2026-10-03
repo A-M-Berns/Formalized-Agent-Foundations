@@ -110,21 +110,21 @@ private lemma conjunctionCode_decode {phiCode : ℕ} {φ ψ : Sentence}
     (hφ : Encodable.decode (α := Sentence) phiCode = some φ) :
     Encodable.decode (α := Sentence)
       (conjunctionCode phiCode (Encodable.encode ψ)) = some (φ ⋏ ψ) := by
-  change LO.Propositional.Formula.ofNat phiCode = some φ at hφ
-  change LO.Propositional.Formula.ofNat
-    (conjunctionCode phiCode (LO.Propositional.Formula.toNat ψ)) = some (φ ⋏ ψ)
-  simp [conjunctionCode, LO.Propositional.Formula.ofNat, hφ,
-    LO.Propositional.Formula.ofNat_toNat]
+  change FFL.Propositional.Formula.ofNat phiCode = some φ at hφ
+  change FFL.Propositional.Formula.ofNat
+    (conjunctionCode phiCode (FFL.Propositional.Formula.toNat ψ)) = some (φ ⋏ ψ)
+  simp [conjunctionCode, FFL.Propositional.Formula.ofNat, hφ,
+    FFL.Propositional.Formula.ofNat_toNat]
 
 lemma conjunctionCode_decode_none {phiCode : ℕ} {ψ : Sentence}
     (hφ : Encodable.decode (α := Sentence) phiCode = none) :
     Encodable.decode (α := Sentence)
       (conjunctionCode phiCode (Encodable.encode ψ)) = none := by
-  change LO.Propositional.Formula.ofNat phiCode = none at hφ
-  change LO.Propositional.Formula.ofNat
-    (conjunctionCode phiCode (LO.Propositional.Formula.toNat ψ)) = none
-  simp [conjunctionCode, LO.Propositional.Formula.ofNat, hφ,
-    LO.Propositional.Formula.ofNat_toNat]
+  change FFL.Propositional.Formula.ofNat phiCode = none at hφ
+  change FFL.Propositional.Formula.ofNat
+    (conjunctionCode phiCode (FFL.Propositional.Formula.toNat ψ)) = none
+  simp [conjunctionCode, FFL.Propositional.Formula.ofNat, hφ,
+    FFL.Propositional.Formula.ofNat_toNat]
 
 private lemma conjunctionCode_prim : Primrec₂ conjunctionCode := by
   exact (Primrec.nat_add.comp₂
