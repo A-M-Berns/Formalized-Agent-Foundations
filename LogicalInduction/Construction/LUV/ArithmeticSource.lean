@@ -211,7 +211,7 @@ def ofNNF {k : ℕ} (φ : ArithmeticSemiformula ℕ k) : ArithSource k := .leaf 
 /-- The metalevel semantics of a source, in a structure for `ℒₒᵣ`.  The `iff` clause is
 a genuine `↔` and the `imp` clause a genuine `→`; nothing here is defined through the
 normal form, so `eval_compile` below has content. -/
-def SourceEval {M : Type*} [Structure ℒₒᵣ M] :
+def SourceEval {M : Type*} [Tarski.Structure ℒₒᵣ M] :
     ∀ {k : ℕ}, (Fin k → M) → (ℕ → M) → ArithSource k → Prop
   | _, e, ε, .leaf φ => Semiformula.Eval e ε φ
   | _, e, ε, .and a b => SourceEval e ε a ∧ SourceEval e ε b
@@ -227,7 +227,7 @@ to holds in a structure exactly when the source does under its own metalevel rea
 
 *Proof kind:* `P` proved.  *Provenance:* (a) derived in-project, on Foundation's
 `Semiformula.Eval` homomorphism lemmas, provenance (b). -/
-lemma eval_compile {M : Type*} [Structure ℒₒᵣ M] {k : ℕ} (ε : ℕ → M)
+lemma eval_compile {M : Type*} [Tarski.Structure ℒₒᵣ M] {k : ℕ} (ε : ℕ → M)
     (s : ArithSource k) (e : Fin k → M) :
     Semiformula.Eval e ε (compile s) ↔ SourceEval e ε s := by
   induction s with
@@ -1702,7 +1702,7 @@ it changes nothing about which value a defining formula names, and multiplies th
 the Foundation object naming it by `2^Ω(n)`.
 
 *Proof kind:* `P` proved. -/
-lemma iffChain_odd_valid {M : Type*} [Structure ℒₒᵣ M] (x : M) (n : ℕ) :
+lemma iffChain_odd_valid {M : Type*} [Tarski.Structure ℒₒᵣ M] (x : M) (n : ℕ) :
     Semiformula.Evalb (M := M) ![x] (iffChain (2 * n + 1)) := by
   have key : ∀ m : ℕ,
       (Semiformula.Evalb (M := M) ![x] (iffChain (2 * m)) ↔

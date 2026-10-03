@@ -163,6 +163,8 @@ lemma decodeBits_oracleOf : ∀ (entries : List TableEntry) (cur : List ℕ),
             rw [pairSnd_pair]; exact hiff.mp hp), decodeBits_entryBits]
           simp only [selRunOf, quoteRunOf, hlk]
           simp
+          -- the two sides differ only in their `Decidable` instance
+          try congr 1
         · have hlk : tableLookup (e :: rest) (decodeBits bufW) (digitVal cur)
               = tableLookup rest (decodeBits bufW) (digitVal cur) := by
             rw [tableLookup, ite_eq_right (fun hc => hp hc.2)]
@@ -170,6 +172,7 @@ lemma decodeBits_oracleOf : ∀ (entries : List TableEntry) (cur : List ℕ),
             rw [pairSnd_pair]; exact fun hc => hp (hiff.mpr hc))]
           rw [decodeBits_oracleOf rest cur hcur bufW]
           simp only [selRunOf, quoteRunOf, hlk]
+          try congr 1
       · have hd : digitVal cur ≠ e.day := fun hc =>
           hday ((numEqBits_spec e.day cur hcur).mpr hc)
         have hlk : tableLookup (e :: rest) (decodeBits bufW) (digitVal cur)
@@ -177,6 +180,7 @@ lemma decodeBits_oracleOf : ∀ (entries : List TableEntry) (cur : List ℕ),
           rw [tableLookup, ite_eq_right (fun hc => hd hc.1.symm)]
         rw [ite_eq_right hday, decodeBits_oracleOf rest cur hcur bufW]
         simp only [selRunOf, quoteRunOf, hlk]
+        try congr 1
 
 /-! ### Well-formedness and the constant budget -/
 

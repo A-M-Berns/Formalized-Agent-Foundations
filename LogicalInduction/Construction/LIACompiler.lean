@@ -3008,7 +3008,10 @@ private lemma priorBudgetBreachData_prim : Primrec priorBudgetBreachData := by
   have hn : Primrec fun core : BudgetCoreInput => core.2 := Primrec.snd
   have hatoms : Primrec fun core : BudgetCoreInput =>
       budgetAtomList core.1.1.1.1 core.1.1.2 core.2 :=
-    budgetAtomList_prim.comp ((hstages.pair hj).pair hn)
+    -- the inner function `((stages, j), n)` is named explicitly: left to unification,
+    -- `Primrec.comp` unfolds `budgetAtomList` while matching and times out
+    budgetAtomList_prim.comp (g := fun core : BudgetCoreInput =>
+      ((core.1.1.1.1, core.1.1.2), core.2)) ((hstages.pair hj).pair hn)
   have hassignments : Primrec fun core : BudgetCoreInput =>
       allBoolLists (budgetAtomList core.1.1.1.1 core.1.1.2 core.2).length :=
     allBoolLists_prim.comp (Primrec.list_length.comp hatoms)
@@ -3024,9 +3027,6 @@ private lemma priorBudgetBreachData_prim : Primrec priorBudgetBreachData := by
       (Primrec.snd.comp₂ Primrec₂.right)
   exact (Primrec.list_foldr hassignments (Primrec.const false) hstep).of_eq
     fun core => by
-      unfold priorBudgetBreachData
-      let assignments :=
-        allBoolLists (budgetAtomList core.1.1.1.1 core.1.1.2 core.2).length
       have hAny : ∀ l : List (List Bool),
           l.foldr (fun xs found =>
             firmBudgetAssignmentBreachesData core xs || found) false =
@@ -3035,7 +3035,10 @@ private lemma priorBudgetBreachData_prim : Primrec priorBudgetBreachData := by
         induction l with
         | nil => rfl
         | cons xs xss ih => simp [ih]
-      exact hAny assignments
+      -- rewrite rather than close by defeq: the kernel-side unfolding of the `let` in
+      -- `priorBudgetBreachData` against the fold times out on this toolchain
+      rw [hAny]
+      simp only [priorBudgetBreachData]
 
 /-! ## The Budgeter's scale factor
 

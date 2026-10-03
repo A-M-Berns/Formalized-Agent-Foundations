@@ -1157,7 +1157,7 @@ private lemma exists_strip_word {v : ℕ → ℕ} (hv : MachineDigits v) (E : �
     (Wf := fun _ => []) (Sf := fun z => D (List.replicate z.length true))
     (c := 2 * ((E 0).length + (E 1).length + (E 2).length + (E 3).length) + 2)
     (qP := 0)
-    (TokenFold.Strip.stripStep_mem_FP E) (FPFold.constFn_mem_FP []) hDay
+    (TokenFold.Strip.stripStep_mem_FP E) (Complexity.constFn_mem_FP []) hDay
     (fun W cli b0 b1 b2 => by
       simpa using TokenFold.Strip.stripStep_length_le E W cli b0 b1 b2)
     (Complexity.pair [] [])
@@ -1225,7 +1225,7 @@ lemma machineTokenStream_binNumeralEnc {v : ℕ → ℕ} (hv : MachineDigits v) 
       if (Kr (List.replicate z.length true)).length = 0
         then TokenFold.tokBits (digitEnc 0)
         else Kb (List.replicate z.length true)) ∈ Complexity.FP :=
-    TokenFold.ifEqLen_mem_FP hKrDay 0 (FPFold.constFn_mem_FP _) hKbDay
+    TokenFold.ifEqLen_mem_FP hKrDay 0 (Complexity.constFn_mem_FP _) hKbDay
   have hG : ∀ n : ℕ,
       (if (Kr (List.replicate (unaryDay n).length true)).length = 0
         then TokenFold.tokBits (digitEnc 0)

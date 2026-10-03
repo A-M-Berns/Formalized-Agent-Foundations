@@ -387,7 +387,8 @@ private lemma evalList_history (l : List Bool) (n : ℕ) :
               e.unpair.2.unpair.1 : Option Sentence) <;>
             cases (@FFL.Propositional.Formula.ofNat ℕ inferInstance
               e.unpair.2.unpair.2 : Option Sentence) <;>
-            simp [BoolPCWorld.eval, evalOp]
+            -- leftover goals differ only in their `Decidable` instance
+            (simp [BoolPCWorld.eval, evalOp]; try congr 1)
       by_cases h2 : e.unpair.1 = 2
       · exact hbinTag 2 (by tauto) h2
       by_cases h3 : e.unpair.1 = 3
@@ -1211,14 +1212,18 @@ lemma AffineCombination.settlementCheckAtFuel_prim
       ratWithinOpt v v' p.1.1.1.2.1 := by
     have hv : Primrec fun p : R × List Bool =>
         valueRatCompAt p.1.1.1.1 market p.1.1.1.2.2.2 p.1.2 :=
-      hvalue.comp Primrec.fst
+      hvalue.comp (g := fun p : R × List Bool => p.1) Primrec.fst
     have hv' : Primrec fun p : R × List Bool =>
         valueRatCompAt p.1.1.1.1 market p.1.1.1.2.2.2 p.2 :=
-      hvalue.comp ((Primrec.fst.comp Primrec.fst).pair Primrec.snd)
+      hvalue.comp (g := fun p : R × List Bool => (p.1.1, p.2))
+        ((Primrec.fst.comp Primrec.fst).pair Primrec.snd)
     have htol : Primrec fun p : R × List Bool => p.1.1.1.2.1 :=
       Primrec.fst.comp (Primrec.snd.comp
         (Primrec.fst.comp (Primrec.fst.comp Primrec.fst)))
-    exact ratWithinOpt_prim.comp ((hv.pair hv').pair htol)
+    exact ratWithinOpt_prim.comp (g := fun p : R × List Bool =>
+      ((valueRatCompAt p.1.1.1.1 market p.1.1.1.2.2.2 p.1.2,
+        valueRatCompAt p.1.1.1.1 market p.1.1.1.2.2.2 p.2), p.1.1.1.2.1))
+      ((hv.pair hv').pair htol)
   have hcondition : Primrec fun p : R × List Bool =>
       (!stageSatBits p.1.1.2 p.1.2) || (!stageSatBits p.1.1.2 p.2) ||
         (let v := valueRatCompAt p.1.1.1.1 market p.1.1.1.2.2.2 p.1.2

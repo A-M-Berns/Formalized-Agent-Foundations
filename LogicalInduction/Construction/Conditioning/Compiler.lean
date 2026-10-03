@@ -263,8 +263,8 @@ private lemma conditionedQuoteCode_spec {P : History} (market : MarketComputatio
     simpa [conditionalRatNorm_exact] using
       conditionalRatCode_spec
         (Nat.pair (Encodable.encode numerator) (Encodable.encode denominator))
-  simp [conditionedQuoteCode, Nat.Partrec.Code.eval, hcondition, hconjunction,
-    hnumerator, hdenominator, hconditional, Seq.seq, conjunction, numerator,
+  simp [conditionedQuoteCode, Nat.Partrec.Code.eval, PFun.coe_val, some_bind_pfun, hcondition,
+    hconjunction, hnumerator, hdenominator, hconditional, Seq.seq, conjunction, numerator,
     denominator, conditionedQuoteTable]
 
 /-- The conditioned history is a computable rational market whenever the base market has a
@@ -412,7 +412,7 @@ private lemma denominatorPatchedQuoteCode_spec {P : History}
   have hnorm : (denominatorPatchNormCode cutoff).eval normInput =
       Part.some (denominatorPatchNorm cutoff normInput) :=
     Part.eq_some_iff.mpr (denominatorPatchNormCode_spec cutoff normInput)
-  simp [denominatorPatchedQuoteCode, Nat.Partrec.Code.eval, hcondition, hbase,
+  simp [denominatorPatchedQuoteCode, Nat.Partrec.Code.eval, PFun.coe_val, some_bind_pfun, hcondition, hbase,
     hnorm, Seq.seq, normInput, denominatorPatchNorm, denominatorPatchedQuoteTable,
     baseQuote]
   by_cases h : z.unpair.1 < cutoff ∧

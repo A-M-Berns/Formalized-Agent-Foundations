@@ -49,7 +49,7 @@ segment ruler; it is never compounded inside the loop.  That is what
 
 namespace LogicalInduction
 
-open Complexity.Cobham
+open Complexity Complexity.Cobham
 
 /-- **A unary ruler for `f`**: some polynomial-time machine, handed the unary numeral for
 `n`, writes out exactly `f n` marks.
@@ -83,7 +83,7 @@ carries.  A consumer assembles the ruler directly from these; converting a fuel 
 /-- **A constant count.** The machine ignores its input and writes a fixed word.
 No length side condition. -/
 lemma UnaryRuler.const (k : ℕ) : UnaryRuler (fun _ => k) :=
-  FPFold.constFn_mem_FP (List.replicate k false)
+  Complexity.constFn_mem_FP (List.replicate k false)
 
 /-- **The identity count.** `Cobham.mulLenFn_mem_FP` against a one-bit constant recolours
 `Complexity.unaryLength_mem_FP`'s `true` marks to the `false` marks the ruler convention
@@ -91,7 +91,7 @@ uses. No length side condition. -/
 lemma UnaryRuler.id : UnaryRuler (fun n => n) := by
   show (fun z : List Bool => List.replicate z.length false) ∈ Complexity.FP
   simpa using Complexity.Cobham.mulLenFn_mem_FP Complexity.unaryLength_mem_FP
-    (FPFold.constFn_mem_FP [true])
+    (Complexity.constFn_mem_FP [true])
 
 /-- **Composition.** The inner ruler's output is the unary numeral the outer one reads, so
 this is one `Complexity.mem_FP_comp`. No length side condition: the intermediate word's
@@ -177,11 +177,11 @@ lemma UnaryRuler.ite_lt_const (i a b : ℕ) :
   show (fun z : List Bool => List.replicate (if z.length < i then a else b) false)
     ∈ Complexity.FP
   cases i with
-  | zero => simpa using FPFold.constFn_mem_FP (List.replicate b false)
+  | zero => simpa using Complexity.constFn_mem_FP (List.replicate b false)
   | succ i =>
       have h := TokenFold.ifLeLen_mem_FP (A := fun z : List Bool => z) Complexity.id_mem_FP i
-        (FPFold.constFn_mem_FP (List.replicate a false))
-        (FPFold.constFn_mem_FP (List.replicate b false))
+        (Complexity.constFn_mem_FP (List.replicate a false))
+        (Complexity.constFn_mem_FP (List.replicate b false))
       have heq : (fun z : List Bool =>
           if z.length ≤ i then List.replicate a false else List.replicate b false)
           = fun z : List Bool => List.replicate (if z.length < i + 1 then a else b) false := by
@@ -244,7 +244,7 @@ lemma UnaryRuler.unpairFst : UnaryRuler (fun n => n.unpair.1) := by
     rw [hval, List.length_replicate, min_eq_left (Nat.unpair_left_le z.length)]
   rw [heq] at h
   show (fun z : List Bool => List.replicate z.length.unpair.1 false) ∈ Complexity.FP
-  simpa using Complexity.Cobham.mulLenFn_mem_FP h (FPFold.constFn_mem_FP [true])
+  simpa using Complexity.Cobham.mulLenFn_mem_FP h (Complexity.constFn_mem_FP [true])
 
 /-- **The right component of `Nat.unpair` is a ruler.** As `UnaryRuler.unpairFst`, with the
 cap justified by `Nat.unpair_right_le`. -/
@@ -273,7 +273,7 @@ lemma UnaryRuler.unpairSnd : UnaryRuler (fun n => n.unpair.2) := by
     rw [hval, List.length_replicate, min_eq_left (Nat.unpair_right_le z.length)]
   rw [heq] at h
   show (fun z : List Bool => List.replicate z.length.unpair.2 false) ∈ Complexity.FP
-  simpa using Complexity.Cobham.mulLenFn_mem_FP h (FPFold.constFn_mem_FP [true])
+  simpa using Complexity.Cobham.mulLenFn_mem_FP h (Complexity.constFn_mem_FP [true])
 
 /-- **Pairing two counts is a ruler.** `TokenFold.unaryPair_mem_FP` assembles
 `Nat.pair` out of two length products, three concatenations and one length comparison.
@@ -284,7 +284,7 @@ lemma UnaryRuler.pair {f g : ℕ → ℕ} (hf : UnaryRuler f) (hg : UnaryRuler g
   simp only [List.length_replicate] at h
   show (fun z : List Bool => List.replicate (Nat.pair (f z.length) (g z.length)) false)
     ∈ Complexity.FP
-  simpa using Complexity.Cobham.mulLenFn_mem_FP h (FPFold.constFn_mem_FP [true])
+  simpa using Complexity.Cobham.mulLenFn_mem_FP h (Complexity.constFn_mem_FP [true])
 
 /-! ### The two prefix-scan devices
 
@@ -364,7 +364,7 @@ lemma UnaryRuler.segPrefix {lenFn : ℕ → ℕ} (hlen : UnaryRuler lenFn) :
   show (fun z : List Bool => List.replicate
       (LogicalInduction.segPrefix lenFn z.length.unpair.1 z.length.unpair.2) false)
     ∈ Complexity.FP
-  have h := Complexity.Cobham.mulLenFn_mem_FP hG (FPFold.constFn_mem_FP [true])
+  have h := Complexity.Cobham.mulLenFn_mem_FP hG (Complexity.constFn_mem_FP [true])
   have heq : (fun z : List Bool =>
       List.replicate ((G z).length * ([true] : List Bool).length) false)
       = fun z : List Bool => List.replicate
@@ -403,7 +403,7 @@ lemma UnaryRuler.segLocate {lenFn : ℕ → ℕ} (hlen : UnaryRuler lenFn) :
     have hBm : (fun z : List Bool => List.replicate z.length.unpair.1.unpair.2 false)
         ∈ Complexity.FP := hB
     have h := TokenFold.selectHeadFn_leFlag_mem_FP hBm hAm
-      (FPFold.constFn_mem_FP [false]) (FPFold.constFn_mem_FP ([] : List Bool))
+      (Complexity.constFn_mem_FP [false]) (Complexity.constFn_mem_FP ([] : List Bool))
     simp only [List.length_replicate] at h
     exact h
   have hR : (fun z : List Bool => List.replicate z.length.unpair.2 false) ∈ Complexity.FP :=
@@ -420,7 +420,7 @@ lemma UnaryRuler.segLocate {lenFn : ℕ → ℕ} (hlen : UnaryRuler lenFn) :
   show (fun z : List Bool => List.replicate (LogicalInduction.segLocate lenFn
       z.length.unpair.1.unpair.1 z.length.unpair.1.unpair.2 z.length.unpair.2) false)
     ∈ Complexity.FP
-  have h := Complexity.Cobham.mulLenFn_mem_FP hG (FPFold.constFn_mem_FP [true])
+  have h := Complexity.Cobham.mulLenFn_mem_FP hG (Complexity.constFn_mem_FP [true])
   have heq : (fun z : List Bool =>
       List.replicate ((G z).length * ([true] : List Bool).length) false)
       = fun z : List Bool => List.replicate (LogicalInduction.segLocate lenFn

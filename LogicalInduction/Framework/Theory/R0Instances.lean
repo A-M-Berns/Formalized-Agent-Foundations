@@ -147,7 +147,7 @@ Kind `P` (proved).  Provenance: (a) derived in-project; (b) Foundation citations
 `ModelsTheory.of_provably_subtheory`. -/
 lemma representsComputations_of_peanoMinus (U : ArithmeticTheory)
     [𝗣𝗔⁻ ⪯ U] [ℕ↓[ℒₒᵣ] ⊧* U] : RepresentsComputations U := by
-  haveI : 𝗘𝗤 ℒₒᵣ ⪯ U := Entailment.WeakerThan.trans (𝓣 := 𝗣𝗔⁻) inferInstance inferInstance
+  have : 𝗘𝗤 ℒₒᵣ ⪯ U := Entailment.WeakerThan.trans (𝓣 := 𝗣𝗔⁻) inferInstance inferInstance
   refine ⟨fun f hf => ?_⟩
   have hcomp : Computable fun v : List.Vector ℕ 1 => f (v.get 0) :=
     hf.comp (Primrec.to_comp <| Primrec.vector_get.comp Primrec.id (Primrec.const (0 : Fin 1)))
@@ -157,7 +157,7 @@ lemma representsComputations_of_peanoMinus (U : ArithmeticTheory)
   constructor
   · rintro rfl
     refine Arithmetic.complete.{0} U _ fun M _ _ => ?_
-    haveI : M↓[ℒₒᵣ] ⊧* 𝗣𝗔⁻ := ModelsTheory.of_provably_subtheory M 𝗣𝗔⁻ U inferInstance
+    have : M↓[ℒₒᵣ] ⊧* 𝗣𝗔⁻ := ModelsTheory.of_provably_subtheory M 𝗣𝗔⁻ U inferInstance
     exact models_repr_sentence hc (by simp)
   · intro h
     have hN := consequence_iff.mp (Theory.Proof.sound h) ℕ inferInstance

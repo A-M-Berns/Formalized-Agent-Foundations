@@ -1694,7 +1694,7 @@ lemma dusTrader_strat_value
   apply Finset.sum_congr rfl
   intro j hj
   simp only [Function.comp_apply]
-  rw [Strategy.scaleBy_value, EF.denote_const, dusDiagonalWeight_cast]
+  erw [Strategy.scaleBy_value, EF.denote_const, dusDiagonalWeight_cast]
 
 lemma dusDiagonalComponent_value_zero_of_day_lt_index
     {DP : DeductiveProcess}

@@ -3901,7 +3901,7 @@ lemma precSetupPre_childIn_zero (haf : 16 ≤ af)
   simp only [precSetupPre, precLeftLoc_update_apply haf, precLeftLoc_self_upd haf,
     precUnpairWin_leftLoc haf] at h ⊢
   norm_num at h ⊢
-  simp only [precSelf_update_apply, precUnpairWin_self_apply] at h ⊢
+  simp only [precUnpairWin_self_apply] at h ⊢
   norm_num at h ⊢
   exact h
 
@@ -3913,7 +3913,7 @@ lemma precSetupPre_childIn_one (haf : 16 ≤ af)
   simp only [precSetupPre, precLeftLoc_update_apply haf, precLeftLoc_self_upd haf,
     precUnpairWin_leftLoc haf] at h ⊢
   norm_num at h ⊢
-  simp only [precSelf_update_apply, precUnpairWin_self_apply] at h ⊢
+  simp only [precUnpairWin_self_apply] at h ⊢
   norm_num at h ⊢
   exact h
 

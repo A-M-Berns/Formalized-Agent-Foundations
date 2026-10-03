@@ -159,9 +159,9 @@ citations — `Arithmetic.complete`, `ModelsTheory.of_provably_subtheory`,
 lemma valueSchema_exclusive_prov (T : ArithmeticTheory) [𝗣𝗔⁻ ⪯ T] (c : Code 1)
     {y y' : ℕ} (hne : y ≠ y') (z : ℕ) :
     T ⊢ ∼(((valueSchema c y)/[‘↑z’] : ArithmeticSentence) ⋏ (valueSchema c y')/[‘↑z’]) := by
-  haveI : 𝗘𝗤 ℒₒᵣ ⪯ T := Entailment.WeakerThan.trans (𝓣 := 𝗣𝗔⁻) inferInstance inferInstance
+  have : 𝗘𝗤 ℒₒᵣ ⪯ T := Entailment.WeakerThan.trans (𝓣 := 𝗣𝗔⁻) inferInstance inferInstance
   refine Arithmetic.complete.{0} T _ fun M _ _ => ?_
-  haveI : M↓[ℒₒᵣ] ⊧* 𝗣𝗔⁻ := ModelsTheory.of_provably_subtheory M 𝗣𝗔⁻ T inferInstance
+  have : M↓[ℒₒᵣ] ⊧* 𝗣𝗔⁻ := ModelsTheory.of_provably_subtheory M 𝗣𝗔⁻ T inferInstance
   simp only [valueSchema_subst, models_iff, LogicalConnective.HomClass.map_neg,
     LogicalConnective.HomClass.map_and, Semiformula.eval_substs]
   rintro ⟨h1, h2⟩

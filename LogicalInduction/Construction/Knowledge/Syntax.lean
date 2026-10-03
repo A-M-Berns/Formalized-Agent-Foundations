@@ -481,7 +481,8 @@ lemma not_codeHalts_neverHaltMachine (x : ℕ) : ¬ CodeHalts neverHaltMachine x
   simp only [neverHaltMachine, Nat.Partrec.Code.eval, Nat.unpaired, Part.mem_map_iff,
     Nat.mem_rfind] at hv
   obtain ⟨a, ⟨h1, -⟩, -⟩ := hv
-  simp at h1
+  obtain ⟨n, hn, -⟩ := Nat.rfind_dom.mp h1
+  simp at hn
 
 /-! ## Argument sensitivity of the universal schema -/
 

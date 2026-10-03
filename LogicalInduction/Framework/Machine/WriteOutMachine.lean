@@ -327,7 +327,7 @@ lemma UnaryRuler.of_polyFueled {c : Nat.Partrec.Code} {cnt : ℕ → ℕ}
     rw [hval, min_eq_left hcap]
   rw [heqT] at htrue
   have hfalse := Complexity.Cobham.mulLenFn_mem_FP htrue
-    (LogicalInduction.FPFold.constFn_mem_FP [true])
+    (Complexity.constFn_mem_FP [true])
   simpa using hfalse
 
 /-! ## The write-out token stream, machine reading -/
@@ -381,11 +381,11 @@ to it by `TokenFold.decodeBits_tokBits`; the certificate does not read the day a
 length side condition.
 
 This is where the fuel side's whole `PolyTokenStream` layer collapses to on the machine
-side: a constant word is `FPFold.constFn_mem_FP`, so the token-metered scaffolding class
+side: a constant word is `Complexity.constFn_mem_FP`, so the token-metered scaffolding class
 `BigTokenStream.ofPolySegStream ∘ PolySegStream.ofTokenStream ∘ PolyTokenStream.const`
 runs through has no machine counterpart to build. -/
 lemma MachineTokenStream.const (ts : List ℕ) : MachineTokenStream (fun _ => ts) :=
-  ⟨fun _ => TokenFold.tokBits ts, FPFold.constFn_mem_FP _,
+  ⟨fun _ => TokenFold.tokBits ts, Complexity.constFn_mem_FP _,
     fun _ => TokenFold.blockWF_tokBits ts, fun _ => TokenFold.decodeBits_tokBits ts⟩
 
 /-- **The class is closed under reindexing by a machine-readable map.** The reindexer
@@ -615,7 +615,7 @@ lemma MachineDigits.exists_digitWord {x : ℕ → ℕ} (h : MachineDigits x) :
   obtain ⟨F, hF, hwf, hd⟩ := h
   refine ⟨fun z => (F z).take ((F z).drop 3).length,
     Complexity.Cobham.takeLenFn_mem_FP
-      (TokenFold.dropLenFn_mem_FP (FPFold.constFn_mem_FP [false, false, false]) hF) hF,
+      (TokenFold.dropLenFn_mem_FP (Complexity.constFn_mem_FP [false, false, false]) hF) hF,
     fun d => ?_, fun d => ?_⟩
   · obtain ⟨cur, hcur, -, he⟩ := TokenFold.digitRun_of_blockWF (hwf d) (hd d)
     show DigitFP.IsDigitWord ((F (unaryDay d)).take ((F (unaryDay d)).drop 3).length)
@@ -635,7 +635,7 @@ lemma MachineDigits.of_digitWord {x : ℕ → ℕ} {D : List Bool → List Bool}
     (hw : ∀ d, DigitFP.IsDigitWord (D (unaryDay d)))
     (hv : ∀ d, DigitFP.wordVal (D (unaryDay d)) = x d) : MachineDigits x := by
   refine ⟨fun z => D z ++ digitBits 4,
-    Complexity.Cobham.appendFn_mem_FP hD (FPFold.constFn_mem_FP (digitBits 4)),
+    Complexity.Cobham.appendFn_mem_FP hD (Complexity.constFn_mem_FP (digitBits 4)),
     fun d => ?_, fun d => ?_⟩
   · obtain ⟨cur, hcur, he⟩ := hw d
     show TokenFold.BlockWF (D (unaryDay d) ++ digitBits 4)
@@ -660,11 +660,11 @@ lemma MachineDigits.of_eq {x x' : ℕ → ℕ} (h : MachineDigits x) (he : ∀ n
   MachineTokenStream.of_eq h (fun n => by rw [he n])
 
 /-- **A constant is machine-metered.** The emitted word is the constant base-four run of
-`K` (`FPFold.constFn_mem_FP`), so the certificate does not read its argument at all. No
+`K` (`Complexity.constFn_mem_FP`), so the certificate does not read its argument at all. No
 length side condition. Fuel-side twin: `BigDigits.const`. -/
 lemma MachineDigits.const (K : ℕ) : MachineDigits (fun _ => K) :=
   MachineDigits.of_digitWord (D := fun _ => digitsToBits (natDigits4 K))
-    (FPFold.constFn_mem_FP _)
+    (Complexity.constFn_mem_FP _)
     (fun _ => DigitFP.isDigitWord_digitsToBits (natDigits4_lt K))
     (fun _ => by rw [DigitFP.wordVal_digitsToBits (natDigits4_lt K), digitVal_natDigits4])
 
@@ -933,9 +933,9 @@ lemma MachineDigits.ofTokenListNat {L : ℕ → List ℕ} (h : MachineTokenStrea
       (pairSnd (pairSnd v) ++ digitsToBits [0, 0, 0]).take 9) ∈ Complexity.FP := by
     have hraw := takeLenFn_mem_FP (a := fun _ : List Bool => List.replicate 9 true)
       (b := fun v : List Bool => pairSnd (pairSnd v) ++ digitsToBits [0, 0, 0])
-      (FPFold.constFn_mem_FP _)
+      (Complexity.constFn_mem_FP _)
       (appendFn_mem_FP (Complexity.mem_FP_comp sndBlock_mem_FP sndBlock_mem_FP)
-        (FPFold.constFn_mem_FP _))
+        (Complexity.constFn_mem_FP _))
     simpa using hraw
   have hSbnd : ∀ W cli tok : List Bool,
       (pairFst (pairSnd (Complexity.pair W (Complexity.pair cli tok)))).length
@@ -968,7 +968,7 @@ lemma MachineDigits.ofTokenListNat {L : ℕ → List ℕ} (h : MachineTokenStrea
   have hfold := TokenFold.natFold_mem_FP (STEPn := fun c (_ : ℕ) => c)
     (EMITn := fun (_ : List Bool) t => digitsToBits (padTriple t))
     (c := 0) (k := 0) (qQ := Polynomial.C 9)
-    hSTEP hEMIT (FPFold.constFn_mem_FP []) hF hSbnd hEbnd hSeq hEeq [] []
+    hSTEP hEMIT (Complexity.constFn_mem_FP []) hF hSbnd hEbnd hSeq hEeq [] []
   have hword : ∀ d : ℕ,
       (TokenFold.natFold (fun c (_ : ℕ) => c)
           (fun (_ : List Bool) t => digitsToBits (padTriple t)) [] []
@@ -983,7 +983,7 @@ lemma MachineDigits.ofTokenListNat {L : ℕ → List ℕ} (h : MachineTokenStrea
     (D := fun z => (TokenFold.natFold (fun c (_ : ℕ) => c)
         (fun (_ : List Bool) t => digitsToBits (padTriple t)) [] []
         (undigitize (bitsToDigits (F z)))).2 ++ digitsToBits [3, 3, 3])
-    (appendFn_mem_FP hfold (FPFold.constFn_mem_FP _)) (fun d => ?_) (fun d => ?_)
+    (appendFn_mem_FP hfold (Complexity.constFn_mem_FP _)) (fun d => ?_) (fun d => ?_)
   · rw [hword d]
     exact DigitFP.isDigitWord_digitsToBits mem_flatMap_padTriple
   · have hbound : ∀ t ∈ L d ++ [63], t < 64 := by
@@ -1020,7 +1020,7 @@ lemma MachineTokenStream.lengthRuler {t : ℕ → List ℕ} (h : MachineTokenStr
   have hfold := TokenFold.natFold_mem_FP (STEPn := fun c (_ : ℕ) => c)
     (EMITn := fun (_ : List Bool) (_ : ℕ) => ([false] : List Bool))
     (c := 0) (k := 0) (qQ := Polynomial.C 1)
-    hSTEP (FPFold.constFn_mem_FP [false]) (FPFold.constFn_mem_FP []) hDay
+    hSTEP (Complexity.constFn_mem_FP [false]) (Complexity.constFn_mem_FP []) hDay
     (fun W cli tok => by rw [pairSnd_pair, pairFst_pair]; omega)
     (fun W cli tok => by simp)
     (fun W cli cur _ => by rw [pairSnd_pair, pairFst_pair])

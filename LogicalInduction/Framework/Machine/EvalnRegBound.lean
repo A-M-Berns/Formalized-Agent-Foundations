@@ -696,58 +696,54 @@ lemma codeVals_lt : ∀ (c : Nat.Partrec.Code) (s B : ℕ) (V : Fin (codeRegs c)
       -- the first child
       have hLb : ∀ k, pairLeftIn (codeRegs cf) (codeRegs cg) (codeRegs_ge cf) V k < B := by
         intro k
-        simp only [pairLeftIn, Function.update_apply]
-        split_ifs <;> exact hV _
+        simp only [pairLeftIn]
+        repeat' (first | exact hV _ | refine update_lt (fun _ => ?_) ?_ _)
       have hFfB := codeVals_lt cf s B (pairLeftIn (codeRegs cf) (codeRegs cg)
         (codeRegs_ge cf) V) hBf hLb
         (by show pairLeftIn _ _ _ V ⟨0, Nat.lt_of_lt_of_le (by norm_num) (codeRegs_ge cf)⟩ ≤ s
-            rw [pairLeftIn_zero]; exact h0')
+            erw [pairLeftIn_zero]; exact h0')
         (by show pairLeftIn _ _ _ V ⟨1, Nat.lt_of_lt_of_le (by norm_num) (codeRegs_ge cf)⟩ ≤ s
-            rw [pairLeftIn_one]; exact h1')
+            erw [pairLeftIn_one]; exact h1')
       -- the second child
       have hRb : ∀ k, pairRightIn (codeRegs cf) (codeRegs cg) (codeRegs_ge cf)
           (codeRegs_ge cg) (codeVals cf) V k < B := by
         intro k
-        simp only [pairRightIn, Function.update_apply]
-        split_ifs
-        · exact hV _
-        · exact hV _
-        · refine writeWindow_bounded _ _ _ B (fun j => ?_) (fun j => hFfB j) _
-          simp only [Function.update_apply]; split_ifs <;> exact hV _
+        simp only [pairRightIn]
+        repeat' (first | exact hV _ | exact hFfB _ | refine update_lt (fun _ => ?_) ?_ _ | refine writeWindow_bounded _ _ _ B (fun _ => ?_) (fun j => hFfB j) _)
       have hFgB := codeVals_lt cg s B (pairRightIn (codeRegs cf) (codeRegs cg)
         (codeRegs_ge cf) (codeRegs_ge cg) (codeVals cf) V) hBg hRb
         (by show pairRightIn _ _ _ _ _ V ⟨0, Nat.lt_of_lt_of_le (by norm_num) (codeRegs_ge cg)⟩ ≤ s
-            rw [pairRightIn_zero]; exact h0')
+            erw [pairRightIn_zero]; exact h0')
         (by show pairRightIn _ _ _ _ _ V ⟨1, Nat.lt_of_lt_of_le (by norm_num) (codeRegs_ge cg)⟩ ≤ s
-            rw [pairRightIn_one]; exact h1')
+            erw [pairRightIn_one]; exact h1')
       have hA := pairPhaseAVec_lt (codeRegs_ge cf) (codeRegs_ge cg) (codeVals cf)
         (codeVals cg) V B hV hFfB hFgB
       have htagF : pairPhaseAVec (codeRegs cf) (codeRegs cg) (codeRegs_ge cf)
           (codeRegs_ge cg) (codeVals cf) (codeVals cg) V
           (binLeftLoc (codeRegs cf) (codeRegs cg) (codeRegs_ge cf) 2) ≤ 1 := by
-        rw [pairPhaseAVec_leftLoc]
+        erw [pairPhaseAVec_leftLoc]
         exact codeVals_tag_le cf _
       have htagG : pairPhaseAVec (codeRegs cf) (codeRegs cg) (codeRegs_ge cf)
           (codeRegs_ge cg) (codeVals cf) (codeVals cg) V
           (binRightLoc (codeRegs cf) (codeRegs cg) (codeRegs_ge cg) 2) ≤ 1 := by
-        rw [pairPhaseAVec_rightLoc]
+        erw [pairPhaseAVec_rightLoc]
         exact codeVals_tag_le cg _
       have hvF : pairPhaseAVec (codeRegs cf) (codeRegs cg) (codeRegs_ge cf)
           (codeRegs_ge cg) (codeVals cf) (codeVals cg) V
           (binLeftLoc (codeRegs cf) (codeRegs cg) (codeRegs_ge cf) 3)
           ≤ codeEvalBound cf s := by
-        rw [pairPhaseAVec_leftLoc]
+        erw [pairPhaseAVec_leftLoc]
         refine le_trans (codeVals_value_le cf _) (codeEvalBound_mono cf ?_)
         show pairLeftIn _ _ _ V ⟨1, Nat.lt_of_lt_of_le (by norm_num) (codeRegs_ge cf)⟩ ≤ s
-        rw [pairLeftIn_one]; exact h1'
+        erw [pairLeftIn_one]; exact h1'
       have hvG : pairPhaseAVec (codeRegs cf) (codeRegs cg) (codeRegs_ge cf)
           (codeRegs_ge cg) (codeVals cf) (codeVals cg) V
           (binRightLoc (codeRegs cf) (codeRegs cg) (codeRegs_ge cg) 3)
           ≤ codeEvalBound cg s := by
-        rw [pairPhaseAVec_rightLoc]
+        erw [pairPhaseAVec_rightLoc]
         refine le_trans (codeVals_value_le cg _) (codeEvalBound_mono cg ?_)
         show pairRightIn _ _ _ _ _ V ⟨1, Nat.lt_of_lt_of_le (by norm_num) (codeRegs_ge cg)⟩ ≤ s
-        rw [pairRightIn_one]; exact h1'
+        erw [pairRightIn_one]; exact h1'
       exact pairPhaseBVec_lt (codeRegs_ge cf) (codeRegs_ge cg) _ B hB2 hA
         (lt_of_le_of_lt (natPair_mono hvF hvG) hpr) htagF htagG
   | .comp cf cg, s, B, V, hB, hV, h0, h1 => by
@@ -761,51 +757,46 @@ lemma codeVals_lt : ∀ (c : Nat.Partrec.Code) (s B : ℕ) (V : Fin (codeRegs c)
       have h1' : V (binSelf (codeRegs cf) (codeRegs cg) 1) ≤ s := h1
       have hRb : ∀ k, compRightIn (codeRegs cf) (codeRegs cg) (codeRegs_ge cg) V k < B := by
         intro k
-        simp only [compRightIn, Function.update_apply]
-        split_ifs <;> exact hV _
+        simp only [compRightIn]
+        repeat' (first | exact hV _ | refine update_lt (fun _ => ?_) ?_ _)
       have hFgB := codeVals_lt cg s B (compRightIn (codeRegs cf) (codeRegs cg)
         (codeRegs_ge cg) V) hBg hRb
         (by show compRightIn _ _ _ V ⟨0, Nat.lt_of_lt_of_le (by norm_num) (codeRegs_ge cg)⟩ ≤ s
-            rw [compRightIn_zero]; exact h0')
+            erw [compRightIn_zero]; exact h0')
         (by show compRightIn _ _ _ V ⟨1, Nat.lt_of_lt_of_le (by norm_num) (codeRegs_ge cg)⟩ ≤ s
-            rw [compRightIn_one]; exact h1')
+            erw [compRightIn_one]; exact h1')
       have hvG : codeVals cg (compRightIn (codeRegs cf) (codeRegs cg) (codeRegs_ge cg) V)
           ⟨3, by have := codeRegs_ge cg; omega⟩ ≤ codeEvalBound cg s := by
         refine le_trans (codeVals_value_le cg _) (codeEvalBound_mono cg ?_)
         show compRightIn _ _ _ V ⟨1, Nat.lt_of_lt_of_le (by norm_num) (codeRegs_ge cg)⟩ ≤ s
-        rw [compRightIn_one]; exact h1'
+        erw [compRightIn_one]; exact h1'
       have hLb : ∀ k, compLeftIn (codeRegs cf) (codeRegs cg) (codeRegs_ge cf)
           (codeRegs_ge cg) (codeVals cg) V k < B := by
         intro k
-        simp only [compLeftIn, Function.update_apply]
-        split_ifs
-        · exact hV _
-        · refine writeWindow_bounded _ _ _ B (fun j => ?_) (fun j => hFgB j) _
-          simp only [Function.update_apply]; split_ifs <;> exact hV _
-        · refine writeWindow_bounded _ _ _ B (fun j => ?_) (fun j => hFgB j) _
-          simp only [Function.update_apply]; split_ifs <;> exact hV _
+        simp only [compLeftIn]
+        repeat' (first | exact hV _ | refine update_lt (fun _ => ?_) ?_ _ | exact hFgB _ | refine writeWindow_bounded _ _ _ B (fun _ => ?_) (fun j => hFgB j) _)
       have hFfB := codeVals_lt cf (s + codeEvalBound cg s) B
         (compLeftIn (codeRegs cf) (codeRegs cg) (codeRegs_ge cf) (codeRegs_ge cg)
           (codeVals cg) V) hBf hLb
         (by show compLeftIn _ _ _ _ _ V ⟨0, Nat.lt_of_lt_of_le (by norm_num) (codeRegs_ge cf)⟩
             ≤ s + codeEvalBound cg s
-            rw [compLeftIn_zero]
+            erw [compLeftIn_zero]
             exact le_trans hvG (Nat.le_add_left _ _))
         (by show compLeftIn _ _ _ _ _ V ⟨1, Nat.lt_of_lt_of_le (by norm_num) (codeRegs_ge cf)⟩
             ≤ s + codeEvalBound cg s
-            rw [compLeftIn_one]
+            erw [compLeftIn_one]
             exact le_trans h1' (Nat.le_add_right _ _))
       have hA := compPhaseAVec_lt (codeRegs_ge cf) (codeRegs_ge cg) (codeVals cf)
         (codeVals cg) V B hV hFfB hFgB
       have htagF : compPhaseAVec (codeRegs cf) (codeRegs cg) (codeRegs_ge cf)
           (codeRegs_ge cg) (codeVals cf) (codeVals cg) V
           (binLeftLoc (codeRegs cf) (codeRegs cg) (codeRegs_ge cf) 2) ≤ 1 := by
-        rw [compPhaseAVec_leftLoc]
+        erw [compPhaseAVec_leftLoc]
         exact codeVals_tag_le cf _
       have htagG : compPhaseAVec (codeRegs cf) (codeRegs cg) (codeRegs_ge cf)
           (codeRegs_ge cg) (codeVals cf) (codeVals cg) V
           (binRightLoc (codeRegs cf) (codeRegs cg) (codeRegs_ge cg) 2) ≤ 1 := by
-        rw [compPhaseAVec_rightLoc]
+        erw [compPhaseAVec_rightLoc]
         exact codeVals_tag_le cg _
       exact compPhaseBVec_lt (codeRegs_ge cf) (codeRegs_ge cg) _ B hB2 hA htagF htagG
   | .prec cf cg, s, B, V, hB, hV, h0, h1 => by
@@ -1500,52 +1491,48 @@ lemma compiledTM_hoareTime (c : Nat.Partrec.Code) :
       have h1' : V (binSelf (codeRegs cf) (codeRegs cg) 1) ≤ s := h1
       have hL0 : pairLeftIn (codeRegs cf) (codeRegs cg) (codeRegs_ge cf) V
           ⟨0, Nat.lt_of_lt_of_le (by norm_num) (codeRegs_ge cf)⟩ ≤ s := by
-        rw [pairLeftIn_zero]; exact h0'
+        erw [pairLeftIn_zero]; exact h0'
       have hL1 : pairLeftIn (codeRegs cf) (codeRegs cg) (codeRegs_ge cf) V
           ⟨1, Nat.lt_of_lt_of_le (by norm_num) (codeRegs_ge cf)⟩ ≤ s := by
-        rw [pairLeftIn_one]; exact h1'
+        erw [pairLeftIn_one]; exact h1'
       have hLb : ∀ k, pairLeftIn (codeRegs cf) (codeRegs cg) (codeRegs_ge cf) V k < B := by
         intro k
-        simp only [pairLeftIn, Function.update_apply]
-        split_ifs <;> exact hV _
+        simp only [pairLeftIn]
+        repeat' (first | exact hV _ | refine update_lt (fun _ => ?_) ?_ _)
       have hFfB := codeVals_lt cf s B _ hBf hLb hL0 hL1
       have hR0 : pairRightIn (codeRegs cf) (codeRegs cg) (codeRegs_ge cf)
           (codeRegs_ge cg) (codeVals cf) V
           ⟨0, Nat.lt_of_lt_of_le (by norm_num) (codeRegs_ge cg)⟩ ≤ s := by
-        rw [pairRightIn_zero]; exact h0'
+        erw [pairRightIn_zero]; exact h0'
       have hR1 : pairRightIn (codeRegs cf) (codeRegs cg) (codeRegs_ge cf)
           (codeRegs_ge cg) (codeVals cf) V
           ⟨1, Nat.lt_of_lt_of_le (by norm_num) (codeRegs_ge cg)⟩ ≤ s := by
-        rw [pairRightIn_one]; exact h1'
+        erw [pairRightIn_one]; exact h1'
       have hRb : ∀ k, pairRightIn (codeRegs cf) (codeRegs cg) (codeRegs_ge cf)
           (codeRegs_ge cg) (codeVals cf) V k < B := by
         intro k
-        simp only [pairRightIn, Function.update_apply]
-        split_ifs
-        · exact hV _
-        · exact hV _
-        · refine writeWindow_bounded _ _ _ B (fun j => ?_) (fun j => hFfB j) _
-          simp only [Function.update_apply]; split_ifs <;> exact hV _
+        simp only [pairRightIn]
+        repeat' (first | exact hV _ | exact hFfB _ | refine update_lt (fun _ => ?_) ?_ _ | refine writeWindow_bounded _ _ _ B (fun _ => ?_) (fun j => hFfB j) _)
       have hFgB := codeVals_lt cg s B _ hBg hRb hR0 hR1
       have htagF : pairPhaseAVec (codeRegs cf) (codeRegs cg) (codeRegs_ge cf)
           (codeRegs_ge cg) (codeVals cf) (codeVals cg) V
           (binLeftLoc (codeRegs cf) (codeRegs cg) (codeRegs_ge cf) 2) ≤ 1 := by
-        rw [pairPhaseAVec_leftLoc]; exact codeVals_tag_le cf _
+        erw [pairPhaseAVec_leftLoc]; exact codeVals_tag_le cf _
       have htagG : pairPhaseAVec (codeRegs cf) (codeRegs cg) (codeRegs_ge cf)
           (codeRegs_ge cg) (codeVals cf) (codeVals cg) V
           (binRightLoc (codeRegs cf) (codeRegs cg) (codeRegs_ge cg) 2) ≤ 1 := by
-        rw [pairPhaseAVec_rightLoc]; exact codeVals_tag_le cg _
+        erw [pairPhaseAVec_rightLoc]; exact codeVals_tag_le cg _
       have hvF : pairPhaseAVec (codeRegs cf) (codeRegs cg) (codeRegs_ge cf)
           (codeRegs_ge cg) (codeVals cf) (codeVals cg) V
           (binLeftLoc (codeRegs cf) (codeRegs cg) (codeRegs_ge cf) 3)
           ≤ codeEvalBound cf s := by
-        rw [pairPhaseAVec_leftLoc]
+        erw [pairPhaseAVec_leftLoc]
         exact le_trans (codeVals_value_le cf _) (codeEvalBound_mono cf hL1)
       have hvG : pairPhaseAVec (codeRegs cf) (codeRegs cg) (codeRegs_ge cf)
           (codeRegs_ge cg) (codeVals cf) (codeVals cg) V
           (binRightLoc (codeRegs cf) (codeRegs cg) (codeRegs_ge cg) 3)
           ≤ codeEvalBound cg s := by
-        rw [pairPhaseAVec_rightLoc]
+        erw [pairPhaseAVec_rightLoc]
         exact le_trans (codeVals_value_le cg _) (codeEvalBound_mono cg hR1)
       rw [compiledTM_pair]
       exact compilePairTM_hoareTime (codeRegs_ge cf) (codeRegs_ge cg) R _ _
@@ -1565,14 +1552,14 @@ lemma compiledTM_hoareTime (c : Nat.Partrec.Code) :
       have h1' : V (binSelf (codeRegs cf) (codeRegs cg) 1) ≤ s := h1
       have hR0 : compRightIn (codeRegs cf) (codeRegs cg) (codeRegs_ge cg) V
           ⟨0, Nat.lt_of_lt_of_le (by norm_num) (codeRegs_ge cg)⟩ ≤ s := by
-        rw [compRightIn_zero]; exact h0'
+        erw [compRightIn_zero]; exact h0'
       have hR1 : compRightIn (codeRegs cf) (codeRegs cg) (codeRegs_ge cg) V
           ⟨1, Nat.lt_of_lt_of_le (by norm_num) (codeRegs_ge cg)⟩ ≤ s := by
-        rw [compRightIn_one]; exact h1'
+        erw [compRightIn_one]; exact h1'
       have hRb : ∀ k, compRightIn (codeRegs cf) (codeRegs cg) (codeRegs_ge cg) V k < B := by
         intro k
-        simp only [compRightIn, Function.update_apply]
-        split_ifs <;> exact hV _
+        simp only [compRightIn]
+        repeat' (first | exact hV _ | refine update_lt (fun _ => ?_) ?_ _)
       have hFgB := codeVals_lt cg s B _ hBg hRb hR0 hR1
       have hvG : codeVals cg (compRightIn (codeRegs cf) (codeRegs cg) (codeRegs_ge cg) V)
           ⟨3, by have := codeRegs_ge cg; omega⟩ ≤ codeEvalBound cg s :=
@@ -1580,30 +1567,25 @@ lemma compiledTM_hoareTime (c : Nat.Partrec.Code) :
       have hL0 : compLeftIn (codeRegs cf) (codeRegs cg) (codeRegs_ge cf) (codeRegs_ge cg)
           (codeVals cg) V ⟨0, Nat.lt_of_lt_of_le (by norm_num) (codeRegs_ge cf)⟩
           ≤ s + codeEvalBound cg s := by
-        rw [compLeftIn_zero]; exact le_trans hvG (Nat.le_add_left _ _)
+        erw [compLeftIn_zero]; exact le_trans hvG (Nat.le_add_left _ _)
       have hL1 : compLeftIn (codeRegs cf) (codeRegs cg) (codeRegs_ge cf) (codeRegs_ge cg)
           (codeVals cg) V ⟨1, Nat.lt_of_lt_of_le (by norm_num) (codeRegs_ge cf)⟩
           ≤ s + codeEvalBound cg s := by
-        rw [compLeftIn_one]; exact le_trans h1' (Nat.le_add_right _ _)
+        erw [compLeftIn_one]; exact le_trans h1' (Nat.le_add_right _ _)
       have hLb : ∀ k, compLeftIn (codeRegs cf) (codeRegs cg) (codeRegs_ge cf)
           (codeRegs_ge cg) (codeVals cg) V k < B := by
         intro k
-        simp only [compLeftIn, Function.update_apply]
-        split_ifs
-        · exact hV _
-        · refine writeWindow_bounded _ _ _ B (fun j => ?_) (fun j => hFgB j) _
-          simp only [Function.update_apply]; split_ifs <;> exact hV _
-        · refine writeWindow_bounded _ _ _ B (fun j => ?_) (fun j => hFgB j) _
-          simp only [Function.update_apply]; split_ifs <;> exact hV _
+        simp only [compLeftIn]
+        repeat' (first | exact hV _ | refine update_lt (fun _ => ?_) ?_ _ | exact hFgB _ | refine writeWindow_bounded _ _ _ B (fun _ => ?_) (fun j => hFgB j) _)
       have hFfB := codeVals_lt cf (s + codeEvalBound cg s) B _ hBf hLb hL0 hL1
       have htagF : compPhaseAVec (codeRegs cf) (codeRegs cg) (codeRegs_ge cf)
           (codeRegs_ge cg) (codeVals cf) (codeVals cg) V
           (binLeftLoc (codeRegs cf) (codeRegs cg) (codeRegs_ge cf) 2) ≤ 1 := by
-        rw [compPhaseAVec_leftLoc]; exact codeVals_tag_le cf _
+        erw [compPhaseAVec_leftLoc]; exact codeVals_tag_le cf _
       have htagG : compPhaseAVec (codeRegs cf) (codeRegs cg) (codeRegs_ge cf)
           (codeRegs_ge cg) (codeVals cf) (codeVals cg) V
           (binRightLoc (codeRegs cf) (codeRegs cg) (codeRegs_ge cg) 2) ≤ 1 := by
-        rw [compPhaseAVec_rightLoc]; exact codeVals_tag_le cg _
+        erw [compPhaseAVec_rightLoc]; exact codeVals_tag_le cg _
       rw [compiledTM_comp]
       exact compileCompTM_hoareTime (codeRegs_ge cf) (codeRegs_ge cg) R _ _
         (codeVals cf) (codeVals cg) _ _ V B inp₀ w₀ ys hinp₀ hpark hV hFfB hFgB

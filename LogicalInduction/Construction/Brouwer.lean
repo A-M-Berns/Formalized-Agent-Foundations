@@ -677,8 +677,8 @@ lemma cellVert_swap_pivot_vertex {n : ℕ} (P : Fin (n+2) → ℤ) (σ : Equiv.P
     all_goals congr! 3;
     all_goals first
       | exact congrArg Finset.card
-          (Finset.filter_congr (by rintro x hx; first | rfl | simp_all +decide))
-      | exact Finset.filter_congr (by rintro x hx; first | rfl | simp_all +decide)
+          (Finset.filter_congr (fun _ _ => Iff.rfl))
+      | exact Finset.filter_congr (fun _ _ => Iff.rfl)
       | (rw [Finset.card_filter]; push_cast;
          exact Finset.sum_congr rfl (fun x hx => by simp_all +decide));
   · ext x; by_cases hx : x = a <;> by_cases hx' : x = b <;> simp +decide [ * ] ;

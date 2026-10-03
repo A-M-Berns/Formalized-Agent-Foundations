@@ -220,14 +220,14 @@ Injectivity of `paperPrimeCode` makes its value on every compiled atom canonical
 outside tag `5` remain false. -/
 
 /-- The propositional world induced by a first-order arithmetic structure. -/
-noncomputable def paperPrimeWorld (M : Type*) [Nonempty M] [Structure ℒₒᵣ M]
+noncomputable def paperPrimeWorld (M : Type*) [Nonempty M] [Tarski.Structure ℒₒᵣ M]
     (f : ℕ → M) : PCWorld :=
   fun a => ∃ (positive : Bool) (φ : ArithmeticProposition),
     a = paperPrimeCode positive φ ∧ if positive then φ.Evalf f else ¬φ.Evalf f
 
 /-- The model's prime world believes a positive prime exactly when the model satisfies the
 proposition, and a negative prime exactly when it does not. -/
-@[simp] lemma paperPrimeWorld_paperPrimeCode (M : Type*) [Nonempty M] [Structure ℒₒᵣ M]
+@[simp] lemma paperPrimeWorld_paperPrimeCode (M : Type*) [Nonempty M] [Tarski.Structure ℒₒᵣ M]
     (f : ℕ → M) (positive : Bool) (φ : ArithmeticProposition) :
     paperPrimeWorld M f (paperPrimeCode positive φ) ↔
       if positive then φ.Evalf f else ¬φ.Evalf f := by
@@ -240,7 +240,7 @@ proposition, and a negative prime exactly when it does not. -/
     exact ⟨positive, φ, rfl, hφ⟩
 
 /-- Prime decomposition preserves first-order truth in the induced p.c. world. -/
-lemma paperPrimeWorld_holds_decompose (M : Type*) [Nonempty M] [Structure ℒₒᵣ M]
+lemma paperPrimeWorld_holds_decompose (M : Type*) [Nonempty M] [Tarski.Structure ℒₒᵣ M]
     (f : ℕ → M) : ∀ φ : ArithmeticProposition,
       (paperPrimeWorld M f).Holds (paperPrimeDecompose φ) ↔ φ.Evalf f := by
   intro φ

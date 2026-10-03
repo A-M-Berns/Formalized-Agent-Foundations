@@ -55,7 +55,7 @@ lemma exists_bits (v : PCWorld) :
     intro a; simp [ofBits]
   have := Formula.eq_fml_of_eq_atom
     (v := ofBits (fun i => decide (v i))) (u := v) hatom (φ := φ)
-  simpa [Holds, Formula.models_iff_val] using this
+  exact this
 
 /-! ## Truth sets are clopen -/
 
@@ -77,7 +77,7 @@ lemma isClopen_setOf_holds (φ : Sentence) :
   | imp φ ψ ihφ ihψ =>
       have hset : {b : ℕ → Bool | (ofBits b).Holds (φ.imp ψ)}
           = {b : ℕ → Bool | (ofBits b).Holds φ}ᶜ ∪ {b : ℕ → Bool | (ofBits b).Holds ψ} := by
-        ext b; simp only [Set.mem_setOf_eq, Set.mem_union, Set.mem_compl_iff, Holds,
+        ext b; simp only [Set.mem_ofPred_eq, Set.mem_union, Set.mem_compl_iff, Holds,
           Formula.val]
         tauto
       rw [hset]; exact ihφ.compl.union ihψ

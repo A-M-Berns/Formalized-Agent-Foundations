@@ -354,7 +354,7 @@ lemma predAux_evaln : ∀ (m F : ℕ), 32 * (m+1)^4 < F →
       refine predAux_step k m (m-1) ?hg hIH ?hg2
       case hg =>
         have h1 : Nat.pair 0 (m+1) < (m+2)^2 := by simpa using pair_lt_sq 0 (m+1)
-        have h2 : (m+2)^2 ≤ (m+2)^4 := by gcongr <;> omega
+        have h2 : (m+2)^2 ≤ (m+2)^4 := by gcongr; omega
         omega
       case hg2 =>
         have h1 : Nat.pair m (m-1) < (2*m+1)^2 := by

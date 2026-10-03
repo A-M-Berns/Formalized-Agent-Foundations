@@ -34,7 +34,7 @@ fuel-metered proof builds them, and each is converted to a ruler on the spot.
 None of these combinators asks for one. `Complexity.FP` membership already bounds an
 emitted word's length by a polynomial in its argument
 (`Cobham.output_length_poly_of_mem_FP`), which is what the streaming concatenation behind
-`bigAnd` needs; the constant scaffolding blocks are `FPFold.constFn_mem_FP`; and no token's
+`bigAnd` needs; the constant scaffolding blocks are `Complexity.constFn_mem_FP`; and no token's
 *value* is bounded anywhere, which is the whole point of the write-out layer.
 
 ## The asymmetry, and where the threshold interfaces live

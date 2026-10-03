@@ -247,7 +247,7 @@ lemma theoremDP_hworld [T.Δ₁] [𝗣𝗔⁻ ⪯ T] [Entailment.Consistent T] (
     simp only [eventAtom, h, haltingClaimSentence, computationClaimSentence, PCWorld.holds_neg,
       PCWorld.holds_atom, provabilityWorld_halting]
     intro hpos
-    exact (Entailment.Consistent.not_bot (𝓢 := T) inferInstance) (by cl_prover [hpos, hfires])
+    exact (Entailment.Consistent.not_bot (𝓢 := T)) (by cl_prover [hpos, hfires])
   · -- tag 2: positive bounded halting
     simp only [eventFires, h] at hfires
     simpa only [eventAtom, h, boundedHaltingClaimSentence, computationClaimSentence,
@@ -257,7 +257,7 @@ lemma theoremDP_hworld [T.Δ₁] [𝗣𝗔⁻ ⪯ T] [Entailment.Consistent T] (
     simp only [eventAtom, h, boundedHaltingClaimSentence, computationClaimSentence,
       PCWorld.holds_neg, PCWorld.holds_atom, provabilityWorld_boundedHalting]
     intro hbh
-    exact (Entailment.Consistent.not_bot (𝓢 := T) inferInstance) (by cl_prover [hbh, hfires])
+    exact (Entailment.Consistent.not_bot (𝓢 := T)) (by cl_prover [hbh, hfires])
   · -- tag 4: positive quotation
     simp only [eventFires, h] at hfires
     simpa only [eventAtom, h, quoteAtom, quotationClaimSentence, PCWorld.holds_atom,
@@ -270,7 +270,7 @@ lemma theoremDP_hworld [T.Δ₁] [𝗣𝗔⁻ ⪯ T] [Entailment.Consistent T] (
       PCWorld.holds_atom, provabilityWorld_quote]
     intro hpos
     have hexc := universalQuote_exclusive_prov T e.unpair.2
-    exact (Entailment.Consistent.not_bot (𝓢 := T) inferInstance)
+    exact (Entailment.Consistent.not_bot (𝓢 := T))
       (by cl_prover [hpos, hfires, hexc])
   · -- default tag: atom is ⊤, always held
     simp only [eventAtom, h]

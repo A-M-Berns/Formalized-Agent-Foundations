@@ -222,7 +222,7 @@ Kind `P` (proved).  Provenance: (a) derived in-project; (b) Foundation citation 
 `Bootstrapping.provable_of_standard_proof`. -/
 lemma conWithin_of_consistent (hcon : Entailment.Consistent T) (k : ℕ) : conWithin T k := by
   rintro ⟨d, hd, -⟩
-  haveI : Entailment.Consistent T := hcon
+  have : Entailment.Consistent T := hcon
   exact Entailment.Consistent.not_bot (𝓢 := T) (provable_of_bProv_witness T ⊥ hd)
 
 /-! ## The universal bounded-provability decider at a horizon

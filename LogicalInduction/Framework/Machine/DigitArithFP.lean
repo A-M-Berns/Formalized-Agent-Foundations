@@ -241,7 +241,9 @@ private lemma drop_digitsToBits (ds : List ℕ) :
     (digitsToBits ds).drop 3 = digitsToBits ds.tail := by
   cases ds with
   | nil => simp
-  | cons d ds => rw [digitsToBits_cons]; simp
+  | cons d ds =>
+      rw [digitsToBits_cons]
+      exact List.drop_left' (length_digitBits d)
 
 private lemma digitVal_headD (ds : List ℕ) :
     digitVal ds = ds.headD 0 + 4 * digitVal ds.tail := by

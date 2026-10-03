@@ -346,7 +346,7 @@ lemma provable_subst_iff_of_val (T : ArithmeticTheory) [𝗣𝗔⁻ ⪯ T]
     (hval : ∀ (M : Type) [ORingStructure M] [M↓[ℒₒᵣ] ⊧* 𝗣𝗔⁻],
       t.val (![] : Fin 0 → M) = (v : M)) :
     T ⊢ (φ/[t.const] : ArithmeticSentence) ↔ T ⊢ (φ/[↑v] : ArithmeticSentence) := by
-  haveI : 𝗘𝗤 ℒₒᵣ ⪯ T :=
+  have : 𝗘𝗤 ℒₒᵣ ⪯ T :=
     Entailment.WeakerThan.trans (𝓣 := (𝗣𝗔⁻ : ArithmeticTheory)) inferInstance inferInstance
   have key : ∀ (M : Type) [ORingStructure M] [M↓[ℒₒᵣ] ⊧* 𝗣𝗔⁻],
       (M↓[ℒₒᵣ] ⊧ (φ/[t.const] : ArithmeticSentence)) ↔
@@ -360,11 +360,11 @@ lemma provable_subst_iff_of_val (T : ArithmeticTheory) [𝗣𝗔⁻ ⪯ T]
   constructor
   · intro h
     refine Arithmetic.complete.{0} T _ fun M _ _ => ?_
-    haveI : M↓[ℒₒᵣ] ⊧* 𝗣𝗔⁻ := ModelsTheory.of_provably_subtheory M 𝗣𝗔⁻ T inferInstance
+    have : M↓[ℒₒᵣ] ⊧* 𝗣𝗔⁻ := ModelsTheory.of_provably_subtheory M 𝗣𝗔⁻ T inferInstance
     exact (key M).mp (consequence_iff.mp (Theory.Proof.sound h) M inferInstance)
   · intro h
     refine Arithmetic.complete.{0} T _ fun M _ _ => ?_
-    haveI : M↓[ℒₒᵣ] ⊧* 𝗣𝗔⁻ := ModelsTheory.of_provably_subtheory M 𝗣𝗔⁻ T inferInstance
+    have : M↓[ℒₒᵣ] ⊧* 𝗣𝗔⁻ := ModelsTheory.of_provably_subtheory M 𝗣𝗔⁻ T inferInstance
     exact (key M).mpr (consequence_iff.mp (Theory.Proof.sound h) M inferInstance)
 
 /-! ## Consistency -/

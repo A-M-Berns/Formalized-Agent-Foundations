@@ -424,7 +424,7 @@ lemma eqConstFn_mem_FP : ∀ (c : List Bool) {A X Y : List Bool → List Bool},
             rw [selectHead_emptyFlag_nil, ite_eq_right (by simp)]
         | cons a t =>
             rw [selectHead_emptyFlag_cons, selectHead]
-            cases a <;> cases b <;> simp [List.cons.injEq]
+            cases a <;> cases b <;> simp [List.cons.injEq] <;> try congr 1
       rwa [heq] at h
 
 /-! ## The digit-level fold -/
@@ -1950,12 +1950,13 @@ lemma ifNumEq_mem_FP {A X Y : List Bool → List Bool} (hA : A ∈ FP) (K : ℕ)
       else Y z)
       = fun z => if NumEqBits K (A z) then X z else Y z := by
     funext z
-    simp only [NumEqBits]
+    -- `simp` (not `rw`) so that the `Decidable` instance of the unfolded `NumEqBits`
+    -- condition is rewritten along with the condition
     by_cases h1 : (A z).take (numBits K).length = numBits K
     · by_cases h2 : digitVal (bitsToDigits ((A z).drop (numBits K).length)) = 0
-      · rw [ite_eq_left h1, ite_eq_left h2, ite_eq_left (And.intro h1 h2)]
-      · rw [ite_eq_left h1, ite_eq_right h2, ite_eq_right (fun hc => h2 hc.2)]
-    · rw [ite_eq_right h1, ite_eq_right (fun hc => h1 hc.1)]
+      · simp [NumEqBits, h1, h2]
+      · simp [NumEqBits, h1, h2]
+    · simp [NumEqBits, h1]
   rwa [heq] at h
 
 /-! ### Block-complete words

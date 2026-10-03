@@ -421,7 +421,7 @@ private lemma atomPrefixCondition_ne_top (n : ℕ) :
   have hv : PCWorld.Holds (fun _ => False)
       (sentenceConjunction ((List.range (n + 1)).map fun i => (Formula.atom i : Sentence))) := by
     rw [h]; exact PCWorld.holds_top _
-  rw [holds_sentenceConjunction] at hv
+  erw [holds_sentenceConjunction] at hv
   have h0 : PCWorld.Holds (fun _ => False) (Formula.atom 0 : Sentence) :=
     hv _ (List.mem_map_of_mem (List.mem_range.mpr (Nat.succ_pos n)))
   exact (PCWorld.holds_atom _ 0).mp h0
@@ -434,11 +434,11 @@ private lemma atomPrefixCondition_ne_succ (n : ℕ) :
   intro h
   have hle : PCWorld.Holds (fun i => i ≤ n)
       (sentenceConjunction ((List.range (n + 1)).map fun i => (Formula.atom i : Sentence))) := by
-    rw [holds_sentenceConjunction]
+    erw [holds_sentenceConjunction]
     intro ψ hψ
     obtain ⟨i, hi, rfl⟩ := List.mem_map.mp hψ
     exact (PCWorld.holds_atom _ i).mpr (Nat.lt_succ_iff.mp (List.mem_range.mp hi))
-  rw [h, holds_sentenceConjunction] at hle
+  rw [h] at hle; erw [holds_sentenceConjunction] at hle
   have hlast : PCWorld.Holds (fun i => i ≤ n) (Formula.atom (n + 1) : Sentence) :=
     hle _ (List.mem_map_of_mem (List.mem_range.mpr (by omega)))
   have hbad : n + 1 ≤ n := (PCWorld.holds_atom _ (n + 1)).mp hlast

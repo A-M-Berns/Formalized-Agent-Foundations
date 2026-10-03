@@ -160,7 +160,7 @@ noncomputable def DeductiveProcessComputation.union
       (Nat.pair (Encodable.encode (DP.D n)) (Encodable.encode (extra.D n))) =
         Part.some (Encodable.encode (DP.D n ∪ extra.D n)) :=
     Part.eq_some_iff.mpr (hunion (DP.D n) (extra.D n))
-  simp [Nat.Partrec.Code.eval, hbase, hmore, hnormalized, Seq.seq]
+  simp [Nat.Partrec.Code.eval, hbase, hmore, some_bind_pfun, hnormalized, Seq.seq]
 
 /-- The union of two computable deductive processes is a computable deductive process. -/
 lemma DeductiveProcessComputation.union_toComputable

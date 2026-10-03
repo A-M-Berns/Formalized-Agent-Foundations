@@ -53,6 +53,12 @@ namespace LogicalInduction
 
 open FFL.Propositional
 
+/-- `Part.some a >>= f` is `f a`, stated for a *partial function* `f : ℕ →. ℕ` — the `>>=`
+form `Nat.Partrec.Code.eval` unfolds to. `PFun` is a plain `def`, so simp will not match the
+generic `Part.bind_some` (stated with `Part.bind` over `ℕ → Part ℕ`) against it. -/
+lemma some_bind_pfun (a : ℕ) (f : ℕ →. ℕ) : (Part.some a >>= f) = f a :=
+  Part.bind_some a f
+
 /-! ## Primitive-recursive `Sentence` codes
 
 Foundation's decoder for propositional sentences recurses on strictly smaller Gödel

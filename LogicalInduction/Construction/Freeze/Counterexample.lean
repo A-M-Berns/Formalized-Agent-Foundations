@@ -1,3 +1,4 @@
+import Foundation.FirstOrder.Incompleteness.Definability
 import LogicalInduction.Construction.Paper.Market
 import LogicalInduction.Construction.Quotation.ProductDefinition
 import LogicalInduction.Construction.Paper.FiniteEntailment

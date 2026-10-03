@@ -713,7 +713,7 @@ noncomputable def gaifmanWorldMeasure (L : Valuation) (hL : GaifmanCoherent L) :
 instance gaifmanWorldMeasure_isProbabilityMeasure (L : Valuation) (hL : GaifmanCoherent L) :
     IsProbabilityMeasure (gaifmanWorldMeasure L hL) := by
   unfold gaifmanWorldMeasure
-  exact Measure.isProbabilityMeasure_map BoolPCWorld.measurable_toPCWorld.aemeasurable
+  infer_instance
 
 /-- On actual `PCWorld`s, sentence events still have exactly the coherent probability.
 Paper node: `thm:lc` -/

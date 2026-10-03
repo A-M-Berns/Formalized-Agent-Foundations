@@ -1,3 +1,4 @@
+import Foundation.FirstOrder.Incompleteness.Definability
 import LogicalInduction.Construction.Paper.TheoremDP
 import LogicalInduction.Construction.Knowledge.SubstEmission
 import LogicalInduction.Framework.Theory.R0Instances
@@ -1128,7 +1129,7 @@ completeness carries validity back.  No hypothesis on `T`.
 Kind `C` (composition).  Provenance: (b) Foundation citation —
 `Theory.Proof.complete_iff`. -/
 lemma provable_iff_of_realize_iff {T : ArithmeticTheory} {σ τ : ArithmeticSentence}
-    (h : ∀ (M : Type) [Nonempty M] [Structure ℒₒᵣ M], σ.Realize M ↔ τ.Realize M) :
+    (h : ∀ (M : Type) [Nonempty M] [Tarski.Structure ℒₒᵣ M], σ.Realize M ↔ τ.Realize M) :
     T ⊢ σ ↔ T ⊢ τ := by
   rw [← FFL.FirstOrder.Theory.Proof.complete_iff, ← FFL.FirstOrder.Theory.Proof.complete_iff]
   simp only [consequence_iff, models_iff]
@@ -1726,12 +1727,12 @@ lemma mem_theoryOf {m : Nat.Partrec.Code} {σ : ArithmeticSentence} {b i : ℕ}
 machine's output to the endpoint's `hinc`.
 
 Kind `C` (composition).  Provenance: (b) Foundation citations — `Entailment.by_axm`,
-`Entailment.weakening!`, `Entailment.inconsistent_iff_provable_bot`, `Entailment.N_iff_CO`. -/
+`Entailment.weakening`, `Entailment.WeakerThan.ofSubset`, `Entailment.inconsistent_iff_provable_bot`, `Entailment.N_iff_CO`. -/
 lemma not_consistent_of_refutable_mem {S : ArithmeticTheory} {σ : ArithmeticSentence}
     (hmem : σ ∈ S) (href : (∅ : ArithmeticTheory) ⊢ ∼σ) : ¬Entailment.Consistent S := by
   rw [Entailment.not_consistent_iff_inconsistent, Entailment.inconsistent_iff_provable_bot]
   exact (FFL.Entailment.N_iff_CO.mp
-    (Entailment.weakening! (Set.empty_subset S) href)) ⨀ Entailment.by_axm hmem
+    (Entailment.weakening (Entailment.WeakerThan.ofSubset (Set.empty_subset S)) href)) ⨀ Entailment.by_axm hmem
 
 /-- **The finite window, found.**  Any finite list of `m`'s axioms is emitted together in a
 single budget-`b` run at some list of inputs, and — at that budget or any larger one — the
@@ -1922,7 +1923,7 @@ empty theory could satisfy the predicate.
 Kind `P` (proved).  Provenance: (a) `exists_sources_axiomWindow`,
 `exists_listConj_of_window_sources`, `negWindowCode_eq_quote` derived in-project;
 (b) Foundation citations — `Bootstrapping.provable_iff_provable`, `Entailment.by_axm`,
-`Entailment.weakening!`, `Entailment.N_iff_CO`. -/
+`Entailment.weakening`, `Entailment.WeakerThan.ofSubset`, `Entailment.N_iff_CO`. -/
 lemma not_consistent_theoryOf_of_machineTheoryInconsistent {m : Nat.Partrec.Code}
     (h : MachineTheoryInconsistent m.sourceNat) :
     ¬Entailment.Consistent (theoryOf m) := by
@@ -1938,7 +1939,7 @@ lemma not_consistent_theoryOf_of_machineTheoryInconsistent {m : Nat.Partrec.Code
       · exact Entailment.by_axm hφ'
   intro hcons
   exact hcons.not_bot
-    ((FFL.Entailment.N_iff_CO.mp (Entailment.weakening! (Set.empty_subset _) hw)) ⨀ hprov)
+    ((FFL.Entailment.N_iff_CO.mp (Entailment.weakening (Entailment.WeakerThan.ofSubset (Set.empty_subset _)) hw)) ⨀ hprov)
 
 /-- **The represented predicate is exactly the convention's inconsistency claim.**  Both
 directions, at every machine: no gap between what `thm:incons`'s day-`n` sentence says and
@@ -2306,7 +2307,7 @@ noncomputable def deepDayMachine (n : ℕ) : Nat.Partrec.Code :=
 lemma deepDayMachine_eval (n i : ℕ) :
     (deepDayMachine n).eval i = Part.some (deepInconsistentSource n).sourceNat := by
   rw [deepDayMachine, dayMachine_eval]
-  simp [Nat.Partrec.Code.eval, deepSourceCode_eval]
+  simp [Nat.Partrec.Code.eval, PFun.coe_val, some_bind_pfun, deepSourceCode_eval]
 
 /-- The day's axiom really is one of the day's theory's axioms. -/
 lemma deepInconsistentAxiom_mem_theoryOf (n : ℕ) :

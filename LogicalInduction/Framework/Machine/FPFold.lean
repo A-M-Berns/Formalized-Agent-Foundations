@@ -1,6 +1,7 @@
 import LogicalInduction.Framework.Machine.DigitBits
 import Complexitylib.Classes.P.Composition
 import Complexitylib.Classes.P.PairWithInput
+import Complexitylib.Classes.P.Cobham
 import Complexitylib.Classes.P.Cobham.Internal
 
 /-!
@@ -22,7 +23,6 @@ polynomially bounded** — which is exactly what the fork's
 
 Contents:
 
-* `constFn_mem_FP` — the arbitrary constant word the fork does not supply;
 * `recFold_mem_FP` — `FP` is closed under a right fold with an `FP` step, a constant base
   and a polynomially bounded running value;
 * `foldlBits`, `foldlBits_mem_FP` — the same closure in the left-to-right form the stream
@@ -33,8 +33,8 @@ Contents:
 
 `Framework/Machine/TokenFold.lean` builds the tokenizer on `foldlBits_mem_FP`, and the
 §4-family stream rewriters under `Construction/` reach the fold through that tokenizer;
-`Construction/Conditioning/Transduction.lean` takes `mem_FP_withInput`.  `constFn_mem_FP` is used
-wherever a rewrite emits a fixed word.
+`Construction/Conditioning/Transduction.lean` takes `mem_FP_withInput`.  A rewrite that emits a
+fixed word uses the fork's own `Complexity.constFn_mem_FP`.
 
 **Import disclosure.** This file imports `Complexitylib.Classes.P.Cobham.Internal`, which the
 fork treats as proof internals (`Cobham.lean` imports it non-publicly).  The fold engine
@@ -51,20 +51,6 @@ namespace LogicalInduction.FPFold
 open Complexity Complexity.Cobham
 
 /-! ## Constants -/
-
-/-- Every constant word is polynomial-time.
-
-The fork has `Cobham.const_nil_mem_FP` and `Cobham.cons_mem_FP` but no lemma for an
-arbitrary constant word; this is the one-line induction over them.
-Proof kind: `P`.  Provenance: (b) `Complexitylib.Classes.P.Cobham.Internal`. -/
-lemma constFn_mem_FP (c : List Bool) : (fun _ : List Bool => c) ∈ FP := by
-  induction c with
-  | nil => exact const_nil_mem_FP
-  | cons b c ih =>
-      have h := mem_FP_comp ih (cons_mem_FP b)
-      have heq : ((fun x : List Bool => b :: x) ∘ fun _ : List Bool => c)
-          = fun _ : List Bool => b :: c := rfl
-      rwa [heq] at h
 
 /-! ## The fold combinator -/
 
@@ -89,7 +75,7 @@ lemma recFold_mem_FP {A B W S : List Bool → List Bool}
       (recFold A B e (W z) t).length ≤ p.eval ((W z).length + (S z).length)) :
     (fun z => recFold A B e (W z) (S z)) ∈ FP := by
   have hΦ : (fun z => pair (W z) (S z)) ∈ FP := pairFn_mem_FP hW hS
-  have hclamp := recFoldClamp_mem_FP hA hB (E := fun _ => e) (constFn_mem_FP e) p
+  have hclamp := recFoldClamp_mem_FP hA hB (E := fun _ => e) (Complexity.constFn_mem_FP e) p
   have hcomp := mem_FP_comp hΦ hclamp
   have heq : ((fun y => recFoldClamp A B (p.eval y.length) e (pairFst y) (pairSnd y))
         ∘ fun z => pair (W z) (S z))

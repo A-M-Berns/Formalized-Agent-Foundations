@@ -280,7 +280,7 @@ lemma luvWorld_consistent [𝗥₀ ⪯ T] [T.Δ₁] [RepresentsComputations T]
       PCWorld.holds_atom]
     intro hpos
     have hpos' : T ⊢ ((L.thresholdSchema T)/[↑e.unpair.2] : ArithmeticSentence) := hpos
-    exact (Entailment.Consistent.not_bot (𝓢 := T) inferInstance)
+    exact (Entailment.Consistent.not_bot (𝓢 := T))
       (by cl_prover [hpos', hprov])
 
 /-- **`hworld` non-vacuity.** Every stage of the constructed process has a consistent world. -/

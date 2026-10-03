@@ -1054,7 +1054,6 @@ lemma separatorConsistentAt_primrec : Primrec separatorConsistentAt := by
   refine (hfilter.comp allBitLists_prim Primrec.id).of_eq fun n ↦ ?_
   simp only [id_eq]
   rw [separatorConsistentAt_eq]
-  rfl
 
 lemma boundedApprox_primrec (M : LowerSemicomputableContinuousSemimeasure) :
     Primrec fun z : (ℕ × ℕ) × List Bool ↦ boundedApprox M z.1.1 z.1.2 z.2 := by

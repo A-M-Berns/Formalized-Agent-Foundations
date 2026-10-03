@@ -899,26 +899,32 @@ lemma semanticQuoteFactorPrefixValidAtFuel_computable {DP : DeductiveProcess}
   have hdown := semanticQuoteFactorDownwardAtFuel_computable base
   have hzs : Computable fun p : ((((ℕ × ℕ) × ℕ) × ℕ) × ℕ) =>
       semanticQuoteFactorZsValid base p.1.1.1.1 p.1.1.1.2 p.1.1.2 p.1.2 p.2 := by
+    -- unfold first: left to `apply`, unification unfolds the definition itself and times out
+    unfold semanticQuoteFactorZsValid
     apply listRangeAll_computable Computable.snd
     have hpack : Computable fun a : (((((ℕ × ℕ) × ℕ) × ℕ) × ℕ) × ℕ) =>
         (a.1.1, a.2) := (Computable.fst.comp Computable.fst).pair Computable.snd
-    exact hdown.comp hpack
+    exact (hdown.comp hpack).of_eq fun _ => rfl
   have hzr : Computable fun p : (((ℕ × ℕ) × ℕ) × ℕ) =>
       semanticQuoteFactorZrValid base p.1.1.1 p.2 p.1.1.2 p.1.2 := by
+    -- unfold first: left to `apply`, unification unfolds the definition itself and times out
+    unfold semanticQuoteFactorZrValid
     apply listRangeAll_computable Computable.snd
     have hpack : Computable fun a : ((((ℕ × ℕ) × ℕ) × ℕ) × ℕ) =>
         ((a.1.1, a.2), a.1.2) :=
       ((Computable.fst.comp Computable.fst).pair Computable.snd).pair
         (Computable.snd.comp Computable.fst)
-    exact hzs.comp hpack
+    exact (hzs.comp hpack).of_eq fun _ => rfl
   have hn : Computable fun p : ((ℕ × ℕ) × ℕ) =>
       semanticQuoteFactorNValid base p.1.1 p.2 p.1.2 := by
+    -- unfold first: left to `apply`, unification unfolds the definition itself and times out
+    unfold semanticQuoteFactorNValid
     apply listRangeAll_computable Computable.snd
     have hpack : Computable fun a : (((ℕ × ℕ) × ℕ) × ℕ) =>
         ((a.1.1, a.2), a.1.2) :=
       ((Computable.fst.comp Computable.fst).pair Computable.snd).pair
         (Computable.snd.comp Computable.fst)
-    exact hzr.comp hpack
+    exact (hzr.comp hpack).of_eq fun _ => rfl
   have htag : Computable fun p : (ℕ × ℕ) × ℕ => p.1.1.unpair.1 == 2 :=
     (Primrec.eq.comp
       (Primrec.fst.comp (Primrec.unpair.comp (Primrec.fst.comp Primrec.fst)))
