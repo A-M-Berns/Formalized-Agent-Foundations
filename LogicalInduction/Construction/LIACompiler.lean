@@ -3958,8 +3958,9 @@ as a primitive recursive function of finite data, which Boolean assignments to t
 occurring in a stage satisfy that stage.  This section is that decision, stated against the
 public `Sentence.atoms` / `sentenceBool` / `tableConsistent` vocabulary rather than against
 the erased atom-list forms the Budgeter's compiler works in, so that a caller need not
-rebuild the strong-recursion tower over the formula encoding.  Its consumer is
-`Construction/Paper/FiniteEntailment.lean`.
+rebuild the strong-recursion tower over the formula encoding.  Its consumers are
+`Construction/Paper/FiniteEntailment.lean` and, through the second subsection, the
+alignment-workspace's enforced compiler.
 
 `_prim` is this file's uniform suffix for a computability certificate.
 
@@ -3967,6 +3968,68 @@ What the interface deliberately withholds is the recurrence itself: a downstream
 construction states and proves its own, which is where its own soundness obligation
 belongs.
 -/
+
+/-! ### The erased day recurrence, for a market with a further trader
+
+A construction that prices the Trading Firm **together with a further trader** — a
+privileged enforcement trader, say — runs the same erased recurrence with one extra trade
+list in the day's aggregate, and needs exactly the same first-order ingredients to show its
+own bounded evaluator computable.  With those ingredients sealed as `private`, such a
+construction has to re-derive this file.  Each declaration here is a public name for an
+existing lemma; no proof, definition or statement above is changed.
+
+Provided: the expressible-feature constructors and `EF.absBound`; the two erased steps of
+the day recurrence (the firm's trade list, and the MarketMaker search over a raw trade
+list); the day error schedule; the deductive-stage prefix decoder; and the belief state's
+exact rational quote.  The downstream consumer is the alignment-workspace's enforced
+compiler, which states and proves its own recurrence over these. -/
+
+/-- `EF.const` is primitive recursive. -/
+lemma efConst_primrec : Primrec EF.const := efConst_prim
+
+/-- `EF.price` is primitive recursive in the sentence and the day. -/
+lemma efPrice_primrec : Primrec₂ EF.price := efPrice_prim
+
+/-- `EF.add` is primitive recursive in both arguments. -/
+lemma efAdd_primrec : Primrec₂ EF.add := efAdd_prim
+
+/-- `EF.mul` is primitive recursive in both arguments. -/
+lemma efMul_primrec : Primrec₂ EF.mul := efMul_prim
+
+/-- `EF.max` is primitive recursive in both arguments. -/
+lemma efMax_primrec : Primrec₂ EF.max := efMax_prim
+
+/-- `EF.absBound` is primitive recursive.  A downstream trader that sizes its position
+against the ordinary aggregate's syntactic bound needs this. -/
+lemma efAbsBound_primrec : Primrec EF.absBound := efAbsBound_prim
+
+/-- The day error schedule is primitive recursive. -/
+lemma marketMakerError_primrec : Primrec marketMakerError := marketMakerError_prim
+
+/-- A belief state's exact rational quote is primitive recursive. -/
+lemma rationalBeliefStateQuote_primrec : Primrec₂ RationalBeliefState.quote :=
+  rationalBeliefStateQuote_prim
+
+/-- The bounded deductive-stage prefix decoder is primitive recursive. -/
+lemma processStagePrefixAtFuel_primrec {DP : DeductiveProcess}
+    (process : DeductiveProcessComputation DP) :
+    Primrec₂ fun fuel n => processStagePrefixAtFuel process fuel n :=
+  processStagePrefixAtFuel_prim process
+
+/-- The Trading Firm's day-`n` trade list is primitive recursive in the decoded stage
+prefix, the prior belief states and the day. -/
+lemma tradingFirmTradesFromStageTradeLists_primrec :
+    Primrec fun p : (List (Finset Sentence) × List RationalBeliefState) × ℕ =>
+      tradingFirmTradesFromStageTradeLists
+        (decodedStageTable p.1.1) (rationalHistory p.1.2) p.2 :=
+  tradingFirmTradesFromStageTradeLists_prim
+
+/-- The bounded MarketMaker search over a raw trade list is primitive recursive in the
+trade list, the day, the prior states, the tolerance and the fuel. -/
+lemma marketMakerSearchUpToTradeList_primrec :
+    Primrec fun p : (((List (EF × Sentence) × ℕ) × List RationalBeliefState) × ℚ) × ℕ =>
+      marketMakerSearchUpToTradeList p.1.1.1.1 p.1.1.1.2 p.1.1.2 p.1.2 p.2 :=
+  marketMakerSearchUpToTradeList_prim
 
 /-! ### The vocabulary
 
