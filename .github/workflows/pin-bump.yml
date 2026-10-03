@@ -1,9 +1,14 @@
 name: Pin bump
 
-# Monthly: propose moving the three sha-pinned `require`s in lakefile.lean (and the
-# toolchain with them) to their upstream heads — or report why that cannot be done.
-# This workflow never fixes breakage and never touches `main`: green ends in a pull
-# request on its own branch, red ends in an issue. Logic lives in scripts/pin_bump.py.
+# Monthly: move each sha-pinned `require` in lakefile.lean to its upstream head where
+# that can work, hold the ones that cannot and say why, and move the toolchain only when
+# every upstream agrees on a newer one. Safety is the validation, not the preflight:
+# whatever is proposed is built by ci.yml's `build` job, second-opinion gates included,
+# and only a green run becomes a pull request, which nobody merges automatically. This
+# workflow never fixes breakage and never touches `main`: green ends in a pull request on
+# its own branch, red (a build that was tried and failed) ends in an issue, and a month in
+# which nothing can move is green and closes any stale blocked issue. The rule, the held
+# packages and their reasons live in scripts/pin_bump.py.
 #
 # Never on pull_request: the only job with write scope is `publish`, and a job that
 # can open pull requests and issues must not be reachable from a fork's code.
@@ -20,9 +25,10 @@ concurrency:
 
 jobs:
   # Read-only. Step 1 (preflight) is pure GitHub API: resolve each upstream's tracked
-  # head and read its lean-toolchain and Mathlib pin — no toolchain, no build. Only if
-  # the heads agree does step 2 install elan and run `lake update` over the rewritten
-  # pins. The three bumped files leave as an artifact; the report always does.
+  # head, read its lean-toolchain and Mathlib pin, and decide per package whether it
+  # moves — no toolchain, no build. Only if something moves does step 2 install elan and
+  # run `lake update` for exactly those packages over the rewritten pins. The three
+  # bumped files leave as an artifact; the report always does.
   prepare:
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -54,7 +60,7 @@ jobs:
         if: steps.preflight.outputs.status == 'ok'
         run: |
           set -o pipefail
-          lake update 2>&1 | tee pin-bump/lake-update.log
+          lake update $(cat pin-bump/update-args) 2>&1 | tee pin-bump/lake-update.log
 
       - name: Upload bumped pin files
         if: steps.preflight.outputs.status == 'ok'
