@@ -32,19 +32,26 @@ why the others cannot:
     mean a toolchain this repository's own code was not built on. The toolchain moves
     only when every pinned upstream's head agrees on one newer version and nothing is
     held by policy; then everything moves together, as the original rule asked.
-  * A package named in POLICY_HOLD is HELD for the stated reason whatever its head
-    says. Today that is Foundation: the pin is the last upstream commit that still
-    contains `Foundation.Modal`, which `ModalAgents` is stated over (lakefile.lean), and
-    moving past it is a migration, not a bump.
-  * Mathlib pins are reported, never used as a gate: the root's Mathlib wins in Lake,
-    and a disagreement is a thing the build settles.
+  * A package named in FOLLOWS does not track its own head: its new pin is read off
+    the `lake-manifest.json` of the package it follows, at that package's new pin, so
+    the two stay exactly as coherent as upstream tested them. Today that is Foundation,
+    which follows ProvabilityLogic: ProvabilityLogic requires Foundation at `master` and
+    Foundation moves its syntax and bootstrapping namespaces between releases, so
+    Foundation's own head and ProvabilityLogic's head are routinely incompatible for a
+    few days, and the GL development `ModalAgents` is stated over is the thing that
+    breaks (lakefile.lean, `require Foundation`).
+  * The root Mathlib pin follows the toolchain, not Mathlib's `master`: it is the
+    release tag named by `lean-toolchain` (`v4.34.0` → tag `v4.34.0`), which is also what
+    Foundation and ProvabilityLogic pin. It moves exactly when the toolchain moves.
+  * The Mathlib pins of the other packages are reported, never used as a gate: the
+    root's Mathlib wins in Lake, and a disagreement is a thing the build settles.
 
 A held package is information in the pull request body or the run summary, not a red
 issue; a red issue is for a run that tried something and failed. A month in which nothing
 can move is green, and it closes any `Pin bump blocked` issue a previous month left open.
 
 Tracked branches. Each `require` tracks its repository's default branch except where
-TRACKED_BRANCH says otherwise. `complexitylib` tracks the fork's `faf/v4.31`
+TRACKED_BRANCH says otherwise. `complexitylib` tracks the fork's `faf/v4.34`
 compatibility branch (see the lakefile comment); the fork's default branch is upstream's
 `dev`, whose head is the *base* of the compatibility branch, so "bumping" to it would roll
 the pin backwards and drop the port.
@@ -66,16 +73,16 @@ TOOLCHAIN = "lean-toolchain"
 PIN_FILES = (LAKEFILE, MANIFEST, TOOLCHAIN)
 
 TRACKED_BRANCH = {
-    "complexitylib": "faf/v4.31",
+    "complexitylib": "faf/v4.34",
 }
 
-POLICY_HOLD = {
-    "Foundation": (
-        "the pin is the last upstream commit that still contains `Foundation.Modal`, which "
-        "`ModalAgents` is stated over (see the `require Foundation` comment in lakefile.lean); "
-        "moving past it is the ModalAgents migration, not a routine bump"
-    ),
+# Packages pinned to what another package's manifest records, not to their own head.
+FOLLOWS = {
+    "Foundation": "ProvabilityLogic",
 }
+
+# The root Mathlib pin is the release tag named by `lean-toolchain`.
+MATHLIB = "mathlib"
 
 MAINTAINER = "A-M-Berns"
 LABEL = "pin-bump"
@@ -121,11 +128,21 @@ def contents_at(repo, path, ref):
     return base64.b64decode(data["content"]).decode("utf-8")
 
 
-def mathlib_entry(manifest_text):
+def manifest_entry(manifest_text, name):
     for p in json.loads(manifest_text).get("packages", []):
-        if p.get("name") == "mathlib":
+        if p.get("name") == name:
             return p
     return None
+
+
+def mathlib_entry(manifest_text):
+    return manifest_entry(manifest_text, MATHLIB)
+
+
+def toolchain_tag(tc):
+    # leanprover/lean4:v4.34.0 -> v4.34.0
+    m = re.search(r"(v\d+\.\d+\.\d+(?:-rc\d+)?)", tc)
+    return m.group(1) if m else None
 
 
 def toolchain_key(tc):
@@ -172,27 +189,36 @@ def preflight(args):
               "old_toolchain": root_tc, "new_toolchain": root_tc,
               "old_mathlib": old_ml["rev"] if old_ml else None}
 
-    for req in parse_requires(read(LAKEFILE)):
-        repo = repo_from_url(req["url"])
-        meta = gh_json("repos/%s" % repo)
-        branch = TRACKED_BRANCH.get(req["name"], meta["default_branch"])
-        head = gh_json("repos/%s/commits/%s" % (repo, branch))
-        toolchain = contents_at(repo, TOOLCHAIN, head["sha"]).strip()
-        ml = mathlib_entry(contents_at(repo, MANIFEST, head["sha"]))
-        p = {
-            "name": req["name"], "url": req["url"], "repo": repo, "branch": branch,
-            "default_branch": meta["default_branch"],
-            "old_rev": req["rev"], "new_rev": head["sha"],
-            "head_date": head["commit"]["committer"]["date"][:10],
+    requires = parse_requires(read(LAKEFILE))
+    by_name = {r["name"]: r for r in requires}
+    heads = {}  # name -> (sha, date, toolchain, manifest text) for packages that track a head
+
+    def record(req, new_rev, head_date, toolchain, manifest_text, branch, default_branch):
+        ml = mathlib_entry(manifest_text) if manifest_text else None
+        return {
+            "name": req["name"], "url": req["url"], "repo": repo_from_url(req["url"]),
+            "branch": branch, "default_branch": default_branch,
+            "old_rev": req["rev"], "new_rev": new_rev, "head_date": head_date,
             "toolchain": toolchain,
             "mathlib_rev": ml["rev"] if ml else None,
             "mathlib_input_rev": ml.get("inputRev") if ml else None,
             "state": None, "reason": "",
         }
+
+    # 1. Packages that track a head of their own.
+    for req in requires:
+        if req["name"] in FOLLOWS or req["name"] == MATHLIB:
+            continue
+        repo = repo_from_url(req["url"])
+        meta = gh_json("repos/%s" % repo)
+        branch = TRACKED_BRANCH.get(req["name"], meta["default_branch"])
+        head = gh_json("repos/%s/commits/%s" % (repo, branch))
+        toolchain = contents_at(repo, TOOLCHAIN, head["sha"]).strip()
+        manifest_text = contents_at(repo, MANIFEST, head["sha"])
+        heads[req["name"]] = (head["sha"], head["commit"]["committer"]["date"][:10], toolchain, manifest_text)
+        p = record(req, head["sha"], heads[req["name"]][1], toolchain, manifest_text, branch, meta["default_branch"])
         if p["old_rev"] == p["new_rev"]:
             p["state"], p["reason"] = "current", "already at its tracked head"
-        elif p["name"] in POLICY_HOLD:
-            p["state"], p["reason"] = "held", POLICY_HOLD[p["name"]]
         elif toolchain_key(toolchain) > toolchain_key(root_tc):
             p["state"] = "held"
             p["reason"] = ("its head is on `%s`, newer than this repository's `%s`; it moves only "
@@ -203,21 +229,63 @@ def preflight(args):
                            "its head is on the older `%s`; Lake builds it with this repository's "
                            "toolchain and Mathlib, which the validation decides" % toolchain)
         report["packages"].append(p)
-        print("%-14s %s@%s %s -> %s  toolchain=%s  mathlib=%s  [%s]" % (
-            p["name"], repo, branch, short(p["old_rev"]), short(p["new_rev"]), toolchain,
-            short(p["mathlib_rev"]) if p["mathlib_rev"] else "none", p["state"]))
+
+    # 2. Packages that follow another package's manifest.
+    for name, leader in FOLLOWS.items():
+        req = by_name.get(name)
+        if req is None or leader not in heads:
+            continue
+        leader_sha, leader_date, leader_tc, leader_manifest = heads[leader]
+        entry = manifest_entry(leader_manifest, name)
+        if entry is None:
+            raise RuntimeError("%s's manifest at %s does not pin %s" % (leader, short(leader_sha), name))
+        repo = repo_from_url(req["url"])
+        new_rev = entry["rev"]
+        commit = gh_json("repos/%s/commits/%s" % (repo, new_rev))
+        toolchain = contents_at(repo, TOOLCHAIN, new_rev).strip()
+        manifest_text = contents_at(repo, MANIFEST, new_rev)
+        p = record(req, new_rev, commit["commit"]["committer"]["date"][:10], toolchain, manifest_text,
+                   "(follows %s)" % leader, gh_json("repos/%s" % repo)["default_branch"])
+        leader_state = next(q["state"] for q in report["packages"] if q["name"] == leader)
+        if p["old_rev"] == p["new_rev"]:
+            p["state"], p["reason"] = "current", "already the %s its leader %s pins" % (name, leader)
+        elif leader_state == "held":
+            p["state"], p["reason"] = "held", "follows %s, which is held this month" % leader
+        else:
+            p["state"] = "bump"
+            p["reason"] = "the %s that %s@%s pins (`%s`)" % (name, leader, short(leader_sha), toolchain)
+        report["packages"].append(p)
 
     pkgs = report["packages"]
-    # The toolchain moves only when every head agrees on one newer version and nothing is
-    # held by policy; then everything moves together.
-    heads_tc = {p["toolchain"] for p in pkgs}
-    policy_held = [p for p in pkgs if p["state"] == "held" and p["name"] in POLICY_HOLD]
-    if len(heads_tc) == 1 and toolchain_key(next(iter(heads_tc))) > toolchain_key(root_tc) and not policy_held:
+    for p in pkgs:
+        print("%-16s %s@%s %s -> %s  toolchain=%s  mathlib=%s  [%s]" % (
+            p["name"], p["repo"], p["branch"], short(p["old_rev"]), short(p["new_rev"]), p["toolchain"],
+            short(p["mathlib_rev"]) if p["mathlib_rev"] else "none", p["state"]))
+
+    # The toolchain moves only when every tracked head agrees on one newer version; then
+    # everything moves together.
+    heads_tc = {heads[n][2] for n in heads}
+    if len(heads_tc) == 1 and toolchain_key(next(iter(heads_tc))) > toolchain_key(root_tc):
         report["new_toolchain"] = next(iter(heads_tc))
         for p in pkgs:
             if p["state"] == "held":
                 p["state"] = "bump"
                 p["reason"] = "every pinned upstream agrees on `%s`; the toolchain moves with them" % report["new_toolchain"]
+
+    # 3. The root Mathlib pin: the release tag named by the (possibly new) toolchain.
+    req = by_name.get(MATHLIB)
+    if req is not None:
+        tag = toolchain_tag(report["new_toolchain"])
+        repo = repo_from_url(req["url"])
+        commit = gh_json("repos/%s/commits/%s" % (repo, tag))
+        p = record(req, commit["sha"], commit["commit"]["committer"]["date"][:10],
+                   report["new_toolchain"], None, "tag %s" % tag, gh_json("repos/%s" % repo)["default_branch"])
+        if p["old_rev"] == p["new_rev"]:
+            p["state"], p["reason"] = "current", "already the `%s` release tag" % tag
+        else:
+            p["state"], p["reason"] = "bump", "the `%s` release tag, following the toolchain" % tag
+        pkgs.append(p)
+        print("%-16s tag %s %s -> %s  [%s]" % (MATHLIB, tag, short(p["old_rev"]), short(p["new_rev"]), p["state"]))
 
     report["bumped"] = [p["name"] for p in pkgs if p["state"] == "bump"]
     report["held"] = [p["name"] for p in pkgs if p["state"] == "held"]
@@ -308,7 +376,7 @@ def mentions_pfr(excerpt):
 
 
 def rev_table(report):
-    rows = ["| package | tracked branch | pinned | head (date) | head toolchain | this month |",
+    rows = ["| package | tracks | pinned | new (date) | its toolchain | this month |",
             "| --- | --- | --- | --- | --- | --- |"]
     for p in report.get("packages", []):
         rows.append("| %s | `%s` | `%s` | `%s` (%s) | `%s` | **%s** — %s |" % (
@@ -412,7 +480,7 @@ def publish(args):
         pfr_note = (
             "\n\n**The first error is inside the vendored PFR slice (`PFR/`).** That directory is "
             "third-party source and this workflow does not edit it; re-vendoring is a deliberate act. "
-            "See `%s` for the upstream commit, the compatibility patches and the re-vendor script.\n" % PFR_PROVENANCE)
+            "See `%s` for the upstream commit, the patch policy and the re-vendor script.\n" % PFR_PROVENANCE)
     body = "\n".join([
         "%s — the %s pin bump is **blocked**." % (mention, month),
         "", "**Failing step:** %s" % step, "", detail, pfr_note,

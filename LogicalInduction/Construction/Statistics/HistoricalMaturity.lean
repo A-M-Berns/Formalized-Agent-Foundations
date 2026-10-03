@@ -57,7 +57,7 @@ namespace LogicalInduction
 
 /-! ## Primitive-recursive access to an emulatable trader family -/
 
-private def markerSentence : Sentence := LO.Propositional.Formula.atom 0
+private def markerSentence : Sentence := FFL.Propositional.Formula.atom 0
 
 /-- The structured polynomial interface on a trader family entails primitive-recursive
 access to every member/day trade list.  This is the trader-family analogue of

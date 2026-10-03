@@ -132,7 +132,7 @@ lemma undigitize_map_min_four (ds : List ℕ) :
         obtain ⟨out, acc, pow⟩ := st
         by_cases hd : d < 4
         · rw [show min d 4 = d from by omega]
-        · rw [undigitizeStep, undigitizeStep, if_neg (by omega), if_neg hd]
+        · rw [undigitizeStep, undigitizeStep, ite_eq_right (by omega), ite_eq_right hd]
       rw [hstep, ih]
 
 end LogicalInduction

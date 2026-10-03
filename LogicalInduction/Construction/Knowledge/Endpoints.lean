@@ -1,3 +1,4 @@
+import Foundation.FirstOrder.Incompleteness.Definability
 import LogicalInduction.Construction.Paper.TheoremDP
 import LogicalInduction.Construction.Knowledge.SubstEmission
 import LogicalInduction.Framework.Theory.R0Instances
@@ -143,17 +144,17 @@ Foundation's internal provability predicate at `V := ℕ`, whose side condition 
 
 namespace LogicalInduction
 
-open LO LO.FirstOrder LO.FirstOrder.Arithmetic LO.Entailment
+open FFL FFL.FirstOrder FFL.FirstOrder.Arithmetic FFL.Entailment
 
 /-! ## The claim sentence
 
 `reprAllTerm γ y t` is the paper's `∀ν : γ(t, ν) ↔ ν = ȳ`, with the argument named by the
-closed term `t`.  Foundation keeps formulas in negation normal form, so `∼(∀⁰ ψ)` is `∃⁰ ∼ψ`
+closed term `t`.  Foundation keeps formulas in negation normal form, so `∼(∀¹ ψ)` is `∃¹ ∼ψ`
 on the nose, and `paperPrimeDecompose` sends the two to complementary propositional literals
 over one atom. -/
 
 /-- Equation for the negative-prime (`.all`) case of the paper decomposition, stated at
-`Semiformula.all` rather than at the `∀⁰` closure notation, which is only *definitionally*
+`Semiformula.all` rather than at the `∀¹` closure notation, which is only *definitionally*
 that constructor. -/
 lemma paperPrimeDecompose_all (ψ : ArithmeticSemiformula ℕ 1) :
     paperPrimeDecompose (Semiformula.all ψ) = ∼paperPrimeSentence true ((∼ψ).exs) := by
@@ -657,7 +658,7 @@ Kind `C` (composition).  Provenance: (a) derived in-project from
 `representedClaimSentence_ne_of_arg_ne`. -/
 lemma conClaimSentence_ne_of_day_ne (γ : ArithmeticSemisentence 2) (hγ : γ.Mentions 0)
     {m n : ℕ} (h : m ≠ n) : conClaimSentence γ m ≠ conClaimSentence γ n := by
-  simp only [conClaimSentence, ne_eq, LO.Propositional.Formula.neg_inj]
+  simp only [conClaimSentence, ne_eq, FFL.Propositional.Formula.neg_inj]
   refine representedClaimSentence_ne_of_arg_ne γ hγ (fun hpair => h ?_)
   simpa [conClaimArg] using congrArg (fun z : ℕ => z.unpair.2) hpair
 
@@ -1073,7 +1074,7 @@ section Halting
 `σ(t)` under one vacuous existential. -/
 def schemaArgClaim (σ : ArithmeticSemisentence 1) (t : Semiterm.Const ℒₒᵣ) :
     ArithmeticSentence :=
-  ∃⁰ (schemaArgBody σ t)
+  ∃¹ (schemaArgBody σ t)
 
 /-- The public propositional atom naming that claim: its paper-prime. -/
 def schemaArgClaimSentence (σ : ArithmeticSemisentence 1) (t : Semiterm.Const ℒₒᵣ) :
@@ -1128,9 +1129,9 @@ completeness carries validity back.  No hypothesis on `T`.
 Kind `C` (composition).  Provenance: (b) Foundation citation —
 `Theory.Proof.complete_iff`. -/
 lemma provable_iff_of_realize_iff {T : ArithmeticTheory} {σ τ : ArithmeticSentence}
-    (h : ∀ (M : Type) [Nonempty M] [Structure ℒₒᵣ M], σ.Realize M ↔ τ.Realize M) :
+    (h : ∀ (M : Type) [Nonempty M] [Tarski.Structure ℒₒᵣ M], σ.Realize M ↔ τ.Realize M) :
     T ⊢ σ ↔ T ⊢ τ := by
-  rw [← LO.FirstOrder.Theory.Proof.complete_iff, ← LO.FirstOrder.Theory.Proof.complete_iff]
+  rw [← FFL.FirstOrder.Theory.Proof.complete_iff, ← FFL.FirstOrder.Theory.Proof.complete_iff]
   simp only [consequence_iff, models_iff]
   exact ⟨fun H M _ _ hT => (h M).mp (H M hT), fun H M _ _ hT => (h M).mpr (H M hT)⟩
 
@@ -1567,7 +1568,7 @@ instance models_loopsTheory : ℕ↓[ℒₒᵣ] ⊧* loopsTheory :=
 /-- Adjoining one sentence to a `Δ₁` axiom set keeps it `Δ₁`, which supplies the
 `[loopsTheory.Δ₁]` instance argument of `thm_loops_applied_at_loopsTheory`. -/
 noncomputable instance loopsTheory_delta1 : loopsTheory.Δ₁ :=
-  inferInstanceAs (LO.FirstOrder.Theory.Δ₁ (insert loopsWitnessSentence 𝗜𝚺₁))
+  inferInstanceAs (FFL.FirstOrder.Theory.Δ₁ (insert loopsWitnessSentence 𝗜𝚺₁))
 
 /-- `loopsTheory` extends `𝗜𝚺₁`, which is where `thm_loops_applied_at_loopsTheory`'s
 `[𝗣𝗔⁻ ⪯ loopsTheory]` instance argument comes from. -/
@@ -1726,12 +1727,12 @@ lemma mem_theoryOf {m : Nat.Partrec.Code} {σ : ArithmeticSentence} {b i : ℕ}
 machine's output to the endpoint's `hinc`.
 
 Kind `C` (composition).  Provenance: (b) Foundation citations — `Entailment.by_axm`,
-`Entailment.weakening!`, `Entailment.inconsistent_iff_provable_bot`, `Entailment.N!_iff_CO!`. -/
+`Entailment.weakening`, `Entailment.WeakerThan.ofSubset`, `Entailment.inconsistent_iff_provable_bot`, `Entailment.N_iff_CO`. -/
 lemma not_consistent_of_refutable_mem {S : ArithmeticTheory} {σ : ArithmeticSentence}
     (hmem : σ ∈ S) (href : (∅ : ArithmeticTheory) ⊢ ∼σ) : ¬Entailment.Consistent S := by
   rw [Entailment.not_consistent_iff_inconsistent, Entailment.inconsistent_iff_provable_bot]
-  exact (LO.Entailment.N!_iff_CO!.mp
-    (Entailment.wk! (Set.empty_subset S) href)) ⨀ Entailment.by_axm hmem
+  exact (FFL.Entailment.N_iff_CO.mp
+    (Entailment.weakening (Entailment.WeakerThan.ofSubset (Set.empty_subset S)) href)) ⨀ Entailment.by_axm hmem
 
 /-- **The finite window, found.**  Any finite list of `m`'s axioms is emitted together in a
 single budget-`b` run at some list of inputs, and — at that budget or any larger one — the
@@ -1780,7 +1781,7 @@ lemma negSourceFormulaCode_sourceNat_of_sentence (s : ArithSource 0) (φ : Arith
     (h : ArithSource.compile s = (↑φ : ArithmeticSemiformula ℕ 0)) :
     negSourceFormulaCode s.sourceNat = ⌜∼φ⌝ := by
   rw [negSourceFormulaCode_sourceNat, h]
-  simp [LO.FirstOrder.Sentence.quote_eq_encode]
+  simp [FFL.FirstOrder.Sentence.quote_eq_encode]
 
 /-- **The day-window code, at a window that writes a list of sentences.**  The bridge between
 the machine side, which emits numbers, and the deduction side, which speaks of sentences. -/
@@ -1922,7 +1923,7 @@ empty theory could satisfy the predicate.
 Kind `P` (proved).  Provenance: (a) `exists_sources_axiomWindow`,
 `exists_listConj_of_window_sources`, `negWindowCode_eq_quote` derived in-project;
 (b) Foundation citations — `Bootstrapping.provable_iff_provable`, `Entailment.by_axm`,
-`Entailment.wk!`, `Entailment.N!_iff_CO!`. -/
+`Entailment.weakening`, `Entailment.WeakerThan.ofSubset`, `Entailment.N_iff_CO`. -/
 lemma not_consistent_theoryOf_of_machineTheoryInconsistent {m : Nat.Partrec.Code}
     (h : MachineTheoryInconsistent m.sourceNat) :
     ¬Entailment.Consistent (theoryOf m) := by
@@ -1938,7 +1939,7 @@ lemma not_consistent_theoryOf_of_machineTheoryInconsistent {m : Nat.Partrec.Code
       · exact Entailment.by_axm hφ'
   intro hcons
   exact hcons.not_bot
-    ((LO.Entailment.N!_iff_CO!.mp (Entailment.wk! (Set.empty_subset _) hw)) ⨀ hprov)
+    ((FFL.Entailment.N_iff_CO.mp (Entailment.weakening (Entailment.WeakerThan.ofSubset (Set.empty_subset _)) hw)) ⨀ hprov)
 
 /-- **The represented predicate is exactly the convention's inconsistency claim.**  Both
 directions, at every machine: no gap between what `thm:incons`'s day-`n` sentence says and
@@ -1989,7 +1990,7 @@ lemma not_machineTheoryInconsistent_of_diverges {m : Nat.Partrec.Code}
         (⊤ : ArithmeticSentence)) :=
     provable_listConj ∅ (fun φ hφ => by
       rw [List.eq_of_mem_replicate hφ]; cl_prover)
-  exact consistent_empty.not_bot ((LO.Entailment.N!_iff_CO!.mp hw) ⨀ hprov)
+  exact consistent_empty.not_bot ((FFL.Entailment.N_iff_CO.mp hw) ⨀ hprov)
 
 /-- The never-halting machine never emits, at any budget: `evaln` is sound for `eval`. -/
 lemma evaln_neverHaltMachine (b i : ℕ) :
@@ -2306,7 +2307,7 @@ noncomputable def deepDayMachine (n : ℕ) : Nat.Partrec.Code :=
 lemma deepDayMachine_eval (n i : ℕ) :
     (deepDayMachine n).eval i = Part.some (deepInconsistentSource n).sourceNat := by
   rw [deepDayMachine, dayMachine_eval]
-  simp [Nat.Partrec.Code.eval, deepSourceCode_eval]
+  simp [Nat.Partrec.Code.eval, PFun.coe_val, some_bind_pfun, deepSourceCode_eval]
 
 /-- The day's axiom really is one of the day's theory's axioms. -/
 lemma deepInconsistentAxiom_mem_theoryOf (n : ℕ) :

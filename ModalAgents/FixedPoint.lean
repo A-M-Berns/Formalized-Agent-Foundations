@@ -6,14 +6,9 @@
   Barasz Thm 4.2 (the de Jongh–Sambin fixed-point theorem) is Lindström Thm 11,
   and Thm 4.3 (uniqueness of the fixed point) is Lindström Thm 12.
 
-  Thm 4.2 (existence) is a standard GL result not available in Foundation itself.
-  It is proved below (`glFixedPoint_thm42`) through the upstream
-  FormalizedFormalLogic/ProvabilityLogic package (see the `GlFixedPointBridge`
-  section and the README): a de Jongh–Sambin construction via Maehara interpolation
-  and Löb's rule, transported back to Foundation's `Modal.GL` through finite Kripke
-  completeness. That package's `Formula` lives at the root namespace with `scoped`
-  notations, so it does not collide with Foundation's modal notation here; the
-  bridge writes its operations as explicit function calls.
+  Thm 4.2 (existence) is `LogicGL.fixpointTheorem` of the `ProvabilityLogic`
+  package — a de Jongh–Sambin construction via Maehara interpolation and Löb's
+  rule — restated here in the paper's single-variable form (`glFixedPoint_thm42`).
   Thm 4.3 (uniqueness) is proved below from a boxed-equivalence substitution lemma
   and Löb's rule.
 
@@ -22,14 +17,13 @@
 
 import ModalAgents.ModalAgent
 import ProvabilityLogic.Logic.GL.Fixedpoint
-import Foundation.Modal.Kripke.Logic.GL.Unnecessitation
 
-open LO LO.Modal
-open LO.Entailment LO.Modal.Entailment
+open LogicGL Formula
 
-/-- Substitution replacing atom `p` with `ψ`, identity elsewhere. -/
-abbrev diag (p : ℕ) (ψ : Modal.Formula ℕ) : Modal.Substitution ℕ :=
-  fun k => if k = p then ψ else .atom k
+/-- Substitution replacing atom `p` with `ψ`, identity elsewhere (the development's
+`Formula.Substitution.single`, so `φ⟦diag p ψ⟧` is its `φ⟦p ↦ ψ⟧`). -/
+abbrev diag (p : ℕ) (ψ : Formula ℕ) : Formula.Substitution ℕ ℕ :=
+  Formula.Substitution.single p ψ
 
 /-! ## Substitution congruence -/
 
@@ -37,263 +31,139 @@ abbrev diag (p : ℕ) (ψ : Modal.Formula ℕ) : Modal.Substitution ℕ :=
 formulas. This is the GL-level counterpart of Barasz §4, Lemma 4.5, and
 deliberately carries no paper-node annotation: Lemma 4.5 concludes about
 *arithmetic* formulas under `PA`, which this does not state. -/
-lemma subst_congr {σ σ' : Modal.Substitution ℕ}
-    (h : ∀ a, Modal.GL ⊢ (σ a) 🡘 (σ' a)) (φ : Modal.Formula ℕ) :
-    Modal.GL ⊢ φ⟦σ⟧ 🡘 φ⟦σ'⟧ := by
-  induction φ with
-  | hatom a => exact h a
-  | hfalsum => exact E!_id
-  | himp φ ψ ih₁ ih₂ => exact ECC!_of_E!_of_E! ih₁ ih₂
-  | hbox φ ih => exact box_iff! ih
+lemma subst_congr {σ σ' : Formula.Substitution ℕ ℕ}
+    (h : ∀ a, ((σ a) 🡘 (σ' a)) ∈ (LogicGL : Logic ℕ)) :
+    ∀ φ : Formula ℕ, ((φ⟦σ⟧) 🡘 (φ⟦σ'⟧)) ∈ (LogicGL : Logic ℕ)
+  | .atom a => h a
+  | .bot => GL.iff_refl
+  | .imp φ ψ => GL.imp_congr (subst_congr h φ) (subst_congr h ψ)
+  | .box φ => GL.box_iff (subst_congr h φ)
 
-/-! ## Theorem 4.2 (Barasz, §4): GL fixed-point existence
+/-- An atom beyond the largest atom of `φ` does not occur in `φ`: the fresh-atom supply
+for the fixed-point constructions. -/
+lemma notMem_atoms_of_sup_lt {φ : Formula ℕ} {k : ℕ} (h : φ.atoms.sup id < k) :
+    k ∉ φ.atoms := fun hk => by
+  have := Finset.le_sup (f := id) hk
+  simp only [id] at this
+  omega
 
-Proved via the autoformalized `ProvabilityLogic/` sequent calculus. The
-`GlFixedPointBridge` namespace translates between Foundation's `Modal.Formula`
-and that development's `_root_.Formula`, carries `Modalized`/`diag`/atoms across the
-translation, and transports GL-provability back through finite Kripke completeness.
-`Modalized` and `diag` are the repository's own (`ModalAgents.ModalAgent`, and above).
-That development's `Formula` operations are written as explicit function calls
-(`_root_.Formula.imp`/`.iff`/`.subst`) because its notations are `scoped` and left
-unopened here to avoid colliding with Foundation's. -/
-
-namespace GlFixedPointBridge
-
-/-- Translation from Foundation's modal formulas to the sequent-calculus development. -/
-def toSeq : Modal.Formula ℕ → _root_.Formula ℕ
-  | .atom a => .atom a
-  | .falsum => .bot
-  | .imp A B => .imp (toSeq A) (toSeq B)
-  | .box A => .box (toSeq A)
-
-/-- Translation back to Foundation's modal formulas. -/
-def ofSeq : _root_.Formula ℕ → Modal.Formula ℕ
-  | .atom a => .atom a
-  | .bot => .falsum
-  | .imp A B => .imp (ofSeq A) (ofSeq B)
-  | .box A => .box (ofSeq A)
-
-@[simp] lemma ofSeq_toSeq (A : Modal.Formula ℕ) : ofSeq (toSeq A) = A := by
-  induction A <;> simp_all [toSeq, ofSeq, LO.Modal.Formula.falsum_eq,
-    LO.Modal.Formula.imp_eq, LO.Modal.Formula.box_eq]
-
-@[simp] lemma toSeq_ofSeq (A : _root_.Formula ℕ) : toSeq (ofSeq A) = A := by
-  induction A <;> simp [toSeq, ofSeq, *]
-
-lemma modalized_iff {p : ℕ} {A : Modal.Formula ℕ} :
-    Modalized p A ↔ (toSeq A).ModalizedIn p := by
-  induction A <;> simp_all [Modalized, toSeq, _root_.Formula.ModalizedIn]
-
-lemma atoms_toSeq (A : Modal.Formula ℕ) :
-    (toSeq A).atoms = A.atoms := by
-  induction A <;> simp_all [toSeq, _root_.Formula.atoms, LO.Modal.Formula.atoms]
-
-lemma atoms_ofSeq (A : _root_.Formula ℕ) :
-    (ofSeq A).atoms = A.atoms := by
-  induction A <;> simp_all [ofSeq, _root_.Formula.atoms, LO.Modal.Formula.atoms]
-
-lemma toSeq_diag (p : ℕ) (A B : Modal.Formula ℕ) :
-    toSeq (A⟦diag p B⟧) =
-      _root_.Formula.subst (_root_.Formula.Substitution.single p (toSeq B)) (toSeq A) := by
-  induction A with
-  | hatom a => by_cases ha : a = p <;> simp [diag, toSeq,
-      _root_.Formula.Substitution.single, ha]
-  | hfalsum => rfl
-  | himp A C ihA ihC => simp [LO.Modal.Formula.subst, toSeq, ihA, ihC]
-  | hbox A ih => simp [LO.Modal.Formula.subst, toSeq, ih]
-
-private lemma forces_translation {M : LO.Modal.Kripke.Model} (x : M.World)
-    (A : Modal.Formula ℕ) :
-    let N : _root_.Model M.World ℕ := ⟨M.Rel, fun w a => M.Val a w⟩
-    _root_.Model.World.Forces (M := N) x (toSeq A) ↔
-      LO.Modal.Formula.Kripke.Satisfies M x A := by
-  induction A generalizing x <;> simp_all [toSeq, _root_.Model.World.Forces,
-    LO.Modal.Formula.Kripke.Satisfies]
-
-lemma provable_of_mem_logicGL {A : Modal.Formula ℕ}
-    (h : toSeq A ∈ (_root_.LogicGL : _root_.Logic ℕ)) : Modal.GL ⊢ A := by
-  apply LO.Modal.GL.Kripke.finite_completeness_TFAE.out 3 0 |>.mp
-  intro M _ _ _ _
-  let N : _root_.Model M.World ℕ := ⟨M.Rel, fun w a => M.Val a w⟩
-  let _instN : _root_.Model.IsFiniteGL N :=
-    { trans := fun _ _ _ hxy hyz => M.trans hxy hyz,
-      irrefl := fun x hxx => M.irrefl x hxx,
-      finite := inferInstance }
-  have hv := (_root_.LogicGL.iff_forces (A := toSeq A)).mp h
-    (κ := M.World) N
-  exact (forces_translation M.root.1 A).mp (hv M.root.1)
-
-/-- The forward transport: a `Modal.GL` theorem lands in the sequent-calculus
-development's `LogicGL` after translation. Dual of `provable_of_mem_logicGL`,
-through the same finite-GL Kripke characterization on both sides. -/
-lemma mem_logicGL_of_provable {A : Modal.Formula ℕ} (h : Modal.GL ⊢ A) :
-    toSeq A ∈ (_root_.LogicGL : _root_.Logic ℕ) := by
-  apply (_root_.LogicGL.iff_forces (A := toSeq A)).mpr
-  intro κ _ N _ x
-  let M : LO.Modal.Kripke.Model :=
-    { World := κ, Rel := N.Rel, Val := fun a w => N.Val w a }
-  haveI : Finite M.World := inferInstanceAs (Finite N.World)
-  haveI : IsTrans M.World M.Rel := inferInstanceAs (IsTrans κ N.Rel)
-  haveI : Std.Irrefl M.Rel := inferInstanceAs (Std.Irrefl N.Rel)
-  haveI hGL : M.toFrame.IsFiniteGL := {}
-  have hM : LO.Modal.Kripke.FrameClass.finite_GL ⊧ A :=
-    LO.Modal.GL.Kripke.finite_completeness_TFAE.out 0 1 |>.mp h
-  exact (forces_translation (M := M) x A).mpr (hM hGL M.Val x)
-
-end GlFixedPointBridge
+/-! ## Theorem 4.2 (Barasz, §4): GL fixed-point existence -/
 
 /-- de Jongh–Sambin–Bernardi fixed-point theorem (Barasz, §4, Thm 4.2),
 single-variable form, with the strong form of the existence claim: the
 constructed fixed point uses only atoms from the input formula and not
 the diagonal variable (standard for the Craig-interpolant / Bernardi
-construction, Boolos Ch. 8). Proved through `ProvabilityLogic/` (see above).
+construction, Boolos Ch. 8). This is `LogicGL.fixpointTheorem` of the `ProvabilityLogic`
+package, which constructs the fixed point through Maehara interpolation.
 
 Paper node: Theorem 4.2 (§4). -/
-theorem glFixedPoint_thm42 {p : ℕ} {φ : Modal.Formula ℕ} (h : Modalized p φ) :
-    ∃ ψ : Modal.Formula ℕ,
-      (Modal.GL ⊢ ψ 🡘 φ⟦diag p ψ⟧) ∧
+theorem glFixedPoint_thm42 {p : ℕ} {φ : Formula ℕ} (h : Modalized p φ) :
+    ∃ ψ : Formula ℕ,
+      ((ψ 🡘 φ⟦diag p ψ⟧) ∈ (LogicGL : Logic ℕ)) ∧
       (∀ a, a ∈ ψ.atoms → a ∈ φ.atoms ∧ a ≠ p) := by
-  let q := φ.freshAtom + p + 1
-  have hpq : p ≠ q := by simp [q]; omega
-  have hq : q ∉ (GlFixedPointBridge.toSeq φ).atoms := by
-    intro hq
-    have hqφ : q ∈ φ.atoms := by
-      simpa [GlFixedPointBridge.atoms_toSeq] using hq
-    have hle := LO.Modal.Formula.le_max_atoms_of_mem_atoms hqφ
-    have hlt := LO.Modal.Formula.le_max_atoms_freshAtom
-      (φ := φ) (show φ.atoms.Nonempty from ⟨q, hqφ⟩)
-    have hq_lt : q < φ.freshAtom := lt_of_le_of_lt hle hlt
-    simp [q] at hq_lt
-    omega
-  obtain ⟨D, hD_atoms, hD⟩ := _root_.LogicGL.fixpointTheorem hpq
-    (GlFixedPointBridge.modalized_iff.mp h) hq
-  let ψ := GlFixedPointBridge.ofSeq D
-  refine ⟨ψ, ?_, ?_⟩
-  · apply GlFixedPointBridge.provable_of_mem_logicGL
-    have hfix :
-        _root_.Formula.iff (GlFixedPointBridge.toSeq (φ⟦diag p ψ⟧))
-            (GlFixedPointBridge.toSeq ψ) ∈ (_root_.LogicGL : _root_.Logic ℕ) := by
-      simpa [ψ, GlFixedPointBridge.toSeq_diag] using hD
-    apply _root_.LogicGL.iff_provableHilbert.mpr
-    apply _root_.LogicGL.ProvableHilbert.andIntroRule
-    · exact _root_.LogicGL.ProvableHilbert.andRRule
-        (_root_.LogicGL.iff_provableHilbert.mp hfix)
-    · exact _root_.LogicGL.ProvableHilbert.andLRule
-        (_root_.LogicGL.iff_provableHilbert.mp hfix)
-  · intro a ha
-    have haD : a ∈ D.atoms := by
-      simpa [ψ, GlFixedPointBridge.atoms_ofSeq] using ha
-    have had := Finset.mem_sdiff.mp (hD_atoms haD)
-    exact ⟨by simpa [GlFixedPointBridge.atoms_toSeq] using had.1,
-      by simpa using had.2⟩
+  -- a fresh atom: larger than every atom of `φ` and than `p`
+  set q : ℕ := (φ.atoms.sup id) + p + 1 with hqdef
+  have hq : q ∉ φ.atoms := notMem_atoms_of_sup_lt (by omega)
+  have hpq : p ≠ q := by omega
+  obtain ⟨D, hD_atoms, hD, _⟩ :=
+    LogicGL.fixpointTheorem hpq (modalized_iff_modalizedIn.mp h) hq
+  refine ⟨D, GL.iff_symm hD, fun a ha => ?_⟩
+  have := hD_atoms ha
+  rw [Finset.mem_sdiff, Finset.mem_singleton] at this
+  exact this
 
 /-- Skolemized fixed-point operator. For non-modalized inputs it returns the
 input formula; the spec lemmas only apply when the input is modalized in `p`. -/
-noncomputable def glFixedPoint (p : ℕ) (φ : Modal.Formula ℕ) : Modal.Formula ℕ :=
+noncomputable def glFixedPoint (p : ℕ) (φ : Formula ℕ) : Formula ℕ :=
   haveI := Classical.propDecidable (Modalized p φ)
   if h : Modalized p φ then (glFixedPoint_thm42 h).choose else φ
 
-private lemma glFixedPoint_eq {p : ℕ} {φ : Modal.Formula ℕ} (h : Modalized p φ) :
+private lemma glFixedPoint_eq {p : ℕ} {φ : Formula ℕ} (h : Modalized p φ) :
     glFixedPoint p φ = (glFixedPoint_thm42 h).choose := by
   show (haveI := Classical.propDecidable (Modalized p φ);
     if h : Modalized p φ then (glFixedPoint_thm42 h).choose else φ) = _
-  rw [dif_pos h]
+  rw [dite_eq_left h]
 
 /-- Defining equation for the fixed point: the Skolemized operator `glFixedPoint`
 satisfies the existence claim of the same node that `glFixedPoint_thm42` states.
 
 Paper node: Theorem 4.2 (§4). -/
-theorem glFixedPoint_spec {p : ℕ} {φ : Modal.Formula ℕ} (h : Modalized p φ) :
-    Modal.GL ⊢ glFixedPoint p φ 🡘 φ⟦diag p (glFixedPoint p φ)⟧ := by
+theorem glFixedPoint_spec {p : ℕ} {φ : Formula ℕ} (h : Modalized p φ) :
+    (glFixedPoint p φ 🡘 φ⟦diag p (glFixedPoint p φ)⟧) ∈ (LogicGL : Logic ℕ) := by
   rw [glFixedPoint_eq h]
   exact (glFixedPoint_thm42 h).choose_spec.1
 
 /-- Atoms of the fixed point are a subset of the input's atoms minus `p`. -/
-lemma glFixedPoint_atoms {p : ℕ} {φ : Modal.Formula ℕ} (h : Modalized p φ) :
+lemma glFixedPoint_atoms {p : ℕ} {φ : Formula ℕ} (h : Modalized p φ) :
     ∀ a, a ∈ (glFixedPoint p φ).atoms → a ∈ φ.atoms ∧ a ≠ p := by
   rw [glFixedPoint_eq h]
   exact (glFixedPoint_thm42 h).choose_spec.2
 
-/-! ## Modal.Substitution identity for absent atoms -/
+/-! ## Substitution identity for absent atoms -/
 
 /-- Substituting for an atom not in the formula leaves the formula unchanged. -/
-lemma subst_diag_of_notMem_atoms {p : ℕ} {χ : Modal.Formula ℕ} :
-    ∀ {ψ : Modal.Formula ℕ}, p ∉ ψ.atoms → ψ⟦diag p χ⟧ = ψ
-  | .atom a, h => by
-    simp only [Modal.Formula.atoms, Finset.mem_singleton] at h
-    show diag p χ a = .atom a
-    simp [diag, Ne.symm h]
-  | .falsum, _ => rfl
-  | .imp φ ψ, h => by
-    simp only [Modal.Formula.atoms, Finset.mem_union, not_or] at h
-    show φ⟦diag p χ⟧ 🡒 ψ⟦diag p χ⟧ = φ 🡒 ψ
-    rw [subst_diag_of_notMem_atoms h.1, subst_diag_of_notMem_atoms h.2]
-  | .box φ, h => by
-    simp only [Modal.Formula.atoms] at h
-    show □(φ⟦diag p χ⟧) = □φ
-    rw [subst_diag_of_notMem_atoms h]
+lemma subst_diag_of_notMem_atoms {p : ℕ} {χ : Formula ℕ} {ψ : Formula ℕ}
+    (h : p ∉ ψ.atoms) : ψ⟦diag p χ⟧ = ψ :=
+  Formula.subst_single_eq_self_of_not_mem_atoms h
 
 /-! ## Theorem 4.3 (Barasz, §4): GL fixed-point uniqueness -/
 
 section uniqueness
 
-variable {p : ℕ} {χ χ' : Modal.Formula ℕ}
+variable {p : ℕ} {χ χ' : Formula ℕ}
 
 /-- `□φ 🡒 □⊡φ`: `Four` plus box collection. -/
-private def boxBoxdotOfBox {φ : Modal.Formula ℕ} : Modal.GL ⊢! □φ 🡒 □⊡φ :=
-  C_trans (CK_of_C_of_C C_id axiomFour) collect_box_and
+private lemma boxBoxdotOfBox {φ : Formula ℕ} :
+    (□φ 🡒 □⊡φ) ∈ (LogicGL : Logic ℕ) :=
+  GL.imp_trans (GL.and_intro_imp GL.imp_id GL.axiomFour) GL.collect_box_and
 
 /-- Internal box-distribution over `🡘`: `□(φ 🡘 ψ) 🡒 (□φ 🡘 □ψ)`. -/
-private def EBoxOfBoxE {φ ψ : Modal.Formula ℕ} :
-    Modal.GL ⊢! □(φ 🡘 ψ) 🡒 (□φ 🡘 □ψ) :=
-  CK_of_C_of_C
-    (C_trans (implyBoxDistribute' and₁) axiomK)
-    (C_trans (implyBoxDistribute' and₂) axiomK)
+private lemma EBoxOfBoxE {φ ψ : Formula ℕ} :
+    (□(φ 🡘 ψ) 🡒 (□φ 🡘 □ψ)) ∈ (LogicGL : Logic ℕ) :=
+  GL.and_intro_imp
+    (GL.imp_trans (GL.box_imp GL.and_left) GL.axiomK)
+    (GL.imp_trans (GL.box_imp GL.and_right) GL.axiomK)
 
 /-- A boxdotted equivalence premise reaches every occurrence of the
 substituted atom: `⊡(χ 🡘 χ') 🡒 (φ⟦p ↦ χ⟧ 🡘 φ⟦p ↦ χ'⟧)` for arbitrary `φ`. -/
-private def substCongrBoxdot : (φ : Modal.Formula ℕ) →
-    Modal.GL ⊢! ⊡(χ 🡘 χ') 🡒 (φ⟦diag p χ⟧ 🡘 φ⟦diag p χ'⟧)
+private lemma substCongrBoxdot : (φ : Formula ℕ) →
+    (⊡(χ 🡘 χ') 🡒 (φ⟦diag p χ⟧ 🡘 φ⟦diag p χ'⟧)) ∈ (LogicGL : Logic ℕ)
   | .atom a => by
     by_cases h : a = p
     · subst h
-      have e₁ : (Modal.Formula.atom a)⟦diag a χ⟧ = χ := by show diag a χ a = χ; simp [diag]
-      have e₂ : (Modal.Formula.atom a)⟦diag a χ'⟧ = χ' := by show diag a χ' a = χ'; simp [diag]
+      have e₁ : (Formula.atom a)⟦diag a χ⟧ = χ := by
+        show diag a χ a = χ; simp [diag, Formula.Substitution.single]
+      have e₂ : (Formula.atom a)⟦diag a χ'⟧ = χ' := by
+        show diag a χ' a = χ'; simp [diag, Formula.Substitution.single]
       rw [e₁, e₂]
-      exact and₁
-    · have hp : p ∉ (Modal.Formula.atom a).atoms := by
-        simp only [Modal.Formula.atoms, Finset.mem_singleton]
+      exact GL.and_left
+    · have hp : p ∉ (Formula.atom a).atoms := by
+        simp only [Formula.atoms, Finset.mem_singleton]
         exact fun e => h e.symm
       rw [subst_diag_of_notMem_atoms hp, subst_diag_of_notMem_atoms hp]
-      exact C_of_conseq E_Id
-  | .falsum => C_of_conseq E_Id
+      exact GL.imp_of_mem GL.iff_refl
+  | .bot => GL.imp_of_mem GL.iff_refl
   | .imp φ ψ =>
-    FiniteContext.emptyPrf <| FiniteContext.deduct <|
-      ECC_of_E_of_E
-        (FiniteContext.of (substCongrBoxdot φ) ⨀ FiniteContext.byAxm₀)
-        (FiniteContext.of (substCongrBoxdot ψ) ⨀ FiniteContext.byAxm₀)
+    GL.imp_congr_under (substCongrBoxdot φ) (substCongrBoxdot ψ)
   | .box φ =>
-    C_trans and₂ (C_trans boxBoxdotOfBox
-      (C_trans (implyBoxDistribute' (substCongrBoxdot φ)) EBoxOfBoxE))
+    GL.imp_trans GL.and_right (GL.imp_trans boxBoxdotOfBox
+      (GL.imp_trans (GL.box_imp (substCongrBoxdot φ)) EBoxOfBoxE))
 
 /-- For `φ` modalized in `p` the boxed equivalence premise suffices
 (Barasz §4, the substitution step of Thm 4.3). -/
-private def substCongrBox : ∀ {φ : Modal.Formula ℕ}, Modalized p φ →
-    Modal.GL ⊢! □(χ 🡘 χ') 🡒 (φ⟦diag p χ⟧ 🡘 φ⟦diag p χ'⟧)
+private lemma substCongrBox : ∀ {φ : Formula ℕ}, Modalized p φ →
+    (□(χ 🡘 χ') 🡒 (φ⟦diag p χ⟧ 🡘 φ⟦diag p χ'⟧)) ∈ (LogicGL : Logic ℕ)
   | .atom a, h => by
-    have hp : p ∉ (Modal.Formula.atom a).atoms := by
-      simp only [Modal.Formula.atoms, Finset.mem_singleton]
+    have hp : p ∉ (Formula.atom a).atoms := by
+      simp only [Formula.atoms, Finset.mem_singleton]
       exact fun e => h e.symm
     rw [subst_diag_of_notMem_atoms hp, subst_diag_of_notMem_atoms hp]
-    exact C_of_conseq E_Id
-  | .falsum, _ => C_of_conseq E_Id
+    exact GL.imp_of_mem GL.iff_refl
+  | .bot, _ => GL.imp_of_mem GL.iff_refl
   | .imp φ ψ, h =>
-    FiniteContext.emptyPrf <| FiniteContext.deduct <|
-      ECC_of_E_of_E
-        (FiniteContext.of (substCongrBox h.1) ⨀ FiniteContext.byAxm₀)
-        (FiniteContext.of (substCongrBox h.2) ⨀ FiniteContext.byAxm₀)
+    GL.imp_congr_under (substCongrBox h.1) (substCongrBox h.2)
   | .box φ, _ =>
-    C_trans boxBoxdotOfBox (C_trans (implyBoxDistribute' (substCongrBoxdot φ)) EBoxOfBoxE)
+    GL.imp_trans boxBoxdotOfBox (GL.imp_trans (GL.box_imp (substCongrBoxdot φ)) EBoxOfBoxE)
 
 /-- **Uniqueness of modal fixed points** (Lindström Thm 12), in the paper's printed
 *internal* form: the two fixed-point equations are hypotheses **inside** `GL`, under
@@ -306,38 +176,65 @@ Proved by Löb's rule: `⊡`-premises are self-boxing (`H 🡒 □H`), which is 
 lets the Löb step discharge them.
 
 Paper node: Theorem 4.3 (§4). -/
-theorem glFixedPoint_uniqueness_internal {p : ℕ} {φ : Modal.Formula ℕ}
-    (hmod : Modalized p φ) (χ χ' : Modal.Formula ℕ) :
-    Modal.GL ⊢ ⊡(χ 🡘 φ⟦diag p χ⟧) ⋏ ⊡(χ' 🡘 φ⟦diag p χ'⟧) 🡒 (χ 🡘 χ') := by
-  set X := χ 🡘 φ⟦diag p χ⟧
-  set X' := χ' 🡘 φ⟦diag p χ'⟧
-  set H := ⊡X ⋏ ⊡X'
-  set A := χ 🡘 χ'
-  have selfBox : Modal.GL ⊢! H 🡒 □H :=
-    C_trans (CK_of_C_of_C (C_trans and₁ (C_trans and₂ boxBoxdotOfBox))
-                          (C_trans and₂ (C_trans and₂ boxBoxdotOfBox))) collect_box_and
-  have step : Modal.GL ⊢! □A 🡒 (H 🡒 A) :=
-    FiniteContext.emptyPrf <| FiniteContext.deduct <| FiniteContext.deduct <|
-      E_trans
-        (E_trans (and₁ ⨀ (and₁ ⨀ FiniteContext.byAxm₀))
-          (FiniteContext.of (substCongrBox hmod) ⨀ FiniteContext.byAxm₁))
-        (E_symm (and₁ ⨀ (and₂ ⨀ FiniteContext.byAxm₀)))
-  exact ⟨lob_rule <| FiniteContext.emptyPrf <| FiniteContext.deduct <|
-    FiniteContext.deduct <|
-      (FiniteContext.of step ⨀
-        ((FiniteContext.of axiomK ⨀ FiniteContext.byAxm₁) ⨀
-          (FiniteContext.of selfBox ⨀ FiniteContext.byAxm₀))) ⨀ FiniteContext.byAxm₀⟩
+theorem glFixedPoint_uniqueness_internal {p : ℕ} {φ : Formula ℕ}
+    (hmod : Modalized p φ) (χ χ' : Formula ℕ) :
+    ((⊡(χ 🡘 φ⟦diag p χ⟧) ⋏ ⊡(χ' 🡘 φ⟦diag p χ'⟧)) 🡒 (χ 🡘 χ')) ∈ (LogicGL : Logic ℕ) := by
+  set X := χ 🡘 φ⟦diag p χ⟧ with hX
+  set X' := χ' 🡘 φ⟦diag p χ'⟧ with hX'
+  set H := ⊡X ⋏ ⊡X' with hH
+  set A := χ 🡘 χ' with hA
+  -- `H 🡒 □H`: each `⊡`-conjunct is self-boxing through `boxBoxdotOfBox`
+  have selfBox : (H 🡒 □H) ∈ (LogicGL : Logic ℕ) :=
+    GL.imp_trans
+      (GL.and_intro_imp (GL.imp_trans GL.and_left (GL.imp_trans GL.and_right boxBoxdotOfBox))
+                        (GL.imp_trans GL.and_right (GL.imp_trans GL.and_right boxBoxdotOfBox)))
+      GL.collect_box_and
+  -- `□A 🡒 (H 🡒 A)`: under `H`, `χ 🡘 φ⟦χ⟧ 🡘 φ⟦χ'⟧ 🡘 χ'`, the middle step from `□A`
+  have step : (□A 🡒 (H 🡒 A)) ∈ (LogicGL : Logic ℕ) := by
+    -- as a two-hypothesis derivation: `{□A, H} ⊢ A`
+    apply GL.of_provable
+    apply DeducibleHilbert.iff_singleton_deducible_provable.mp
+    apply DeducibleHilbert.deduction_theorem.mp
+    have hbox : {H, □A} ⊢ʰ[GL] □A := DeducibleHilbert.ofContext (by grind)
+    have hH : {H, □A} ⊢ʰ[GL] H := DeducibleHilbert.ofContext (by grind)
+    have h₁ : {H, □A} ⊢ʰ[GL] X :=
+      DeducibleHilbert.mdp (DeducibleHilbert.ofProvable ProvableHilbert.andElimL)
+        (DeducibleHilbert.mdp (DeducibleHilbert.ofProvable ProvableHilbert.andElimL) hH)
+    have h₂ : {H, □A} ⊢ʰ[GL] X' :=
+      DeducibleHilbert.mdp (DeducibleHilbert.ofProvable ProvableHilbert.andElimL)
+        (DeducibleHilbert.mdp (DeducibleHilbert.ofProvable ProvableHilbert.andElimR) hH)
+    have hmid : {H, □A} ⊢ʰ[GL] φ⟦diag p χ⟧ 🡘 φ⟦diag p χ'⟧ :=
+      DeducibleHilbert.mdp (DeducibleHilbert.ofProvable (GL.provable (substCongrBox hmod))) hbox
+    -- chain the three equivalences
+    have t₁ : {H, □A} ⊢ʰ[GL] χ 🡘 φ⟦diag p χ'⟧ :=
+      DeducibleHilbert.mdp (DeducibleHilbert.mdp (DeducibleHilbert.ofProvable (GL.provable GL.iff_trans_provable)) h₁) hmid
+    exact DeducibleHilbert.mdp (DeducibleHilbert.mdp (DeducibleHilbert.ofProvable (GL.provable GL.iff_trans_provable)) t₁)
+      (DeducibleHilbert.mdp (DeducibleHilbert.ofProvable (GL.provable GL.iff_symm_provable)) h₂)
+  -- Löb: `□(H 🡒 A) 🡒 (H 🡒 A)`
+  apply lob_rule
+  -- `{□(H 🡒 A), H} ⊢ A`: from `H` get `□H`, hence `□A` by K, hence `A` by `step`
+  apply GL.of_provable
+  apply DeducibleHilbert.iff_singleton_deducible_provable.mp
+  apply DeducibleHilbert.deduction_theorem.mp
+  have hH : {H, □(H 🡒 A)} ⊢ʰ[GL] H := DeducibleHilbert.ofContext (by grind)
+  have hbHA : {H, □(H 🡒 A)} ⊢ʰ[GL] □(H 🡒 A) := DeducibleHilbert.ofContext (by grind)
+  have hbH : {H, □(H 🡒 A)} ⊢ʰ[GL] □H :=
+    DeducibleHilbert.mdp (DeducibleHilbert.ofProvable (GL.provable selfBox)) hH
+  have hbA : {H, □(H 🡒 A)} ⊢ʰ[GL] □A :=
+    DeducibleHilbert.mdp (DeducibleHilbert.mdp (DeducibleHilbert.ofProvable ProvableHilbert.modalK) hbHA) hbH
+  exact DeducibleHilbert.mdp
+    (DeducibleHilbert.mdp (DeducibleHilbert.ofProvable (GL.provable step)) hbA) hH
 
 /-- Any two GL fixed points of a formula modalized in `p` are GL-equivalent — the rule
 form of `glFixedPoint_uniqueness_internal`, obtained from it by necessitation.  This is
 the form the modal-agent development uses; the paper's printed Theorem 4.3 is the
 internal one. -/
-lemma glFixedPoint_uniqueness {p : ℕ} {φ : Modal.Formula ℕ} (hmod : Modalized p φ)
-    {ψ ψ' : Modal.Formula ℕ}
-    (h₁ : Modal.GL ⊢ ψ 🡘 φ⟦diag p ψ⟧)
-    (h₂ : Modal.GL ⊢ ψ' 🡘 φ⟦diag p ψ'⟧) :
-    Modal.GL ⊢ ψ 🡘 ψ' :=
-  ⟨(glFixedPoint_uniqueness_internal hmod ψ ψ').some ⨀
-    (K_intro (K_intro h₁.some (nec h₁.some)) (K_intro h₂.some (nec h₂.some)))⟩
+lemma glFixedPoint_uniqueness {p : ℕ} {φ : Formula ℕ} (hmod : Modalized p φ)
+    {ψ ψ' : Formula ℕ}
+    (h₁ : (ψ 🡘 φ⟦diag p ψ⟧) ∈ (LogicGL : Logic ℕ))
+    (h₂ : (ψ' 🡘 φ⟦diag p ψ'⟧) ∈ (LogicGL : Logic ℕ)) :
+    (ψ 🡘 ψ') ∈ (LogicGL : Logic ℕ) :=
+  GL.mdp (glFixedPoint_uniqueness_internal hmod ψ ψ')
+    (GL.and_intro (GL.and_intro h₁ (GL.nec h₁)) (GL.and_intro h₂ (GL.nec h₂)))
 
 end uniqueness

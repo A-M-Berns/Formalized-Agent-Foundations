@@ -112,7 +112,7 @@ lemma zClosure_subset {Z : Finset V} {s : V} {S : Set V} (hS : G.IsZClosed Z S)
 lemma unblockedAnc_subset_zClosure {Z : Finset V} {s : V} (hs : s ∉ Z) :
     G.unblockedAnc Z s ⊆ G.zClosure Z s := by
   unfold Digraph.zClosure
-  rw [if_neg hs]
+  rw [ite_eq_right hs]
   intro a ha S hS
   exact hS.2 ha
 
@@ -214,7 +214,7 @@ omit [DecidableEq V] in
 unblocked descendant of `v`. -/
 lemma IsAcyclic.not_mem_unblockedDesc_of_adj (hG : G.IsAcyclic) {Z : Finset V} {p v : V}
     (hadj : G.Adj p v) : p ∉ G.unblockedDesc Z v :=
-  fun h => hG v (Relation.TransGen.tail' (h.mono fun _ _ hab => hab.1) hadj)
+  fun h => hG v (Relation.TransGen.tail' (Relation.ReflTransGen.mono (fun _ _ hab => hab.1) _ _ h) hadj)
 
 /-! ### `S_Z(A)` -/
 
@@ -235,7 +235,7 @@ lemma exists_of_mem_zClosureSet {Z A : Finset V} {u : V} (hu : u ∈ G.zClosureS
   obtain ⟨a, ha, hua⟩ := Set.mem_iUnion₂.mp hu
   refine ⟨a, ha, ?_, hua⟩
   intro h
-  simp only [Digraph.zClosure, if_pos h, Set.mem_empty_iff_false] at hua
+  simp only [Digraph.zClosure, ite_eq_left h, Set.mem_empty_iff_false] at hua
 
 /-- `S_Z(A)` is closed under unblocked ancestors of its members. -/
 lemma unblockedAnc_subset_zClosureSet {Z A : Finset V} {u : V} (hu : u ∈ G.zClosureSet Z A) :
@@ -274,7 +274,7 @@ omit [DecidableEq V] in
 /-- With `Z = pa(v)` no `A_Z(w)` for `w ∈ Z` contains `v`: that would close a cycle. -/
 lemma notMem_unblockedAnc_of_mem_parents (hG : G.IsAcyclic) {v w : V}
     (hw : w ∈ G.parents v) : v ∉ G.unblockedAnc (G.parents v) w := fun hv =>
-  hG v (Relation.TransGen.tail' (Relation.ReflTransGen.mono (fun _ _ hab => hab.1) hv)
+  hG v (Relation.TransGen.tail' (Relation.ReflTransGen.mono (fun _ _ hab => hab.1) _ _ hv)
     ((mem_parents G).mp hw))
 
 end Parents
@@ -338,19 +338,19 @@ lemma exists_zCompat_idxAt [∀ v, Nonempty (Val v)] {Z : Finset V} {z : PtOn Va
   refine ⟨fun q => if h : G.Adj q i.1 then i.2 ⟨q, (Digraph.mem_parents G).mpr h⟩ else
       if hz : q ∈ Z then z ⟨q, hz⟩ else Classical.arbitrary (Val q), fun v => ?_, ?_⟩
   · by_cases h : G.Adj v.1 i.1
-    · simp only [dif_pos h]
+    · simp only [dite_eq_left h]
       exact hi ⟨v.1, (Digraph.mem_parents G).mpr h⟩ v.2
-    · simp only [dif_neg h, dif_pos v.2]
+    · simp only [dite_eq_right h, dite_eq_left v.2]
   · refine congrArg (Sigma.mk i.1) (funext fun p => ?_)
     have h : G.Adj p.1 i.1 := (Digraph.mem_parents G).mp p.2
     show (if h : G.Adj p.1 i.1 then i.2 ⟨p.1, (Digraph.mem_parents G).mpr h⟩ else _) = i.2 p
-    rw [dif_pos h]
+    rw [dite_eq_left h]
 
 lemma exists_zCompat [∀ v, Nonempty (Val v)] {Z : Finset V} (z : PtOn Val Z) :
     ∃ x : Pt Val, ZCompat Val z x := by
   classical
   exact ⟨fun q => if h : q ∈ Z then z ⟨q, h⟩ else Classical.arbitrary (Val q),
-    fun v => by simp only [dif_pos v.2]⟩
+    fun v => by simp only [dite_eq_left v.2]⟩
 
 /-- The block of a node is never empty: some `z`-consistent index sits at every `v`. -/
 lemma exists_mem_zConsistent [∀ v, Nonempty (Val v)] {Z : Finset V} (z : PtOn Val Z) (v : V) :
@@ -388,20 +388,20 @@ lemma propTable_of_good {Z : Finset V} {x bad : Pt Val} {D : Set V} {q : V}
     {y : ParentVals G Val q} (h : ∀ p : G.parents q, p.1 ∈ D → p.1 ∉ Z → y p = x p.1) :
     propTable G Val Z x bad D ⟨q, y⟩ = x q := by
   classical
-  refine if_neg ?_
+  refine ite_eq_right ?_
   rintro ⟨-, p, hpD, hpZ, hne⟩
   exact hne (h p hpD hpZ)
 
 lemma propTable_of_not_mem {Z : Finset V} {x bad : Pt Val} {D : Set V} {q : V}
     (hq : q ∉ D) (y : ParentVals G Val q) : propTable G Val Z x bad D ⟨q, y⟩ = x q := by
   classical
-  exact if_neg fun h => hq h.1
+  exact ite_eq_right fun h => hq h.1
 
 lemma propTable_of_bad {Z : Finset V} {x bad : Pt Val} {D : Set V} {q : V}
     {y : ParentVals G Val q} (hq : q ∈ D) (p : G.parents q) (hpD : p.1 ∈ D) (hpZ : p.1 ∉ Z)
     (hne : y p ≠ x p.1) : propTable G Val Z x bad D ⟨q, y⟩ = bad q := by
   classical
-  exact if_pos ⟨hq, p, hpD, hpZ, hne⟩
+  exact ite_eq_left ⟨hq, p, hpD, hpZ, hne⟩
 
 /-- **Bad propagation.**  If every node of `D` other than the source `d` returns a bad
 value once a live parent deviates, and `X_d(ω)` already deviates, then `X_q(ω)` deviates
@@ -478,10 +478,10 @@ lemma mem_iff_mem_adj [∀ v, Nontrivial (Val v)] (hG : G.IsAcyclic) {Z : Finset
   -- the second point `β`
   have hβk : β (idxAt G Val x v) = bad v := by rw [hβ]; exact Function.update_self _ _ _
   have hβi : β (idxAt G Val x u) = bad u := by
-    rw [hβ, Function.update_of_ne hik]; exact Function.update_self _ _ _
+    rw [hβ]; exact (Function.update_of_ne hik _ _).trans (Function.update_self _ _ _)
   have hβoff : ∀ j, j ≠ idxAt G Val x u → j ≠ idxAt G Val x v → β j = α j := by
     intro j h1 h2
-    rw [hβ, Function.update_of_ne h2, Function.update_of_ne h1]
+    rw [hβ]; exact (Function.update_of_ne h2 _ _).trans (Function.update_of_ne h1 _ _)
   have hβgood : ∀ q, nodeVar hG q β = Function.update x u (bad u) q := by
     refine nodeVar_eq_of_diag hG fun q => ?_
     by_cases hqu : q = u
@@ -524,8 +524,8 @@ lemma mem_iff_mem_adj [∀ v, Nontrivial (Val v)] (hG : G.IsAcyclic) {Z : Finset
     intro q hq y
     have hqv : q ≠ v := by rintro rfl; exact hq hvD
     have h1 : (⟨q, y⟩ : bnIndex G Val) ≠ idxAt G Val x v := idx_ne_of_node_ne hqv
-    rw [hμ, Function.update_of_ne h1, hα]
-    exact propTable_of_not_mem hq y
+    rw [hμ]
+    exact (Function.update_of_ne h1 _ _).trans (by rw [hα]; exact propTable_of_not_mem hq y)
   have hμconst : ∀ q, q ∉ G.unblockedDesc Z v → nodeVar hG q μ = x q := fun q hq =>
     nodeVar_eq_of_const hG (hμoff q hq)
   have hμv : nodeVar hG v μ = bad v := by
@@ -533,13 +533,13 @@ lemma mem_iff_mem_adj [∀ v, Nontrivial (Val v)] (hG : G.IsAcyclic) {Z : Finset
       funext fun p => hμconst p.1 (hpar_v p)
     have h1 : nodeVar hG v μ = μ (idxAt G Val x v) :=
       (nodeVar_eq_idxAt hG v μ).trans (table_congr μ hcfg)
-    rw [h1, hμ, Function.update_self]
+    rw [h1, hμ]; exact Function.update_self _ _ _
   have hμbad : ∀ q ∈ G.unblockedDesc Z v, nodeVar hG q μ ≠ x q := by
     refine nodeVar_ne_of_prop hG (Z := Z) (ω := μ) (d := v) hbad ?_ ?_ ?_
     · rintro q hqD hqv y ⟨p, hpD, hpZ, hne⟩
       have h1 : (⟨q, y⟩ : bnIndex G Val) ≠ idxAt G Val x v := idx_ne_of_node_ne hqv
-      rw [hμ, Function.update_of_ne h1, hα]
-      exact propTable_of_bad hqD p hpD hpZ hne
+      rw [hμ]
+      exact (Function.update_of_ne h1 _ _).trans (by rw [hα]; exact propTable_of_bad hqD p hpD hpZ hne)
     · rw [hμv]; exact hbad v
     · exact fun q hqD hqv => G.unblockedDesc_step hqD hqv
   have hμC : μ ∉ fiber (nodesVar (Val := Val) hG Z) z := fun h =>

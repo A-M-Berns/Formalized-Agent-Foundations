@@ -9,21 +9,32 @@
   "the opponent cooperates with reference i".
 
   The concrete agents are CooperateBot, DefectBot, FairBot, and PrudentBot.
+
+  Formulas are the `ProvabilityLogic` package's `Formula ℕ` (atoms `#i`, `⊥`,
+  `🡒`, `□`; the other connectives are abbreviations).
 -/
 
 import ModalAgents.GL
+import ProvabilityLogic.Formula.Modalized
 
-open LO LO.Modal
+open Formula
 
 /-! ## Fully modalized formulas -/
 
 /-- *Modalized in atom n* (Barasz, §4): every occurrence of atom n
-appears inside a □. -/
+appears inside a □. Coincides with the development's `Formula.ModalizedIn n`
+(`modalized_iff_modalizedIn`); the paper's name is kept at the paper's definition. -/
 def Modalized (n : ℕ) : Formula ℕ → Prop
   | .atom i   => i ≠ n
-  | .falsum   => True
+  | .bot      => True
   | .imp φ ψ  => Modalized n φ ∧ Modalized n ψ
   | .box _    => True
+
+lemma modalized_iff_modalizedIn {n : ℕ} : ∀ {φ : Formula ℕ}, Modalized n φ ↔ φ.ModalizedIn n
+  | .atom _ => Iff.rfl
+  | .bot => Iff.rfl
+  | .imp _ _ => and_congr modalized_iff_modalizedIn modalized_iff_modalizedIn
+  | .box _ => Iff.rfl
 
 lemma rank0_modalized {φ : Formula ℕ} (h : Modalized 0 φ) :
     ∀ i, i ≤ 0 → Modalized i φ := by
@@ -35,7 +46,7 @@ lemma modalized_of_notMem_atoms {n : ℕ} :
   | .atom a, h => by
     simp only [Formula.atoms, Finset.mem_singleton] at h
     exact fun heq => h heq.symm
-  | .falsum, _ => trivial
+  | .bot, _ => trivial
   | .imp _ _, h => by
     simp only [Formula.atoms, Finset.mem_union, not_or] at h
     exact ⟨modalized_of_notMem_atoms h.1, modalized_of_notMem_atoms h.2⟩
@@ -44,11 +55,11 @@ lemma modalized_of_notMem_atoms {n : ℕ} :
 /-- If φ is modalized in n and every σ(k) with k ≠ n is modalized in n, then
 φ⟦σ⟧ is modalized in n. No condition on σ(n) — its content always lands under
 a □ because φ had all atom-n occurrences boxed. -/
-lemma modalized_subst {n : ℕ} {σ : Substitution ℕ}
+lemma modalized_subst {n : ℕ} {σ : Formula.Substitution ℕ ℕ}
     (hσ : ∀ k, k ≠ n → Modalized n (σ k)) :
     ∀ {φ : Formula ℕ}, Modalized n φ → Modalized n (φ⟦σ⟧)
   | .atom a, h => hσ a h
-  | .falsum, _ => trivial
+  | .bot, _ => trivial
   | .imp _ _, h => ⟨modalized_subst hσ h.1, modalized_subst hσ h.2⟩
   | .box _, _ => trivial
 
@@ -74,7 +85,9 @@ def arity : ModalAgent → ℕ
 def references : (X : ModalAgent) → Fin X.arity → ModalAgent
   | .mk _ _ r _ => r
 
-def modalized : (X : ModalAgent) → ∀ i, i ≤ X.arity → Modalized i X.formula
+/-- The modalization certificate an agent carries: every relevant atom of its formula
+is under a `□`. -/
+lemma modalized : (X : ModalAgent) → ∀ i, i ≤ X.arity → Modalized i X.formula
   | .mk _ _ _ m => m
 
 /-- Rank of a modal agent (Barasz, §4): 0 if there are no references, otherwise
@@ -101,17 +114,17 @@ lemma arity_eq_zero_of_rank_eq_zero {X : ModalAgent} (h : X.rank = 0) : X.arity 
 
 /-- Build a rank-0 agent. -/
 def mkRank0 (φ : Formula ℕ)
-    (h : Modalized 0 φ := by simp [Modalized]) : ModalAgent :=
+    (h : Modalized 0 φ := by simp [_root_.Modalized]) : ModalAgent :=
   .mk φ 0 Fin.elim0 (rank0_modalized h)
 
 @[simp] lemma formula_mkRank0 (φ : Formula ℕ)
-    (h : Modalized 0 φ := by simp [Modalized]) : (mkRank0 φ h).formula = φ := rfl
+    (h : Modalized 0 φ := by simp [_root_.Modalized]) : (mkRank0 φ h).formula = φ := rfl
 
 @[simp] lemma arity_mkRank0 (φ : Formula ℕ)
-    (h : Modalized 0 φ := by simp [Modalized]) : (mkRank0 φ h).arity = 0 := rfl
+    (h : Modalized 0 φ := by simp [_root_.Modalized]) : (mkRank0 φ h).arity = 0 := rfl
 
 @[simp] lemma rank_mkRank0 (φ : Formula ℕ)
-    (h : Modalized 0 φ := by simp [Modalized]) : (mkRank0 φ h).rank = 0 := rfl
+    (h : Modalized 0 φ := by simp [_root_.Modalized]) : (mkRank0 φ h).rank = 0 := rfl
 
 end ModalAgent
 
@@ -124,14 +137,14 @@ def cooperateBot : ModalAgent := .mkRank0 ⊤
 def defectBot : ModalAgent := .mkRank0 ⊥
 
 /-- FairBot: cooperates iff it can prove the opponent cooperates, φ = □(atom 0) (Barasz, §3, Alg 4). -/
-def fairBot : ModalAgent := .mkRank0 (□(.atom 0 : Formula ℕ))
+def fairBot : ModalAgent := .mkRank0 (□(#0 : Formula ℕ))
 
 /-- PrudentBot cooperates with `Y` iff PA proves that `Y` cooperates with
 PrudentBot and PA+1 proves that `Y` does not cooperate with DefectBot
 (Barasz, §3, Alg 5). In GL, the PA+1 condition is represented as
 `□(∼□⊥ 🡒 ψ)`. -/
 def prudentBot : ModalAgent :=
-  .mk (□(.atom 0 : Formula ℕ) ⋏ □(∼□⊥ 🡒 ∼(.atom 1 : Formula ℕ)))
+  .mk (□(#0 : Formula ℕ) ⋏ □(∼□⊥ 🡒 ∼(#1 : Formula ℕ)))
     1 (fun _ => defectBot)
     (fun i hi => by
-      rcases Nat.le_one_iff_eq_zero_or_eq_one.mp hi with rfl | rfl <;> simp [Modalized])
+      rcases Nat.le_one_iff_eq_zero_or_eq_one.mp hi with rfl | rfl <;> simp [_root_.Modalized])

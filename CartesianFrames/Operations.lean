@@ -246,11 +246,11 @@ private lemma exists_partitionSections_selecting {α : Type u} (s : Setoid α) :
       Quotient.mk s (if c = Quotient.mk s a then a else c.out) = c := by
     intro a c
     by_cases hc : c = Quotient.mk s a
-    · rw [if_pos hc, hc]
-    · rw [if_neg hc]
+    · rw [ite_eq_left hc, hc]
+    · rw [ite_eq_right hc]
       exact Quotient.out_eq c
   exact ⟨fun a => ⟨fun c => if c = Quotient.mk s a then a else c.out, key a⟩,
-    fun a => if_pos rfl⟩
+    fun a => ite_eq_left rfl⟩
 
 /-- Externalizing produces multiplicative subagents — Claim 34/45(1) for `External^B`.
 The externalizing witness is `(A/B, B, E)`; the paper's `(A/B × B, E, ⋄)` presentation

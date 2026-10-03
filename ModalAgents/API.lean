@@ -17,10 +17,11 @@ Its main vocabulary is `ModalAgent`, `Modalized`, `outcome`, `Cooperates`, `Defe
 `open scoped ModalAgent`), the four concrete bots, the fixed-point interface, the
 cooperation theorems, and the arithmetic lifts.
 
-The recursive `F_of`/substitution development and most of `GlFixedPointBridge` are proof
-infrastructure, not a recommended dependency surface.  `GlFixedPointBridge.toSeq` remains
-a supported interoperability boundary because it occurs in the arithmetic-lift results;
-the vendored provability-logic implementation behind it is not thereby designated as
+The recursive `F_of`/substitution development is proof infrastructure, not a recommended
+dependency surface.  Formulas and `GL`-provability are the `ProvabilityLogic`
+package's own (`Formula ℕ`, membership in `LogicGL`), and its `Realization` and
+`Formula.interpret` are the reading of a modal formula as arithmetic that the lift
+results are stated in; that package is dependency code, not thereby designated as
 ModalAgents API.
 
 `Defects X Y` means that GL does not prove cooperation.  It is strictly weaker than
@@ -40,7 +41,8 @@ The paper's §4 definitions quantify over *arbitrary* agents — formulas of `PA
 * `cliqueBot` and `cliqueBot_not_modalAgent` — the CliqueBot separation (Corollary 4.9);
 * from `ModalAgents.Arithmetic`: `lob_theorem` (Theorem 1.1),
   `arithmetic_modal_substitution` (Lemma 4.5) and `arithmetic_fixedPoint_uniqueness`
-  (Corollary 4.4), with `arithInterp` and `Realization.update` as their statement surface.
+  (Corollary 4.4), with `Formula.interpret` and `Realization.update` as their statement
+  surface.
 
 Two assumptions a client must supply, both stated rather than hidden:
 

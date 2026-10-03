@@ -23,8 +23,8 @@ consumes one pinned, audited, kernel-checked implementation.
 
 **FAF has not re-formalized Shannon information theory.** The mathematics here is the
 [PFR project](https://github.com/teorth/pfr)'s (Tao et al.), vendored under Apache-2.0 at
-commit `01c9b666945eaf73b3f7d8b20ffe003f8640e630`. What FAF contributes is the vendoring,
-two compatibility patches, this consumer surface, the scope analysis, the tests, and one
+commit `65691129be2d8ca3e164c0822d95a456b88ee259`, byte-identical to upstream. What FAF
+contributes is the vendoring, this consumer surface, the scope analysis, the tests, and one
 FAF-authored generalization layer that restates part of the vendored corpus under a weaker
 finiteness hypothesis — inventoried below, and no new definitions.
 
@@ -283,7 +283,8 @@ an infinite-entropy variable is silently `0`).
 
 ## Vendoring and update policy
 
-Provenance, the derived module closure, and both patches: `vendor/PROVENANCE.md`.
+Provenance, the derived module closure, and the patch policy (no patch is carried at the
+current pin): `vendor/PROVENANCE.md`.
 Attribution and modification notice: `vendor/NOTICE.md`. Licence: `vendor/LICENSE-PFR`.
 
 ```sh
@@ -309,7 +310,8 @@ re-check `SCOPE.md`, since a newer upstream may have relaxed hypotheses.
   `Paper node:` annotations and per-paper regeneration procedures, and a non-paper library
   has no place in it. The enforcement is the same; the bookkeeping is kept where it belongs.
 - Distinguish carefully when reading: **mathematics inherited from PFR** (all of `PFR/`),
-  **compatibility patches** (two, in `vendor/patches/`), **new FAF lemmas** (all of
+  **compatibility patches** (none at the current pin; any would live in `vendor/patches/`),
+  **new FAF lemmas** (all of
   `ShannonInformation/FiniteEntropy/`, inventoried above), and **what is still only
   desired** — the not-restated tail named above, and the consumer migration (Phase 4b of
   `Condensation/notes/finite-range-generalization-plan.md`: `Condensation`'s `RVModel` still

@@ -60,7 +60,7 @@ only `𝗥₀`.
 
 namespace LogicalInduction
 
-open LO LO.FirstOrder LO.FirstOrder.Arithmetic LO.Entailment
+open FFL FFL.FirstOrder FFL.FirstOrder.Arithmetic FFL.Entailment
 
 section Representation
 
@@ -115,7 +115,7 @@ Kind `C` (composition) over `eval_code_iff`. -/
 private lemma models_repr_sentence {M : Type*} [ORingStructure M] [M↓[ℒₒᵣ] ⊧* 𝗣𝗔⁻]
     {c : Code 1} {g : List.Vector ℕ 1 →. ℕ} (hc : c.eval g) {n y : ℕ}
     (hy : y ∈ g (List.Vector.ofFn ![n])) :
-    M↓[ℒₒᵣ] ⊧ (∀⁰ (Semiformula.subst (swapArgs (code c)) ![‘↑n’, #0] 🡘
+    M↓[ℒₒᵣ] ⊧ (∀¹ (Semiformula.subst (swapArgs (code c)) ![‘↑n’, #0] 🡘
       (“#0 = ↑y” : ArithmeticSemisentence 1))) := by
   rw [subst_swapArgs]
   simp only [models_iff, Semiformula.eval_all, LogicalConnective.HomClass.map_iff,
@@ -123,7 +123,7 @@ private lemma models_repr_sentence {M : Type*} [ORingStructure M] [M↓[ℒₒ�
   intro x
   have h := eval_code_iff (M := M) hc hy x
   simpa [Matrix.comp_vecCons', Function.comp_def, Matrix.constant_eq_singleton,
-    Matrix.empty_eq, Structure.numeral_eq_numeral] using h
+    Matrix.empty_eq, Tarski.Structure.numeral_eq_numeral] using h
 
 /-- **Every `ℕ`-sound extension of `𝗣𝗔⁻` represents computations.**
 
@@ -147,7 +147,7 @@ Kind `P` (proved).  Provenance: (a) derived in-project; (b) Foundation citations
 `ModelsTheory.of_provably_subtheory`. -/
 lemma representsComputations_of_peanoMinus (U : ArithmeticTheory)
     [𝗣𝗔⁻ ⪯ U] [ℕ↓[ℒₒᵣ] ⊧* U] : RepresentsComputations U := by
-  haveI : 𝗘𝗤 ℒₒᵣ ⪯ U := Entailment.WeakerThan.trans (𝓣 := 𝗣𝗔⁻) inferInstance inferInstance
+  have : 𝗘𝗤 ℒₒᵣ ⪯ U := Entailment.WeakerThan.trans (𝓣 := 𝗣𝗔⁻) inferInstance inferInstance
   refine ⟨fun f hf => ?_⟩
   have hcomp : Computable fun v : List.Vector ℕ 1 => f (v.get 0) :=
     hf.comp (Primrec.to_comp <| Primrec.vector_get.comp Primrec.id (Primrec.const (0 : Fin 1)))
@@ -157,7 +157,7 @@ lemma representsComputations_of_peanoMinus (U : ArithmeticTheory)
   constructor
   · rintro rfl
     refine Arithmetic.complete.{0} U _ fun M _ _ => ?_
-    haveI : M↓[ℒₒᵣ] ⊧* 𝗣𝗔⁻ := ModelsTheory.of_provably_subtheory M 𝗣𝗔⁻ U inferInstance
+    have : M↓[ℒₒᵣ] ⊧* 𝗣𝗔⁻ := ModelsTheory.of_provably_subtheory M 𝗣𝗔⁻ U inferInstance
     exact models_repr_sentence hc (by simp)
   · intro h
     have hN := consequence_iff.mp (Theory.Proof.sound h) ℕ inferInstance
@@ -169,7 +169,7 @@ lemma representsComputations_of_peanoMinus (U : ArithmeticTheory)
     have h1 := hN (f n)
     have h3 : Semiformula.Evalb (M := ℕ) ![f n, n] (code c) ↔ f n = y := by
       simpa [Matrix.comp_vecCons', Function.comp_def, Matrix.constant_eq_singleton,
-        Matrix.empty_eq, Structure.numeral_eq_numeral] using h1
+        Matrix.empty_eq, Tarski.Structure.numeral_eq_numeral] using h1
     exact (h3.mp h2).symm
 
 end Representation

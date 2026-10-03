@@ -1,3 +1,4 @@
+import Foundation.FirstOrder.Incompleteness.Definability
 import LogicalInduction.Construction.Quotation.ExactProduct
 import LogicalInduction.Construction.Paper.Market
 import LogicalInduction.Construction.Quotation.RepresentedWeight
@@ -36,7 +37,7 @@ binders, not client exercises; `PaperLUVSeq` itself is documented consumer inter
 
 namespace LogicalInduction
 
-open LO LO.FirstOrder LO.FirstOrder.Arithmetic LO.Entailment
+open FFL FFL.FirstOrder FFL.FirstOrder.Arithmetic FFL.Entailment
 open Filter Topology
 
 variable (T : ArithmeticTheory)

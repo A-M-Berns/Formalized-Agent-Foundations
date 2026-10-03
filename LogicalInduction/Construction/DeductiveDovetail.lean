@@ -234,12 +234,12 @@ lemma dovetailStage_eq_toFinset (atom : ℕ → Sentence) (code : Code) (k : ℕ
   simp only [List.mem_toFinset, List.mem_filterMap, List.mem_range]
   constructor
   · rintro ⟨e, ⟨he, hsome⟩, rfl⟩
-    exact ⟨e, he, by rw [if_pos hsome]⟩
+    exact ⟨e, he, by rw [ite_eq_left hsome]⟩
   · rintro ⟨e, he, hcond⟩
     by_cases hs : (Nat.Partrec.Code.evaln k code e).isSome = true
-    · rw [if_pos hs] at hcond
+    · rw [ite_eq_left hs] at hcond
       exact ⟨e, ⟨he, hs⟩, Option.some_inj.mp hcond⟩
-    · rw [if_neg hs] at hcond
+    · rw [ite_eq_right hs] at hcond
       exact absurd hcond (by simp)
 
 /-- The dovetailed stage encoder is primitive recursive whenever the naming map is. -/

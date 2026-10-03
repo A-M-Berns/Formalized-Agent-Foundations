@@ -124,7 +124,7 @@ theorem derivedOn_iff [Nonempty β] {C : Set (Pt Ω)} (X : Pt Ω → α) (Y : Pt
     intro ω hω
     have hx : ∃ ω' ∈ C, X ω' = X ω := ⟨ω, hω, rfl⟩
     show Y ω = if hx : ∃ ω' ∈ C, X ω' = X ω then Y hx.choose else Classical.arbitrary β
-    rw [dif_pos hx]
+    rw [dite_eq_left hx]
     obtain ⟨hmem, heq⟩ := hx.choose_spec
     exact (h _ hmem _ hω heq).symm
 

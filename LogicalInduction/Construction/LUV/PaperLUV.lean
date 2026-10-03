@@ -49,8 +49,8 @@ indexed, as the README records; efficiency belongs to the separate sequence laye
 
 namespace LogicalInduction
 
-open LO LO.FirstOrder LO.FirstOrder.Arithmetic LO.Entailment
-open scoped LO.FirstOrder.Arithmetic
+open FFL FFL.FirstOrder FFL.FirstOrder.Arithmetic FFL.Entailment
+open scoped FFL.FirstOrder.Arithmetic
 
 /-! ## The rational value code -/
 
@@ -86,8 +86,8 @@ it. The object-level value is named by a numerator/positive-denominator pair cod
 Paper node: `def:luv` -/
 structure PaperLUV (T : ArithmeticTheory) [T.Δ₁] where
   formula : ArithmeticSemisentence 1
-  unique : T ⊢ ∃⁰! formula
-  unit : T ⊢ ∀⁰ (formula 🡒 paperRatUnitDef)
+  unique : T ⊢ ∃¹! formula
+  unit : T ⊢ ∀¹ (formula 🡒 paperRatUnitDef)
 
 namespace PaperLUV
 
@@ -99,7 +99,7 @@ variable {T : ArithmeticTheory} [T.Δ₁]
 is greater than the represented external rational. No out-of-range threshold is
 replaced by a propositional constant. -/
 def thresholdFormula (X : PaperLUV T) (r : ℚ) : ArithmeticSentence :=
-  ∀⁰ (X.formula 🡒 paperRatGtDef r)
+  ∀¹ (X.formula 🡒 paperRatGtDef r)
 
 /-- The corresponding ordinary FAF LUV, obtained only by prime decomposition. -/
 def toLUV (X : PaperLUV T) : LUV where
@@ -125,7 +125,7 @@ code is itself the order fact. -/
 lemma threshold_provable_of_neg [𝗜𝚺₁ ⪯ T]
     (X : PaperLUV T) (r : ℚ) (hr : r < 0) :
     T ⊢ X.thresholdFormula r := by
-  apply LO.FirstOrder.Arithmetic.complete T
+  apply FFL.FirstOrder.Arithmetic.complete T
   intro (M : Type) _ hM
   letI : 𝗜𝗢𝗽𝗲𝗻 ⪯ T :=
     Entailment.WeakerThan.trans (𝓣 := 𝗜𝚺₁) inferInstance inferInstance
@@ -163,7 +163,7 @@ multiplication. -/
 lemma threshold_refutable_of_one_lt [𝗜𝚺₁ ⪯ T]
     (X : PaperLUV T) (r : ℚ) (hr : 1 < r) :
     T ⊢ ∼X.thresholdFormula r := by
-  apply LO.FirstOrder.Arithmetic.complete T
+  apply FFL.FirstOrder.Arithmetic.complete T
   intro (M : Type) _ hM
   letI : 𝗜𝗢𝗽𝗲𝗻 ⪯ T :=
     Entailment.WeakerThan.trans (𝓣 := 𝗜𝚺₁) inferInstance inferInstance
@@ -181,7 +181,7 @@ lemma threshold_refutable_of_one_lt [𝗜𝚺₁ ⪯ T]
   obtain ⟨c, d, hpair', hd, hcd⟩ := by
     simpa [paperRatGtDef, hnonneg] using hgt
   have hac : a = c ∧ b = d :=
-    LO.FirstOrder.Arithmetic.pair_ext_iff.mp (hpair.symm.trans hpair')
+    FFL.FirstOrder.Arithmetic.pair_ext_iff.mp (hpair.symm.trans hpair')
   rcases hac with ⟨rfl, rfl⟩
   have hden : (r.den : M) < (r.num.natAbs : M) := by
     exact_mod_cast den_lt_numNatAbs_of_one_lt hr
@@ -191,7 +191,7 @@ lemma threshold_refutable_of_one_lt [𝗜𝚺₁ ⪯ T]
     mul_le_mul_of_nonneg_right hab (by positivity)
   have hirr : (r.num.natAbs : M) * b < (r.num.natAbs : M) * b := calc
     (r.num.natAbs : M) * b < a * (r.den : M) := by
-      simpa [LO.FirstOrder.Arithmetic.numeral_eq_natCast] using hcd
+      simpa [FFL.FirstOrder.Arithmetic.numeral_eq_natCast] using hcd
     _ ≤ b * (r.den : M) := hamul
     _ = (r.den : M) * b := by ac_rfl
     _ < (r.num.natAbs : M) * b := hdenmul
@@ -202,7 +202,7 @@ object level. -/
 lemma threshold_downward_provable [𝗜𝚺₁ ⪯ T]
     (X : PaperLUV T) (r s : ℚ) (hrs : r < s) :
     T ⊢ (X.thresholdFormula s 🡒 X.thresholdFormula r) := by
-  apply LO.FirstOrder.Arithmetic.complete T
+  apply FFL.FirstOrder.Arithmetic.complete T
   intro (M : Type) _ hM
   letI : 𝗜𝗢𝗽𝗲𝗻 ⪯ T :=
     Entailment.WeakerThan.trans (𝓣 := 𝗜𝚺₁) inferInstance inferInstance
@@ -215,7 +215,7 @@ lemma threshold_downward_provable [𝗜𝚺₁ ⪯ T]
   · obtain ⟨a, b, hpair, hb, hab⟩ := by
       simpa [paperRatUnitDef] using hunit q hq
     simpa [paperRatGtDef, hr, paperRatDef] using
-      (show ∃ a b, q = LO.FirstOrder.Arithmetic.pair a b ∧ 0 < b from
+      (show ∃ a b, q = FFL.FirstOrder.Arithmetic.pair a b ∧ 0 < b from
         ⟨a, b, hpair, hb⟩)
   · have hr0 : 0 ≤ r := le_of_not_gt hr
     have hs0 : ¬s < 0 := not_lt.mpr (hr0.trans hrs.le)
@@ -230,7 +230,7 @@ lemma threshold_downward_provable [𝗜𝚺₁ ⪯ T]
     have h1 := mul_lt_mul_of_pos_right hcross hd
     have h2 := mul_lt_mul_of_pos_right
       (show (s.num.natAbs : M) * d < c * (s.den : M) by
-        simpa [LO.FirstOrder.Arithmetic.numeral_eq_natCast] using hsd)
+        simpa [FFL.FirstOrder.Arithmetic.numeral_eq_natCast] using hsd)
       hrden
     have hmul :
         ((r.num.natAbs : M) * d) * (s.den : M) <
@@ -243,8 +243,8 @@ lemma threshold_downward_provable [𝗜𝚺₁ ⪯ T]
       _ = (c * (r.den : M)) * (s.den : M) := by ac_rfl
     have hrd : (r.num.natAbs : M) * d < c * (r.den : M) :=
       lt_of_mul_lt_mul_right hmul hsden.le
-    simpa [paperRatGtDef, hr, LO.FirstOrder.Arithmetic.numeral_eq_natCast] using
-      (show ∃ c d, q = LO.FirstOrder.Arithmetic.pair c d ∧ 0 < d ∧
+    simpa [paperRatGtDef, hr, FFL.FirstOrder.Arithmetic.numeral_eq_natCast] using
+      (show ∃ c d, q = FFL.FirstOrder.Arithmetic.pair c d ∧ 0 < d ∧
           (r.num.natAbs : M) * d < c * (r.den : M) from
         ⟨c, d, hpair, hd, hrd⟩)
 

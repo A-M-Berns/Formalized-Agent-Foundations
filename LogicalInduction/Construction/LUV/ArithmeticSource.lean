@@ -81,7 +81,7 @@ structure would need a bracket-counting scan over the payload; no consumer here 
 
 namespace LogicalInduction
 
-open LO LO.FirstOrder LO.FirstOrder.Arithmetic
+open FFL FFL.FirstOrder FFL.FirstOrder.Arithmetic
 open Nat.Partrec (Code)
 
 /-! ## Negation on Foundation codes -/
@@ -123,7 +123,7 @@ lemma negFormulaCode_spec {k : ℕ} (φ : ArithmeticSemiformula ℕ k) :
       rw [negFormulaCode]
       simp only [Nat.unpair_pair]
       norm_num
-      simp only [← LO.FirstOrder.Semiformula.encode_eq_toNat]
+      simp only [← FFL.FirstOrder.Semiformula.encode_eq_toNat]
       rw [ihφ, ihψ]
       rfl
   | or φ ψ ihφ ihψ =>
@@ -131,7 +131,7 @@ lemma negFormulaCode_spec {k : ℕ} (φ : ArithmeticSemiformula ℕ k) :
       rw [negFormulaCode]
       simp only [Nat.unpair_pair]
       norm_num
-      simp only [← LO.FirstOrder.Semiformula.encode_eq_toNat]
+      simp only [← FFL.FirstOrder.Semiformula.encode_eq_toNat]
       rw [ihφ, ihψ]
       rfl
   | all φ ih =>
@@ -139,7 +139,7 @@ lemma negFormulaCode_spec {k : ℕ} (φ : ArithmeticSemiformula ℕ k) :
       rw [negFormulaCode]
       simp only [Nat.unpair_pair]
       norm_num
-      simp only [← LO.FirstOrder.Semiformula.encode_eq_toNat]
+      simp only [← FFL.FirstOrder.Semiformula.encode_eq_toNat]
       rw [ih]
       rfl
   | exs φ ih =>
@@ -147,7 +147,7 @@ lemma negFormulaCode_spec {k : ℕ} (φ : ArithmeticSemiformula ℕ k) :
       rw [negFormulaCode]
       simp only [Nat.unpair_pair]
       norm_num
-      simp only [← LO.FirstOrder.Semiformula.encode_eq_toNat]
+      simp only [← FFL.FirstOrder.Semiformula.encode_eq_toNat]
       rw [ih]
       rfl
 
@@ -211,7 +211,7 @@ def ofNNF {k : ℕ} (φ : ArithmeticSemiformula ℕ k) : ArithSource k := .leaf 
 /-- The metalevel semantics of a source, in a structure for `ℒₒᵣ`.  The `iff` clause is
 a genuine `↔` and the `imp` clause a genuine `→`; nothing here is defined through the
 normal form, so `eval_compile` below has content. -/
-def SourceEval {M : Type*} [Structure ℒₒᵣ M] :
+def SourceEval {M : Type*} [Tarski.Structure ℒₒᵣ M] :
     ∀ {k : ℕ}, (Fin k → M) → (ℕ → M) → ArithSource k → Prop
   | _, e, ε, .leaf φ => Semiformula.Eval e ε φ
   | _, e, ε, .and a b => SourceEval e ε a ∧ SourceEval e ε b
@@ -227,7 +227,7 @@ to holds in a structure exactly when the source does under its own metalevel rea
 
 *Proof kind:* `P` proved.  *Provenance:* (a) derived in-project, on Foundation's
 `Semiformula.Eval` homomorphism lemmas, provenance (b). -/
-lemma eval_compile {M : Type*} [Structure ℒₒᵣ M] {k : ℕ} (ε : ℕ → M)
+lemma eval_compile {M : Type*} [Tarski.Structure ℒₒᵣ M] {k : ℕ} (ε : ℕ → M)
     (s : ArithSource k) (e : Fin k → M) :
     Semiformula.Eval e ε (compile s) ↔ SourceEval e ε s := by
   induction s with
@@ -972,13 +972,13 @@ lemma encodeArithmeticTermSymbols_numeralConst {k : ℕ} (v : ℕ) :
       numeralEnc v := by
   by_cases h : v = 0
   · subst h; rfl
-  · rw [numeralEnc, if_neg h, encodeArithmeticTermSymbols_numeral v h]
+  · rw [numeralEnc, ite_eq_right h, encodeArithmeticTermSymbols_numeral v h]
 
 private lemma enc_paperRatGtDef (r : ℚ) (hr : ¬ r < 0) :
     encodeArithmeticFormulaSymbols
       ((paperRatGtDef r : ArithmeticSemisentence 1) : ArithmeticSemiformula ℕ 1) =
       ratGtPre ++ numeralEnc r.num.natAbs ++ ratGtMid ++ numeralEnc r.den := by
-  rw [paperRatGtDef, if_neg hr,
+  rw [paperRatGtDef, ite_eq_right hr,
     ← encodeArithmeticTermSymbols_numeralConst (k := 3) r.num.natAbs,
     ← encodeArithmeticTermSymbols_numeralConst (k := 3) r.den]
   simp [pairDef, encodeArithmeticFormulaSymbols, encodeArithmeticTermSymbols,
@@ -1001,8 +1001,8 @@ lemma numeralEnc_polySegStream {cv : Code} {v : ℕ → ℕ} (hv : PolyFueled cv
     (PolySegStream.repeatTag 7 hpred).append (PolySegStream.repeatTag 6 hv)
   refine ((PolySegStream.constList [5]).ifZero hpos hv).of_eq fun n => ?_
   by_cases h : v n = 0
-  · rw [if_pos h, numeralEnc, if_pos h]
-  · rw [if_neg h, numeralEnc, if_neg h]
+  · rw [ite_eq_left h, numeralEnc, ite_eq_left h]
+  · rw [ite_eq_right h, numeralEnc, ite_eq_right h]
 
 /-- The threshold rational named by a `RpnThresholdCodeSeq` query index `⟨n, ⟨k, i⟩⟩`. -/
 def queryRat (m : ℕ) : ℚ :=
@@ -1025,9 +1025,9 @@ lemma queryNum_polyFueled :
     (((PolyFueled.const 0).pair numPF).pair hk)).of_eq fun m => ?_⟩
   simp only [Nat.unpair_pair, ifzSelFn]
   by_cases hk0 : m.unpair.2.unpair.1 = 0
-  · rw [if_pos hk0, queryRat, hk0]
+  · rw [ite_eq_left hk0, queryRat, hk0]
     simp
-  · rw [if_neg hk0, queryRat]
+  · rw [ite_eq_right hk0, queryRat]
     have hg : 0 < Nat.gcd m.unpair.2.unpair.2 m.unpair.2.unpair.1 :=
       Nat.gcd_pos_of_pos_right _ (Nat.pos_of_ne_zero hk0)
     have hg1 : (Nat.gcd m.unpair.2.unpair.2 m.unpair.2.unpair.1).pred + 1 =
@@ -1048,9 +1048,9 @@ lemma queryDen_polyFueled :
     (((PolyFueled.const 1).pair denPF).pair hk)).of_eq fun m => ?_⟩
   simp only [Nat.unpair_pair, ifzSelFn]
   by_cases hk0 : m.unpair.2.unpair.1 = 0
-  · rw [if_pos hk0, queryRat, hk0]
+  · rw [ite_eq_left hk0, queryRat, hk0]
     simp
-  · rw [if_neg hk0, queryRat]
+  · rw [ite_eq_right hk0, queryRat]
     have hg : 0 < Nat.gcd m.unpair.2.unpair.2 m.unpair.2.unpair.1 :=
       Nat.gcd_pos_of_pos_right _ (Nat.pos_of_ne_zero hk0)
     have hg1 : (Nat.gcd m.unpair.2.unpair.2 m.unpair.2.unpair.1).pred + 1 =
@@ -1277,7 +1277,7 @@ def invPaperLUV (T : ArithmeticTheory) [T.Δ₁] [𝗜𝚺₁ ⪯ T]
     PaperLUV T where
   formula := invFormula d
   unique := by
-    apply LO.FirstOrder.Arithmetic.complete T
+    apply FFL.FirstOrder.Arithmetic.complete T
     intro (M : Type) _ hM
     letI : 𝗜𝗢𝗽𝗲𝗻 ⪯ T :=
       Entailment.WeakerThan.trans (𝓣 := 𝗜𝚺₁) inferInstance inferInstance
@@ -1288,7 +1288,7 @@ def invPaperLUV (T : ArithmeticTheory) [T.Δ₁] [𝗜𝚺₁ ⪯ T]
     · simp [h1, Nat.not_le.mpr h1]
     · simp [Nat.not_lt.mpr h1, h1]
   unit := by
-    apply LO.FirstOrder.Arithmetic.complete T
+    apply FFL.FirstOrder.Arithmetic.complete T
     intro (M : Type) _ hM
     letI : 𝗜𝗢𝗽𝗲𝗻 ⪯ T :=
       Entailment.WeakerThan.trans (𝓣 := 𝗜𝚺₁) inferInstance inferInstance
@@ -1702,7 +1702,7 @@ it changes nothing about which value a defining formula names, and multiplies th
 the Foundation object naming it by `2^Ω(n)`.
 
 *Proof kind:* `P` proved. -/
-lemma iffChain_odd_valid {M : Type*} [Structure ℒₒᵣ M] (x : M) (n : ℕ) :
+lemma iffChain_odd_valid {M : Type*} [Tarski.Structure ℒₒᵣ M] (x : M) (n : ℕ) :
     Semiformula.Evalb (M := M) ![x] (iffChain (2 * n + 1)) := by
   have key : ∀ m : ℕ,
       (Semiformula.Evalb (M := M) ![x] (iffChain (2 * m)) ↔
@@ -1741,7 +1741,7 @@ def invPaperLUVWith (T : ArithmeticTheory) [T.Δ₁] [𝗜𝚺₁ ⪯ T]
     PaperLUV T where
   formula := invFormula d ⋏ ψ
   unique := by
-    apply LO.FirstOrder.Arithmetic.complete T
+    apply FFL.FirstOrder.Arithmetic.complete T
     intro (M : Type) _ hM
     letI : 𝗜𝗢𝗽𝗲𝗻 ⪯ T :=
       Entailment.WeakerThan.trans (𝓣 := 𝗜𝚺₁) inferInstance inferInstance
@@ -1752,7 +1752,7 @@ def invPaperLUVWith (T : ArithmeticTheory) [T.Δ₁] [𝗜𝚺₁ ⪯ T]
     · simp [h1, Nat.not_le.mpr h1]
     · simp [Nat.not_lt.mpr h1, h1]
   unit := by
-    apply LO.FirstOrder.Arithmetic.complete T
+    apply FFL.FirstOrder.Arithmetic.complete T
     intro (M : Type) _ hM
     letI : 𝗜𝗢𝗽𝗲𝗻 ⪯ T :=
       Entailment.WeakerThan.trans (𝓣 := 𝗜𝚺₁) inferInstance inferInstance

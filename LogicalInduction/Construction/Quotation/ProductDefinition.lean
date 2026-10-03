@@ -98,7 +98,7 @@ schema is stated over.
 
 namespace LogicalInduction
 
-open LO LO.Propositional LO.FirstOrder LO.FirstOrder.Arithmetic LO.Entailment
+open FFL FFL.Propositional FFL.FirstOrder FFL.FirstOrder.Arithmetic FFL.Entailment
 open Filter Topology
 
 /-! ## The fresh product atoms -/
@@ -271,7 +271,7 @@ lemma holds_productDef_pos {X W : ℕ → LUV} {v : PCWorld}
     v.Holds (productAtom n r) := by
   have h := holds_productDefSentence hv
     (Nat.pair n (Nat.pair 0 (Nat.pair (Encodable.encode r) (Nat.pair zs zt))))
-  rw [productDefSentence_pair, productSchemaInstance, if_pos rfl, if_pos hst] at h
+  rw [productDefSentence_pair, productSchemaInstance, ite_eq_left rfl, ite_eq_left hst] at h
   exact h ⟨hX, hW⟩
 
 lemma not_holds_productDef_neg {X W : ℕ → LUV} {v : PCWorld}
@@ -283,7 +283,7 @@ lemma not_holds_productDef_neg {X W : ℕ → LUV} {v : PCWorld}
   have h := holds_productDefSentence hv
     (Nat.pair n (Nat.pair 1 (Nat.pair (Encodable.encode r) (Nat.pair zs zt))))
   rw [productDefSentence_pair, productSchemaInstance,
-    if_neg (by decide : ¬ (1 : ℕ) = 0), if_pos rfl, if_pos hst] at h
+    ite_eq_right (by decide : ¬ (1 : ℕ) = 0), ite_eq_left rfl, ite_eq_left hst] at h
   intro hcon
   rcases h hcon with hl | hr
   · exact hX hl
@@ -295,8 +295,8 @@ lemma holds_productDef_below {X W : ℕ → LUV} {v : PCWorld}
   have h := holds_productDefSentence hv
     (Nat.pair n (Nat.pair 2 (Nat.pair (Encodable.encode r) (Nat.pair 0 0))))
   rw [productDefSentence_pair, productSchemaInstance,
-    if_neg (by decide : ¬ (2 : ℕ) = 0), if_neg (by decide : ¬ (2 : ℕ) = 1),
-    if_pos hr] at h
+    ite_eq_right (by decide : ¬ (2 : ℕ) = 0), ite_eq_right (by decide : ¬ (2 : ℕ) = 1),
+    ite_eq_left hr] at h
   exact h
 
 end
@@ -422,14 +422,14 @@ attribute [local irreducible] Nat.sqrt
 lemma productExtensionWorld_agree (X W : ℕ → LUV) (v₀ : PCWorld) {a : ℕ}
     (ha : a.unpair.1 ≠ productTag) :
     (productExtensionWorld X W v₀) a ↔ v₀ a := by
-  simp only [productExtensionWorld, if_neg ha]
+  simp only [productExtensionWorld, ite_eq_right ha]
 
 lemma productExtensionWorld_productAtom (X W : ℕ → LUV) (v₀ : PCWorld) (n : ℕ) (r : ℚ) :
     (productExtensionWorld X W v₀).Holds (productAtom n r) ↔
       ProductAtomTruth X W v₀ n r := by
   show (productExtensionWorld X W v₀)
     (Nat.pair productTag (Nat.pair n (Encodable.encode r))) ↔ _
-  simp only [productExtensionWorld, Nat.unpair_pair, decodedQuotationRat_encode, if_true]
+  simp only [productExtensionWorld, Nat.unpair_pair, decodedQuotationRat_encode, ite_true]
 
 end
 

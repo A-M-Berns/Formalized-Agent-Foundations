@@ -57,7 +57,7 @@ derivability; semantics enters nowhere but verification.
 
 namespace LogicalInduction
 
-open LO LO.FirstOrder LO.FirstOrder.Arithmetic LO.Entailment
+open FFL FFL.FirstOrder FFL.FirstOrder.Arithmetic FFL.Entailment
 
 /-! ## The paper's standing assumption -/
 
@@ -88,19 +88,22 @@ narrowed by the shift. -/
 class RepresentsComputations (T : ArithmeticTheory) : Prop where
   repr : ∀ f : ℕ → ℕ, Computable f → ∃ γ : ArithmeticSemisentence 2,
     ∀ n y : ℕ, y = f n ↔
-      T ⊢ (∀⁰ (Semiformula.subst γ ![‘↑n’, #0] 🡘 (“#0 = ↑y” : ArithmeticSemisentence 1)))
+      T ⊢ (∀¹ (Semiformula.subst γ ![‘↑n’, #0] 🡘 (“#0 = ↑y” : ArithmeticSemisentence 1)))
 
 /-! ## The two literals over a represented formula
 
 Both directions are derived from the interface alone, under `[𝗥₀ ⪯ T]` for the numeral
 apparatus.  Neither uses soundness or any semantic hypothesis. -/
 
-/-- Distinct numerals are provably distinct in any theory extending `𝗥₀`.
+/-- Distinct numerals are provably distinct in any theory extending `𝗥₀`: `↑n ≠ ↑m` is a
+true `Σ₁` sentence, and extensions of `𝗥₀` prove every true `Σ₁` sentence.
 
-Kind `C` (composition).  Provenance: (b) Foundation citation — `R0.Ω₃`. -/
-lemma numeral_ne_prov (T : ArithmeticTheory) [h : 𝗥₀ ⪯ T] (n m : ℕ) (hnm : n ≠ m) :
+Kind `C` (composition).  Provenance: (b) Foundation citation — `sigma_one_completeness`
+(Foundation derives it from `R0.Ω₃`, whose statement is now the bounded-quantifier
+characterisation of `<` on numerals rather than numeral inequality itself). -/
+lemma numeral_ne_prov (T : ArithmeticTheory) [𝗥₀ ⪯ T] (n m : ℕ) (hnm : n ≠ m) :
     T ⊢ (“↑n ≠ ↑m” : ArithmeticSentence) :=
-  weakening h (Entailment.by_axm (R0.Ω₃ n m hnm))
+  sigma_one_completeness (by simp) (by simp [models_iff, hnm])
 
 /-- Reflexivity of equality at a numeral, from `𝗥₀`'s equality axioms.
 
@@ -110,7 +113,7 @@ lemma numeral_eq_refl_prov (T : ArithmeticTheory) [h : 𝗥₀ ⪯ T] (y : ℕ) 
     T ⊢ (“↑y = ↑y” : ArithmeticSentence) := by
   have hax : T ⊢ (“∀ x, x = x” : ArithmeticSentence) :=
     weakening h (Entailment.by_axm (R0.equal _ Theory.eqAxiom.refl))
-  have := (LO.FirstOrder.Theory.Proof.specialize
+  have := (FFL.FirstOrder.Theory.Proof.specialize
     (T := T) (“#0 = #0” : ArithmeticSemisentence 1) ‘↑y’) ⨀ (by simpa using hax)
   simpa using this
 
@@ -146,10 +149,10 @@ Kind `P` (proved).  Provenance: (a) derived in-project from `RepresentsComputati
 (b) Foundation `Theory.Proof.specialize`. -/
 lemma represents_proves (T : ArithmeticTheory) [𝗥₀ ⪯ T] (γ : ArithmeticSemisentence 2)
     (z y : ℕ)
-    (hrep : T ⊢ (∀⁰ (Semiformula.subst γ ![‘↑z’, #0] 🡘
+    (hrep : T ⊢ (∀¹ (Semiformula.subst γ ![‘↑z’, #0] 🡘
       (“#0 = ↑y” : ArithmeticSemisentence 1)))) :
     T ⊢ (Semiformula.subst γ ![‘↑z’, ‘↑y’] : ArithmeticSentence) := by
-  have hinst := (LO.FirstOrder.Theory.Proof.specialize
+  have hinst := (FFL.FirstOrder.Theory.Proof.specialize
     (T := T) (Semiformula.subst γ ![‘↑z’, #0] 🡘 (“#0 = ↑y” : ArithmeticSemisentence 1))
     ‘↑y’) ⨀ hrep
   have heq : T ⊢ (“↑y = ↑y” : ArithmeticSentence) := numeral_eq_refl_prov T y
@@ -168,10 +171,10 @@ Kind `P` (proved).  Provenance: (a) derived in-project; (b) Foundation citations
 `R0.Ω₃` (via `numeral_ne_prov`) and `Theory.Proof.specialize`. -/
 lemma represents_refutes (T : ArithmeticTheory) [𝗥₀ ⪯ T] (γ : ArithmeticSemisentence 2)
     (z : ℕ)
-    (hrep : T ⊢ (∀⁰ (Semiformula.subst γ ![‘↑z’, #0] 🡘
+    (hrep : T ⊢ (∀¹ (Semiformula.subst γ ![‘↑z’, #0] 🡘
       (“#0 = ↑(0:ℕ)” : ArithmeticSemisentence 1)))) :
     T ⊢ ∼(Semiformula.subst γ ![‘↑z’, ‘↑(1:ℕ)’] : ArithmeticSentence) := by
-  have hinst := (LO.FirstOrder.Theory.Proof.specialize
+  have hinst := (FFL.FirstOrder.Theory.Proof.specialize
     (T := T) (Semiformula.subst γ ![‘↑z’, #0] 🡘
       (“#0 = ↑(0:ℕ)” : ArithmeticSemisentence 1)) ‘↑(1:ℕ)’) ⨀ hrep
   have hne : T ⊢ (“↑(1:ℕ) ≠ ↑(0:ℕ)” : ArithmeticSentence) := numeral_ne_prov T 1 0 (by decide)
@@ -188,13 +191,13 @@ neither of them semantic.
 Kind `P` (proved).  Provenance: (a) derived in-project. -/
 lemma represents_refutes_all (T : ArithmeticTheory) [𝗥₀ ⪯ T] (γ : ArithmeticSemisentence 2)
     (z : ℕ)
-    (h1 : T ⊢ (∀⁰ (Semiformula.subst γ ![‘↑z’, #0] 🡘
+    (h1 : T ⊢ (∀¹ (Semiformula.subst γ ![‘↑z’, #0] 🡘
       (“#0 = ↑(1:ℕ)” : ArithmeticSemisentence 1)))) :
-    T ⊢ ∼(∀⁰ (Semiformula.subst γ ![‘↑z’, #0] 🡘
+    T ⊢ ∼(∀¹ (Semiformula.subst γ ![‘↑z’, #0] 🡘
       (“#0 = ↑(0:ℕ)” : ArithmeticSemisentence 1))) := by
   have hpos : T ⊢ (Semiformula.subst γ ![‘↑z’, ‘↑(1:ℕ)’] : ArithmeticSentence) :=
     represents_proves T γ z 1 h1
-  have hspec := LO.FirstOrder.Theory.Proof.specialize (T := T)
+  have hspec := FFL.FirstOrder.Theory.Proof.specialize (T := T)
     (Semiformula.subst γ ![‘↑z’, #0] 🡘 (“#0 = ↑(0:ℕ)” : ArithmeticSemisentence 1)) ‘↑(1:ℕ)’
   rw [subst_iff_numeral γ z 0 1] at hspec
   have hne : T ⊢ (“↑(1:ℕ) ≠ ↑(0:ℕ)” : ArithmeticSentence) := numeral_ne_prov T 1 0 (by decide)
@@ -214,12 +217,12 @@ def reprBody (γ : ArithmeticSemisentence 2) (y z : ℕ) : ArithmeticSemisentenc
 
 /-- The paper's `⌜f⌝(⌜z⌝) = ȳ`: `∀ν (γ(z̄, ν) ↔ ν = ȳ)`. -/
 def reprAll (γ : ArithmeticSemisentence 2) (y z : ℕ) : ArithmeticSentence :=
-  ∀⁰ (reprBody γ y z)
+  ∀¹ (reprBody γ y z)
 
 /-- The one-variable schema whose numeral instances are the `reprAll` family: the day slot
 is left as the free variable `#1` under the quantifier. -/
 def reprAllSchema (γ : ArithmeticSemisentence 2) (y : ℕ) : ArithmeticSemisentence 1 :=
-  ∀⁰ (Semiformula.subst γ ![#1, #0] 🡘 (“#0 = ↑y” : ArithmeticSemisentence 2))
+  ∀¹ (Semiformula.subst γ ![#1, #0] 🡘 (“#0 = ↑y” : ArithmeticSemisentence 2))
 
 /-- **The family is a fixed schema's numeral instances.**
 
@@ -302,7 +305,7 @@ def reprBodyTerm (γ : ArithmeticSemisentence 2) (y : ℕ) (t : Semiterm.Const �
 `∀ν (γ(t, ν) ⟺ ν = ȳ)`. -/
 def reprAllTerm (γ : ArithmeticSemisentence 2) (y : ℕ) (t : Semiterm.Const ℒₒᵣ) :
     ArithmeticSentence :=
-  ∀⁰ (reprBodyTerm γ y t)
+  ∀¹ (reprBodyTerm γ y t)
 
 /-- **The family is a fixed schema's closed-term instances.**  The term-argument
 generalization of `reprAllSchema_subst`: whatever closed term names the argument, the claim
@@ -343,7 +346,7 @@ lemma provable_subst_iff_of_val (T : ArithmeticTheory) [𝗣𝗔⁻ ⪯ T]
     (hval : ∀ (M : Type) [ORingStructure M] [M↓[ℒₒᵣ] ⊧* 𝗣𝗔⁻],
       t.val (![] : Fin 0 → M) = (v : M)) :
     T ⊢ (φ/[t.const] : ArithmeticSentence) ↔ T ⊢ (φ/[↑v] : ArithmeticSentence) := by
-  haveI : 𝗘𝗤 ℒₒᵣ ⪯ T :=
+  have : 𝗘𝗤 ℒₒᵣ ⪯ T :=
     Entailment.WeakerThan.trans (𝓣 := (𝗣𝗔⁻ : ArithmeticTheory)) inferInstance inferInstance
   have key : ∀ (M : Type) [ORingStructure M] [M↓[ℒₒᵣ] ⊧* 𝗣𝗔⁻],
       (M↓[ℒₒᵣ] ⊧ (φ/[t.const] : ArithmeticSentence)) ↔
@@ -353,15 +356,15 @@ lemma provable_subst_iff_of_val (T : ArithmeticTheory) [𝗣𝗔⁻ ⪯ T]
     refine iff_of_eq (congrArg (fun w => (Semiformula.Eval w Empty.elim) φ) ?_)
     funext i
     fin_cases i
-    simpa [Structure.numeral_eq_numeral, numeral_eq_natCast] using hval M
+    simpa [Tarski.Structure.numeral_eq_numeral, numeral_eq_natCast] using hval M
   constructor
   · intro h
     refine Arithmetic.complete.{0} T _ fun M _ _ => ?_
-    haveI : M↓[ℒₒᵣ] ⊧* 𝗣𝗔⁻ := ModelsTheory.of_provably_subtheory M 𝗣𝗔⁻ T inferInstance
+    have : M↓[ℒₒᵣ] ⊧* 𝗣𝗔⁻ := ModelsTheory.of_provably_subtheory M 𝗣𝗔⁻ T inferInstance
     exact (key M).mp (consequence_iff.mp (Theory.Proof.sound h) M inferInstance)
   · intro h
     refine Arithmetic.complete.{0} T _ fun M _ _ => ?_
-    haveI : M↓[ℒₒᵣ] ⊧* 𝗣𝗔⁻ := ModelsTheory.of_provably_subtheory M 𝗣𝗔⁻ T inferInstance
+    have : M↓[ℒₒᵣ] ⊧* 𝗣𝗔⁻ := ModelsTheory.of_provably_subtheory M 𝗣𝗔⁻ T inferInstance
     exact (key M).mpr (consequence_iff.mp (Theory.Proof.sound h) M inferInstance)
 
 /-! ## Consistency -/

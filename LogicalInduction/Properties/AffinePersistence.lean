@@ -280,8 +280,8 @@ lemma persistenceEntry_serialize (As : ℕ → AffineCombination)
   intro z
   simp only [Nat.unpair_pair]
   by_cases hs : start < z.unpair.2
-  · rw [if_neg (by omega), persistenceEntry, if_pos hs]
-  · rw [if_pos (by omega), persistenceEntry, if_neg hs]
+  · rw [ite_eq_right (by omega), persistenceEntry, ite_eq_left hs]
+  · rw [ite_eq_left (by omega), persistenceEntry, ite_eq_right hs]
 
 /-- A `sumEF` serializes as the concatenated summand blocks, then the zero base case,
 then one `add` tag per summand. -/
@@ -469,7 +469,7 @@ lemma PolySequence.persistenceEntry_rank {As : ℕ → AffineCombination}
     (start : ℕ) (low δ : ℚ) {k n : ℕ} (hn : n ≤ k) :
     (persistenceEntry As start low δ k n).rank ≤ k := by
   by_cases hs : start < n
-  · simp only [persistenceEntry, hs, if_true, buyIndF_rank]
+  · simp only [persistenceEntry, hs, ite_true, buyIndF_rank]
     exact (As n).priceFeature_rank hn (h.const_rank n) (h.terms_rank n)
   · simp [persistenceEntry, hs]
 
@@ -481,7 +481,7 @@ lemma PolySequence.persistenceEntry_closed {As : ℕ → AffineCombination}
     (persistenceEntry As start low δ k n).denoteWith ρ V =
       (persistenceEntry As start low δ k n).denote V := by
   by_cases hs : start < n
-  · simp only [persistenceEntry, hs, if_true, buyIndF, clip01, efMin,
+  · simp only [persistenceEntry, hs, ite_true, buyIndF, clip01, efMin,
       EF.denoteWith, EF.denote_max, EF.denote_mul, EF.denote_add, EF.denote_const,
       Pi.mul_apply, Pi.add_apply]
     rw [h.priceFeature_closed n k ρ V]
@@ -1203,7 +1203,7 @@ lemma PolySequence.noPersistenceUnderpricing {As : ℕ → AffineCombination}
         (fun j => (As n).price P (n + j))) hninf
     have hone :
         (persistenceEntry shifted start lowShift δ (n + j) n).denote P = 1 := by
-      simp only [persistenceEntry, hnstart, if_true]
+      simp only [persistenceEntry, hnstart, ite_true]
       apply buyIndF_eq_one hδ
       rw [(shifted n).priceFeature_denote]
       dsimp only [shifted, lowShift]

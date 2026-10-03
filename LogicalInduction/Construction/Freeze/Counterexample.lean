@@ -1,8 +1,9 @@
+import Foundation.FirstOrder.Incompleteness.Definability
 import LogicalInduction.Construction.Paper.Market
 import LogicalInduction.Construction.Quotation.ProductDefinition
 import LogicalInduction.Construction.Paper.FiniteEntailment
 import LogicalInduction.Properties.FinitePerturbationCounterexample
-import Foundation.FirstOrder.Incompleteness.InductionSchemeDelta1
+import Foundation.FirstOrder.Arithmetic.Bootstrapping.Syntax.Theory
 import LogicalInduction.Framework.Emission.WriteOut
 
 /-!
@@ -58,8 +59,8 @@ a refutation belongs to the node it refutes, and is audited exactly like any oth
 namespace LogicalInduction
 namespace FinitePerturbationCounterexample
 
-open LO LO.FirstOrder LO.FirstOrder.Arithmetic LO.Entailment
-open LO.Propositional
+open FFL FFL.FirstOrder FFL.FirstOrder.Arithmetic FFL.Entailment
+open FFL.Propositional
 open Filter Topology
 
 -- `𝗜𝚺₁` is charged here because this file's `cxQuote` runs the `thm:lp` diagonal
@@ -129,9 +130,9 @@ lemma settledTest_eq_true_iff (V : History) (DP : DeductiveProcess) (χ : ℕ �
     (m k : ℕ) : settledTest V DP χ m k = true ↔ SettledAt V DP χ m k := by
   rw [settledTest]
   by_cases h : V m (χ m) < 1 / 2
-  · rw [if_pos h, stageEntails_eq_true_iff]
+  · rw [ite_eq_left h, stageEntails_eq_true_iff]
     exact ⟨fun hh v hv => iff_of_true (hh v hv) h, fun hh v hv => (hh v hv).2 h⟩
-  · rw [if_neg h, stageEntails_eq_true_iff]
+  · rw [ite_eq_right h, stageEntails_eq_true_iff]
     refine ⟨fun hh v hv => iff_of_false ((PCWorld.holds_neg v (χ m)).1 (hh v hv)) h,
       fun hh v hv => (PCWorld.holds_neg v (χ m)).2 (fun hH => h ((hh v hv).1 hH))⟩
 
@@ -216,7 +217,7 @@ Kind `P`; hypotheses `(a)`. -/
 lemma settleTotal_eq (hdicho : ∀ m, 1 ≤ m → Dichotomy V DP χ m) {m : ℕ} (hm : 1 ≤ m) :
     settleTotal hdicho m = settleStage V DP χ m := by
   have hex : ∃ k, SettledAt V DP χ m k := exists_settled (hdicho m hm)
-  have hstage : settleStage V DP χ m = Nat.find hex := by rw [settleStage, dif_pos hex]
+  have hstage : settleStage V DP χ m = Nat.find hex := by rw [settleStage, dite_eq_left hex]
   rw [hstage, settleTotal]
   refine le_antisymm (Nat.find_min' _ ?_) (Nat.find_min' _ ?_)
   · rw [settledTestZ_of_ne_zero V DP χ (by omega), settledTest_eq_true_iff]
@@ -459,7 +460,7 @@ private def advTag (c : ℕ) : ℕ :=
 private def advIdx (c : ℕ) : ℕ := (c - 1).unpair.2.unpair.2
 
 private lemma encode_atom_code (x : ℕ) :
-    Encodable.encode (LO.Propositional.Formula.atom x : Sentence) = Nat.pair 1 x + 1 := rfl
+    Encodable.encode (FFL.Propositional.Formula.atom x : Sentence) = Nat.pair 1 x + 1 := rfl
 
 private lemma advTag_schedAtom (m : ℕ) : advTag (Encodable.encode (schedAtom m)) = 7 := by
   simp [advTag, schedAtom, encode_atom_code, Nat.unpair_pair]
@@ -476,9 +477,9 @@ private lemma advIdx_signAtom (m : ℕ) : advIdx (Encodable.encode (signAtom m))
 /-- A nonzero tag identifies the code as that of a tagged atom. -/
 private lemma eq_atom_of_advTag {c t : ℕ} (ht : t ≠ 0) (h : advTag c = t) :
     c = Encodable.encode
-      (LO.Propositional.Formula.atom (Nat.pair t (advIdx c)) : Sentence) := by
+      (FFL.Propositional.Formula.atom (Nat.pair t (advIdx c)) : Sentence) := by
   by_cases hc : (c - 1).unpair.1 = 1
-  · have h6 : (c - 1).unpair.2.unpair.1 = t := by rw [advTag, if_pos hc] at h; exact h
+  · have h6 : (c - 1).unpair.2.unpair.1 = t := by rw [advTag, ite_eq_left hc] at h; exact h
     have hc0 : c ≠ 0 := by
       rintro rfl
       have hz : advTag 0 = 0 := by simp [advTag]
@@ -491,7 +492,7 @@ private lemma eq_atom_of_advTag {c t : ℕ} (ht : t ≠ 0) (h : advTag c = t) :
       rw [hc]
     rw [encode_atom_code, key]
     omega
-  · rw [advTag, if_neg hc] at h
+  · rw [advTag, ite_eq_right hc] at h
     exact absurd h.symm ht
 
 private lemma advTag_prim : Primrec advTag := by
@@ -529,15 +530,15 @@ lemma cxPerturbed_eq_cxTable (n : ℕ) (φ : Sentence) :
     cxPerturbed T n φ = ((cxTable T n (Encodable.encode φ) : ℚ) : ℝ) := by
   rcases Nat.eq_zero_or_pos n with hn | hn
   · subst hn
-    rw [cxTable, if_pos rfl]
+    rw [cxTable, ite_eq_left rfl]
     by_cases hs : ∃ m, φ = schedAtom m
     · obtain ⟨m, rfl⟩ := hs
       rw [cxRow, advTag_schedAtom, advIdx_schedAtom, cxPerturbed, advicePerturbed,
         advicePerturb_zero_schedAtom, gateBit]
       by_cases hg : ∃ j, sched (liaHistory (paperDP T)) (paperDP T) (cxDiagonal T) j = m
-      · rw [if_pos hg, (gateBool_eq_true_iff _ _ _ m).2 hg]
+      · rw [ite_eq_left hg, (gateBool_eq_true_iff _ _ _ m).2 hg]
         norm_num
-      · rw [if_neg hg]
+      · rw [ite_eq_right hg]
         have : gateBool (liaHistory (paperDP T)) (paperDP T) (cxDiagonal T) m = false := by
           rcases hb : gateBool (liaHistory (paperDP T)) (paperDP T) (cxDiagonal T) m with _ | _
           · rfl
@@ -552,21 +553,21 @@ lemma cxPerturbed_eq_cxTable (n : ℕ) (φ : Sentence) :
         have hcast := rat_cast_lt_half
         by_cases hlt : (paperMarketComputation T).quote m
             (Encodable.encode (cxDiagonal T m)) < 1 / 2
-        · rw [if_pos ((hcast _).2 hlt), decide_eq_true hlt]
+        · rw [ite_eq_left ((hcast _).2 hlt), decide_eq_true hlt]
           norm_num
-        · rw [if_neg (fun hh => hlt ((hcast _).1 hh)), decide_eq_false hlt]
+        · rw [ite_eq_right (fun hh => hlt ((hcast _).1 hh)), decide_eq_false hlt]
           norm_num
       · push Not at hs hi
         have h6 : advTag (Encodable.encode φ) ≠ 7 := fun h =>
           hs _ (Encodable.encode_injective (eq_atom_of_advTag (by omega) h))
         have h7 : advTag (Encodable.encode φ) ≠ 8 := fun h =>
           hi _ (Encodable.encode_injective (eq_atom_of_advTag (by omega) h))
-        rw [cxRow, cxPerturbed, advicePerturbed, advicePerturb, if_pos rfl,
+        rw [cxRow, cxPerturbed, advicePerturbed, advicePerturb, ite_eq_left rfl,
           adviceRow_of_not_advice _ _ _ _ hs hi,
           (paperMarketComputation T).quote_exact 0 φ]
         simp [h6, h7]
-  · rw [cxTable, if_neg (by omega), cxPerturbed, advicePerturbed, advicePerturb,
-      if_neg (by omega)]
+  · rw [cxTable, ite_eq_right (by omega), cxPerturbed, advicePerturbed, advicePerturb,
+      ite_eq_right (by omega)]
     exact (paperMarketComputation T).quote_exact n φ
 
 end Computability

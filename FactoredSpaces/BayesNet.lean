@@ -298,7 +298,7 @@ private lemma exists_parentConfig (x₀ : Pt Val) (v : V) (y : ParentVals G Val 
   refine ⟨fun u => if h : u ∈ G.parents v then y ⟨u, h⟩ else x₀ u, ?_⟩
   funext u
   show (if h : (u : V) ∈ G.parents v then y ⟨u, h⟩ else x₀ u) = y u
-  rw [dif_pos u.2]
+  rw [dite_eq_left u.2]
 
 omit [∀ v, Fintype (Val v)] [∀ v, DecidableEq (Val v)] in
 /-- Every parent configuration is realized by a joint value with a prescribed value at the

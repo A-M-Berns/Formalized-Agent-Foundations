@@ -70,9 +70,9 @@ semantics: `∼φ = φ 🡒 ⊥`, so `Holds (∼φ) ↔ ¬ Holds φ`). -/
 lemma PCWorld.payout_of_disprovable (v : PCWorld) (φ : Sentence) (h : v.Holds (∼φ)) :
     v.payout φ = 0 := by
   have : ¬ v.Holds φ := by
-    simpa [PCWorld.Holds, LO.Propositional.Formula.Boolean.val,
-      LO.Propositional.Formula.neg_def] using h
-  rw [PCWorld.payout, if_neg this]
+    simpa [PCWorld.Holds, FFL.Propositional.Formula.val,
+      FFL.Propositional.Formula.neg_def] using h
+  rw [PCWorld.payout, ite_eq_right this]
 
 /-- The trader that sells one share of `φ` every day (buys `-1`). -/
 def sellDaily (φ : Sentence) : Trader where
@@ -116,9 +116,9 @@ lemma PCWorld.payout_or_of_excl (v : PCWorld) (φ ψ : Sentence)
   simp only [PCWorld.payout]
   by_cases hφ : v.Holds φ <;> by_cases hψ : v.Holds ψ
   · exact absurd ⟨hφ, hψ⟩ h
-  · rw [if_pos (show v.Holds (φ ⋎ ψ) from Or.inl hφ), if_pos hφ, if_neg hψ]; norm_num
-  · rw [if_pos (show v.Holds (φ ⋎ ψ) from Or.inr hψ), if_neg hφ, if_pos hψ]; norm_num
-  · rw [if_neg (show ¬ v.Holds (φ ⋎ ψ) from not_or.mpr ⟨hφ, hψ⟩), if_neg hφ, if_neg hψ]; norm_num
+  · rw [ite_eq_left (show v.Holds (φ ⋎ ψ) from Or.inl hφ), ite_eq_left hφ, ite_eq_right hψ]; norm_num
+  · rw [ite_eq_left (show v.Holds (φ ⋎ ψ) from Or.inr hψ), ite_eq_right hφ, ite_eq_left hψ]; norm_num
+  · rw [ite_eq_right (show ¬ v.Holds (φ ⋎ ψ) from not_or.mpr ⟨hφ, hψ⟩), ite_eq_right hφ, ite_eq_right hψ]; norm_num
 
 /-- **Limit Coherence, bullet (2)** (`thm:lc`): the price of a disprovable sentence
 converges to `0` under a logical inductor.

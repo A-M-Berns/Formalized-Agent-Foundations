@@ -472,14 +472,14 @@ lemma retainedConditionPricesExceptZero_denoteWith
       intro ρ
       simp only [retainedConditionPricesExceptZero, denoteWith_letE]
       by_cases hday : day ∈ zeroDays
-      · rw [if_pos hday]
+      · rw [ite_eq_left hday]
         simp only [denoteWith_const]
         push_cast
         symm
         apply conditionalQuote_eq_one
         rw [hzero day hday]
         exact hP day (φ ⋏ ψ day)
-      · rw [if_neg hday]
+      · rw [ite_eq_right hday]
         exact conditionalPriceEF_denote P (ψ day) hε (hfloor day hday) φ
   | const q => intro ρ; rfl
   | add a b iha ihb =>
@@ -1241,11 +1241,11 @@ lemma after_netWorth_difference_le
       apply Finset.sum_le_sum
       intro i hi
       by_cases hic : i < cutoff
-      · rw [if_pos hic, T.after_strat_of_lt hic]
+      · rw [ite_eq_left hic, T.after_strat_of_lt hic]
         simpa [Trader.zero, Strategy.value] using
           Strategy.abs_value_le_magnitude
             (T.strat i) P v.payout hw (hP i)
-      · rw [if_neg hic, T.after_strat_of_le (Nat.le_of_not_gt hic)]
+      · rw [ite_eq_right hic, T.after_strat_of_le (Nat.le_of_not_gt hic)]
         simp
     _ = ∑ i ∈ (Finset.range (n + 1)).filter (fun i ↦ i < cutoff),
           (T.strat i).magnitude P := by rw [Finset.sum_filter]

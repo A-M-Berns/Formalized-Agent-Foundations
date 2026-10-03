@@ -737,7 +737,7 @@ private lemma heavyOnOnes_subset : heavyOnOnes ⊆ factorizing Bits := fun _ hP 
 
 private lemma heavyOnOnes_nonempty : heavyOnOnes.Nonempty :=
   ⟨Distr.delta allOnes, factorizes_delta allOnes, by
-    rw [Distr.delta_mass, if_pos rfl]; norm_num⟩
+    rw [Distr.delta_mass, ite_eq_left rfl]; norm_num⟩
 
 private lemma heavyOnOnes_open : ∀ Q ∈ heavyOnOnes, ∃ ε > (0 : ℝ),
     ∀ Q' ∈ factorizing Bits, Distr.euclDist Q Q' < ε → Q' ∈ heavyOnOnes := by
@@ -754,7 +754,7 @@ lemma heavyOnOnes_ssubset : heavyOnOnes ⊂ factorizing Bits := by
   refine ⟨heavyOnOnes_subset, fun hsub => ?_⟩
   have hne : allOnes ≠ (fun _ => false : Pt Bits) := fun h => Bool.noConfusion (congrFun h 0)
   have h := (hsub (factorizes_delta (fun _ => false : Pt Bits))).2
-  rw [Distr.delta_mass, if_neg hne] at h
+  rw [Distr.delta_mass, ite_eq_right hne] at h
   norm_num at h
 
 /-- **Proposition 6.6 where it earns its keep.**  Unlike the specialisation at

@@ -71,10 +71,10 @@ end Mathlib
 
 section Foundation
 
-open LO LO.Propositional
+open LO FFL.Propositional
 
 -- The propositional sentence type. Atoms over `ℕ` give us a concrete, countable language.
-#check @Formula              -- LO.Propositional.Formula : Type u → Type u
+#check @Formula              -- FFL.Propositional.Formula : Type u → Type u
 example : Type := Formula ℕ
 
 -- KEYSTONE ANSWER for `def:ec`: sentences are *computably encodable*. Foundation ships
@@ -84,14 +84,14 @@ example : Type := Formula ℕ
 example : Encodable (Formula ℕ) := inferInstance
 example : DecidableEq (Formula ℕ) := inferInstance
 
--- Derivability and consistency come from the generic `LO.Entailment` layer:
+-- Derivability and consistency come from the generic `FFL.Entailment` layer:
 --   `𝓢 ⊢ φ`  provable,  `𝓢 ⊬ φ`  unprovable,  `Consistent 𝓢`  not-inconsistent.
-#check @LO.Entailment.Provable
-#check @LO.Entailment.Consistent
+#check @FFL.Entailment.Provable
+#check @FFL.Entailment.Consistent
 
 -- Classical propositional logic is `Hilbert.Cl` (a deductive system) / `Cl` (its logic).
 -- This is the propositional-consistency notion `def:world` / `def:worlds` will use.
-#check @LO.Propositional.Hilbert.Cl
+#check @FFL.Propositional.Hilbert.Cl
 
 end Foundation
 
@@ -100,7 +100,7 @@ end Foundation
 
 * Mathlib + Foundation co-build under `leanprover/lean4:v4.28.0-rc1`, **including Bochner
   integration** (the import above) — the full-stack co-build is verified, not assumed.
-* `def:lang` is well-served: `Formula ℕ` + `Encodable` + `DecidableEq` + `LO.Entailment`
+* `def:lang` is well-served: `Formula ℕ` + `Encodable` + `DecidableEq` + `FFL.Entailment`
   (`⊢`/`⊬`/`Consistent`) + `Hilbert.Cl`. The computable-encoding worry for `def:ec` is
   resolved in our favor — wrap these behind `LogicalInduction.Sentence`.
 * ✅ OPEN RISK 1 resolved via the Foundation fork (`Matrix.map` → `Matrix.vecMap`).

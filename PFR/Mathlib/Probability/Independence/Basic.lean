@@ -94,7 +94,7 @@ lemma IndepFun.finsetSum [m : MeasurableSpace β'] [AddCommMonoid β'] [Measurab
       · simpa [hb, hc, Function.onFun, S] using h_disj
     · by_cases hc : c
       · simpa [hb, hc, Function.onFun, S] using h_disj.symm
-      · exfalso; exact hbc (eq_false_of_ne_true hb ▸ (eq_false_of_ne_true hc).symm)
+      · exfalso; exact hbc (Bool.eq_false_of_ne_true hb ▸ (Bool.eq_false_of_ne_true hc).symm)
   have hindep := iIndepFun.finsetSum S h_disjoint hf_Indep hf_meas
   have h_true : S true = s := by simp [S]
   have h_false : S false = t := by simp [S]
@@ -187,7 +187,7 @@ lemma iIndepFun_iff' [MeasurableSpace Ω] {β : ι → Type*}
   rw [iIndepFun_iff]
   refine forall_congr' fun s ↦ ⟨fun h f hf ↦ h fun i _ ↦ hf _, fun h f hf ↦ ?_⟩
   let g (i : ι) : Set Ω := if i ∈ s then f i else univ
-  have (i : ι) (hi : i ∈ s) : f i = g i := (if_pos hi).symm
+  have (i : ι) (hi : i ∈ s) : f i = g i := (ite_eq_left hi).symm
   convert @h g _ using 2
   · exact iInter₂_congr this
   · rw [this _ ‹_›]
@@ -307,20 +307,6 @@ lemma iIndepFun.prod {hf : ∀ (i : ι), Measurable (f i)} {ST : ι' → Finset 
 
 variable {β β' Ω : Type*} {mΩ : MeasurableSpace Ω} {μ : Measure Ω}
 
-/-- The new Mathlib tool `Finset.eventuallyEq_iInter` will supersede this result. -/
-theorem EventuallyEq.finite_iInter {ι : Type*} {α : Type u_2} {l : Filter α} (s : Finset ι)
-    {E : ι → Set α} {F : ι → Set α}
-    (h : ∀ i ∈ s, E i =ᶠ[l] F i) :
-    ⋂ i ∈ s, E i =ᶠ[l] ⋂ i ∈ s, F i := by
-  unfold Filter.EventuallyEq Filter.Eventually at h ⊢
-  simp only [eq_iff_iff] at h ⊢
-  rw [← Filter.biInter_finset_mem] at h
-  apply Filter.mem_of_superset h
-  intro a ha
-  change a ∈ ⋂ i ∈ s, E i ↔ a ∈ ⋂ i ∈ s, F i
-  simp only [mem_iInter, mem_setOf_eq] at ha ⊢
-  change ∀ i ∈ s, a ∈ E i ↔ a ∈ F i at ha
-  exact forall₂_congr ha
 
 /-- TODO: a kernel version of this theorem -/
 theorem iIndepFun.ae_eq {ι : Type*} {β : ι → Type*}
@@ -348,7 +334,7 @@ theorem iIndepFun.ae_eq {ι : Type*} {β : ι → Type*}
     intro i hi; exact (hE' i hi).2
   convert hf_Indep s hE'' using 1 with i
   · apply measure_congr
-    apply EventuallyEq.finite_iInter
+    apply Finset.eventuallyEqSet_iInter
     intro i hi
     exact (hE''' i hi).symm
   apply Finset.prod_congr rfl

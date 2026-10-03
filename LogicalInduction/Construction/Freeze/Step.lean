@@ -122,7 +122,7 @@ depend on the parameter block at all: the freeze needs no day clamp. -/
 lemma flatEmitW_eq (R : List Bool → List Bool) (W cli : List Bool) (cur : List ℕ) :
     flatEmitW R (pair W (pair cli (digitsToBits cur))) = flatEmitR R cli cur := by
   rw [flatEmitW, flatEmitR]
-  simp only [midBlock, lastBlock, sndBlock_pair, fstBlock_pair]
+  simp only [midBlock, lastBlock, pairSnd_pair, pairFst_pair]
 
 /-! ## What the emitter emits -/
 
@@ -169,8 +169,8 @@ lemma flatEmitW_mem_FP {selRun : List ℕ → ℕ → Bool} {quoteRun : List ℕ
     (E : RunOracle selRun quoteRun) : flatEmitW E.R ∈ FP := by
   have hcli : midBlock ∈ FP := mem_FP_comp sndBlock_mem_FP fstBlock_mem_FP
   have htok : lastBlock ∈ FP := mem_FP_comp sndBlock_mem_FP sndBlock_mem_FP
-  have hff : (fun v => fstBlock (midBlock v)) ∈ FP := mem_FP_comp hcli fstBlock_mem_FP
-  have hsf : (fun v => sndBlock (midBlock v)) ∈ FP := mem_FP_comp hcli sndBlock_mem_FP
+  have hff : (fun v => pairFst (midBlock v)) ∈ FP := mem_FP_comp hcli fstBlock_mem_FP
+  have hsf : (fun v => pairSnd (midBlock v)) ∈ FP := mem_FP_comp hcli sndBlock_mem_FP
   have hm : (fun v => csMode (midBlock v)) ∈ FP := mem_FP_comp hff fstBlock_mem_FP
   have hbuf : (fun v => csBuf (midBlock v)) ∈ FP := mem_FP_comp hsf sndBlock_mem_FP
   have hr : (fun v => E.R (pair (lastBlock v) (csBuf (midBlock v)))) ∈ FP :=

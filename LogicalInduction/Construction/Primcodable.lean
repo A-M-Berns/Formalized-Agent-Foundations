@@ -51,23 +51,29 @@ paragraph.
 
 namespace LogicalInduction
 
-open LO.Propositional
+open FFL.Propositional
+
+/-- `Part.some a >>= f` is `f a`, stated for a *partial function* `f : ℕ →. ℕ` — the `>>=`
+form `Nat.Partrec.Code.eval` unfolds to. `PFun` is a plain `def`, so simp will not match the
+generic `Part.bind_some` (stated with `Part.bind` over `ℕ → Part ℕ`) against it. -/
+lemma some_bind_pfun (a : ℕ) (f : ℕ →. ℕ) : (Part.some a >>= f) = f a :=
+  Part.bind_some a f
 
 /-! ## Primitive-recursive `Sentence` codes
 
 Foundation's decoder for propositional sentences recurses on strictly smaller Gödel
 numbers, so its encode-after-decode normalizer is compiled by strong recursion (see the
 module header).  The four bridges below state `Encodable.encode` and `Encodable.decode` at
-`EF` and at `LO.Propositional.Formula ℕ` in their concrete `toNat`/`ofNat` forms, so the
+`EF` and at `FFL.Propositional.Formula ℕ` in their concrete `toNat`/`ofNat` forms, so the
 encoding proofs can `simp` with the real decoder. -/
 private lemma encode_ef_eq_toNat (e : EF) : Encodable.encode e = e.toNat := rfl
 private lemma decode_ef_eq_ofNat (n : ℕ) :
     (Encodable.decode n : Option EF) = EF.ofNat n := rfl
-private lemma encode_formula_eq_toNat (φ : LO.Propositional.Formula ℕ) :
+private lemma encode_formula_eq_toNat (φ : FFL.Propositional.Formula ℕ) :
     Encodable.encode φ = φ.toNat := rfl
 private lemma decode_formula_eq_ofNat (n : ℕ) :
-    (Encodable.decode n : Option (LO.Propositional.Formula ℕ)) =
-      LO.Propositional.Formula.ofNat n := rfl
+    (Encodable.decode n : Option (FFL.Propositional.Formula ℕ)) =
+      FFL.Propositional.Formula.ofNat n := rfl
 
 private def formulaBinaryNorm (tag : ℕ) (prior : List ℕ) (children : ℕ) : ℕ :=
   let left := prior.getD children.unpair.1 0
@@ -145,30 +151,30 @@ private lemma formulaNormList_prim : Primrec formulaNormList := by
       simp only [formulaNormList]
 
 private def sentenceDecodeNorm (n : ℕ) : ℕ :=
-  match (@LO.Propositional.Formula.ofNat ℕ inferInstance n : Option Sentence) with
+  match (@FFL.Propositional.Formula.ofNat ℕ inferInstance n : Option Sentence) with
   | none => 0
-  | some phi => LO.Propositional.Formula.toNat phi + 1
+  | some phi => FFL.Propositional.Formula.toNat phi + 1
 
 private lemma formulaHistory_getD {n k : ℕ} (hk : k < n) :
     ((List.range n).map fun m =>
       sentenceDecodeNorm m).getD k 0 = sentenceDecodeNorm k := by
   have hzero : sentenceDecodeNorm 0 = 0 := by
-    simp [sentenceDecodeNorm, LO.Propositional.Formula.ofNat]
+    simp [sentenceDecodeNorm, FFL.Propositional.Formula.ofNat]
   rw [← hzero, List.getD_map]
   simp [hk]
 
 private lemma formulaBinaryNorm_history (tag payload n : ℕ)
     (hleft : payload.unpair.1 < n) (hright : payload.unpair.2 < n) :
     formulaBinaryNorm tag ((List.range n).map sentenceDecodeNorm) payload =
-      match (@LO.Propositional.Formula.ofNat ℕ inferInstance payload.unpair.1 : Option Sentence),
-          (@LO.Propositional.Formula.ofNat ℕ inferInstance payload.unpair.2 : Option Sentence) with
+      match (@FFL.Propositional.Formula.ofNat ℕ inferInstance payload.unpair.1 : Option Sentence),
+          (@FFL.Propositional.Formula.ofNat ℕ inferInstance payload.unpair.2 : Option Sentence) with
       | some phi, some psi => Nat.pair tag (Nat.pair phi.toNat psi.toNat) + 2
       | _, _ => 0 := by
   unfold formulaBinaryNorm
   rw [formulaHistory_getD hleft, formulaHistory_getD hright]
-  cases hL : (@LO.Propositional.Formula.ofNat ℕ inferInstance
+  cases hL : (@FFL.Propositional.Formula.ofNat ℕ inferInstance
       payload.unpair.1 : Option Sentence) <;>
-    cases hR : (@LO.Propositional.Formula.ofNat ℕ inferInstance
+    cases hR : (@FFL.Propositional.Formula.ofNat ℕ inferInstance
       payload.unpair.2 : Option Sentence) <;>
     simp [sentenceDecodeNorm, hL, hR]
 
@@ -176,7 +182,7 @@ private lemma formulaNormList_history (n : ℕ) :
     formulaNormList ((List.range n).map fun k =>
       sentenceDecodeNorm k) = sentenceDecodeNorm n := by
   cases n with
-  | zero => simp [formulaNormList, sentenceDecodeNorm, LO.Propositional.Formula.ofNat]
+  | zero => simp [formulaNormList, sentenceDecodeNorm, FFL.Propositional.Formula.ofNat]
   | succ e =>
       let tag := e.unpair.1
       let payload := e.unpair.2
@@ -189,12 +195,12 @@ private lemma formulaNormList_history (n : ℕ) :
         exact Nat.lt_succ_iff.mpr <|
           le_trans (Nat.unpair_right_le _) (Nat.unpair_right_le _)
       by_cases h0 : tag = 0
-      · simp [sentenceDecodeNorm, formulaNormList, formulaNormSucc, LO.Propositional.Formula.ofNat,
-          LO.Propositional.Formula.toNat,
+      · simp [sentenceDecodeNorm, formulaNormList, formulaNormSucc, FFL.Propositional.Formula.ofNat,
+          FFL.Propositional.Formula.toNat,
           Nat.pair, tag, h0]
       by_cases h1 : tag = 1
-      · simp [sentenceDecodeNorm, formulaNormList, formulaNormSucc, LO.Propositional.Formula.ofNat,
-          LO.Propositional.Formula.toNat,
+      · simp [sentenceDecodeNorm, formulaNormList, formulaNormSucc, FFL.Propositional.Formula.ofNat,
+          FFL.Propositional.Formula.toNat,
           Nat.pair, tag, h1]
       -- The three binary connectives differ only in the tag numeral.
       have hbin : ∀ t : ℕ, t = 2 ∨ t = 3 ∨ t = 4 → e.unpair.1 = t →
@@ -207,12 +213,12 @@ private lemma formulaNormList_history (n : ℕ) :
               formulaNormSucc, htag, ↓reduceIte]
             rw [hb]
             unfold sentenceDecodeNorm
-            simp only [LO.Propositional.Formula.ofNat, htag]
-            cases (@LO.Propositional.Formula.ofNat ℕ inferInstance
+            simp only [FFL.Propositional.Formula.ofNat, htag]
+            cases (@FFL.Propositional.Formula.ofNat ℕ inferInstance
                 payload.unpair.1 : Option Sentence) <;>
-              cases (@LO.Propositional.Formula.ofNat ℕ inferInstance
+              cases (@FFL.Propositional.Formula.ofNat ℕ inferInstance
                 payload.unpair.2 : Option Sentence) <;>
-              simp [LO.Propositional.Formula.toNat]
+              simp [FFL.Propositional.Formula.toNat]
       by_cases h2 : tag = 2
       · exact hbin 2 (Or.inl rfl) h2
       by_cases h3 : tag = 3
@@ -221,7 +227,7 @@ private lemma formulaNormList_history (n : ℕ) :
       · exact hbin 4 (Or.inr (Or.inr rfl)) h4
       · have htag : 5 ≤ tag := by omega
         simp [sentenceDecodeNorm, formulaNormList, formulaNormSucc,
-          LO.Propositional.Formula.ofNat, tag, h0, h1, h2, h3, h4]
+          FFL.Propositional.Formula.ofNat, tag, h0, h1, h2, h3, h4]
 
 /-- Foundation's concrete Gödel encoding of propositional sentences is primitive-recursive.
 This is an encoding theorem only; it contains no semantic or logical-inductor premise. -/
@@ -232,8 +238,8 @@ instance sentencePrimcodable : Primcodable Sentence where
         formulaNormList_history
     exact Primrec.nat_iff.mp (hrec.of_eq fun n => by
       change sentenceDecodeNorm n = Encodable.encode
-        ((@LO.Propositional.Formula.ofNat ℕ inferInstance n) : Option Sentence)
-      cases h : (@LO.Propositional.Formula.ofNat ℕ inferInstance n : Option Sentence) <;>
+        ((@FFL.Propositional.Formula.ofNat ℕ inferInstance n) : Option Sentence)
+      cases h : (@FFL.Propositional.Formula.ofNat ℕ inferInstance n : Option Sentence) <;>
         simp [sentenceDecodeNorm, h, encode_formula_eq_toNat])
 
 /-! ## Integer and rational codes -/
@@ -424,7 +430,7 @@ private lemma ratDecodeNorm_eq (n : ℕ) :
       rw [hsymm]; exact hvalid.mp h
     simp [ratDecodeNorm, h, Encodable.decode_ofEquiv,
       Encodable.decode_sigma_val, hstep, hc']
-    rw [dif_pos hc'.2]
+    rw [dite_eq_left hc'.2]
     simp [Encodable.encode_ofEquiv, Encodable.encode_sigma_val,
       Encodable.Subtype.encode_eq, Nat.pair_unpair]
   · have hc' : ¬(0 < n.unpair.2 ∧
@@ -1081,9 +1087,9 @@ private lemma sentenceDecodeNorm_prim : Primrec sentenceDecodeNorm := by
   apply Primrec.nat_iff.mpr
   exact (Primcodable.prim Sentence).of_eq fun n => by
     change Encodable.encode
-        ((@LO.Propositional.Formula.ofNat ℕ inferInstance n) : Option Sentence) =
+        ((@FFL.Propositional.Formula.ofNat ℕ inferInstance n) : Option Sentence) =
       sentenceDecodeNorm n
-    cases h : (@LO.Propositional.Formula.ofNat ℕ inferInstance n : Option Sentence) <;>
+    cases h : (@FFL.Propositional.Formula.ofNat ℕ inferInstance n : Option Sentence) <;>
       simp [sentenceDecodeNorm, h, encode_formula_eq_toNat]
 
 /-! ## Primitive-recursive `EF` codes
@@ -1290,7 +1296,7 @@ private lemma efDecodeNormStep_history (n : ℕ) :
         <;> simp [efDecodeNormStep, efAuxNormIndex, EF.ofNatAux, htag,
           ratDecodeNorm_eq, hq, efUnaryNorm, encode_ef_eq_toNat, EF.toNat]
       · rcases tag with _ | tag
-        · cases hs : (@LO.Propositional.Formula.ofNat ℕ inferInstance
+        · cases hs : (@FFL.Propositional.Formula.ofNat ℕ inferInstance
               code.unpair.2.unpair.1 : Option Sentence)
           <;> simp [efDecodeNormStep, efAuxNormIndex, EF.ofNatAux, htag,
             sentenceDecodeNorm, hs, efPriceNorm, encode_ef_eq_toNat, EF.toNat,
@@ -1479,7 +1485,7 @@ private lemma efRankNormStep_history (n : ℕ) :
           simp [efRankNormStep, efAuxRankNormIndex, EF.ofNatAux, htag,
             ratDecodeNorm_eq, hq]
       · rcases tag with _ | tag
-        · cases hs : (@LO.Propositional.Formula.ofNat ℕ inferInstance
+        · cases hs : (@FFL.Propositional.Formula.ofNat ℕ inferInstance
               code.unpair.2.unpair.1 : Option Sentence) <;>
             simp [efRankNormStep, efAuxRankNormIndex, EF.ofNatAux, htag,
               sentenceDecodeNorm, hs, decode_formula_eq_ofNat]
@@ -1687,7 +1693,7 @@ private lemma efQueriesNormVal_history (n : ℕ) :
       · cases hq : (@Encodable.decode ℚ inferInstance code.unpair.2) <;>
           simp [efQueriesNormVal, EF.ofNatAux, htag, hq, EF.priceQueries]
       · rcases tag with _ | tag
-        · cases hs : (@LO.Propositional.Formula.ofNat ℕ inferInstance
+        · cases hs : (@FFL.Propositional.Formula.ofNat ℕ inferInstance
               code.unpair.2.unpair.1 : Option Sentence) <;>
             simp [efQueriesNormVal, EF.ofNatAux, htag, hs, EF.priceQueries,
               decode_formula_eq_ofNat]
@@ -1742,7 +1748,7 @@ private def strategyOfTrades? (n : ℕ) (trades : List (EF × Sentence)) :
 
 private lemma strategyOfTrades?_self {n : ℕ} (T : Strategy n) :
     strategyOfTrades? n T.trades = some T := by
-  simp only [strategyOfTrades?, dif_pos T.rank_le]
+  simp only [strategyOfTrades?, dite_eq_left T.rank_le]
 
 /-- A strategy is encoded by exactly its finite trade list; its day-rank proof is erased
 and revalidated by the decoder. -/
@@ -1772,11 +1778,11 @@ private lemma strategyTradesNorm_eq (n : ℕ) (trades : List (EF × Sentence)) :
   · let T : Strategy n := ⟨trades, h⟩
     have hof : strategyOfTrades? n trades = some T := by
       simpa [T] using strategyOfTrades?_self T
-    rw [strategyTradesNorm, if_pos h, hof]
+    rw [strategyTradesNorm, ite_eq_left h, hof]
     rfl
   · have hof : strategyOfTrades? n trades = none := by
-      rw [strategyOfTrades?, dif_neg h]
-    rw [strategyTradesNorm, if_neg h, hof]
+      rw [strategyOfTrades?, dite_eq_right h]
+    rw [strategyTradesNorm, ite_eq_right h, hof]
     rfl
 
 private def strategyDecodeNorm (n code : ℕ) : ℕ :=
@@ -3190,12 +3196,12 @@ private lemma parseStructuredPaperPrimeC_prim : Primrec parseStructuredPaperPrim
     · rfl
     simp only [id_eq, parseStructuredPaperPrimeC]
     by_cases hpol : polarity ≤ 1
-    · simp only [hpol, if_true]
+    · simp only [hpol, ite_true]
       rcases hl : readStructuredLength framed with _ | p
       · simp
       simp only [Option.bind_some]
       by_cases hlen : p.1 ≤ p.2.length
-      · simp only [hlen, if_true]
+      · simp only [hlen, ite_true]
         rcases hf : parseStructuredArithmeticFormula p.1 (p.2.take p.1) with
           _ | ⟨code, rest⟩
         · simp

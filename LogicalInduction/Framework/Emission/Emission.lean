@@ -290,10 +290,10 @@ lemma precEvalState_final (cf cg : Nat.Partrec.Code)
   by_cases hguard : Nat.pair a total < clock
   · have htotal : total ≤ clock :=
       (Nat.right_le_pair a total).trans hguard.le
-    rw [if_pos hguard, precEvalState_eq_evaln cf cg htotal le_rfl]
+    rw [ite_eq_left hguard, precEvalState_eq_evaln cf cg htotal le_rfl]
     congr 2
     omega
-  · rw [if_neg hguard]
+  · rw [ite_eq_right hguard]
     cases clock with
     | zero => simp [Nat.Partrec.Code.evaln]
     | succ k =>
@@ -324,8 +324,8 @@ lemma polyFueled_baseGuard {bv : ℕ → ℕ} {c : Nat.Partrec.Code} (h : PolyFu
     (((PolyFueled.const 0).pair h.succ_comp).pair subc_polyFueled)).of_eq (fun z => ?_)⟩
   simp only [Nat.unpair_pair, ifzSelFn]
   by_cases hle : z.unpair.1 ≤ z.unpair.2
-  · rw [if_pos hle, if_pos (Nat.sub_eq_zero_of_le hle)]
-  · rw [if_neg hle, if_neg (by omega : ¬ z.unpair.1 - z.unpair.2 = 0)]
+  · rw [ite_eq_left hle, ite_eq_left (Nat.sub_eq_zero_of_le hle)]
+  · rw [ite_eq_right hle, ite_eq_right (by omega : ¬ z.unpair.1 - z.unpair.2 = 0)]
 
 /-- The `evaln` side of the base-code shape `polyFueled_baseGuard` compiles: a code
 returning `bv n` at every input inside its clock normalizes to
@@ -370,10 +370,12 @@ lemma codeEvalnNat_pair_eq (cf cg : Nat.Partrec.Code) (z : ℕ) :
     codeEvalnNat (.pair cf cg) z =
       if codeEvalnNat cf z = 0 ∨ codeEvalnNat cg z = 0 then 0
       else Nat.pair (codeEvalnNat cf z - 1) (codeEvalnNat cg z - 1) + 1 := by
-  simp only [codeEvalnNat]
+  -- split on the fuel before unfolding: `generalize` cannot abstract `z.unpair.1` once the
+  -- interpreter's match on it is exposed
   cases hk : z.unpair.1 with
-  | zero => simp [Nat.Partrec.Code.evaln]
+  | zero => simp [codeEvalnNat, hk, Nat.Partrec.Code.evaln]
   | succ k =>
+    simp only [codeEvalnNat, hk]
     by_cases hle : z.unpair.2 ≤ k
     · cases hf : Nat.Partrec.Code.evaln (k + 1) cf z.unpair.2 with
       | none => simp [Nat.Partrec.Code.evaln, hle, hf, Seq.seq]
@@ -420,11 +422,11 @@ lemma codeEvalnNat_pair_polyFueled {cf cg : Nat.Partrec.Code}
   rw [codeEvalnNat_pair_eq]
   simp only [Nat.unpair_pair, ifzSelFn]
   by_cases h0f : codeEvalnNat cf z = 0
-  · rw [if_pos h0f, if_pos (Or.inl h0f)]
-  · rw [if_neg h0f]
+  · rw [ite_eq_left h0f, ite_eq_left (Or.inl h0f)]
+  · rw [ite_eq_right h0f]
     by_cases h0g : codeEvalnNat cg z = 0
-    · rw [if_pos h0g, if_pos (Or.inr h0g)]
-    · rw [if_neg h0g, if_neg (by tauto : ¬(codeEvalnNat cf z = 0 ∨ codeEvalnNat cg z = 0))]
+    · rw [ite_eq_left h0g, ite_eq_left (Or.inr h0g)]
+    · rw [ite_eq_right h0g, ite_eq_right (by tauto : ¬(codeEvalnNat cf z = 0 ∨ codeEvalnNat cg z = 0))]
       simp only [Nat.pred_eq_sub_one]
 
 lemma codeEvalnNat_comp_polyFueled {cf cg : Nat.Partrec.Code}
@@ -440,8 +442,8 @@ lemma codeEvalnNat_comp_polyFueled {cf cg : Nat.Partrec.Code}
   rw [codeEvalnNat_comp_eq]
   simp only [Nat.unpair_pair, ifzSelFn]
   by_cases h0g : codeEvalnNat cg z = 0
-  · rw [if_pos h0g, if_pos h0g]
-  · rw [if_neg h0g, if_neg h0g]
+  · rw [ite_eq_left h0g, ite_eq_left h0g]
+  · rw [ite_eq_right h0g, ite_eq_right h0g]
     simp only [Nat.pred_eq_sub_one]
 
 /-- `none ↦ 0`, `some x ↦ x+1`; the normalization shared by `codeEvalnNat`. -/
@@ -484,15 +486,15 @@ lemma precNat_eq (cf cg : Nat.Partrec.Code) (A : ℕ) :
       rcases hp : precEvalState cf cg A.unpair.1 A.unpair.2.unpair.1 A.unpair.2.unpair.2 j
         with _ | p
       · have hp0 : precNat cf cg A j = 0 := by rw [ih, hp]; rfl
-        rw [if_neg (by simp [hp0]), optNat_if]
+        rw [ite_eq_right (by simp [hp0]), optNat_if]
         simp [optNat]
       · have hp1 : precNat cf cg A j = p + 1 := by rw [ih, hp]; rfl
         by_cases hguard : Nat.pair A.unpair.2.unpair.1 (j + 1) <
             A.unpair.1 - A.unpair.2.unpair.2 + j + 1
-        · rw [if_pos ⟨hguard, by simp [hp1]⟩, if_pos hguard, hp1,
+        · rw [ite_eq_left ⟨hguard, by simp [hp1]⟩, ite_eq_left hguard, hp1,
             Nat.add_sub_cancel, codeEvalnNat_eq_optNat, Nat.unpair_pair]
           simp
-        · rw [if_neg (by tauto), if_neg hguard]
+        · rw [ite_eq_right (by tauto), ite_eq_right hguard]
           simp [optNat]
 
 /-- `prec`: the fuel-decrement recursion, packaged as the guarded final value of `precNat`. -/
@@ -535,7 +537,7 @@ lemma rfindNat_eq (cf : Nat.Partrec.Code) (A : ℕ) :
       · have hcf0 : codeEvalnNat cf (Nat.pair (j + 1) (Nat.pair A.unpair.2.unpair.1
             (A.unpair.2.unpair.2 + (A.unpair.1 - (j + 1))))) = 0 := by
           simp only [codeEvalnNat, Nat.unpair_pair, hx]
-        rw [hcf0, if_pos rfl, Nat.Partrec.Code.evaln]
+        rw [hcf0, ite_eq_left rfl, Nat.Partrec.Code.evaln]
         simp [Nat.unpaired, Nat.unpair_pair, hx, optNat]
       · have hguard : Nat.pair A.unpair.2.unpair.1
             (A.unpair.2.unpair.2 + (A.unpair.1 - (j + 1))) ≤ j := by
@@ -546,7 +548,7 @@ lemma rfindNat_eq (cf : Nat.Partrec.Code) (A : ℕ) :
         rw [hcfv, Nat.Partrec.Code.evaln]
         rcases x with _ | y
         · simp [Nat.unpaired, Nat.unpair_pair, hx, hguard, optNat]
-        · rw [if_neg (by omega : y + 1 + 1 ≠ 0), if_neg (by omega : y + 1 + 1 ≠ 1)]
+        · rw [ite_eq_right (by omega : y + 1 + 1 ≠ 0), ite_eq_right (by omega : y + 1 + 1 ≠ 1)]
           simp [Nat.unpaired, Nat.unpair_pair, hx, hguard, optNat,
             hM1, hIH]
 
@@ -596,9 +598,9 @@ lemma codeEvalnNat_prec_polyFueled {cf cg : Nat.Partrec.Code}
       (fun A => by
         simp only [Nat.unpair_pair, ifzSelFn, precNat]
         by_cases h : A.unpair.2.unpair.1.pair 0 < A.unpair.1 - A.unpair.2.unpair.2
-        · rw [if_pos h, if_neg (by omega : ¬ A.unpair.1 - A.unpair.2.unpair.2 -
+        · rw [ite_eq_left h, ite_eq_right (by omega : ¬ A.unpair.1 - A.unpair.2.unpair.2 -
             A.unpair.2.unpair.1.pair 0 = 0)]
-        · rw [if_neg h, if_pos (by omega : A.unpair.1 - A.unpair.2.unpair.2 -
+        · rw [ite_eq_right h, ite_eq_left (by omega : A.unpair.1 - A.unpair.2.unpair.2 -
             A.unpair.2.unpair.1.pair 0 = 0)])
   -- Step program `g` (spec via projections of `X = ⟨A, ⟨j, prior⟩⟩`).
   have SAP := PolyFueled.left
@@ -630,16 +632,16 @@ lemma codeEvalnNat_prec_polyFueled {cf cg : Nat.Partrec.Code}
         simp only [Nat.unpair_pair, ifzSelFn, hgspec, Nat.pred_eq_sub_one]
         by_cases hlt : X.unpair.1.unpair.2.unpair.1.pair (X.unpair.2.unpair.1 + 1) <
             X.unpair.1.unpair.1 - X.unpair.1.unpair.2.unpair.2 + X.unpair.2.unpair.1 + 1
-        · rw [if_neg (show X.unpair.1.unpair.1 - X.unpair.1.unpair.2.unpair.2 +
+        · rw [ite_eq_right (show X.unpair.1.unpair.1 - X.unpair.1.unpair.2.unpair.2 +
               X.unpair.2.unpair.1 + 1 -
               X.unpair.1.unpair.2.unpair.1.pair (X.unpair.2.unpair.1 + 1) ≠ 0 by omega)]
           by_cases h2 : X.unpair.2.unpair.2 = 0
-          · rw [if_pos h2, if_neg (fun h => h.2 h2)]
-          · rw [if_neg h2, if_pos ⟨hlt, h2⟩]
-        · rw [if_pos (show X.unpair.1.unpair.1 - X.unpair.1.unpair.2.unpair.2 +
+          · rw [ite_eq_left h2, ite_eq_right (fun h => h.2 h2)]
+          · rw [ite_eq_right h2, ite_eq_left ⟨hlt, h2⟩]
+        · rw [ite_eq_left (show X.unpair.1.unpair.1 - X.unpair.1.unpair.2.unpair.2 +
               X.unpair.2.unpair.1 + 1 -
               X.unpair.1.unpair.2.unpair.1.pair (X.unpair.2.unpair.1 + 1) = 0 by omega),
-            if_neg (fun h => hlt h.1)])
+            ite_eq_right (fun h => hlt h.1)])
   -- State bound: each `precNat` value is `0`, a `cf`-call, or a `cg`-call.
   have hst : IsPolyBounded (fun m => precNat cf cg m.unpair.1 m.unpair.2) := by
     refine (((codeEvalBound_poly cf).comp isPolyBounded_fst).add
@@ -676,8 +678,8 @@ lemma codeEvalnNat_prec_polyFueled {cf cg : Nat.Partrec.Code}
   rw [codeEvalnNat_prec_eq]
   simp only [Nat.unpair_pair, ifzSelFn]
   by_cases h : z.unpair.2 < z.unpair.1
-  · rw [if_pos h, if_neg (by omega : ¬ z.unpair.1 - z.unpair.2 = 0)]
-  · rw [if_neg h, if_pos (by omega : z.unpair.1 - z.unpair.2 = 0)]
+  · rw [ite_eq_left h, ite_eq_right (by omega : ¬ z.unpair.1 - z.unpair.2 = 0)]
+  · rw [ite_eq_right h, ite_eq_left (by omega : z.unpair.1 - z.unpair.2 = 0)]
 
 end PrecCompile
 
@@ -722,10 +724,10 @@ lemma codeEvalnNat_rfind_polyFueled {cf : Nat.Partrec.Code}
           (X.unpair.1.unpair.1 - (X.unpair.2.unpair.1 + 1)))))
         by_cases h0 : c = 0
         · simp [h0]
-        · rw [if_neg h0, if_neg h0]
+        · rw [ite_eq_right h0, ite_eq_right h0]
           by_cases h1 : c = 1
-          · rw [if_pos h1, if_pos (by omega : c - 1 = 0)]
-          · rw [if_neg h1, if_neg (by omega : c - 1 ≠ 0)])
+          · rw [ite_eq_left h1, ite_eq_left (by omega : c - 1 = 0)]
+          · rw [ite_eq_right h1, ite_eq_right (by omega : c - 1 ≠ 0)])
   have hst : IsPolyBounded (fun m => rfindNat cf m.unpair.1 m.unpair.2) :=
     ((isPolyBounded_fst.add isPolyBounded_fst).add_one).of_le (fun m => by
       have := rfindNat_le cf m.unpair.1 m.unpair.2

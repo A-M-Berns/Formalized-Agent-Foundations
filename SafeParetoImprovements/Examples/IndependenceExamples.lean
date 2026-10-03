@@ -67,7 +67,7 @@ lemma pdFallback_participationIndependent (i : Two) :
   participationIndependent_fallback_all pdRepresentatives prisonersDilemmaCooperate_isSubsetGameOf i
 
 /-- The cooperative subset game has the single outcome `(C, C)`, so that is what its play is. -/
-lemma pdRepresentatives_play_cooperate (ω : Unit) :
+lemma pdRepresentatives_play_cooperate (ω : pdRepresentatives.Ω) :
     pdRepresentatives.play prisonersDilemmaCooperate ω = fun _ => PD.cooperate := by
   funext i
   have h := pdRepresentatives.toPlay.mem prisonersDilemmaCooperate ω i

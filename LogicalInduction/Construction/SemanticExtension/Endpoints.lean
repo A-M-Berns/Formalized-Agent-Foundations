@@ -47,7 +47,7 @@ module — `liftedCCEEBaseDP_computable`, `liftedCCEEBaseWorld_hworld`,
 
 namespace LogicalInduction
 
-open LO LO.Propositional LO.FirstOrder LO.FirstOrder.Arithmetic
+open FFL FFL.Propositional FFL.FirstOrder FFL.FirstOrder.Arithmetic
 open Classical
 
 /-! ## The lifted quotation base -/
@@ -122,9 +122,9 @@ private lemma semanticQuoteDefSentence_congr {w₁ w₂ : PCWorld}
     w₁.Holds (semanticQuoteDefSentence e) ↔ w₂.Holds (semanticQuoteDefSentence e) := by
   unfold semanticQuoteDefSentence
   by_cases hkind : e.unpair.1 = 0
-  · rw [if_pos hkind]
+  · rw [ite_eq_left hkind]
     exact imp_congr (hatom _) (hleaf _ _)
-  · rw [if_neg hkind]
+  · rw [ite_eq_right hkind]
     exact imp_congr (hleaf _ _) (hatom _)
 
 /-- Quotation definition sentences agree between the lifted base world and the certified
@@ -379,7 +379,7 @@ lemma liftedMachineSemanticHandle_valuesAt {X : ℕ → LUV}
     rw [semanticHandleLUVSeq_gt]
     apply (liftedMachineSource_reflected hX n r v hsource).2
     by_cases hr0 : r < 0
-    · rw [liftedMachineSourceSentence, if_pos hr0]
+    · rw [liftedMachineSourceSentence, ite_eq_left hr0]
       exact PCWorld.holds_top v
     · simpa [liftedMachineSourceSentence, hr0, liftLUV] using (hx.2.2 r).1 hr
   · intro hr hleaf
@@ -425,7 +425,7 @@ lemma canonicalRationalQuote_factor_eventually
       (fun _ _ h => Finset.mem_union_left _ h) q limit
   refine ⟨fuel, ?_⟩
   rw [semanticFactorPrefixValidAtFuel,
-    if_neg (by simp [semanticQuoteSchema]), if_pos (by simp [semanticQuoteSchema])]
+    ite_eq_right (by simp [semanticQuoteSchema]), ite_eq_left (by simp [semanticQuoteSchema])]
   simpa only [semanticQuoteSchema] using hfuel
 
 /-- The canonical process's own LIA market is a logical inductor over it, at the paper's

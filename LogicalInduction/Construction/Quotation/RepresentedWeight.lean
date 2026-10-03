@@ -45,8 +45,8 @@ than being discharged here.
 
 namespace LogicalInduction
 
-open LO LO.FirstOrder LO.FirstOrder.Arithmetic LO.Entailment
-open scoped LO.FirstOrder.Arithmetic
+open FFL FFL.FirstOrder FFL.FirstOrder.Arithmetic FFL.Entailment
+open scoped FFL.FirstOrder.Arithmetic
 
 /-! ## The deferred weight's pair code -/
 
@@ -133,30 +133,30 @@ Paper node: `def:luv` -/
 noncomputable def representedPairPaperLUV
     (γ : ArithmeticSemisentence 2) (g : ℕ → ℕ)
     (hγ : ∀ n y : ℕ, y = g n ↔
-      T ⊢ (∀⁰ (Semiformula.subst γ ![‘↑n’, #0] 🡘 (“#0 = ↑y” : ArithmeticSemisentence 1))))
+      T ⊢ (∀¹ (Semiformula.subst γ ![‘↑n’, #0] 🡘 (“#0 = ↑y” : ArithmeticSemisentence 1))))
     (hmem : ∀ n, (g n).unpair.1 ≤ (g n).unpair.2 ∧ 0 < (g n).unpair.2)
     (n : ℕ) : PaperLUV T where
   formula := Semiformula.subst γ ![‘↑n’, #0]
   unique := by
-    apply LO.FirstOrder.Arithmetic.complete T
+    apply FFL.FirstOrder.Arithmetic.complete T
     intro (M : Type) _ hM
     haveI := models_iOpen_of_models T M
     have hrep := models_of_provable hM ((hγ n (g n)).mp rfl)
     simp [models_iff] at hrep ⊢
     exact ⟨_, (hrep _).mpr rfl, fun y hy => (hrep y).mp hy⟩
   unit := by
-    apply LO.FirstOrder.Arithmetic.complete T
+    apply FFL.FirstOrder.Arithmetic.complete T
     intro (M : Type) _ hM
     haveI := models_iOpen_of_models T M
     have hrep := models_of_provable hM ((hγ n (g n)).mp rfl)
-    simp [models_iff, LO.FirstOrder.Arithmetic.numeral_eq_natCast] at hrep ⊢
+    simp [models_iff, FFL.FirstOrder.Arithmetic.numeral_eq_natCast] at hrep ⊢
     simp [paperRatUnitDef, pairDef, ← pair_graph]
     intro x hx
     rw [(hrep x).mp hx]
     obtain ⟨hle, hpos⟩ := hmem n
     refine ⟨((g n).unpair.1 : M), ((g n).unpair.2 : M), ?_, ?_, ?_⟩
     · conv_lhs => rw [← Nat.pair_unpair (g n)]
-      exact LO.FirstOrder.Arithmetic.coe_pair_eq_pair_coe _ _
+      exact FFL.FirstOrder.Arithmetic.coe_pair_eq_pair_coe _ _
     · exact_mod_cast hpos
     · exact_mod_cast hle
 
@@ -164,7 +164,7 @@ noncomputable def representedPairPaperLUV
 @[simp] lemma representedPairPaperLUV_formula
     (γ : ArithmeticSemisentence 2) (g : ℕ → ℕ)
     (hγ : ∀ n y : ℕ, y = g n ↔
-      T ⊢ (∀⁰ (Semiformula.subst γ ![‘↑n’, #0] 🡘 (“#0 = ↑y” : ArithmeticSemisentence 1))))
+      T ⊢ (∀¹ (Semiformula.subst γ ![‘↑n’, #0] 🡘 (“#0 = ↑y” : ArithmeticSemisentence 1))))
     (hmem : ∀ n, (g n).unpair.1 ≤ (g n).unpair.2 ∧ 0 < (g n).unpair.2)
     (n : ℕ) :
     (representedPairPaperLUV T γ g hγ hmem n).formula = Semiformula.subst γ ![‘↑n’, #0] := rfl
@@ -178,7 +178,7 @@ Kind `P`; hypotheses `(a)`. -/
 lemma representedPairPaperLUV_threshold_provable
     (γ : ArithmeticSemisentence 2) (g : ℕ → ℕ)
     (hγ : ∀ n y : ℕ, y = g n ↔
-      T ⊢ (∀⁰ (Semiformula.subst γ ![‘↑n’, #0] 🡘 (“#0 = ↑y” : ArithmeticSemisentence 1))))
+      T ⊢ (∀¹ (Semiformula.subst γ ![‘↑n’, #0] 🡘 (“#0 = ↑y” : ArithmeticSemisentence 1))))
     (hmem : ∀ n, (g n).unpair.1 ≤ (g n).unpair.2 ∧ 0 < (g n).unpair.2)
     (n : ℕ) {r : ℚ}
     (hlt : (r : ℝ) < ((g n).unpair.1 : ℝ) / ((g n).unpair.2 : ℝ)) :
@@ -188,19 +188,19 @@ lemma representedPairPaperLUV_threshold_provable
   · have hr0 : 0 ≤ r := not_lt.mp hr
     have hcross : r.num.natAbs * (g n).unpair.2 < (g n).unpair.1 * r.den :=
       cross_lt_of_lt_div (hmem n).2 hr0 hlt
-    apply LO.FirstOrder.Arithmetic.complete T
+    apply FFL.FirstOrder.Arithmetic.complete T
     intro (M : Type) _ hM
     haveI := models_iOpen_of_models T M
     have hrep := models_of_provable hM ((hγ n (g n)).mp rfl)
-    simp [models_iff, LO.FirstOrder.Arithmetic.numeral_eq_natCast] at hrep
+    simp [models_iff, FFL.FirstOrder.Arithmetic.numeral_eq_natCast] at hrep
     simp only [models_iff, PaperLUV.thresholdFormula, representedPairPaperLUV_formula]
     simp [paperRatGtDef, hr, pairDef, ← pair_graph,
-      LO.FirstOrder.Arithmetic.numeral_eq_natCast]
+      FFL.FirstOrder.Arithmetic.numeral_eq_natCast]
     intro x hx
     rw [(hrep x).mp hx]
     refine ⟨((g n).unpair.1 : M), ((g n).unpair.2 : M), ?_, ?_, ?_⟩
     · conv_lhs => rw [← Nat.pair_unpair (g n)]
-      exact LO.FirstOrder.Arithmetic.coe_pair_eq_pair_coe _ _
+      exact FFL.FirstOrder.Arithmetic.coe_pair_eq_pair_coe _ _
     · exact_mod_cast (hmem n).2
     · exact_mod_cast hcross
 
@@ -209,7 +209,7 @@ Kind `P`; hypotheses `(a)`. -/
 lemma representedPairPaperLUV_threshold_refutable
     (γ : ArithmeticSemisentence 2) (g : ℕ → ℕ)
     (hγ : ∀ n y : ℕ, y = g n ↔
-      T ⊢ (∀⁰ (Semiformula.subst γ ![‘↑n’, #0] 🡘 (“#0 = ↑y” : ArithmeticSemisentence 1))))
+      T ⊢ (∀¹ (Semiformula.subst γ ![‘↑n’, #0] 🡘 (“#0 = ↑y” : ArithmeticSemisentence 1))))
     (hmem : ∀ n, (g n).unpair.1 ≤ (g n).unpair.2 ∧ 0 < (g n).unpair.2)
     (n : ℕ) {r : ℚ}
     (hgt : ((g n).unpair.1 : ℝ) / ((g n).unpair.2 : ℝ) < (r : ℝ)) :
@@ -222,22 +222,22 @@ lemma representedPairPaperLUV_threshold_refutable
       div_nonneg (by positivity) hbR.le
     have : (0 : ℝ) < (r : ℝ) := lt_of_le_of_lt hnn hgt
     exact not_lt.mpr (by exact_mod_cast this.le)
-  apply LO.FirstOrder.Arithmetic.complete T
+  apply FFL.FirstOrder.Arithmetic.complete T
   intro (M : Type) _ hM
   haveI := models_iOpen_of_models T M
   have hrep := models_of_provable hM ((hγ n (g n)).mp rfl)
-  simp [models_iff, LO.FirstOrder.Arithmetic.numeral_eq_natCast] at hrep
+  simp [models_iff, FFL.FirstOrder.Arithmetic.numeral_eq_natCast] at hrep
   simp only [models_iff, PaperLUV.thresholdFormula, representedPairPaperLUV_formula]
   simp [paperRatGtDef, hr, pairDef, ← pair_graph,
-    LO.FirstOrder.Arithmetic.numeral_eq_natCast]
+    FFL.FirstOrder.Arithmetic.numeral_eq_natCast]
   have hpaircast : ((g n : ℕ) : M) =
-      LO.FirstOrder.Arithmetic.pair ((g n).unpair.1 : M) ((g n).unpair.2 : M) := by
+      FFL.FirstOrder.Arithmetic.pair ((g n).unpair.1 : M) ((g n).unpair.2 : M) := by
     conv_lhs => rw [← Nat.pair_unpair (g n)]
-    exact LO.FirstOrder.Arithmetic.coe_pair_eq_pair_coe _ _
+    exact FFL.FirstOrder.Arithmetic.coe_pair_eq_pair_coe _ _
   refine ⟨((g n : ℕ) : M), (hrep _).mpr rfl, ?_⟩
   intro c d hcd _
   rw [hpaircast] at hcd
-  obtain ⟨rfl, rfl⟩ := LO.FirstOrder.Arithmetic.pair_ext_iff.mp hcd
+  obtain ⟨rfl, rfl⟩ := FFL.FirstOrder.Arithmetic.pair_ext_iff.mp hcd
   exact_mod_cast hcross
 
 /-- **The exact completed-world value of a represented paper LUV.**  Every completed world of
@@ -247,7 +247,7 @@ Paper node: `def:luv` -/
 lemma representedPairPaperLUV_valuesAt
     (γ : ArithmeticSemisentence 2) (g : ℕ → ℕ)
     (hγ : ∀ n y : ℕ, y = g n ↔
-      T ⊢ (∀⁰ (Semiformula.subst γ ![‘↑n’, #0] 🡘 (“#0 = ↑y” : ArithmeticSemisentence 1))))
+      T ⊢ (∀¹ (Semiformula.subst γ ![‘↑n’, #0] 🡘 (“#0 = ↑y” : ArithmeticSemisentence 1))))
     (hmem : ∀ n, (g n).unpair.1 ≤ (g n).unpair.2 ∧ 0 < (g n).unpair.2)
     (n : ℕ) (v : PCWorld) (hv : v.ConsistentWithTheory (paperTheoryDP T)) :
     v.ValuesAt (representedPairPaperLUV T γ g hγ hmem n).toLUV
@@ -276,7 +276,7 @@ Paper node: `def:luv` -/
 noncomputable def representedPairPaperLUVSeq
     (γ : ArithmeticSemisentence 2) (g : ℕ → ℕ)
     (hγ : ∀ n y : ℕ, y = g n ↔
-      T ⊢ (∀⁰ (Semiformula.subst γ ![‘↑n’, #0] 🡘 (“#0 = ↑y” : ArithmeticSemisentence 1))))
+      T ⊢ (∀¹ (Semiformula.subst γ ![‘↑n’, #0] 🡘 (“#0 = ↑y” : ArithmeticSemisentence 1))))
     (hmem : ∀ n, (g n).unpair.1 ≤ (g n).unpair.2 ∧ 0 < (g n).unpair.2) :
     PaperLUVSeq T where
   luv n := representedPairPaperLUV T γ g hγ hmem n

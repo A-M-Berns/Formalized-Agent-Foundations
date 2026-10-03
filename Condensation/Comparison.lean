@@ -254,7 +254,7 @@ theorem aeFunctionOf_of_condIndepFun {Ω S T₁ T₂ U : Type*} [MeasurableSpace
   intro ω hω
   have hex : ∃ ω', μ {ω'} ≠ 0 ∧ C ω' = C ω := ⟨ω, hω, rfl⟩
   have hgc : (fun c => if h : ∃ ω, μ {ω} ≠ 0 ∧ C ω = c then X h.choose
-      else Classical.arbitrary S) (C ω) = X hex.choose := dif_pos hex
+      else Classical.arbitrary S) (C ω) = X hex.choose := dite_eq_left hex
   rw [hgc]
   exact key ω hex.choose hω hex.choose_spec.1 hex.choose_spec.2.symm
 

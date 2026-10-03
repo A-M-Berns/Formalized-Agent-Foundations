@@ -118,7 +118,7 @@ theorem generates_tfae {C : Set (Setoid S)} (hC : C ⊆ F.B) (X : Setoid S) :
 `sInf C ≤ X`. -/
 lemma generates_iff_sInf_le {C : Set (Setoid S)} (hC : C ⊆ F.B) (X : Setoid S) :
     F.Generates C X ↔ commonRefinement C ≤ X :=
-  (F.generates_tfae hC X).out 0 6
+  (F.generates_tfae hC X).out 1 7
 
 /-- **Proposition 11** — the basic properties of `⊢^F`, in the paper's order.  Clause 1's
 `X ≤_S Y` is Mathlib's `Y ≤ X`, and clause 2's `X ∨_S Y` is `X ⊓ Y` (`dd:order-flip`).
@@ -305,7 +305,7 @@ theorem history_spec [Finite F.B] (X Y : Setoid S) :
 equivalence it needs out of the `TFAE`, and Proposition 13 by projecting a clause. -/
 example {C : Set (Setoid S)} (hC : C ⊆ F.B) (X : Setoid S) (h : F.Generates C X) (s t : S) :
     X (F.chimera C s t) s := by
-  have h6 : ∀ s t : S, X (F.chimera C s t) s := ((F.generates_tfae hC X).out 0 5).1 h
+  have h6 : ∀ s t : S, X (F.chimera C s t) s := ((F.generates_tfae hC X).out 1 6).1 h
   exact h6 s t
 
 example [Finite F.B] (X Y : Setoid S) :

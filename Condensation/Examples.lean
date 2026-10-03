@@ -344,7 +344,7 @@ Taking the pushforward *as the definition* is what makes `π_pres` the identity 
 noncomputable def noisyObsMeasure : Measure Bool := noisyMeasure.map Prod.fst
 
 instance : IsProbabilityMeasure noisyObsMeasure :=
-  Measure.isProbabilityMeasure_map measurable_fst.aemeasurable
+  inferInstanceAs (IsProbabilityMeasure (noisyMeasure.map Prod.fst))
 
 /-- The observable model: `Ω = Bool` carrying the pushforward measure, one variable. -/
 noncomputable def noisyModel : RVModel Unit where
@@ -1053,9 +1053,9 @@ noncomputable def L₁RV (M : RVModel.{u, v, w} I) : RVModel.{u, max v w, w} (PP
   P := M.P
   R := fun A => ∀ j : {i : I // A.toFinset = {i}}, M.R j.1
   X := fun _ ω j => M.X j.1 ω
-  measurable_X := fun _ => measurable_pi_lambda _ fun j => M.measurable_X j.1
+  measurable_X := fun _ => measurable_pi_iff.mpr fun j => M.measurable_X j.1
   finiteEntropy_X := fun _ =>
-    M.finiteEntropyOf (measurable_pi_lambda _ fun j => M.measurable_X j.1)
+    M.finiteEntropyOf (measurable_pi_iff.mpr fun j => M.measurable_X j.1)
 
 /-- **Example 4.1's `L₁`**, for an arbitrary random variable model `M`: the latent variable
 model `(Ω, (Y_A)_{A ∈ P⁺I}, idΩ)` of (4.1) with `Y_{i} = X_i` for `i ∈ I` and `Y_A`
@@ -1085,9 +1085,9 @@ noncomputable def L₂RV (M : RVModel.{u, v, w} I) : RVModel.{u, max v w, w} (PP
   P := M.P
   R := fun A => ∀ j : {_i : I // ∀ k : I, k ∈ A.toFinset}, M.R j.1
   X := fun _ ω j => M.X j.1 ω
-  measurable_X := fun _ => measurable_pi_lambda _ fun j => M.measurable_X j.1
+  measurable_X := fun _ => measurable_pi_iff.mpr fun j => M.measurable_X j.1
   finiteEntropy_X := fun _ =>
-    M.finiteEntropyOf (measurable_pi_lambda _ fun j => M.measurable_X j.1)
+    M.finiteEntropyOf (measurable_pi_iff.mpr fun j => M.measurable_X j.1)
 
 /-- **Example 4.1's `L₂`**, for an arbitrary random variable model `M`: the latent variable
 model `(Ω, (Z_A)_{A ∈ P⁺I}, idΩ)` of (4.1) with `Z_I = X_I` and `Z_A` constant for

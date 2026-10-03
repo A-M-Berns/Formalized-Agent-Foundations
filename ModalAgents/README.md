@@ -65,7 +65,7 @@ numbered node — each says so in its own docstring:
 |---|---|
 | `subst_congr` | GL-level substitution congruence; Lemma 4.5 is the *arithmetic* statement, carried by `arithmetic_modal_substitution` |
 | `glFixedPoint_uniqueness` | the *rule* form of Thm 4.3, got from the printed internal form `glFixedPoint_uniqueness_internal` by necessitation |
-| `arithInterp`, `Realization.update` | the definitions the arithmetic statements are phrased in — statement surface, not nodes |
+| `Realization.update` | the definition the arithmetic statements are phrased in (rebinding the diagonal variable of a realization) — statement surface, not a node |
 | `defectBot_defects`, `defectBot_provably_defects`, `cooperateBot_cooperates` | §2 prose in an unnumbered `remark` (`PA ⊢ [DB(X)=D]`, `PA ⊢ [CB(X)=C]`) |
 | `fairBot_unexploitable`, `fairBot_vs_cooperateBot`, `fairBot_vs_defectBot` | §3 prose on FairBot's unexploitability "by inspection" and its waste against CooperateBot |
 | `prudentBot_vs_defectBot` | the "in particular, `PA+1 ⊢ [PB(DB)=D]`" step *inside* the proof of Thm 3.2, not one of its conjuncts |
@@ -104,9 +104,9 @@ conclusion is `Cooperates` (arithmetically liftable) rather than `¬ Defects`.
 **Defection is rendered as unprovability of cooperation — and on three endpoints it
 cannot be rendered otherwise.**  There are two predicates:
 
-* `ProvablyDefects X Y` is `Modal.GL ⊢ ∼(outcome X Y)` — the paper's notion, a positive
+* `ProvablyDefects X Y` is `∼(outcome X Y) ∈ LogicGL` — the paper's notion, a positive
   `GL` claim, and it lifts to arithmetic through `ProvablyDefects.arithmeticLift`;
-* `Defects X Y` is `Modal.GL ⊬ outcome X Y` — strictly weaker
+* `Defects X Y` is `outcome X Y ∉ LogicGL` — strictly weaker
   (`ProvablyDefects.defects` is the one-way implication), metatheoretic, and with no
   arithmetical lift, nor any possible one.
 
@@ -158,18 +158,19 @@ for this paper, and none is invented for it.
 The one standard GL fact previously axiomatized — `glFixedPoint_thm42`, the de
 Jongh–Sambin–Bernardi modal fixed-point existence theorem (single-variable form; Barasz
 §4, Thm 4.2, which they state without proof, citing Lindström (1996) Thm 11) — is now
-**proved**. It is discharged through the upstream
+**proved**. It is `LogicGL.fixpointTheorem` of the
 [`FormalizedFormalLogic/ProvabilityLogic`](https://github.com/FormalizedFormalLogic/ProvabilityLogic)
 package (pinned by commit in `lakefile.lean`): a de Jongh–Sambin construction via Maehara
-interpolation and Löb's rule, transported to Foundation's `Modal.GL` through finite Kripke
-completeness, with the `GlFixedPointBridge` translation in `FixedPoint.lean`. The same
-package supplies the arithmetical soundness of GL (Solovay-style realization machinery)
-behind `Cooperates.arithmeticLift` and `ProvablyDefects.arithmeticLift`; that
-development's formulas are a separate syntax, so
-the lift's conclusion interprets the outcome formula through the (structure-preserving,
-invertible) bridge translation. Like Mathlib and Foundation, the package is dependency
-code: kernel-checked here against this toolchain, cited rather than read line-by-line.
-(An earlier vendored snapshot of the same development has been retired in its favor.)
+interpolation and Löb's rule, with finite Kripke completeness. The whole development is
+stated directly over that package's syntax and logic — `Formula ℕ` and membership in
+`LogicGL`, the set of GL theorems — so there is no translation layer between the
+cooperation theorems and the fixed-point theorem. The same package supplies the
+arithmetical soundness of GL (Solovay-style realization machinery,
+`LogicGL.arithmetical_soundness'`) behind `Cooperates.arithmeticLift` and
+`ProvablyDefects.arithmeticLift`, and its `Realization`/`Formula.interpret` are the reading
+of a modal formula as an arithmetic sentence that the §4 arithmetic layer is phrased in.
+Like Mathlib and Foundation, the package is dependency code: kernel-checked here against
+this toolchain, cited rather than read line-by-line.
 
 Fixed-point *uniqueness* (Barasz §4, Thm 4.3; Lindström Thm 12) is proved in
 `FixedPoint.lean` as `glFixedPoint_uniqueness_internal`, the paper's printed internal
@@ -182,10 +183,10 @@ arithmetic counterpart, Cor 4.4, is `arithmetic_fixedPoint_uniqueness` in
 
 * `ModalAgents/GL.lean` — GL lemmas used by the agent proofs.
 * `ModalAgents/ModalAgent.lean` — modal agents and the four concrete agents.
-* `ModalAgents/FixedPoint.lean` — GL fixed-point existence/uniqueness theorems, the bridge to the upstream `ProvabilityLogic` package, and substitution congruence.
+* `ModalAgents/FixedPoint.lean` — GL fixed-point existence (restated from the `ProvabilityLogic` package) and uniqueness theorems, and substitution congruence.
 * `ModalAgents/Cooperation.lean` — outcomes, cooperation/defection, and the main cooperation theorems.
 * `ModalAgents/Behavioral.lean` — behavioral equivalence for modal agents.
-* `ModalAgents/Arithmetic.lean` — the arithmetic layer: Löb's Theorem, modal substitution (Lemma 4.5), uniqueness of arithmetic fixed points (Cor 4.4).
+* `ModalAgents/Arithmetic.lean` — the arithmetic layer: Löb's Theorem, the arithmetical lifts of cooperation and provable defection (Thm 4.1), modal substitution (Lemma 4.5), uniqueness of arithmetic fixed points (Cor 4.4). The modal files above import no first-order layer on purpose: Foundation's global `□`/`∼` notations would otherwise capture the parse of the modal ones.
 * `ModalAgents/ArithmeticAgent.lean` — agents as formulas of `PA`: modal agents of rank `k`, behavioral agents, Thm 4.8, CliqueBot and Cor 4.9.
 
 ### CliqueBot and the size of its Gödel numeral
@@ -202,7 +203,7 @@ closed term (`provable_eq_self`, `cliqueBotSpec_subst`), an abstract sentence
 (`iff_and_top`, `neg_of_iff`), or an abstract complexity (`cliqueBotVariant_ne`) — and
 instantiate at `cliqueBot` by plain term application, which is unification and never
 computation. Where the argument needs a propositional step at the big term it goes
-through `iff_of_E!` rather than a tactic. This is a proof-engineering constraint, not a
+through `iff_of_E` rather than a tactic. This is a proof-engineering constraint, not a
 modeling choice: no statement is weakened by it.
 
 One hypothesis in that block *is* a statement-level choice, and it is deliberate:

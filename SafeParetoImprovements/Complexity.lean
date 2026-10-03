@@ -439,7 +439,7 @@ lemma affineScale_pos (hA : c.Affine i) (j : N) : 0 < c.affineScale i hA j := by
 lemma affine_spec (hA : c.Affine i) {j : N} (hj : j ≠ i) {a : ∀ k, 𝒜 k}
     (ha : a ∈ Γ.reduce.profiles) :
     Γ.u a j = c.affineScale i hA j * Γ.u (c.map a) j + c.affineShift i hA j := by
-  simp only [affineScale, affineShift, dif_neg hj]
+  simp only [affineScale, affineShift, dite_eq_right hj]
   exact (Classical.choose_spec (Classical.choose_spec (hA j hj)).2) a ha
 
 /-- The image block `Φ(Aʳᵉᵈ)` of the unilateral candidate, with the candidate's payoffs:
@@ -461,7 +461,7 @@ def imageIso (hA : c.Affine i) : GameIso Γ.reduce (c.imageGame i) where
     rw [Game.reduce_u, imageGame_u]
     by_cases hj : j = i
     · subst hj
-      rw [affineScale, affineShift, dif_pos rfl, dif_pos rfl, one_mul, add_zero,
+      rw [affineScale, affineShift, dite_eq_left rfl, dite_eq_left rfl, one_mul, add_zero,
         show (fun k => c.toFun k (a k)) = c.map a from rfl,
         c.unilateralGame_u_self _ (c.map_mem ha), c.invMap_map ha]
     · rw [show (fun k => c.toFun k (a k)) = c.map a from rfl, c.unilateralGame_u_of_ne _ _ hj]
@@ -562,14 +562,14 @@ lemma ofIso_reducesToImage
         have hb' : b ∈ Γs.reduce.profiles := hb
         by_cases hj : j = i
         · subst hj
-          rw [if_pos rfl, if_pos rfl, hG, c.unilateralGame_u_self _ (hmemimg b hb'), Game.reduce_u]
+          rw [ite_eq_left rfl, ite_eq_left rfl, hG, c.unilateralGame_u_self _ (hmemimg b hb'), Game.reduce_u]
           have hinv : c.invMap b ∈ Γ.reduce.profiles := fun k => c.inv_mem (hmemimg b hb' k)
           have h := ψ.affine _ hinv j
           rw [Game.reduce_u, Game.reduce_u,
             show (fun k => ψ.toFun k (c.invMap b k)) = ψ.map (c.invMap b) from rfl,
             ← ofIso_map hsub ψ hinv, ← hc, c.map_invMap (hmemimg b hb')] at h
           exact h
-        · rw [if_neg hj, if_neg hj, one_mul, add_zero, hG, c.unilateralGame_u_of_ne i b hj,
+        · rw [ite_eq_right hj, ite_eq_right hj, one_mul, add_zero, hG, c.unilateralGame_u_of_ne i b hj,
             Game.reduce_u]
           exact ((hi j hj).2 b (Γs.reduce_isSubsetGameOf.profiles_subset hb')).symm }
   have hred : (Γs.reduce.withPayoffs G).Reduced := Reduced.of_iso φ.symm Γs.reduce_reduced

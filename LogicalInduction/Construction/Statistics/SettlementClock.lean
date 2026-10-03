@@ -105,10 +105,10 @@ lemma deadlinePassed_eq_true_iff (f : DeferralFunction) (i n : ℕ) :
     have hk' := h k (Nat.lt_succ_of_le hk)
     rw [deadlineStep_eq] at hk'
     by_contra hcon
-    rw [if_neg hcon] at hk'
+    rw [ite_eq_right hcon] at hk'
     exact one_ne_zero hk'
   · intro h k hk
-    rw [deadlineStep_eq, if_pos (h k (Nat.lt_succ_iff.1 hk))]
+    rw [deadlineStep_eq, ite_eq_left (h k (Nat.lt_succ_iff.1 hk))]
 
 lemma deferralEnvelope_lt_of_forall (f : DeferralFunction) (i n : ℕ)
     (h : ∀ k ≤ i, f.f k < n) : deferralEnvelope f i < n := by

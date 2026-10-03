@@ -185,12 +185,13 @@ theorem SubagentCurry.subagent (h : SubagentCurry C D) : C ◁ D := by
   · by_cases hf : f' = x
     · subst hf
       simpa using key a
-    · simpa [hf] using σ.adjoint a (y, f')
+    · simp only [hf, ↓reduceIte]
+      exact σ.adjoint a (y, f')
   · refine Hom.ext (funext fun a => ?_) (funext fun u => ?_)
     · show φ.agent a = D.outcome (Z.outcome (σ.agent a) y) x
       exact (φ.adjoint a PUnit.unit).symm.trans (key a)
     · show φ.env u = if x = x then e else σ.env (y, x)
-      rw [if_pos rfl, he]
+      rw [ite_eq_left rfl, he]
       cases u
       rfl
 

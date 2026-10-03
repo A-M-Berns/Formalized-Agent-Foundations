@@ -751,7 +751,7 @@ noncomputable def ofStrategyVector {n : ℕ} (T : Strategy n)
     intro p hp
     simp only [List.mem_map] at hp
     obtain ⟨φ, hφ, rfl⟩ := hp
-    rw [clippedCoordinateQuote, dif_pos (Finset.mem_toList.mp hφ)]
+    rw [clippedCoordinateQuote, dite_eq_left (Finset.mem_toList.mp hφ)]
     constructor
     · exact le_max_left _ _
     · exact max_le (by norm_num) (min_le_left _ _)
@@ -1073,7 +1073,7 @@ def ofEntries? (entries : List (Sentence × ℚ)) : Option RationalBeliefState :
   else none
 
 lemma ofEntries?_self (B : RationalBeliefState) : ofEntries? B.entries = some B := by
-  simp only [ofEntries?, dif_pos B.keys_nodup, dif_pos B.bounded]
+  simp only [ofEntries?, dite_eq_left B.keys_nodup, dite_eq_left B.bounded]
 
 end RationalBeliefState
 
@@ -1277,7 +1277,7 @@ lemma marketMakerSearchIndexUpTo_eq_none_iff {n : ℕ} (T : Strategy n)
           by_cases hacc : MarketMakerCandidateAccepts T past ε fuel
           · constructor
             · intro h
-              rw [marketMakerSearchIndexUpTo, hs, if_pos hacc] at h
+              rw [marketMakerSearchIndexUpTo, hs, ite_eq_left hacc] at h
               exact (Option.some_ne_none fuel h).elim
             · intro hall
               exact (hall fuel (Nat.lt_succ_self fuel) hacc).elim

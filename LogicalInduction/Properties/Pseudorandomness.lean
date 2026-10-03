@@ -1579,7 +1579,7 @@ lemma feedbackWeightedAverage_asympEq_zero
     have := (div_lt_iff₀ hε).mp hkmass
     nlinarith
   change |feedbackWeightedAverage w e k - 0| ≤ ε
-  rw [feedbackWeightedAverage, if_neg (ne_of_gt hmass0), sub_zero, abs_div,
+  rw [feedbackWeightedAverage, ite_eq_right (ne_of_gt hmass0), sub_zero, abs_div,
     abs_of_pos hmass0]
   apply (div_le_iff₀ hmass0).2
   linarith
@@ -1646,7 +1646,7 @@ lemma feedbackWeightedBias_asympGE_zero
       feedbackPrefixSum (fun i ↦ w i * returns i) k) at hreturn
     exact lt_of_not_ge hreturn
   have hreturnAvg : feedbackWeightedAverage w returns k < ε / 2 := by
-    rw [feedbackWeightedAverage, if_neg (ne_of_gt hpos)]
+    rw [feedbackWeightedAverage, ite_eq_right (ne_of_gt hpos)]
     exact (div_lt_iff₀ hpos).2 hreturnRaw
   have hdecomp :
       feedbackWeightedAverage w returns k =
@@ -2066,8 +2066,8 @@ lemma PatientSettlementClock.occupancy_decreasing
   · intro i n
     simp only [patientOccupancy_denote]
     by_cases hnext : clock.active i (n + 1) = true
-    · rw [if_pos hnext, if_pos (clock.antitone i n hnext)]
-    · rw [if_neg hnext]
+    · rw [ite_eq_left hnext, ite_eq_left (clock.antitone i n hnext)]
+    · rw [ite_eq_right hnext]
       positivity
 
 lemma patientUnderpriceAttempt_rank_le {As : ℕ → AffineCombination}
@@ -2228,7 +2228,7 @@ lemma patientUnderpriceWeight_deferralPatient
     have hactive : clock.active i (f n) = true :=
       clock.active_through_envelope i (f n)
         (deferral_le_envelope_of_le f hi'.1)
-    simp only [O, patientOccupancy_denote, hactive, if_true]
+    simp only [O, patientOccupancy_denote, hactive, ite_true]
   calc
     ∑ i ∈ Finset.Icc n (f n),
         (patientUnderpriceWeight clock low width i).denote P =

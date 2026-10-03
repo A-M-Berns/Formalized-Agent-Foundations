@@ -1,9 +1,9 @@
 import LogicalInduction.Construction.Paper.FirstOrder
 import LogicalInduction.Construction.Paper.ComputationDP
 import LogicalInduction.Construction.Conditioning.Presentation
-import Foundation.FirstOrder.Bootstrapping.Syntax.Proof.Coding
-import Foundation.FirstOrder.Bootstrapping.DerivabilityCondition.D1
-import Foundation.FirstOrder.Completeness.CounterModel
+import Foundation.FirstOrder.Arithmetic.Bootstrapping.Syntax.Proof.Coding
+import Foundation.FirstOrder.Arithmetic.Bootstrapping.DerivabilityCondition.D1
+import Foundation.FirstOrder.LK.Completeness.CounterModel
 
 /-!
 # A fixed public process for first-order theorems, and the single paper-facing market
@@ -46,8 +46,8 @@ this module imports `Construction/Conditioning/Presentation.lean` for
 
 namespace LogicalInduction
 
-open LO LO.FirstOrder LO.FirstOrder.Arithmetic LO.Entailment
-open LO.Propositional
+open FFL FFL.FirstOrder FFL.FirstOrder.Arithmetic FFL.Entailment
+open FFL.Propositional
 
 variable (T : ArithmeticTheory)
 
@@ -60,7 +60,7 @@ def paperTheoremFires [T.Δ₁] (formulaCode : ℕ) : Prop :=
 /-- The theorem event is r.e.: `Bootstrapping.Provable T` is `Σ₁` over a `Δ₁` theory. -/
 lemma paperTheoremFires_re [T.Δ₁] :
     REPred (paperTheoremFires T) := by
-  apply re_iff_sigma1.mpr
+  apply rePred_iff_sigma1.mpr
   change 𝚺₁-Predicate fun formulaCode : ℕ => Bootstrapping.Provable T formulaCode
   definability
 
@@ -101,38 +101,32 @@ proved proposition is true under every assignment in every model of `T`.
 /-- Soundness at the sequent level: in a model of `T`, some member of a derived sequent is
 satisfied by every assignment. -/
 lemma derivation2_evalf_of_model
-    {M : Type*} [Nonempty M] [Structure ℒₒᵣ M]
+    {M : Type*} [Nonempty M] [Tarski.Structure ℒₒᵣ M]
     (hT : M ↓[ℒₒᵣ] ⊧* T) {Γ : Finset ArithmeticProposition}
     (d : T ⟹₂ Γ) (f : ℕ → M) : ∃ φ ∈ Γ, φ.Evalf f := by
-  rcases LO.FirstOrder.Derivation2.toProofData d with ⟨A, hA, b⟩
-  obtain ⟨φ, hmem, htruth⟩ := LO.FirstOrder.Derivation.sound f b
-  simp only [List.mem_append] at hmem
-  rcases hmem with hΓ | hneg
-  · exact ⟨φ, by simpa using hΓ, htruth⟩
+  rcases FFL.FirstOrder.LK2.Derivation.toProofData d with ⟨A, hA, b⟩
+  obtain ⟨φ, hmem, htruth⟩ := FFL.FirstOrder.LK.Derivation.sound f b
+  rcases Multiset.mem_add.mp hmem with hΓ | hneg
+  · exact ⟨φ, hΓ, htruth⟩
   · exfalso
     have hex : ∃ ψ ∈ A, (ψ : ArithmeticProposition) = ∼φ := by
-      simpa [LO.FirstOrder.Sequent.embed] using hneg
+      simpa [FFL.FirstOrder.LK.Sequent.embed] using hneg
     rcases hex with ⟨ψ, hψ, hcoe⟩
-    have hψT : ψ.Realize M := by
-      exact hT.models _ (hA ψ hψ)
-    have hnψ : ¬ψ.Realize M := by
-      intro hψtrue
-      have hcoetrue : (ψ : ArithmeticProposition).Evalf f := by
-        simpa using hψtrue
-      rw [hcoe] at hcoetrue
-      have hnφ : ¬φ.Evalf f := by simpa using hcoetrue
-      exact hnφ htruth
-    exact hnψ hψT
+    have hψT : ψ.Realize M := hT.models _ (hA ψ hψ)
+    have hcoetrue : (ψ : ArithmeticProposition).Evalf f := by simpa using hψT
+    rw [hcoe] at hcoetrue
+    simp only [LogicalConnective.HomClass.map_neg, LogicalConnective.Prop.neg_eq] at hcoetrue
+    exact hcoetrue htruth
 
 /-- Soundness at the proposition level: a `T`-provable proposition is satisfied by every
 assignment into a model of `T`. -/
 lemma provable_proposition_evalf_of_model
     [T.Δ₁]
-    {M : Type*} [Nonempty M] [Structure ℒₒᵣ M]
+    {M : Type*} [Nonempty M] [Tarski.Structure ℒₒᵣ M]
     (hT : M ↓[ℒₒᵣ] ⊧* T) (f : ℕ → M) {φ : ArithmeticProposition}
     (hφ : Bootstrapping.Provable T (Encodable.encode φ)) : φ.Evalf f := by
   have hquote : Bootstrapping.Provable T (⌜φ⌝ : ℕ) := by
-    simpa [LO.FirstOrder.Semiformula.quote_eq_encode] using hφ
+    simpa [FFL.FirstOrder.Semiformula.quote_eq_encode] using hφ
   have hsound : Nonempty (T ⟹₂ ({φ} : Finset ArithmeticProposition)) := by
     exact ⟨Bootstrapping.Provable.sound2 (T := T) hquote⟩
   rcases hsound with ⟨d⟩
@@ -170,7 +164,7 @@ lemma paperTheoryDP_covers_outer_provable [T.Δ₁] (φ : ArithmeticSentence) (h
     Bootstrapping.provable_iff_provable.mpr hφ
   apply paperTheoryDP_covers_provable T φ
   have hencode : Encodable.encode (φ : ArithmeticProposition) = (⌜φ⌝ : ℕ) := by
-    simpa using (LO.FirstOrder.Sentence.quote_eq_encode (V := ℕ) φ).symm
+    simpa using (FFL.FirstOrder.Sentence.quote_eq_encode (V := ℕ) φ).symm
   rw [hencode]
   exact hquote
 
@@ -198,7 +192,7 @@ lemma paperFormulaCode_has_proposition {formulaCode : ℕ}
     (hwf : Bootstrapping.IsFormula ℒₒᵣ formulaCode) :
     ∃ φ : ArithmeticProposition, Encodable.encode φ = formulaCode := by
   rcases hwf.sound with ⟨φ, hφ⟩
-  exact ⟨φ, by simpa [LO.FirstOrder.Semiformula.quote_eq_encode] using hφ⟩
+  exact ⟨φ, by simpa [FFL.FirstOrder.Semiformula.quote_eq_encode] using hφ⟩
 
 /-- A fired event code names a proposition, and that proposition is `T`-provable. -/
 lemma paperTheoremFires_has_proposition [T.Δ₁] {formulaCode : ℕ}
@@ -216,7 +210,7 @@ lemma paperTheoremFires_has_proposition [T.Δ₁] {formulaCode : ℕ}
 /-- Every first-order model of `T` induces a completed public world for the fixed theorem
 process. -/
 lemma paperTheoryDP_hworld_of_model [T.Δ₁]
-    {M : Type*} [Nonempty M] [Structure ℒₒᵣ M]
+    {M : Type*} [Nonempty M] [Tarski.Structure ℒₒᵣ M]
     (hT : M ↓[ℒₒᵣ] ⊧* T) (f : ℕ → M) :
     (paperPrimeWorld M f).ConsistentWithTheory (paperTheoryDP T) := by
   intro k φ hφ
@@ -251,11 +245,11 @@ explicit completed world.  Thus the universal theorem stream is not merely synta
 computable; it is non-vacuous. -/
 lemma paperTheoryDP_nonvacuous [T.Δ₁] [Entailment.Consistent T] :
     ∃ v : PCWorld, v.ConsistentWithTheory (paperTheoryDP T) := by
-  have hs : LO.FirstOrder.Satisfiable T :=
-    LO.FirstOrder.Theory.small_satisfiable_of_consistent (T := T) inferInstance
-  rcases LO.FirstOrder.satisfiable_iff.mp hs with ⟨M, hMne, hMstr, hT⟩
+  have hs : FFL.FirstOrder.Satisfiable T :=
+    FFL.FirstOrder.Theory.small_satisfiable_of_consistent (T := T) inferInstance
+  rcases FFL.FirstOrder.satisfiable_iff.mp hs with ⟨M, hMne, hMstr, hT⟩
   letI : Nonempty M := hMne
-  letI : Structure ℒₒᵣ M := hMstr
+  letI : Tarski.Structure ℒₒᵣ M := hMstr
   let f : ℕ → M := fun _ => Classical.choice hMne
   exact ⟨paperPrimeWorld M f, paperTheoryDP_hworld_of_model T hT f⟩
 
@@ -291,20 +285,20 @@ open Classical in
 atoms are read off `paperPrimeWorld M f`, everything else off `provabilityWorld T`.
 Disjointness of the two halves is `eventAtom_atomCodes_ne_paperPrimeTag`. -/
 noncomputable def paperTheoryExtensionWorld
-    (T : ArithmeticTheory) (M : Type*) [Nonempty M] [Structure ℒₒᵣ M]
+    (T : ArithmeticTheory) (M : Type*) [Nonempty M] [Tarski.Structure ℒₒᵣ M]
     (f : ℕ → M) : PCWorld := fun a =>
   if a.unpair.1 = paperPrimeTag then paperPrimeWorld M f a else provabilityWorld T a
 
 /-- Off the paper-prime tag the extension world is the provability world. -/
 lemma paperTheoryExtensionWorld_agree_base
-    (T : ArithmeticTheory) (M : Type*) [Nonempty M] [Structure ℒₒᵣ M]
+    (T : ArithmeticTheory) (M : Type*) [Nonempty M] [Tarski.Structure ℒₒᵣ M]
     (f : ℕ → M) {a : ℕ} (ha : a.unpair.1 ≠ paperPrimeTag) :
     paperTheoryExtensionWorld T M f a ↔ provabilityWorld T a := by
   simp [paperTheoryExtensionWorld, ha]
 
 /-- On the paper-prime tag the extension world is the model's own prime world. -/
 lemma paperTheoryExtensionWorld_agree_paper
-    (T : ArithmeticTheory) (M : Type*) [Nonempty M] [Structure ℒₒᵣ M]
+    (T : ArithmeticTheory) (M : Type*) [Nonempty M] [Tarski.Structure ℒₒᵣ M]
     (f : ℕ → M) {a : ℕ} (ha : a.unpair.1 = paperPrimeTag) :
     paperTheoryExtensionWorld T M f a ↔ paperPrimeWorld M f a := by
   simp [paperTheoryExtensionWorld, ha]
@@ -312,7 +306,7 @@ lemma paperTheoryExtensionWorld_agree_paper
 /-- A sentence with no paper-prime atom is held by the extension world exactly when the
 provability world holds it. -/
 lemma paperTheoryExtensionWorld_holds_base_iff
-    (T : ArithmeticTheory) (M : Type*) [Nonempty M] [Structure ℒₒᵣ M]
+    (T : ArithmeticTheory) (M : Type*) [Nonempty M] [Tarski.Structure ℒₒᵣ M]
     (f : ℕ → M) {φ : Sentence}
     (hφ : ∀ a ∈ sentenceAtomCodes φ, a.unpair.1 ≠ paperPrimeTag) :
     (paperTheoryExtensionWorld T M f).Holds φ ↔ (provabilityWorld T).Holds φ :=
@@ -322,7 +316,7 @@ lemma paperTheoryExtensionWorld_holds_base_iff
 /-- A prime decomposition is held by the extension world exactly when the model's prime
 world holds it. -/
 lemma paperTheoryExtensionWorld_holds_paper_iff
-    (T : ArithmeticTheory) (M : Type*) [Nonempty M] [Structure ℒₒᵣ M]
+    (T : ArithmeticTheory) (M : Type*) [Nonempty M] [Tarski.Structure ℒₒᵣ M]
     (f : ℕ → M) (φ : ArithmeticProposition) :
     (paperTheoryExtensionWorld T M f).Holds (paperPrimeDecompose φ) ↔
       (paperPrimeWorld M f).Holds (paperPrimeDecompose φ) :=
@@ -378,7 +372,7 @@ noncomputable def paperDPComputation [T.Δ₁] :
 /-- The extension world built from a model of `T` is consistent with every stage of the
 joint process. -/
 lemma paperDP_hworld_of_model [T.Δ₁] [𝗣𝗔⁻ ⪯ T] [Entailment.Consistent T]
-    {M : Type*} [Nonempty M] [Structure ℒₒᵣ M]
+    {M : Type*} [Nonempty M] [Tarski.Structure ℒₒᵣ M]
     (hT : M ↓[ℒₒᵣ] ⊧* T) (f : ℕ → M) :
     (paperTheoryExtensionWorld T M f).ConsistentWithTheory (paperDP T) := by
   intro k φ hφ
@@ -405,11 +399,11 @@ lemma paperDP_hworld_of_model [T.Δ₁] [𝗣𝗔⁻ ⪯ T] [Entailment.Consiste
 extension world is consistent with every stage. -/
 lemma paperDP_nonvacuous [T.Δ₁] [𝗣𝗔⁻ ⪯ T] [Entailment.Consistent T] :
     ∃ v : PCWorld, v.ConsistentWithTheory (paperDP T) := by
-  have hs : LO.FirstOrder.Satisfiable T :=
-    LO.FirstOrder.Theory.small_satisfiable_of_consistent (T := T) inferInstance
-  rcases LO.FirstOrder.satisfiable_iff.mp hs with ⟨M, hMne, hMstr, hT⟩
+  have hs : FFL.FirstOrder.Satisfiable T :=
+    FFL.FirstOrder.Theory.small_satisfiable_of_consistent (T := T) inferInstance
+  rcases FFL.FirstOrder.satisfiable_iff.mp hs with ⟨M, hMne, hMstr, hT⟩
   letI : Nonempty M := hMne
-  letI : Structure ℒₒᵣ M := hMstr
+  letI : Tarski.Structure ℒₒᵣ M := hMstr
   let f : ℕ → M := fun _ => Classical.choice hMne
   exact ⟨paperTheoryExtensionWorld T M f, paperDP_hworld_of_model T hT f⟩
 

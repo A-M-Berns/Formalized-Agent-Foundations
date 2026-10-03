@@ -137,7 +137,7 @@ def simTM : TM 4 where
             exact h2 0 h
           · by_cases hi1 : i = 1
             · subst hi1; simp
-            · simp only [if_neg hi, if_neg hi1]
+            · simp only [ite_eq_right hi, ite_eq_right hi1]
               simp [idleDir, h]
     | Sum.inr t =>
         simp only [simδ]
@@ -146,7 +146,7 @@ def simTM : TM 4 where
             fun h => by simp [moveLeftDir, h]⟩
           by_cases hi : i = 0
           · subst hi; simp [moveLeftDir, h]
-          · simp only [if_neg hi]; simp [idleDir, h]
+          · simp only [ite_eq_right hi]; simp [idleDir, h]
         · exact ⟨fun h => by simp [idleDir, h], fun i h => by simp [idleDir, h],
             fun _ => rfl⟩
         · exact ⟨fun h => by simp [idleDir, h], fun i h => by simp [idleDir, h],
@@ -183,15 +183,15 @@ lemma simTM_step_run (d : TMDesc) (c c' : Cfg 1 (d.toTM).Q)
           simWork (c'.work 0) (clk.move Dir3.right) s2 s3, c'.output⟩ := by
   have hq : c.state ≠ (d.toTM).qhalt := by
     intro h
-    rw [TM.step, if_pos h] at hstep
+    rw [TM.step, ite_eq_left h] at hstep
     exact absurd hstep (by simp)
-  rw [TM.step, if_neg hq, Option.some.injEq] at hstep
+  rw [TM.step, ite_eq_right hq, Option.some.injEq] at hstep
   subst hstep
   rw [TM.step]
   simp only [simTM]
-  rw [if_neg (by simp : (Sum.inl c.state : SimQ (d.toTM).Q) ≠ Sum.inr 3)]
+  erw [ite_eq_right (by simp : (Sum.inl c.state : SimQ (d.toTM).Q) ≠ Sum.inr 3)]
   simp only [simδ]
-  rw [if_neg (by simp [hclk]), if_neg hq]
+  rw [ite_eq_right (by simp [hclk]), ite_eq_right hq]
   have hw : (fun _ : Fin 1 => (c.work 0).read) = (fun i => (c.work i).read) := by
     funext i
     rw [Subsingleton.elim i 0]
@@ -220,14 +220,14 @@ lemma simTM_step_pre (d : TMDesc) (inp w0 clk s2 s3 out : Tape)
           simWork (w0.move Dir3.left) clk s2 s3, out.move Dir3.left⟩ := by
   rw [TM.step]
   simp only [simTM]
-  rw [if_neg (by simp : (Sum.inr 0 : SimQ (d.toTM).Q) ≠ Sum.inr 3)]
+  erw [ite_eq_right (by simp : (Sum.inr 0 : SimQ (d.toTM).Q) ≠ Sum.inr 3)]
   simp only [simδ, Fin.val_zero, reduceIte, Option.some.injEq, Cfg.mk.injEq, true_and]
-  refine ⟨by rw [moveLeftDir, if_neg hi], ?_, by
-    rw [writeAndMove_readBack out hout, moveLeftDir, if_neg hout]⟩
+  refine ⟨by rw [moveLeftDir, ite_eq_right hi], ?_, by
+    rw [writeAndMove_readBack out hout, moveLeftDir, ite_eq_right hout]⟩
   funext i
   fin_cases i
   · show w0.writeAndMove (readBackWrite w0.read).toΓ (moveLeftDir w0.read) = _
-    rw [writeAndMove_readBack w0 hw0, moveLeftDir, if_neg hw0]; rfl
+    rw [writeAndMove_readBack w0 hw0, moveLeftDir, ite_eq_right hw0]; rfl
   · show clk.writeAndMove (readBackWrite clk.read).toΓ (idleDir clk.read) = clk
     exact transitionTape_eq_self hclk
   · show s2.writeAndMove (readBackWrite s2.read).toΓ (idleDir s2.read) = s2
@@ -249,7 +249,7 @@ private lemma simTM_step_phase (d : TMDesc) (s s' : SimQ (d.toTM).Q)
           out.writeAndMove ow.toΓ odir⟩ := by
   rw [TM.step]
   simp only [simTM]
-  rw [if_neg hs, hδ]
+  erw [ite_eq_right hs, hδ]
   simp only [Option.some.injEq, Cfg.mk.injEq, true_and, and_true]
   refine ⟨rfl, ?_⟩
   funext i
@@ -285,8 +285,8 @@ lemma simTM_step_halt (d : TMDesc) (inp w0 clk s2 s3 out : Tape)
           transitionTape out⟩ :=
   simTM_step_idle d _ _ (simTM_ne_halt_inl d _) inp w0 clk s2 s3 out hclk
     hs2 hs3 (by simp only [simδ]
-                rw [if_neg (by simp [hone] : ¬((simWork w0 clk s2 s3 1).read ≠ Γ.one)),
-                  if_true])
+                rw [ite_eq_right (by simp [hone] : ¬((simWork w0 clk s2 s3 1).read ≠ Γ.one)),
+                  ite_true])
 
 /-- An exhausted clock sends the run into the timeout branch, whatever state the described
 machine is in. -/
@@ -297,7 +297,7 @@ lemma simTM_step_timeout (d : TMDesc) (q : (d.toTM).Q)
       = some ⟨Sum.inr 1, transitionInput inp, simWork (transitionTape w0) clk s2 s3,
           transitionTape out⟩ :=
   simTM_step_idle d _ _ (simTM_ne_halt_inl d _) inp w0 clk s2 s3 out hclk
-    hs2 hs3 (by simp only [simδ, simWork_one]; rw [if_pos hclock])
+    hs2 hs3 (by simp only [simδ, simWork_one]; rw [ite_eq_left hclock])
 
 /-! ## The clock tape -/
 
@@ -310,7 +310,7 @@ def clkTape (V j : ℕ) : Tape := ⟨1 + j, regCells V⟩
 /-- The clock cell under the head holds a mark exactly while steps remain. -/
 lemma clkTape_read (V j : ℕ) :
     (clkTape V j).read = if 1 + j ≤ V then Γ.one else Γ.blank := by
-  simp only [clkTape, Tape.read, regCells, if_neg (by omega : ¬(1 + j = 0))]
+  simp only [clkTape, Tape.read, regCells, ite_eq_right (by omega : ¬(1 + j = 0))]
 
 lemma clkTape_read_ne_start (V j : ℕ) : (clkTape V j).read ≠ Γ.start := by
   rw [clkTape_read]; split_ifs <;> simp
@@ -340,7 +340,7 @@ lemma simTM_reachesIn_run (d : TMDesc) (V : ℕ) (s2 s3 : Tape)
       | step hstep hrest =>
           rename_i c''
           have hone : (clkTape V j).read = Γ.one := by
-            rw [clkTape_read, if_pos (by omega)]
+            rw [clkTape_read, ite_eq_left (by omega)]
           refine TM.reachesIn.step
             (simTM_step_run d c₀ c'' hstep (clkTape V j) s2 s3 hone hs2 hs3) ?_
           rw [clkTape_move]
@@ -360,8 +360,8 @@ lemma simTM_step_rewind (d : TMDesc) (inp w0 clk s2 s3 out : Tape)
   rw [simTM_step_phase d (Sum.inr 1) (Sum.inr 1) (by simp) inp w0 clk s2 s3 out
     (readBackWrite out.read) Dir3.left hclk hs2 hs3
     (by simp only [simδ]
-        rw [if_neg (by decide : ¬(((1 : Fin 4) : ℕ) = 0)),
-          if_pos (by decide : ((1 : Fin 4) : ℕ) = 1), if_neg hout]),
+        rw [ite_eq_right (by decide : ¬(((1 : Fin 4) : ℕ) = 0)),
+          ite_eq_left (by decide : ((1 : Fin 4) : ℕ) = 1), ite_eq_right hout]),
     writeAndMove_readBack out hout]
 
 /-- A `rewind` transition at the left end enters `wipe`, stepping back onto cell `1`. -/
@@ -374,9 +374,9 @@ lemma simTM_step_rewound (d : TMDesc) (inp w0 clk s2 s3 out : Tape)
   rw [simTM_step_phase d (Sum.inr 1) (Sum.inr 2) (by simp) inp w0 clk s2 s3 out
     (readBackWrite out.read) Dir3.right hclk hs2 hs3
     (by simp only [simδ]
-        rw [if_neg (by decide : ¬(((1 : Fin 4) : ℕ) = 0)),
-          if_pos (by decide : ((1 : Fin 4) : ℕ) = 1), if_pos hout])]
-  simp only [Tape.writeAndMove, Tape.write, hhead, if_true]
+        rw [ite_eq_right (by decide : ¬(((1 : Fin 4) : ℕ) = 0)),
+          ite_eq_left (by decide : ((1 : Fin 4) : ℕ) = 1), ite_eq_left hout])]
+  simp only [Tape.writeAndMove, Tape.write, hhead, ite_true]
 
 /-- The `wipe` transition blanks the output cell under the head and halts. -/
 lemma simTM_step_wipe (d : TMDesc) (inp w0 clk s2 s3 out : Tape)
@@ -388,10 +388,10 @@ lemma simTM_step_wipe (d : TMDesc) (inp w0 clk s2 s3 out : Tape)
   rw [simTM_step_phase d (Sum.inr 2) (Sum.inr 3) (by simp) inp w0 clk s2 s3 out
     Γw.blank (idleDir out.read) hclk hs2 hs3
     (by simp only [simδ]
-        rw [if_neg (by decide : ¬(((2 : Fin 4) : ℕ) = 0)),
-          if_neg (by decide : ¬(((2 : Fin 4) : ℕ) = 1)),
-          if_pos (by decide : ((2 : Fin 4) : ℕ) = 2)])]
-  simp only [Tape.writeAndMove, idleDir, if_neg hout]
+        rw [ite_eq_right (by decide : ¬(((2 : Fin 4) : ℕ) = 0)),
+          ite_eq_right (by decide : ¬(((2 : Fin 4) : ℕ) = 1)),
+          ite_eq_left (by decide : ((2 : Fin 4) : ℕ) = 2)])]
+  simp only [Tape.writeAndMove, idleDir, ite_eq_right hout]
   rfl
 
 /-- Rewinding the output head to the left end. The input and simulated work tapes are
@@ -501,7 +501,7 @@ lemma simTM_hoareTime (d : TMDesc) (x : List Bool) (V : ℕ) (s2 s3 : Tape)
     · rw [hout.2.1]; rfl
     · rw [hout.2.2.2 j (by simp only [List.length_nil]; omega)]
       show Γ.blank = _
-      simp only [Tape.init, if_neg (by omega : ¬ j = 0)]
+      simp only [Tape.init, ite_eq_right (by omega : ¬ j = 0)]
       simp
   subst houteq
   have hout0 : (⟨1, (Tape.init ([] : List Γ)).cells⟩ : Tape).read ≠ Γ.start := by
@@ -511,7 +511,7 @@ lemma simTM_hoareTime (d : TMDesc) (x : List Bool) (V : ℕ) (s2 s3 : Tape)
   have hstart : ((d.toTM).initCfg x).output.StartInvariant := by
     refine ⟨rfl, fun j hj => ?_⟩
     show (Tape.init ([] : List Γ)).cells j ≠ Γ.start
-    simp only [Tape.init, if_neg (by omega : ¬ j = 0)]
+    simp only [Tape.init, ite_eq_right (by omega : ¬ j = 0)]
     simp
   have hwork0 : (regTape 0).move Dir3.left = ((d.toTM).initCfg x).work 0 :=
     Tape.ext rfl regCells_zero_eq_init_nil
@@ -529,7 +529,7 @@ lemma simTM_hoareTime (d : TMDesc) (x : List Bool) (V : ℕ) (s2 s3 : Tape)
       have hrun := simTM_reachesIn_run d V s2 s3 hs2 hs3 s 0 ((d.toTM).initCfg x)
         (CodedCfg.decode d c) hreach (by omega)
       have hone : (clkTape V (0 + s)).read = Γ.one := by
-        rw [clkTape_read, if_pos (by omega)]
+        rw [clkTape_read, ite_eq_left (by omega)]
       have hfin := simTM_step_halt d ((CodedCfg.decode d c).input)
         ((CodedCfg.decode d c).work 0) (clkTape V (0 + s)) s2 s3
         ((CodedCfg.decode d c).output) hone (clkTape_read_ne_start V (0 + s)) hs2 hs3
@@ -561,13 +561,13 @@ lemma simTM_hoareTime (d : TMDesc) (x : List Bool) (V : ℕ) (s2 s3 : Tape)
             obtain ⟨ck, hck⟩ := ih (by omega)
             have hnh := hno k ck (by omega) hck
             obtain ⟨ck1, hstep⟩ : ∃ c', (d.toTM).step ck = some c' := by
-              rw [TM.step, if_neg hnh]; exact ⟨_, rfl⟩
+              rw [TM.step, ite_eq_right hnh]; exact ⟨_, rfl⟩
             exact ⟨ck1, TM.reachesIn_snoc hck hstep⟩
       obtain ⟨cV, hcV⟩ := hex V le_rfl
       have hrun := simTM_reachesIn_run d V s2 s3 hs2 hs3 V 0 ((d.toTM).initCfg x) cV hcV
         (by omega)
       have hblank : (clkTape V (0 + V)).read ≠ Γ.one := by
-        rw [clkTape_read, if_neg (by omega)]
+        rw [clkTape_read, ite_eq_right (by omega)]
         simp
       have htime := simTM_step_timeout d cV.state cV.input (cV.work 0)
         (clkTape V (0 + V)) s2 s3 cV.output hblank

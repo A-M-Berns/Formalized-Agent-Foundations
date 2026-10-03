@@ -170,10 +170,10 @@ def jointOn (M : RVModel J) (F : Set J) : M.Ω → (∀ B : F, M.R B) := fun ω 
     M.jointOn F ω B = M.X B ω := rfl
 
 lemma measurable_joint (M : RVModel I) (A : Finset I) : Measurable (M.joint A) :=
-  measurable_pi_lambda _ fun i => M.measurable_X i
+  measurable_pi_iff.mpr fun i => M.measurable_X i
 
 lemma measurable_jointOn (M : RVModel J) (F : Set J) : Measurable (M.jointOn F) :=
-  measurable_pi_lambda _ fun B => M.measurable_X B
+  measurable_pi_iff.mpr fun B => M.measurable_X B
 
 instance finiteEntropy_joint (M : RVModel I) (A : Finset I) :
     ShannonInformation.FiniteEntropyOf (M.joint A) M.P :=
@@ -196,7 +196,7 @@ def jointAll (M : RVModel I) : M.Ω → ∀ i, M.R i := fun ω i => M.X i ω
   rfl
 
 lemma measurable_jointAll (M : RVModel I) : Measurable M.jointAll :=
-  measurable_pi_lambda _ fun i => M.measurable_X i
+  measurable_pi_iff.mpr fun i => M.measurable_X i
 
 instance finiteEntropy_jointAll (M : RVModel I) :
     ShannonInformation.FiniteEntropyOf M.jointAll M.P :=
@@ -211,7 +211,7 @@ They are generic facts about `joint`/`jointOn`, not about any numbered node. -/
 (everywhere) a function of `Y_F` whenever `G ⊆ F`, namely the coordinate projection. -/
 lemma functionOf_jointOn_mono (N : RVModel J) {F G : Set J} (h : G ⊆ F) :
     FunctionOf (N.jointOn F) (N.jointOn G) :=
-  ⟨fun y B => y ⟨B.1, h B.2⟩, measurable_pi_lambda _ fun _ => measurable_pi_apply _,
+  ⟨fun y B => y ⟨B.1, h B.2⟩, measurable_pi_iff.mpr fun _ => measurable_pi_apply _,
     fun _ => rfl⟩
 
 /-- The a.e. form of `RVModel.functionOf_jointOn_mono`, which is what the `AEFunctionOf`
@@ -228,11 +228,11 @@ lemma functionOf_jointOn_union (N : RVModel J) (F G : Set J) :
     FunctionOf (⟨N.jointOn F, N.jointOn G⟩ : N.Ω → _) (N.jointOn (F ∪ G)) := by
   classical
   refine ⟨fun p B => if h : (B : J) ∈ F then p.1 ⟨B, h⟩ else p.2 ⟨B, B.2.resolve_left h⟩,
-    measurable_pi_lambda _ fun B => ?_, fun ω => ?_⟩
+    measurable_pi_iff.mpr fun B => ?_, fun ω => ?_⟩
   · by_cases h : (B : J) ∈ F
-    · simp only [dif_pos h]
+    · simp only [dite_eq_left h]
       exact (measurable_pi_apply _).comp measurable_fst
-    · simp only [dif_neg h]
+    · simp only [dite_eq_right h]
       exact (measurable_pi_apply _).comp measurable_snd
   · funext B
     by_cases h : (B : J) ∈ F <;> simp [h, RVModel.jointOn]

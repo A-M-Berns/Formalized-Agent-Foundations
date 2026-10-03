@@ -100,14 +100,14 @@ lemma sentenceBool_eq_true_iff (u : ℕ → Bool) (φ : Sentence) :
     sentenceBool u φ = true ↔ (boolPCWorld u).Holds φ := by
   induction φ with
   | atom a => rfl
-  | falsum => simp [sentenceBool, PCWorld.Holds, LO.Propositional.Formula.Boolean.val]
+  | falsum => simp [sentenceBool, PCWorld.Holds, FFL.Propositional.Formula.val]
   | and φ ψ ihφ ihψ =>
-      simp [sentenceBool, PCWorld.Holds, LO.Propositional.Formula.Boolean.val, ihφ, ihψ]
+      simp [sentenceBool, PCWorld.Holds, FFL.Propositional.Formula.val, ihφ, ihψ]
   | or φ ψ ihφ ihψ =>
-      simp [sentenceBool, PCWorld.Holds, LO.Propositional.Formula.Boolean.val, ihφ, ihψ]
+      simp [sentenceBool, PCWorld.Holds, FFL.Propositional.Formula.val, ihφ, ihψ]
   | imp φ ψ ihφ ihψ =>
       cases hφ : sentenceBool u φ <;> cases hψ : sentenceBool u ψ <;>
-        simp_all [sentenceBool, PCWorld.Holds, LO.Propositional.Formula.Boolean.val]
+        simp_all [sentenceBool, PCWorld.Holds, FFL.Propositional.Formula.val]
 
 lemma sentenceBool_congr_of_atoms {u v : ℕ → Bool} {φ : Sentence}
     (h : ∀ a ∈ φ.atoms, u a = v a) : sentenceBool u φ = sentenceBool v φ := by
@@ -1285,7 +1285,7 @@ lemma BudgeterAt_value_eq_of_safe_prefix
   have hbreach : priorBudgetBreach DP Tr b Q n = false :=
     priorBudgetBreach_eq_false_of_safe_prefix DP Tr b P Q n hQ
       (fun m hm => hsafe m (Nat.le_of_lt hm))
-  simp only [BudgeterAt, hbreach, Bool.false_eq_true, if_false]
+  simp only [BudgeterAt, hbreach, Bool.false_eq_true, ite_false]
   rw [Strategy.scaleBy_value,
     budgetScaleFeature_denote_eq_one_of_safe_prefix DP Tr b hb P Q n hQ hsafe,
     one_mul]
@@ -1357,7 +1357,7 @@ lemma BudgeterAt_value_ge_neg_available
     (available := (b : ℝ) + Tr.priorNetWorth P v n)
     (current := (Tr.strat n).value P v.payout) havail
   rw [BudgeterAt]
-  simp only [hbreach, Bool.false_eq_true, if_false, Strategy.scaleBy_value]
+  simp only [hbreach, Bool.false_eq_true, ite_false, Strategy.scaleBy_value]
   by_cases hx : 0 ≤ (Tr.strat n).value P v.payout
   · have hmul : 0 ≤ (budgetScaleFeature DP Tr b Q n).denote P *
         (Tr.strat n).value P v.payout := mul_nonneg hαpos.le hx

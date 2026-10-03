@@ -41,8 +41,8 @@ process, and the substantive layer is the `_paperDP` family.
 
 namespace LogicalInduction
 
-open LO LO.FirstOrder LO.FirstOrder.Arithmetic LO.Entailment
-open LO.Propositional
+open FFL FFL.FirstOrder FFL.FirstOrder.Arithmetic FFL.Entailment
+open FFL.Propositional
 open Filter Topology
 
 /-! ## The empty deductive process -/
@@ -139,7 +139,7 @@ the module header. -/
 
 section PaperBitAtoms
 
-open LO LO.FirstOrder LO.FirstOrder.Arithmetic
+open FFL FFL.FirstOrder FFL.FirstOrder.Arithmetic
 
 variable (T : ArithmeticTheory)
 
@@ -196,7 +196,7 @@ def bitExtensionWorld (v₀ : PCWorld) (f : ℕ → Bool) : PCWorld :=
 
 lemma bitExtensionWorld_agree (v₀ : PCWorld) (f : ℕ → Bool) {a : ℕ}
     (ha : a.unpair.1 ≠ bitAtomTag) : bitExtensionWorld v₀ f a ↔ v₀ a := by
-  simp only [bitExtensionWorld, if_neg ha]
+  simp only [bitExtensionWorld, ite_eq_right ha]
 
 /-- Sentences free of the reserved tag are read the same way by the extension. -/
 lemma bitExtensionWorld_holds_iff (v₀ : PCWorld) (f : ℕ → Bool) {φ : Sentence}
@@ -207,7 +207,7 @@ lemma bitExtensionWorld_holds_iff (v₀ : PCWorld) (f : ℕ → Bool) {φ : Sent
 lemma bitExtensionWorld_holds_paperBitAtom (v₀ : PCWorld) (f : ℕ → Bool) (k : ℕ) :
     (bitExtensionWorld v₀ f).Holds (paperBitAtom k) ↔ f k = true := by
   show (bitExtensionWorld v₀ f) (Nat.pair bitAtomTag k) ↔ _
-  simp only [bitExtensionWorld, Nat.unpair_pair, if_pos]
+  simp only [bitExtensionWorld, Nat.unpair_pair, ite_eq_left]
 
 /-- **The `thm:dus` independence premise, non-vacuously.**  Every bit assignment is
 realizable against every stage of the paper's own deductive process: take any world
@@ -251,7 +251,7 @@ end PaperBitAtoms
 
 section PaperDomination
 
-open LO LO.FirstOrder LO.FirstOrder.Arithmetic
+open FFL FFL.FirstOrder FFL.FirstOrder.Arithmetic
 
 variable (T : ArithmeticTheory)
 

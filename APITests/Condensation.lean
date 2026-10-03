@@ -417,7 +417,7 @@ example [DecidableEq I] (L : LatentModel M) (h : L.PerfectlyCondenses) (A B : Fi
 -- elaborate in term position against a concrete three-element list.
 example (L : LatentModel M) (h : L.SimplyPerfectlyCondenses) :
     L.PerfectlyCondenses ∧ iIndepFun L.Y L.P :=
-  (L.perfect_tfae_A.out 0 2).mp h
+  (L.perfect_tfae_A.out 1 3).mp h
 
 -- Client need: Lemma 4.14 with its conditional-independence side condition *supplied* by
 -- the API rather than assumed — Theorem 4.9 (B1 ⇒ B2) feeds Proposition 4.10, which

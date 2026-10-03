@@ -242,7 +242,7 @@ def scaleConst {n : ℕ} (q : ℚ) (T : Strategy n) : Strategy n :=
 lemma scaleConst_value {n : ℕ} (q : ℚ) (T : Strategy n)
     (P : History) (w : Valuation) :
     (T.scaleConst q).value P w = (q : ℝ) * T.value P w := by
-  simp [scaleConst, Strategy.scaleBy_value]
+  rw [scaleConst]; erw [Strategy.scaleBy_value, EF.denote_const]
 
 end Strategy
 
@@ -288,10 +288,10 @@ lemma gate_netWorth_difference_le (Tr : Trader) (P : History)
       apply Finset.sum_le_sum
       intro i hi
       by_cases his : i < start
-      · rw [if_pos his, Tr.gate_strat_of_lt his]
+      · rw [ite_eq_left his, Tr.gate_strat_of_lt his]
         simpa [Trader.zero, Strategy.value] using
           Strategy.abs_value_le (Tr.strat i) P hP v.payout hw
-      · rw [if_neg his, Tr.gate_strat_of_le (Nat.le_of_not_gt his)]
+      · rw [ite_eq_right his, Tr.gate_strat_of_le (Nat.le_of_not_gt his)]
         simp
     _ = ∑ i ∈ (Finset.range (n + 1)).filter (fun i => i < start),
           ((Tr.strat i).absBound : ℝ) := by rw [Finset.sum_filter]
@@ -389,7 +389,7 @@ lemma tradingFirmWeight_tail_hasSum (j C : ℕ) :
   have hg := hasSum_geometric_of_abs_lt_one (r := (1 / 2 : ℝ)) (by norm_num)
   have hm := hg.mul_left ((1 / 2 : ℝ) ^ (j + 1 + (C + 1)))
   convert hm using 1
-  any_goals rfl
+  all_goals try rfl
   · funext r
     rw [tradingFirmWeight_cast,
       show j + 1 + (C + 1 + r) = (j + 1 + (C + 1)) + r by omega,
@@ -410,7 +410,7 @@ lemma tradingFirmBudgetCost_hasSum (j : ℕ) :
   have hplus := hn.add hg
   have hm := hplus.mul_left ((1 / 2 : ℝ) ^ (j + 2))
   convert hm using 1
-  any_goals rfl
+  all_goals try rfl
   · funext r
     rw [tradingFirmWeight_cast,
       show j + 1 + (r + 1) = (j + 2) + r by omega, pow_add]
@@ -829,7 +829,7 @@ lemma tradingFirmComponentAt_value_hasSum
       | simpa only [f, Nat.add_assoc, Nat.add_comm, Nat.add_left_comm] using hbudget
   have hfull := (hasSum_nat_add_iff C).mp htail
   convert hfull using 1
-  any_goals rfl
+  all_goals try rfl
   simp only [tradingFirmComponentAt, Strategy.join_value,
     tradingFirmBudgetComponents, List.map_append, List.sum_append,
     List.map_map, Function.comp_def, Strategy.scaleConst_value, List.map_singleton,
@@ -873,7 +873,7 @@ lemma tradingFirmComponentTrader_netWorth_hasSum
       · simp [tradingFirmComponentTrader, hjd, Trader.zero, Strategy.value]
   have hs := hasSum_sum hday
   convert hs using 1
-  any_goals rfl
+  all_goals try rfl
   · funext r
     unfold Trader.netWorth budgetedTrader
     rw [Finset.mul_sum]

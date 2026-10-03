@@ -214,10 +214,10 @@ market — a market the client built, not one this repository constructs. -/
 
 /-- A client's own one-coordinate perturbation, presented as the theorem's hypothesis. -/
 lemma recognizableSupport_of_singleAtom {P P' : History}
-    (hagree : ∀ d φ, (d, φ) ≠ (0, (LO.Propositional.Formula.atom 0 : Sentence)) →
+    (hagree : ∀ d φ, (d, φ) ≠ (0, (FFL.Propositional.Formula.atom 0 : Sentence)) →
       P d φ = P' d φ) :
     RecognizableSupportPerturbation P P' := by
-  refine ⟨{(0, (LO.Propositional.Formula.atom 0 : Sentence))}, ?_, fun d φ hmem => hagree d φ ?_⟩
+  refine ⟨{(0, (FFL.Propositional.Formula.atom 0 : Sentence))}, ?_, fun d φ hmem => hagree d φ ?_⟩
   · intro p hp
     simp only [Finset.mem_singleton] at hp
     subst hp
@@ -230,7 +230,7 @@ quantifier, so every §4 consequence holds of the perturbed market too.  Nothing
 corrected `thm:ifp` gets us from `P` to `P'` here. -/
 example (P P' : History) (DP : DeductiveProcess) [hP : IsLogicalInductor P DP]
     (hP'comp : ComputableMarket P')
-    (hagree : ∀ d φ, (d, φ) ≠ (0, (LO.Propositional.Formula.atom 0 : Sentence)) →
+    (hagree : ∀ d φ, (d, φ) ≠ (0, (FFL.Propositional.Formula.atom 0 : Sentence)) →
       P d φ = P' d φ)
     (φ ψ : Sentence) (h1 : ∀ n, (∼φ ⋎ ψ) ∈ DP.D n) (h2 : ∀ n, (∼ψ ⋎ φ) ∈ DP.D n)
     (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
@@ -254,7 +254,7 @@ is what makes the strengthening visible from the client side rather than only in
 statement. -/
 
 /-- The client's own target: `atom 0 ⋏ ⊥`. -/
-private def clientBotSentence : Sentence := (LO.Propositional.Formula.atom 0 : Sentence) ⋏ ⊥
+private def clientBotSentence : Sentence := (FFL.Propositional.Formula.atom 0 : Sentence) ⋏ ⊥
 
 /-- It is **not** recognizable — the old hypothesis is unavailable at this coordinate. -/
 example : ¬ BotFree clientBotSentence := by
@@ -297,7 +297,7 @@ structured paper-prime block whose unary length field is unbounded.  Plain
 
 /-- The client's own target: a reserved atom. -/
 private def clientReservedSentence : Sentence :=
-  LO.Propositional.Formula.atom (Nat.pair 5 (Nat.pair 0 0))
+  FFL.Propositional.Formula.atom (Nat.pair 5 (Nat.pair 0 0))
 
 /-- It fails `NoReserved` — *both* older hypotheses are unavailable at this coordinate. -/
 example : ¬ NoReserved clientReservedSentence := by
@@ -368,7 +368,7 @@ example (φ ψ : ℕ → Sentence) (hφ : RpnSentenceCodes φ) (hψ : RpnSentenc
   RpnSentenceCodes.or hφ hψ
 
 example (φ ψ : ℕ → Sentence) (hφ : RpnSentenceCodes φ) (hψ : RpnSentenceCodes ψ) :
-    RpnSentenceCodes fun z => LO.Propositional.Formula.imp (φ z) (ψ z) :=
+    RpnSentenceCodes fun z => FFL.Propositional.Formula.imp (φ z) (ψ z) :=
   RpnSentenceCodes.imp hφ hψ
 
 /-- A constant sentence family is one, so the connectives compose off a base case. -/

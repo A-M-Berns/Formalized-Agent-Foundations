@@ -177,7 +177,7 @@ lemma obBuySig_live {κ : Sentence → ℕ}
     (h : obStart j i ≤ n) :
     obBuySig U j i n =
       buyIndEF (U.sentence i) (obBase U j n i) (obBase U j n i) n := by
-  rw [obBuySig, if_neg (by omega)]
+  rw [obBuySig, ite_eq_right (by omega)]
 
 lemma obBuySig_mem {κ : Sentence → ℕ}
     (U : PrefixMachinePresentation κ) (P : History) (j i n : ℕ) :
@@ -185,7 +185,7 @@ lemma obBuySig_mem {κ : Sentence → ℕ}
       (obBuySig U j i n).denote P ≤ 1 := by
   by_cases h : n < obStart j i
   · simp [obBuySig, h]
-  · rw [obBuySig, if_neg h]
+  · rw [obBuySig, ite_eq_right h]
     exact buyInd_mem _ _ _ _ P
 
 lemma obBuySig_rank_le {κ : Sentence → ℕ}
@@ -643,7 +643,7 @@ lemma obTerm_profit {κ : Sentence → ℕ}
         prefixWeight κ (U.sentence i) / (j : ℝ) ^ 4 :=
       hprice0.trans_le (div_le_div_of_nonneg_right happ (by positivity))
     have hpayout : v.payout (U.sentence i) = 1 := by
-      rw [PCWorld.payout, if_pos hv]
+      rw [PCWorld.payout, ite_eq_left hv]
     rw [hpayout]
     exact mul_le_mul_of_nonneg_left (by linarith)
       (mul_nonneg (sq_nonneg _) hspos.le)

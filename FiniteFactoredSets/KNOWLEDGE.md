@@ -1126,7 +1126,7 @@ superseded by the fixes and never ran.
   `InferenceExamples.lean` imports only `FiniteFactoredSets.Inference`, which does not reach
   `Examples.lean`. Build the §6.2 witnesses locally.
 * Inventory: **the bare name `Model` is ambiguous inside AxiomAudit's FFS-INVENTORY block** —
-  under its `open FiniteFactoredSets in`, `ProvabilityLogic/Kripke/Basic.lean`'s root-namespace
+  under its `open FiniteFactoredSets in`, the `ProvabilityLogic` package's `Kripke/Basic.lean` root-namespace
   `structure Model` collides and the build fails with `ambiguous identifier 'Model'`. Write
   `FiniteFactoredSets.Model`; the node checker allows (but does not require) the root prefix.
 * Tactic traps (stage 6): `have : b ∈ _ ∩ _ := ⟨hb, hb'⟩` fails ("the expected type … is not

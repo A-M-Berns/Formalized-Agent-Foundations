@@ -51,7 +51,7 @@ which is exactly the image of `encodeStructuredNat`.
 
 namespace LogicalInduction
 
-open LO LO.FirstOrder LO.FirstOrder.Arithmetic
+open FFL FFL.FirstOrder FFL.FirstOrder.Arithmetic
 
 /-! ## Canonical structured naturals -/
 
@@ -310,9 +310,9 @@ lemma exists_source_of_sourceRun : ∀ {fuel k : ℕ} {ts rest : List ℕ},
               LogicalConnective.HomClass.map_neg]⟩
       · obtain ⟨a, τa, ha, hca⟩ := ih h
         rcases hq with rfl | rfl
-        · exact ⟨.all a, ∀⁰ τa, by rw [ha]; simp [ArithSource.sourceTokens],
+        · exact ⟨.all a, ∀¹ τa, by rw [ha]; simp [ArithSource.sourceTokens],
             by simp only [ArithSource.compile, hca, Rewriting.app_all, Rew.q_emb]; rfl⟩
-        · exact ⟨.exs a, ∃⁰ τa, by rw [ha]; simp [ArithSource.sourceTokens],
+        · exact ⟨.exs a, ∃¹ τa, by rw [ha]; simp [ArithSource.sourceTokens],
             by simp only [ArithSource.compile, hca, Rewriting.app_exs, Rew.q_emb]; rfl⟩
       · obtain ⟨a, τa, ha, hca⟩ := ih h
         exact ⟨.not a, ∼τa, by rw [ha, h20]; simp [ArithSource.sourceTokens],
@@ -338,7 +338,7 @@ lemma sourceTermRun_emb : ∀ {k : ℕ} (u : Semiterm ℒₒᵣ Empty k) (tail :
       | zero => simp [encodeArithmeticTermSymbols] at hfuel
       | succ fuel =>
           simp only [Rew.emb_bvar, encodeArithmeticTermSymbols, List.cons_append,
-            sourceTermRun, if_pos]
+            sourceTermRun, ite_eq_left]
           rw [structuredNatRun_encode (x : ℕ) tail
             (by simpa [encodeArithmeticTermSymbols] using hfuel)]
           simp [x.isLt]
@@ -359,8 +359,8 @@ lemma sourceTermRun_emb : ∀ {k : ℕ} (u : Semiterm ℒₒᵣ Empty k) (tail :
         | succ fuel =>
             simp only [Rew.func, Function.comp_apply, encodeArithmeticTermSymbols,
               List.cons_append, List.append_assoc, sourceTermRun]
-            rw [if_neg (by norm_num), if_neg (by norm_num), if_neg (by norm_num),
-              if_pos (by norm_num)]
+            rw [ite_eq_right (by norm_num), ite_eq_right (by norm_num), ite_eq_right (by norm_num),
+              ite_eq_left (by norm_num)]
             rw [ih 0 (encodeArithmeticTermSymbols
                 (Rew.emb (v 1) : ArithmeticSemiterm ℕ k) ++ tail)
               (by
@@ -376,8 +376,8 @@ lemma sourceTermRun_emb : ∀ {k : ℕ} (u : Semiterm ℒₒᵣ Empty k) (tail :
         | succ fuel =>
             simp only [Rew.func, Function.comp_apply, encodeArithmeticTermSymbols,
               List.cons_append, List.append_assoc, sourceTermRun]
-            rw [if_neg (by norm_num), if_neg (by norm_num), if_neg (by norm_num),
-              if_pos (by norm_num)]
+            rw [ite_eq_right (by norm_num), ite_eq_right (by norm_num), ite_eq_right (by norm_num),
+              ite_eq_left (by norm_num)]
             rw [ih 0 (encodeArithmeticTermSymbols
                 (Rew.emb (v 1) : ArithmeticSemiterm ℕ k) ++ tail)
               (by
@@ -416,13 +416,13 @@ private lemma coe_or {k : ℕ} (τ σ : ArithmeticSemisentence k) :
 private lemma coe_all' {k : ℕ} (τ : ArithmeticSemisentence (k + 1)) :
     (Rewriting.emb (Semiformula.all τ) : ArithmeticSemiformula ℕ k) =
       Semiformula.all (Rewriting.emb τ : ArithmeticSemiformula ℕ (k + 1)) := by
-  rw [show Semiformula.all τ = ∀⁰ τ from rfl, Rewriting.app_all, Rew.q_emb]
+  rw [show Semiformula.all τ = ∀¹ τ from rfl, Rewriting.app_all, Rew.q_emb]
   rfl
 
 private lemma coe_exs' {k : ℕ} (τ : ArithmeticSemisentence (k + 1)) :
     (Rewriting.emb (Semiformula.exs τ) : ArithmeticSemiformula ℕ k) =
       Semiformula.exs (Rewriting.emb τ : ArithmeticSemiformula ℕ (k + 1)) := by
-  rw [show Semiformula.exs τ = ∃⁰ τ from rfl, Rewriting.app_exs, Rew.q_emb]
+  rw [show Semiformula.exs τ = ∃¹ τ from rfl, Rewriting.app_exs, Rew.q_emb]
   rfl
 
 private lemma encodeArithmeticFormulaSymbols_ne_nil {k : ℕ}
@@ -478,7 +478,7 @@ lemma sourceRun_emb : ∀ {k : ℕ} (τ : ArithmeticSemisentence k) (tail : List
               simpa [Semiformula.coe_rel, encodeArithmeticFormulaSymbols] using hfuel
             simp only [Semiformula.coe_rel, encodeArithmeticFormulaSymbols,
               List.cons_append, List.append_assoc, sourceRun]
-            rw [if_neg (by norm_num), if_pos (by norm_num),
+            rw [ite_eq_right (by norm_num), ite_eq_left (by norm_num),
               sourceTermRun_emb (v 0) _ (by omega), Option.bind_some,
               sourceTermRun_emb (v 1) tail (by omega)]
   | nrel r v =>
@@ -496,7 +496,7 @@ lemma sourceRun_emb : ∀ {k : ℕ} (τ : ArithmeticSemisentence k) (tail : List
               simpa [Semiformula.coe_nrel, encodeArithmeticFormulaSymbols] using hfuel
             simp only [Semiformula.coe_nrel, encodeArithmeticFormulaSymbols,
               List.cons_append, List.append_assoc, sourceRun]
-            rw [if_neg (by norm_num), if_pos (by norm_num),
+            rw [ite_eq_right (by norm_num), ite_eq_left (by norm_num),
               sourceTermRun_emb (v 0) _ (by omega), Option.bind_some,
               sourceTermRun_emb (v 1) tail (by omega)]
   | and φ ψ ihφ ihψ =>
@@ -512,7 +512,7 @@ lemma sourceRun_emb : ∀ {k : ℕ} (τ : ArithmeticSemisentence k) (tail : List
             simpa [coe_and, encodeArithmeticFormulaSymbols] using hfuel
           simp only [coe_and, encodeArithmeticFormulaSymbols, List.cons_append,
             List.append_assoc, sourceRun]
-          rw [if_neg (by norm_num), if_neg (by norm_num), if_pos (by norm_num),
+          rw [ite_eq_right (by norm_num), ite_eq_right (by norm_num), ite_eq_left (by norm_num),
             ihφ _ (by omega), Option.bind_some, ihψ tail (by omega)]
   | or φ ψ ihφ ihψ =>
       intro tail fuel hfuel
@@ -527,7 +527,7 @@ lemma sourceRun_emb : ∀ {k : ℕ} (τ : ArithmeticSemisentence k) (tail : List
             simpa [coe_or, encodeArithmeticFormulaSymbols] using hfuel
           simp only [coe_or, encodeArithmeticFormulaSymbols, List.cons_append,
             List.append_assoc, sourceRun]
-          rw [if_neg (by norm_num), if_neg (by norm_num), if_pos (by norm_num),
+          rw [ite_eq_right (by norm_num), ite_eq_right (by norm_num), ite_eq_left (by norm_num),
             ihφ _ (by omega), Option.bind_some, ihψ tail (by omega)]
   | all φ ih =>
       intro tail fuel hfuel
@@ -539,8 +539,8 @@ lemma sourceRun_emb : ∀ {k : ℕ} (τ : ArithmeticSemisentence k) (tail : List
                 (Rewriting.emb φ : ArithmeticSemiformula ℕ _)).length ≤ fuel := by
             simpa [coe_all', encodeArithmeticFormulaSymbols] using hfuel
           simp only [coe_all', encodeArithmeticFormulaSymbols, List.cons_append, sourceRun]
-          rw [if_neg (by norm_num), if_neg (by norm_num), if_neg (by norm_num),
-            if_pos (by norm_num)]
+          rw [ite_eq_right (by norm_num), ite_eq_right (by norm_num), ite_eq_right (by norm_num),
+            ite_eq_left (by norm_num)]
           exact ih tail hlen
   | exs φ ih =>
       intro tail fuel hfuel
@@ -552,8 +552,8 @@ lemma sourceRun_emb : ∀ {k : ℕ} (τ : ArithmeticSemisentence k) (tail : List
                 (Rewriting.emb φ : ArithmeticSemiformula ℕ _)).length ≤ fuel := by
             simpa [coe_exs', encodeArithmeticFormulaSymbols] using hfuel
           simp only [coe_exs', encodeArithmeticFormulaSymbols, List.cons_append, sourceRun]
-          rw [if_neg (by norm_num), if_neg (by norm_num), if_neg (by norm_num),
-            if_pos (by norm_num)]
+          rw [ite_eq_right (by norm_num), ite_eq_right (by norm_num), ite_eq_right (by norm_num),
+            ite_eq_left (by norm_num)]
           exact ih tail hlen
 
 /-- **Source completeness — the gate does not reject genuine axioms.**  Every emitted run
@@ -585,7 +585,7 @@ lemma sourceRun_sourceTokens : ∀ {k : ℕ} (s : ArithSource k)
               (ArithSource.sourceTokens b).length ≤ fuel := by
             simpa [ArithSource.sourceTokens] using hfuel
           simp only [ArithSource.sourceTokens, List.cons_append, List.append_assoc, sourceRun]
-          rw [if_neg (by norm_num), if_neg (by norm_num), if_pos (by norm_num),
+          rw [ite_eq_right (by norm_num), ite_eq_right (by norm_num), ite_eq_left (by norm_num),
             iha h₁.symm _ (by omega), Option.bind_some, ihb h₂.symm tail (by omega)]
   | or a b iha ihb =>
       intro τ hτ tail fuel hfuel
@@ -597,7 +597,7 @@ lemma sourceRun_sourceTokens : ∀ {k : ℕ} (s : ArithSource k)
               (ArithSource.sourceTokens b).length ≤ fuel := by
             simpa [ArithSource.sourceTokens] using hfuel
           simp only [ArithSource.sourceTokens, List.cons_append, List.append_assoc, sourceRun]
-          rw [if_neg (by norm_num), if_neg (by norm_num), if_pos (by norm_num),
+          rw [ite_eq_right (by norm_num), ite_eq_right (by norm_num), ite_eq_left (by norm_num),
             iha h₁.symm _ (by omega), Option.bind_some, ihb h₂.symm tail (by omega)]
   | all a ih =>
       intro τ hτ tail fuel hfuel
@@ -609,8 +609,8 @@ lemma sourceRun_sourceTokens : ∀ {k : ℕ} (s : ArithSource k)
           have hlen : (ArithSource.sourceTokens a).length ≤ fuel := by
             simpa [ArithSource.sourceTokens] using hfuel
           simp only [ArithSource.sourceTokens, List.cons_append, sourceRun]
-          rw [if_neg (by norm_num), if_neg (by norm_num), if_neg (by norm_num),
-            if_pos (by norm_num)]
+          rw [ite_eq_right (by norm_num), ite_eq_right (by norm_num), ite_eq_right (by norm_num),
+            ite_eq_left (by norm_num)]
           exact ih h'.symm tail hlen
   | exs a ih =>
       intro τ hτ tail fuel hfuel
@@ -622,8 +622,8 @@ lemma sourceRun_sourceTokens : ∀ {k : ℕ} (s : ArithSource k)
           have hlen : (ArithSource.sourceTokens a).length ≤ fuel := by
             simpa [ArithSource.sourceTokens] using hfuel
           simp only [ArithSource.sourceTokens, List.cons_append, sourceRun]
-          rw [if_neg (by norm_num), if_neg (by norm_num), if_neg (by norm_num),
-            if_pos (by norm_num)]
+          rw [ite_eq_right (by norm_num), ite_eq_right (by norm_num), ite_eq_right (by norm_num),
+            ite_eq_left (by norm_num)]
           exact ih h'.symm tail hlen
   | not a ih =>
       intro τ hτ tail fuel hfuel
@@ -636,8 +636,8 @@ lemma sourceRun_sourceTokens : ∀ {k : ℕ} (s : ArithSource k)
           have hlen : (ArithSource.sourceTokens a).length ≤ fuel := by
             simpa [ArithSource.sourceTokens] using hfuel
           simp only [ArithSource.sourceTokens, List.cons_append, sourceRun]
-          rw [if_neg (by norm_num), if_neg (by norm_num), if_neg (by norm_num),
-            if_neg (by norm_num), if_pos (by norm_num)]
+          rw [ite_eq_right (by norm_num), ite_eq_right (by norm_num), ite_eq_right (by norm_num),
+            ite_eq_right (by norm_num), ite_eq_left (by norm_num)]
           exact ih ha tail hlen
   | imp a b iha ihb =>
       intro τ hτ tail fuel hfuel
@@ -649,7 +649,7 @@ lemma sourceRun_sourceTokens : ∀ {k : ℕ} (s : ArithSource k)
               (ArithSource.sourceTokens b).length ≤ fuel := by
             simpa [ArithSource.sourceTokens] using hfuel
           simp only [ArithSource.sourceTokens, List.cons_append, List.append_assoc, sourceRun]
-          rw [if_neg (by norm_num), if_neg (by norm_num), if_pos (by norm_num),
+          rw [ite_eq_right (by norm_num), ite_eq_right (by norm_num), ite_eq_left (by norm_num),
             iha h₁.symm _ (by omega), Option.bind_some, ihb h₂.symm tail (by omega)]
   | iff a b iha ihb =>
       intro τ hτ tail fuel hfuel
@@ -666,7 +666,7 @@ lemma sourceRun_sourceTokens : ∀ {k : ℕ} (s : ArithSource k)
               (ArithSource.sourceTokens b).length ≤ fuel := by
             simpa [ArithSource.sourceTokens] using hfuel
           simp only [ArithSource.sourceTokens, List.cons_append, List.append_assoc, sourceRun]
-          rw [if_neg (by norm_num), if_neg (by norm_num), if_pos (by norm_num),
+          rw [ite_eq_right (by norm_num), ite_eq_right (by norm_num), ite_eq_left (by norm_num),
             iha ha _ (by omega), Option.bind_some, ihb hd₂.symm tail (by omega)]
 
 /-! ## Binder levels, and the depth-free reformulation
@@ -735,16 +735,16 @@ private lemma bind_ite_le_binary {L : List ℕ → Option (ℕ × List ℕ)} {k 
   · simp
   simp only [Option.bind_some]
   by_cases hpk : p.1 ≤ k
-  · simp only [hpk, if_true, Option.bind_some]
+  · simp only [hpk, ite_true, Option.bind_some]
     rcases hq : L p.2 with _ | q
     · simp
     simp only [Option.bind_some, Option.map_some]
     by_cases hqk : q.1 ≤ k <;> simp [hqk, hpk]
-  · simp only [hpk, if_false, Option.bind_none]
+  · simp only [hpk, ite_false, Option.bind_none]
     rcases hq : L p.2 with _ | q
     · simp
     simp only [Option.map_some, Option.bind_some]
-    rw [if_neg (by simp; omega)]
+    rw [ite_eq_right (by simp; omega)]
 
 /-- **The depth test factors through the level.**
 
@@ -761,14 +761,14 @@ lemma sourceTermRun_eq : ∀ (fuel k : ℕ) (ts : List ℕ),
       · simp [sourceTermRun, termLevelRun]
       rw [sourceTermRun, termLevelRun]
       by_cases h3 : t = 3
-      · simp only [h3, if_true]
+      · simp only [h3, ite_true]
         rcases hp : structuredNatRun fuel rest with _ | p <;> simp
       by_cases h5 : t = 5
       · simp [h5]
       by_cases h6 : t = 6
       · simp [h6]
       by_cases h78 : t = 7 ∨ t = 8
-      · simp only [h3, h5, h6, h78, if_true, if_false, ih]
+      · simp only [h3, h5, h6, h78, ite_true, ite_false, ih]
         exact bind_ite_le_binary (L := termLevelRun fuel) rest
       · simp [h3, h5, h6, h78]
 
@@ -789,20 +789,20 @@ lemma sourceRun_eq : ∀ (fuel k : ℕ) (ts : List ℕ),
       by_cases h910 : t = 9 ∨ t = 10
       · simp [h910]
       by_cases hrel : t = 11 ∨ t = 12 ∨ t = 13 ∨ t = 14
-      · simp only [h910, hrel, if_true, if_false, sourceTermRun_eq]
+      · simp only [h910, hrel, ite_true, ite_false, sourceTermRun_eq]
         exact bind_ite_le_binary (L := termLevelRun fuel) rest
       by_cases hbin : t = 15 ∨ t = 16 ∨ t = 21 ∨ t = 22
-      · simp only [h910, hrel, hbin, if_true, if_false, ih]
+      · simp only [h910, hrel, hbin, ite_true, ite_false, ih]
         exact bind_ite_le_binary (L := sourceLevelRun fuel) rest
       by_cases hq : t = 17 ∨ t = 18
-      · simp only [h910, hrel, hbin, hq, if_true, if_false]
+      · simp only [h910, hrel, hbin, hq, ite_true, ite_false]
         rw [ih (k + 1) rest]
         rcases hp : sourceLevelRun fuel rest with _ | p
         · simp
         simp only [Option.bind_some, Option.map_some]
         by_cases hpk : p.1 ≤ k + 1 <;> simp [hpk]
       by_cases h20 : t = 20
-      · simp only [h20, if_true]
+      · simp only [h20, ite_true]
         exact ih k rest
       · simp [h910, hrel, hbin, hq, h20]
 
@@ -934,11 +934,11 @@ private lemma natRunGCore_spec (m : ℕ) (look : ℕ → Option (ℕ × List ℕ
   rcases hs : Denumerable.ofNat (List ℕ) m.unpair.2 with _ | ⟨t, rest⟩
   · rfl
   simp only [structuredNatRun]
-  by_cases h0 : t = 0 <;> simp only [h0, if_true, if_false]
-  by_cases h1 : t = 1 <;> simp only [h1, if_true, if_false]
+  by_cases h0 : t = 0 <;> simp only [h0, ite_true, ite_false]
+  by_cases h1 : t = 1 <;> simp only [h1, ite_true, ite_false]
   · rw [hlook _ (level_smaller_index hf hs), natRunF, Nat.unpair_pair,
       Denumerable.ofNat_encode]
-  by_cases h2 : t = 2 <;> simp only [h2, if_true, if_false]
+  by_cases h2 : t = 2 <;> simp only [h2, ite_true, ite_false]
   rw [hlook _ (level_smaller_index hf hs), natRunF, Nat.unpair_pair,
     Denumerable.ofNat_encode]
 
@@ -1117,10 +1117,10 @@ private lemma termLevelGCore_spec (m : ℕ) (look : ℕ → Option (ℕ × List 
   rcases hs : Denumerable.ofNat (List ℕ) m.unpair.2 with _ | ⟨t, rest⟩
   · rfl
   simp only [termLevelRun]
-  by_cases h3 : t = 3 <;> simp only [h3, if_true, if_false]
-  by_cases h5 : t = 5 <;> simp only [h5, if_true, if_false]
-  by_cases h6 : t = 6 <;> simp only [h6, if_true, if_false]
-  by_cases hb : t = 7 ∨ t = 8 <;> simp only [hb, if_true, if_false]
+  by_cases h3 : t = 3 <;> simp only [h3, ite_true, ite_false]
+  by_cases h5 : t = 5 <;> simp only [h5, ite_true, ite_false]
+  by_cases h6 : t = 6 <;> simp only [h6, ite_true, ite_false]
+  by_cases hb : t = 7 ∨ t = 8 <;> simp only [hb, ite_true, ite_false]
   rw [hlook _ (level_smaller_index hf hs), termLevelF, Nat.unpair_pair,
     Denumerable.ofNat_encode]
   rcases hp : termLevelRun fuel rest with _ | p
@@ -1251,11 +1251,11 @@ private lemma sourceLevelGCore_spec (m : ℕ) (look : ℕ → Option (ℕ × Lis
   rcases hs : Denumerable.ofNat (List ℕ) m.unpair.2 with _ | ⟨t, rest⟩
   · rfl
   simp only [sourceLevelRun]
-  by_cases h910 : t = 9 ∨ t = 10 <;> simp only [h910, if_true, if_false]
+  by_cases h910 : t = 9 ∨ t = 10 <;> simp only [h910, ite_true, ite_false]
   by_cases hrel : t = 11 ∨ t = 12 ∨ t = 13 ∨ t = 14 <;>
-    simp only [hrel, if_true, if_false]
+    simp only [hrel, ite_true, ite_false]
   by_cases hbin : t = 15 ∨ t = 16 ∨ t = 21 ∨ t = 22 <;>
-    simp only [hbin, if_true, if_false]
+    simp only [hbin, ite_true, ite_false]
   · rw [hlook _ (level_smaller_index hf hs), sourceLevelF, Nat.unpair_pair,
       Denumerable.ofNat_encode]
     rcases hp : sourceLevelRun fuel rest with _ | p
@@ -1268,10 +1268,10 @@ private lemma sourceLevelGCore_spec (m : ℕ) (look : ℕ → Option (ℕ × Lis
           pair_le_pair_right' fuel (encode_le_of_suffix (sourceLevelRun_suffix hp))
         _ < m := level_smaller_index hf hs
     rw [hlook _ hidx, sourceLevelF, Nat.unpair_pair, Denumerable.ofNat_encode]
-  by_cases hq : t = 17 ∨ t = 18 <;> simp only [hq, if_true, if_false]
+  by_cases hq : t = 17 ∨ t = 18 <;> simp only [hq, ite_true, ite_false]
   · rw [hlook _ (level_smaller_index hf hs), sourceLevelF, Nat.unpair_pair,
       Denumerable.ofNat_encode]
-  by_cases h20 : t = 20 <;> simp only [h20, if_true, if_false]
+  by_cases h20 : t = 20 <;> simp only [h20, ite_true, ite_false]
   rw [hlook _ (level_smaller_index hf hs), sourceLevelF, Nat.unpair_pair,
     Denumerable.ofNat_encode]
 

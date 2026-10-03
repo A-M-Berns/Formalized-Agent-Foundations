@@ -88,20 +88,20 @@ lemma ceApprox_eq (n : ℕ) (σ : List Bool) :
   | zero =>
       simp only [ceApprox]
       by_cases h : σ <+: enum 0
-      · rw [if_pos h, if_pos ⟨0, le_refl _, h⟩]
-      · rw [if_neg h]
-        refine (if_neg ?_).symm
+      · rw [ite_eq_left h, ite_eq_left ⟨0, le_refl _, h⟩]
+      · rw [ite_eq_right h]
+        refine (ite_eq_right ?_).symm
         rintro ⟨j, hj, hja⟩
         exact h (by simpa [Nat.le_zero.mp hj] using hja)
   | succ n ih =>
       simp only [ceApprox, ih]
       by_cases hnew : σ <+: enum (n + 1)
-      · rw [if_pos hnew, if_pos ⟨n + 1, le_refl _, hnew⟩]
-      · rw [if_neg hnew]
+      · rw [ite_eq_left hnew, ite_eq_left ⟨n + 1, le_refl _, hnew⟩]
+      · rw [ite_eq_right hnew]
         by_cases hold : ∃ j, j ≤ n ∧ σ <+: enum j
         · obtain ⟨j, hj, hja⟩ := hold
-          rw [if_pos ⟨j, hj, hja⟩, if_pos ⟨j, hj.trans (Nat.le_succ n), hja⟩]
-        · refine (if_neg hold).trans (if_neg ?_).symm
+          rw [ite_eq_left ⟨j, hj, hja⟩, ite_eq_left ⟨j, hj.trans (Nat.le_succ n), hja⟩]
+        · refine (ite_eq_right hold).trans (ite_eq_right ?_).symm
           rintro ⟨j, hj, hja⟩
           rcases Nat.lt_succ_iff_lt_or_eq.mp (Nat.lt_succ_of_le hj) with h | h
           · exact hold ⟨j, Nat.lt_succ_iff.mp h, hja⟩
@@ -121,10 +121,10 @@ lemma ceApprox_le_ceMass (n : ℕ) (σ : List Bool) :
   rw [ceApprox_eq, ceMass]
   by_cases h : ∃ j, j ≤ n ∧ σ <+: enum j
   · obtain ⟨j, hjn, hja⟩ := h
-    rw [if_pos (⟨j, hjn, hja⟩ : ∃ j, j ≤ n ∧ σ <+: enum j),
-      if_pos (⟨j, hja⟩ : ∃ j, σ <+: enum j)]
+    rw [ite_eq_left (⟨j, hjn, hja⟩ : ∃ j, j ≤ n ∧ σ <+: enum j),
+      ite_eq_left (⟨j, hja⟩ : ∃ j, σ <+: enum j)]
     norm_num
-  · rw [if_neg h]
+  · rw [ite_eq_right h]
     split <;> norm_num
 
 lemma ceApprox_mono (σ : List Bool) : Monotone fun n ↦ ceApprox enum n σ := by
@@ -133,8 +133,8 @@ lemma ceApprox_mono (σ : List Bool) : Monotone fun n ↦ ceApprox enum n σ := 
   rw [ceApprox_eq, ceApprox_eq]
   by_cases h : ∃ j, j ≤ n ∧ σ <+: enum j
   · obtain ⟨j, hj, hja⟩ := h
-    rw [if_pos ⟨j, hj, hja⟩, if_pos ⟨j, hj.trans (Nat.le_succ n), hja⟩]
-  · rw [if_neg h]
+    rw [ite_eq_left ⟨j, hj, hja⟩, ite_eq_left ⟨j, hj.trans (Nat.le_succ n), hja⟩]
+  · rw [ite_eq_right h]
     split <;> norm_num
 
 lemma ceApprox_tendsto (σ : List Bool) :
@@ -144,13 +144,13 @@ lemma ceApprox_tendsto (σ : List Bool) :
   · obtain ⟨j, hja⟩ := h
     have hev : ∀ᶠ n in atTop, ((ceApprox enum n σ : ℚ) : ℝ) = ceMass enum σ := by
       refine eventually_atTop.2 ⟨j, fun n hn ↦ ?_⟩
-      rw [ceApprox_eq, if_pos (⟨j, hn, hja⟩ : ∃ j', j' ≤ n ∧ σ <+: enum j'),
-        ceMass, if_pos (⟨j, hja⟩ : ∃ j', σ <+: enum j')]
+      rw [ceApprox_eq, ite_eq_left (⟨j, hn, hja⟩ : ∃ j', j' ≤ n ∧ σ <+: enum j'),
+        ceMass, ite_eq_left (⟨j, hja⟩ : ∃ j', σ <+: enum j')]
       norm_num
     exact Tendsto.congr' (hev.mono fun _ h ↦ h.symm) tendsto_const_nhds
   · have hev : ∀ n, ((ceApprox enum n σ : ℚ) : ℝ) = ceMass enum σ := by
       intro n
-      rw [ceApprox_eq, if_neg (fun ⟨j, _, hja⟩ ↦ h ⟨j, hja⟩), ceMass, if_neg h]
+      rw [ceApprox_eq, ite_eq_right (fun ⟨j, _, hja⟩ ↦ h ⟨j, hja⟩), ceMass, ite_eq_right h]
       norm_num
     exact Tendsto.congr (fun n ↦ (hev n).symm) tendsto_const_nhds
 
@@ -246,30 +246,30 @@ noncomputable def ceNestedSemimeasure (henum : Computable enum)
     by_cases h0 : ∃ j, σ ++ [false] <+: enum j
     · obtain ⟨j, hj⟩ := h0
       have hσ : ceMass enum σ = 1 := by
-        rw [ceMass, if_pos (⟨j, (List.prefix_append _ _).trans hj⟩ : ∃ j, σ <+: enum j)]
+        rw [ceMass, ite_eq_left (⟨j, (List.prefix_append _ _).trans hj⟩ : ∃ j, σ <+: enum j)]
       have h1 : ¬ ∃ j', σ ++ [true] <+: enum j' := by
         rintro ⟨j', hj'⟩
         rcases hcomparable j j' with hcc | hcc
         · exact concat_prefix_conflict (by simp) (hj.trans hcc) hj'
         · exact concat_prefix_conflict (by simp) hj (hj'.trans hcc)
       have e0 : ceMass enum (σ ++ [false]) = 1 := by
-        rw [ceMass, if_pos (⟨j, hj⟩ : ∃ j, σ ++ [false] <+: enum j)]
-      have e1 : ceMass enum (σ ++ [true]) = 0 := by rw [ceMass, if_neg h1]
+        rw [ceMass, ite_eq_left (⟨j, hj⟩ : ∃ j, σ ++ [false] <+: enum j)]
+      have e1 : ceMass enum (σ ++ [true]) = 0 := by rw [ceMass, ite_eq_right h1]
       show ceMass enum (σ ++ [false]) + ceMass enum (σ ++ [true]) ≤ ceMass enum σ
       rw [hσ, e0, e1]
       norm_num
     · by_cases h1 : ∃ j, σ ++ [true] <+: enum j
       · obtain ⟨j, hj⟩ := h1
         have hσ : ceMass enum σ = 1 := by
-          rw [ceMass, if_pos (⟨j, (List.prefix_append _ _).trans hj⟩ : ∃ j, σ <+: enum j)]
-        have e0 : ceMass enum (σ ++ [false]) = 0 := by rw [ceMass, if_neg h0]
+          rw [ceMass, ite_eq_left (⟨j, (List.prefix_append _ _).trans hj⟩ : ∃ j, σ <+: enum j)]
+        have e0 : ceMass enum (σ ++ [false]) = 0 := by rw [ceMass, ite_eq_right h0]
         have e1 : ceMass enum (σ ++ [true]) = 1 := by
-          rw [ceMass, if_pos (⟨j, hj⟩ : ∃ j, σ ++ [true] <+: enum j)]
+          rw [ceMass, ite_eq_left (⟨j, hj⟩ : ∃ j, σ ++ [true] <+: enum j)]
         show ceMass enum (σ ++ [false]) + ceMass enum (σ ++ [true]) ≤ ceMass enum σ
         rw [hσ, e0, e1]
         norm_num
-      · have e0 : ceMass enum (σ ++ [false]) = 0 := by rw [ceMass, if_neg h0]
-        have e1 : ceMass enum (σ ++ [true]) = 0 := by rw [ceMass, if_neg h1]
+      · have e0 : ceMass enum (σ ++ [false]) = 0 := by rw [ceMass, ite_eq_right h0]
+        have e1 : ceMass enum (σ ++ [true]) = 0 := by rw [ceMass, ite_eq_right h1]
         show ceMass enum (σ ++ [false]) + ceMass enum (σ ++ [true]) ≤ ceMass enum σ
         rw [e0, e1]
         simpa using ceMass_nonneg (enum := enum) σ
@@ -294,7 +294,7 @@ lemma exists_pos_mass_of_ce_nested (M : UniversalContinuousSemimeasure)
   have h := hdom (enum j)
   have hmass : (ceNestedSemimeasure henum hcomparable).mass (enum j) = 1 := by
     show ceMass enum (enum j) = 1
-    rw [ceMass, if_pos ⟨j, List.prefix_refl _⟩]
+    rw [ceMass, ite_eq_left ⟨j, List.prefix_refl _⟩]
   rw [hmass] at h
   simpa using h
 
@@ -386,7 +386,7 @@ lemma kleene_recursively_inseparable (f : ℕ → Bool) (hf : Computable f)
     rw [hdecode, hc]
   by_cases hfe : f e₀
   · have hmem : e₀ ∈ kleeneSet false := by
-      simp only [kleeneSet, Set.mem_setOf_eq, if_neg (by simp : ¬ (false = true))]
+      simp only [kleeneSet, Set.mem_setOf_eq, ite_eq_right (by simp : ¬ (false = true))]
       rw [hval, hfe]
       simp
     exact absurd (h0 e₀ hmem) (by simp [hfe])
@@ -453,7 +453,7 @@ lemma holds_separatorConstraintAux (v : PCWorld) (atom : ℕ → Sentence) (n : 
   induction e with
   | zero =>
       simp [separatorConstraintAux, PCWorld.Holds,
-        LO.Propositional.Formula.Boolean.val]
+        FFL.Propositional.Formula.val]
   | succ e ih =>
       rcases hb : kleeneDecide n e with _ | b
       · rw [show separatorConstraintAux atom n (e + 1) =
@@ -1054,7 +1054,6 @@ lemma separatorConsistentAt_primrec : Primrec separatorConsistentAt := by
   refine (hfilter.comp allBitLists_prim Primrec.id).of_eq fun n ↦ ?_
   simp only [id_eq]
   rw [separatorConsistentAt_eq]
-  rfl
 
 lemma boundedApprox_primrec (M : LowerSemicomputableContinuousSemimeasure) :
     Primrec fun z : (ℕ × ℕ) × List Bool ↦ boundedApprox M z.1.1 z.1.2 z.2 := by

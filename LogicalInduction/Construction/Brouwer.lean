@@ -107,6 +107,11 @@ lemma mem_cellFin {n : ℕ} {m : ℤ} {P : Fin (n+1) → ℤ} {σ : Equiv.Perm (
   simp_all +decide [ IsLat, cellVert ];
   exact fun i => this.2 ▸ Finset.single_le_sum ( fun a _ => this.1 a ) ( Finset.mem_univ i )
 
+/-- Membership in `cellFin` gives validity (the filter's second component). -/
+lemma validCell_of_mem_cellFin {n : ℕ} {m : ℤ} {pσ : (Fin (n+1) → ℤ) × Equiv.Perm (Fin n)}
+    (h : pσ ∈ cellFin n m) : ValidCell m pσ.1 pσ.2 := by
+  unfold cellFin at h; exact (Finset.mem_filter.mp h).2
+
 /-! ## Half-doors and the pivot involution -/
 
 /--
@@ -265,7 +270,6 @@ lemma faceLabel_admissible {n : ℕ} {m : ℤ}
   intro q hq; specialize hadm ( Fin.snoc q 0 ) ?_ <;> simp_all +decide [ IsLat ] ;
   · intro i; refine' Fin.lastCases _ _ i <;> simp +decide [ * ] ;
   · unfold faceLabel; split_ifs at * <;> simp_all +decide [ Fin.snoc ] ;
-    obtain ⟨hle, hne⟩ := hadm; exact hne;
 
 /-- The edge vector `e_{j.castSucc} - e_{j.succ}` in dimension `n+1`. -/
 def edgeVec {n : ℕ} (j : Fin (n+1)) : Fin (n+2) → ℤ :=
@@ -431,7 +435,9 @@ lemma cellVert_last_coord {n : ℕ} (P : Fin (n+2) → ℤ) (σ : Equiv.Perm (Fi
   unfold cellVert;
   rw [ Finset.sum_eq_single ( σ.symm ( Fin.last n ) ) ] <;> simp +decide [ Fin.ext_iff, Fin.val_last ];
   · split_ifs <;> ring;
-  · grind +suggestions
+  · have hb : ∀ b : Fin (n+1), (σ b).val = n → b.val = (σ.symm (Fin.last n)).val :=
+      fun b hv => congrArg Fin.val ((Equiv.eq_symm_apply σ).mpr (Fin.ext (by simp [hv])))
+    grind +suggestions
 
 /-! ## The face lift and the dimension induction -/
 
@@ -474,7 +480,7 @@ lemma cellVert_lift_snoc {n : ℕ} (Pb : Fin (n+1) → ℤ) (s : Equiv.Perm (Fin
     simp +decide [ Fin.snoc, edgeVec ];
     simp +decide [ finSuccEquiv, Equiv.optionCongr ];
   · convert cellVert_lift Pb s k _ using 1;
-    exact if_pos ( Nat.le_of_lt_succ ( Fin.is_lt _ ) )
+    exact ite_eq_left ( Nat.le_of_lt_succ ( Fin.is_lt _ ) )
 
 /-- A valid face cell has its last-coordinate base `≥ 1` (its bottom vertex on that
 coordinate is `Pb (Fin.last n) - 1 ≥ 0`). -/
@@ -499,8 +505,6 @@ lemma liftCell_valid {n : ℕ} {m : ℤ} {Pb : Fin (n+1) → ℤ} {s : Equiv.Per
     · intro i; unfold edgeVec; simp +decide [ Fin.snoc ] ;
       grind +suggestions;
     · unfold edgeVec; simp +decide [ Finset.sum_ite ] ;
-      show (1 - ∑ x : Fin (n+2), if Fin.last (n+1) = x then (1:ℤ) else 0) = 0;
-      simp [ Finset.sum_ite_eq ] ;
   · rw [ cellVert_lift_snoc ] ; exact ⟨ by
       intro i; cases i using Fin.lastCases <;> simp +decide [ * ] ;
       exact hv k |>.1 _, by
@@ -548,8 +552,8 @@ lemma liftCell_mem {n : ℕ} {m : ℤ} (hm : 1 ≤ m) (l : (Fin (n+2) → ℤ) �
     (hc : c ∈ (cellFin n m).filter (fun pσ => IsFull (faceLabel l) pσ.1 pσ.2)) :
     liftCell c ∈ boundaryDoors n m l := by
   unfold liftCell boundaryDoors; simp +decide [ halfDoors, pivot ] ;
-  constructor;
-  · constructor;
+  refine Finset.mem_filter.mpr ⟨?_, ?_⟩;
+  · refine Finset.mem_filter.mpr ⟨?_, ?_⟩;
     · have h_liftCell_valid : ValidCell m (liftBase c.1) (liftPerm c.2) := by
         exact liftCell_valid hm ( by unfold cellFin at hc; aesop );
       grind +suggestions;
@@ -559,18 +563,22 @@ lemma liftCell_mem {n : ℕ} {m : ℤ} (hm : 1 ≤ m) (l : (Fin (n+2) → ℤ) �
           constructor <;> rintro ⟨ a, rfl ⟩ <;> use a;
           · apply faceLabel_castSucc;
             exact hadm;
-            unfold cellFin at hc; simp_all +decide [ ValidCell, IsLat ] ;
-            intro i; induction i using Fin.lastCases <;> simp +decide [ * ] ;
+            have hcv : ValidCell m c.1 c.2 := validCell_of_mem_cellFin (Finset.mem_filter.mp hc).1;
+            refine ⟨fun i => ?_, ?_⟩;
+            · induction i using Fin.lastCases <;> simp +decide [ (hcv a).1 ] ;
+            · rw [ Fin.sum_univ_castSucc ]; simp +decide [ (hcv a).2 ] ;
           · rw [ faceLabel_castSucc ];
             exact hadm;
-            unfold cellFin at hc; simp_all +decide [ ValidCell, IsLat ] ;
-            intro i; induction i using Fin.lastCases <;> simp +decide [ * ] ;
+            have hcv : ValidCell m c.1 c.2 := validCell_of_mem_cellFin (Finset.mem_filter.mp hc).1;
+            refine ⟨fun i => ?_, ?_⟩;
+            · induction i using Fin.lastCases <;> simp +decide [ (hcv a).1 ] ;
+            · rw [ Fin.sum_univ_castSucc ]; simp +decide [ (hcv a).2 ] ;
         · ext i; simp [Finset.mem_erase];
         · unfold IsFull at hc; aesop;
       · ext ( _ | i ) <;> simp +decide [ Fin.ext_iff ];
   · intro h; have := h ( Fin.last _ ) ; simp_all +decide [ IsLat ] ;
     convert this.1 ( Fin.last _ ) using 1 ; simp +decide [ cellVert_last_coord ];
-    rw [ if_pos ];
+    rw [ ite_eq_left ];
     · unfold liftBase; simp +decide [ edgeVec ] ;
     · exact Equiv.symm_apply_eq _ |>.2 ( by simp +decide [ liftPerm_zero ] )
 
@@ -617,11 +625,11 @@ lemma facet_coord_zero {n : ℕ} {m : ℤ} {P : Fin (n+1) → ℤ} {σ : Equiv.P
   have hge := (hv k).1 j
   rw [cellVert_coord_ind, hP] at hge ⊢
   by_cases hin : ∃ l, l.castSucc < k ∧ (σ l).castSucc = j
-  · rw [if_pos hin, if_pos (h k hk hin)]; ring
-  · rw [if_neg hin] at hge ⊢
+  · rw [ite_eq_left hin, ite_eq_left (h k hk hin)]; ring
+  · rw [ite_eq_right hin] at hge ⊢
     by_cases hout : ∃ l, l.castSucc < k ∧ (σ l).succ = j
-    · rw [if_pos hout] at hge; omega
-    · rw [if_neg hout]; ring
+    · rw [ite_eq_left hout] at hge; omega
+    · rw [ite_eq_right hout]; ring
 
 /--
 Coordinate formula for the top vertex `Fin.last (n+1)` of a cell: every edge is included,
@@ -665,12 +673,14 @@ lemma cellVert_swap_pivot_vertex {n : ℕ} (P : Fin (n+2) → ℤ) (σ : Equiv.P
   simp +decide [ Finset.sum_ite, Equiv.swap_apply_def ];
   rw [ show ( Finset.filter ( fun x => x.castSucc < k0 ) Finset.univ : Finset ( Fin ( n + 1 ) ) ) = Finset.filter ( fun x => x.castSucc < k0 ∧ x ≠ a ∧ x ≠ b ) Finset.univ ∪ { a } from ?_, Finset.filter_union ];
   · rw [ Finset.filter_union, Finset.filter_singleton ] ; simp +decide [ Finset.filter_singleton ] ; ring_nf;
-    split_ifs <;> simp_all +decide [ Finset.filter_insert ] <;> try ring_nf;
+    split_ifs <;> (try simp_all +decide [ Finset.filter_insert ]; try ring_nf);
     all_goals congr! 3;
     all_goals first
       | exact congrArg Finset.card
-          (Finset.filter_congr (by rintro x hx; simp_all +decide))
-      | exact Finset.filter_congr (by rintro x hx; simp_all +decide);
+          (Finset.filter_congr (fun _ _ => Iff.rfl))
+      | exact Finset.filter_congr (fun _ _ => Iff.rfl)
+      | (rw [Finset.card_filter]; push_cast;
+         exact Finset.sum_congr rfl (fun x hx => by simp_all +decide));
   · ext x; by_cases hx : x = a <;> by_cases hx' : x = b <;> simp +decide [ * ] ;
     · grind;
     · exact Nat.lt_of_le_of_lt ( Nat.le_refl _ ) ( show ( a : ℕ ) < k0 from by omega );
@@ -825,17 +835,17 @@ lemma pivot_invalid_facet {n : ℕ} {m : ℤ} {P : Fin (n+2) → ℤ} {σ : Equi
           · have hge : 0 ≤ P ((σ (Fin.last n)).castSucc) := (hv 0).1 _ |>.trans_eq (by rw [cellVert_zero])
             have hne : (σ (Fin.last n)).succ ≠ (σ (Fin.last n)).castSucc := by
               simp [Fin.ext_iff, Fin.val_succ]
-            rw [if_pos rfl, if_neg hne]; omega
+            rw [ite_eq_left rfl, ite_eq_right hne]; omega
           · rcases eq_or_ne ((σ (Fin.last n)).succ) i with rfl | hi2
-            · rw [if_neg hi, if_pos rfl]
+            · rw [ite_eq_right hi, ite_eq_left rfl]
               have := (hv 0).1 ((σ (Fin.last n)).succ); rw [cellVert_zero] at this; omega
-            · rw [if_neg hi, if_neg hi2]
+            · rw [ite_eq_right hi, ite_eq_right hi2]
               have := (hv 0).1 i; rw [cellVert_zero] at this; omega
         · have hsum : ∑ i, (P i - edgeVec (σ (Fin.last n)) i) = (∑ i, P i) - ∑ i, edgeVec (σ (Fin.last n)) i := by
             rw [Finset.sum_sub_distrib]
           rw [hsum]
           have he0 : ∑ i, edgeVec (σ (Fin.last n)) i = 0 := by
-            simp only [edgeVec, Finset.sum_sub_distrib, Finset.sum_ite_eq, Finset.mem_univ, if_true]
+            simp only [edgeVec, Finset.sum_sub_distrib, Finset.sum_ite_eq, Finset.mem_univ, ite_true]
             simp
           rw [he0, sub_zero]
           have := (hv 0).2; rwa [cellVert_zero] at this
@@ -886,13 +896,13 @@ lemma boundary_door_struct {n : ℕ} {m : ℤ} (_hm : 1 ≤ m) (l : (Fin (n+2) �
   -- last coordinate of base is ≥ 1
   have hPlast : 1 ≤ x.1.1 (Fin.last (n+1)) := by
     have h0 := (hv (Fin.last (n+1))).1 (Fin.last (n+1))
-    rw [cellVert_last_coord, if_pos (Fin.castSucc_lt_last _)] at h0
+    rw [cellVert_last_coord, ite_eq_left (Fin.castSucc_lt_last _)] at h0
     omega
   -- k0 = 0
   have hk0 : x.2 = 0 := by
     by_contra hk0ne
     have h := hj 0 (Ne.symm hk0ne)
-    rw [cellVert_last_coord, if_neg (Fin.not_lt_zero _)] at h
+    rw [cellVert_last_coord, ite_eq_right (Fin.not_lt_zero _)] at h
     omega
   -- from vertex 1 (≠ 0) get the remaining facts
   have hone : (1 : Fin (n+2)) ≠ x.2 := by rw [hk0]; exact Fin.ext_iff.not.mpr (by simp)
@@ -900,10 +910,10 @@ lemma boundary_door_struct {n : ℕ} {m : ℤ} (_hm : 1 ≤ m) (l : (Fin (n+2) �
   rw [cellVert_last_coord] at h1
   have hposlt : (x.1.2.symm (Fin.last n)).castSucc < (1 : Fin (n+2)) := by
     by_contra hcon
-    rw [if_neg hcon] at h1
+    rw [ite_eq_right hcon] at h1
     omega
   have hPone : x.1.1 (Fin.last (n+1)) = 1 := by
-    rw [if_pos hposlt] at h1; omega
+    rw [ite_eq_left hposlt] at h1; omega
   have hsig : x.1.2 0 = Fin.last n := by
     have hlt : (x.1.2.symm (Fin.last n)).val < 1 := by
       have h := hposlt
@@ -931,16 +941,19 @@ lemma boundary_isLift {n : ℕ} {m : ℤ} (hm : 1 ≤ m) (l : (Fin (n+2) → ℤ
       exact boundary_door_struct hm l hadm hx |>.2.2;
     have := boundary_door_struct hm l hadm hx; obtain ⟨s, hs⟩ := exists_facePerm (by
     exact this.2.1 : x.1.2 0 = Fin.last n); use (c, s); aesop;
+  have hval : ValidCell m x.1.1 x.1.2 := by
+    have h := hx; rw [boundaryDoors, Finset.mem_filter] at h;
+    have h2 := h.1; rw [halfDoors, Finset.mem_filter] at h2;
+    exact validCell_of_mem_cellFin (Finset.mem_product.mp h2.1).1
   unfold liftCell at *; simp_all +decide [ boundaryDoors, halfDoors ] ;
   refine' ⟨ c.1, c.2, ⟨ _, _ ⟩, hc.symm ⟩;
   · convert mem_cellFin ?_;
-    unfold cellFin at hx; simp_all +decide [ ValidCell, IsLat ] ;
-    intro k; specialize hx; have := hx.1.1.2 k.succ; simp_all +decide [ cellVert_lift_snoc ] ;
-    subst hc;
-    have := hx.1.1.2 k.succ;
-    rw [ cellVert_lift_snoc ] at this;
-    refine ⟨ fun i => by simpa using this.1 i.castSucc, ?_ ⟩;
-    have hsum := this.2;
+    intro k;
+    have hv : IsLat m (cellVert (liftBase c.1) (liftPerm c.2) k.succ) := by
+      subst hc; exact hval k.succ
+    rw [ cellVert_lift_snoc ] at hv;
+    refine ⟨ fun i => by simpa using hv.1 i.castSucc, ?_ ⟩;
+    have hsum := hv.2;
     rw [ Fin.sum_univ_castSucc ] at hsum; simpa using hsum;
   · subst hc; simp_all +decide [ IsFull ] ;
     rw [ show ( Finset.univ.erase 0 : Finset ( Fin ( n + 2 ) ) ) = Finset.image ( fun k : Fin ( n + 1 ) => Fin.succ k ) Finset.univ from ?_, Finset.image_image ] at hx;

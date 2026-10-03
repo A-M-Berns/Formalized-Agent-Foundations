@@ -238,14 +238,14 @@ theorem exists_reassignment_condExp_eq (Γ : Game N 𝒜)
   have hf : ∀ a ∈ Γ.reduce.profiles, f a ∈ Γ.feasible := by
     intro a ha
     by_cases hs : a ∈ R.support Γ
-    · simp only [hfdef, if_pos hs]
+    · simp only [hfdef, ite_eq_left hs]
       exact R.condExp_mem_feasible Γ hs fun b hb => T'.ue_mem b hb
-    · simp only [hfdef, if_neg hs]
+    · simp only [hfdef, ite_eq_right hs]
       exact Γ.u_mem_feasible (Γ.reduce_isSubsetGameOf.profiles_subset ha)
   have hge : ∀ a, Γ.u a ≤ f a := by
     intro a
     by_cases hs : a ∈ R.support Γ
-    · simp only [hfdef, if_pos hs]
+    · simp only [hfdef, ite_eq_left hs]
       exact R.le_condExp_of_isSPI Γ hs hT'
     · simp [hfdef, hs]
   obtain ⟨T, hiso, hT⟩ := Play.exists_tokenGame_ue_eq hA1 hA2 Γ h f hf
@@ -256,7 +256,7 @@ theorem exists_reassignment_condExp_eq (Γ : Game N 𝒜)
         R.condExp Γ a (fun ω => f (R.play Γ ω)) :=
       integral_congr_ae (R.ae_cond_of_ae Γ a hT)
     rw [h₁, R.condExp_comp_play Γ ha]
-    simp only [hfdef, if_pos ha]
+    simp only [hfdef, ite_eq_left ha]
   refine ⟨T, hiso, ?_, hcond, ?_⟩
   · filter_upwards [hT] with ω hω
     rw [hω]; exact hge _
@@ -366,13 +366,13 @@ theorem achievable_eq_improvementSum (Γ : Game N 𝒜)
       intro a ha
       have ha' : a ∈ Γ.profilesFinset :=
         Γ.mem_profilesFinset.2 (Γ.reduce_isSubsetGameOf.profiles_subset ha)
-      simp only [hfdef, dif_pos ha']
+      simp only [hfdef, dite_eq_left ha']
       exact (hk a ha').1
     have hge : ∀ a, Γ.u a ≤ f a := by
       intro a
       by_cases ha : a ∈ Γ.profilesFinset
-      · simp only [hfdef, dif_pos ha]; exact (hk a ha).2
-      · simp only [hfdef, dif_neg ha]; exact le_rfl
+      · simp only [hfdef, dite_eq_left ha]; exact (hk a ha).2
+      · simp only [hfdef, dite_eq_right ha]; exact le_rfl
     obtain ⟨T, -, hT⟩ := Play.exists_tokenGame_ue_eq hA1 hA2 Γ h f hf
     refine ⟨T, ?_, ?_⟩
     · filter_upwards [hT] with ω hω
@@ -386,7 +386,7 @@ theorem achievable_eq_improvementSum (Γ : Game N 𝒜)
             R.condExp Γ a (fun ω => f (R.play Γ ω)) :=
           integral_congr_ae (R.ae_cond_of_ae Γ a hT)
         rw [e, R.condExp_comp_play Γ hs]
-        simp only [hfdef, dif_pos ha]
+        simp only [hfdef, dite_eq_left ha]
       · rw [R.measureReal_fiber_eq_zero_of_not_mem_support Γ hs, zero_smul, zero_smul]
 
 /-- **The safely achievable payoffs are feasible**: `achievable ⊆ C(Γ)`, since each

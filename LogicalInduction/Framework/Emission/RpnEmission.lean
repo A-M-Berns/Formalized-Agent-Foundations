@@ -226,26 +226,26 @@ theorem PolyFueledTrader.ofDigitEmitter {Tr : Trader}
         (fun w => (undigitize (ds w.unpair.1)).getD w.unpair.2 0) n j) = 1 ∨
         escModeList (vpre
         (fun w => (undigitize (ds w.unpair.1)).getD w.unpair.2 0) n j) = 3
-    · rw [if_pos (by
-        rcases hm with hm | hm <;> rw [hm]), if_pos hm]
+    · rw [ite_eq_left (by
+        rcases hm with hm | hm <;> rw [hm]), ite_eq_left hm]
       by_cases hz : (undigitize (ds n)).getD j 0 = 0
-      · rw [if_pos hz]
+      · rw [ite_eq_left hz]
         have hlen_zero : len4 ((undigitize (ds n)).getD j 0) = 0 := by
           rw [hz]
           exact len4_zero
-        rw [if_pos hlen_zero]
+        rw [ite_eq_left hlen_zero]
         simp [digitize]
-      · rw [if_neg hz]
+      · rw [ite_eq_right hz]
         have hlen_ne : len4 ((undigitize (ds n)).getD j 0) ≠ 0 := by
           have hpos : 0 < len4 ((undigitize (ds n)).getD j 0) :=
             (lt_len4_iff _ 0).mpr (Nat.one_le_iff_ne_zero.mpr hz)
           omega
-        rw [if_neg hlen_ne]
+        rw [ite_eq_right hlen_ne]
         simp [digitize]
-    · rw [if_neg (by
+    · rw [ite_eq_right (by
         push Not at hm
         simp only [Nat.mul_eq_zero]
-        omega), if_neg hm]
+        omega), ite_eq_right hm]
       simp [digitize]
   apply ec_of_rawSegStream Tr hclean
   intro n
@@ -291,7 +291,7 @@ lemma RpnSpliceStream.ec (Tr : Trader)
       · next trades' hsome =>
           rw [hdecode] at hsome
           obtain rfl := Option.some.inj hsome
-          rw [dif_pos rank_le]
+          rw [dite_eq_left rank_le]
 
 /-- **Single-trade realization over an 𝓔𝓒 sentence sequence**: a trader playing one
 trade per day, with a polynomially emittable price-free coefficient stream and an
@@ -343,7 +343,7 @@ lemma PolyFueledTrader.ofSingleTradeBlocks (Tr : Trader) (f : ℕ → EF)
       · next trades' hsome =>
           rw [hdecode] at hsome
           obtain rfl := Option.some.inj hsome
-          rw [dif_pos hrank]
+          rw [dite_eq_left hrank]
 
 /-- **Variable-count realization over an 𝓔𝓒 sentence sequence**: a trader playing
 `count n` trades on day `n` (indexed `z = ⟨n, j⟩`), with polynomially emittable
@@ -406,6 +406,6 @@ lemma PolyFueledTrader.ofTradeBlocks (Tr : Trader)
       · next trades' hsome =>
           rw [hdecode] at hsome
           obtain rfl := Option.some.inj hsome
-          rw [dif_pos hrank]
+          rw [dite_eq_left hrank]
 
 end LogicalInduction

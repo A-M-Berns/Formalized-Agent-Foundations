@@ -110,21 +110,21 @@ private lemma conjunctionCode_decode {phiCode : ℕ} {φ ψ : Sentence}
     (hφ : Encodable.decode (α := Sentence) phiCode = some φ) :
     Encodable.decode (α := Sentence)
       (conjunctionCode phiCode (Encodable.encode ψ)) = some (φ ⋏ ψ) := by
-  change LO.Propositional.Formula.ofNat phiCode = some φ at hφ
-  change LO.Propositional.Formula.ofNat
-    (conjunctionCode phiCode (LO.Propositional.Formula.toNat ψ)) = some (φ ⋏ ψ)
-  simp [conjunctionCode, LO.Propositional.Formula.ofNat, hφ,
-    LO.Propositional.Formula.ofNat_toNat]
+  change FFL.Propositional.Formula.ofNat phiCode = some φ at hφ
+  change FFL.Propositional.Formula.ofNat
+    (conjunctionCode phiCode (FFL.Propositional.Formula.toNat ψ)) = some (φ ⋏ ψ)
+  simp [conjunctionCode, FFL.Propositional.Formula.ofNat, hφ,
+    FFL.Propositional.Formula.ofNat_toNat]
 
 lemma conjunctionCode_decode_none {phiCode : ℕ} {ψ : Sentence}
     (hφ : Encodable.decode (α := Sentence) phiCode = none) :
     Encodable.decode (α := Sentence)
       (conjunctionCode phiCode (Encodable.encode ψ)) = none := by
-  change LO.Propositional.Formula.ofNat phiCode = none at hφ
-  change LO.Propositional.Formula.ofNat
-    (conjunctionCode phiCode (LO.Propositional.Formula.toNat ψ)) = none
-  simp [conjunctionCode, LO.Propositional.Formula.ofNat, hφ,
-    LO.Propositional.Formula.ofNat_toNat]
+  change FFL.Propositional.Formula.ofNat phiCode = none at hφ
+  change FFL.Propositional.Formula.ofNat
+    (conjunctionCode phiCode (FFL.Propositional.Formula.toNat ψ)) = none
+  simp [conjunctionCode, FFL.Propositional.Formula.ofNat, hφ,
+    FFL.Propositional.Formula.ofNat_toNat]
 
 private lemma conjunctionCode_prim : Primrec₂ conjunctionCode := by
   exact (Primrec.nat_add.comp₂
@@ -263,8 +263,8 @@ private lemma conditionedQuoteCode_spec {P : History} (market : MarketComputatio
     simpa [conditionalRatNorm_exact] using
       conditionalRatCode_spec
         (Nat.pair (Encodable.encode numerator) (Encodable.encode denominator))
-  simp [conditionedQuoteCode, Nat.Partrec.Code.eval, hcondition, hconjunction,
-    hnumerator, hdenominator, hconditional, Seq.seq, conjunction, numerator,
+  simp [conditionedQuoteCode, Nat.Partrec.Code.eval, PFun.coe_val, some_bind_pfun, hcondition,
+    hconjunction, hnumerator, hdenominator, hconditional, Seq.seq, conjunction, numerator,
     denominator, conditionedQuoteTable]
 
 /-- The conditioned history is a computable rational market whenever the base market has a
@@ -412,7 +412,7 @@ private lemma denominatorPatchedQuoteCode_spec {P : History}
   have hnorm : (denominatorPatchNormCode cutoff).eval normInput =
       Part.some (denominatorPatchNorm cutoff normInput) :=
     Part.eq_some_iff.mpr (denominatorPatchNormCode_spec cutoff normInput)
-  simp [denominatorPatchedQuoteCode, Nat.Partrec.Code.eval, hcondition, hbase,
+  simp [denominatorPatchedQuoteCode, Nat.Partrec.Code.eval, PFun.coe_val, some_bind_pfun, hcondition, hbase,
     hnorm, Seq.seq, normInput, denominatorPatchNorm, denominatorPatchedQuoteTable,
     baseQuote]
   by_cases h : z.unpair.1 < cutoff ∧
@@ -1189,12 +1189,12 @@ lemma strategyOfTokens_zeroAwareConditionPriceTokenRun_trades
           obtain ⟨source, hsource, rfl⟩ := hmem
           simpa using h source hsource
       by_cases hvalid : ∀ trade ∈ trades, trade.1.rank ≤ day
-      · rw [dif_pos (hrank.mpr hvalid), dif_pos hvalid]
+      · rw [dite_eq_left (hrank.mpr hvalid), dite_eq_left hvalid]
       · have hinvalid : ¬∀ trade ∈ trades.map (fun trade =>
             (trade.1.retainedConditionPricesExceptZero
               zeroDays ψ ε, trade.2)),
             trade.1.rank ≤ day := fun h => hvalid (hrank.mp h)
-        rw [dif_neg hinvalid, dif_neg hvalid]
+        rw [dite_eq_right hinvalid, dite_eq_right hvalid]
         rfl
 
 /-! ### The plain rewrite as the empty-exception case
@@ -1490,9 +1490,9 @@ private lemma streamRead_rawFrame_empty (second : Bool) (sentenceCode : ℕ)
   cases hdecode : Encodable.decode (α := Sentence) sentenceCode with
   | none =>
       cases second
-      · rw [if_neg (by simp), EF.streamReadFrom_append,
+      · rw [ite_eq_right (by simp), EF.streamReadFrom_append,
           streamRead_rawFirstBody_none hdecode, EF.streamReadFrom_none]
-      · rw [if_pos (by simp), EF.streamReadFrom_append,
+      · rw [ite_eq_left (by simp), EF.streamReadFrom_append,
           streamRead_rawSecondBody_none hdecode, EF.streamReadFrom_none]
   | some φ =>
       cases second <;>
@@ -1518,9 +1518,9 @@ private lemma streamRead_rawFrame_invalid (second : Bool) {sentenceCode : ℕ}
             [8, 6, conjunctionCode sentenceCode (Encodable.encode ψ)])
         (some ((0, none), (e :: stack, trades))) = none := by
   cases second
-  · rw [if_neg (by simp), EF.streamReadFrom_append,
+  · rw [ite_eq_right (by simp), EF.streamReadFrom_append,
       streamRead_rawFirstBody_none hdecode, EF.streamReadFrom_none]
-  · rw [if_pos (by simp), EF.streamReadFrom_append,
+  · rw [ite_eq_left (by simp), EF.streamReadFrom_append,
       streamRead_rawSecondBody_none hdecode, EF.streamReadFrom_none]
 
 /-- One frame pass applied to a single trade: the first leg buys `φ ⋏ ψ` with the gated
@@ -1874,7 +1874,7 @@ private lemma streamStep_prependStreamTrades (prior : List (EF × Sentence))
   rcases state with ⟨⟨mode, pending⟩, ⟨stack, trades⟩⟩
   by_cases h0 : mode = 0
   · subst mode
-    simp only [prependStreamTrades, EF.streamStep, if_pos]
+    simp only [prependStreamTrades, EF.streamStep, ite_eq_left]
     by_cases ht0 : token = 0
     · simp [ht0, prependStreamTrades]
     by_cases ht1 : token = 1
@@ -2578,7 +2578,7 @@ lemma deserializeTrades_safeSeparatedFrameTokenOutput
         have hfirstRead := streamReadFrom_conditioningFrameTokenOutput_none
           false ψ ε q day tokens hreadNone
         unfold safeSeparatedFrameTokenOutput
-        simp only [haccept, if_false]
+        simp only [haccept, ite_false]
         unfold deserializeTrades
         rw [EF.streamReadFrom_append, hfirstRead, EF.streamReadFrom_none]
         rfl
@@ -2618,10 +2618,10 @@ lemma strategyOfTokens_safeSeparatedFrameTokenOutput_trades
           · exact (frameLeg_rank_le_iff true ψ ε q day source).mpr
               (h source hsource)
       by_cases hvalid : ∀ trade ∈ trades, trade.1.rank ≤ day
-      · rw [dif_pos (hrank.mpr hvalid), dif_pos hvalid]
+      · rw [dite_eq_left (hrank.mpr hvalid), dite_eq_left hvalid]
       · have hinvalid : ¬∀ trade ∈ mapped, trade.1.rank ≤ day :=
           fun h => hvalid (hrank.mp h)
-        rw [dif_neg hinvalid, dif_neg hvalid]
+        rw [dite_eq_right hinvalid, dite_eq_right hvalid]
         rfl
 
 lemma frameLeg_retained_eq_locallyGatedFirstLeg
@@ -3067,19 +3067,19 @@ lemma HasDay.streamStep {D : ℕ} {state next : EF.StreamState} {token : ℕ}
   rcases state with ⟨⟨mode, pending⟩, ⟨stack, trades⟩⟩
   by_cases h0 : mode = 0
   · subst mode
-    simp only [EF.streamStep, if_pos] at h
+    simp only [EF.streamStep, ite_eq_left] at h
     by_cases ht0 : token = 0
-    · simp only [ht0, if_pos] at h
+    · simp only [ht0, ite_eq_left] at h
       obtain rfl := Option.some.inj h
       exact hd
-    rw [if_neg ht0] at h
+    rw [ite_eq_right ht0] at h
     by_cases ht1 : token = 1
-    · simp only [ht1, if_pos] at h
+    · simp only [ht1, ite_eq_left] at h
       obtain rfl := Option.some.inj h
       exact hd
-    rw [if_neg ht1] at h
+    rw [ite_eq_right ht1] at h
     by_cases ht2 : token = 2
-    · simp only [ht2, if_pos] at h
+    · simp only [ht2, ite_eq_left] at h
       rcases stack with _ | ⟨b, stack⟩
       · simp at h
       rcases stack with _ | ⟨a, rest⟩
@@ -3094,9 +3094,9 @@ lemma HasDay.streamStep {D : ℕ} {state next : EF.StreamState} {token : ℕ}
             le_trans (heq ▸ hrk) (le_max_left _ _)⟩
         · exact Or.inl ⟨e, List.mem_cons_of_mem _ he, hrk⟩
       · exact Or.inr htr
-    rw [if_neg ht2] at h
+    rw [ite_eq_right ht2] at h
     by_cases ht3 : token = 3
-    · simp only [ht3, if_pos] at h
+    · simp only [ht3, ite_eq_left] at h
       rcases stack with _ | ⟨b, stack⟩
       · simp at h
       rcases stack with _ | ⟨a, rest⟩
@@ -3111,9 +3111,9 @@ lemma HasDay.streamStep {D : ℕ} {state next : EF.StreamState} {token : ℕ}
             le_trans (heq ▸ hrk) (le_max_left _ _)⟩
         · exact Or.inl ⟨e, List.mem_cons_of_mem _ he, hrk⟩
       · exact Or.inr htr
-    rw [if_neg ht3] at h
+    rw [ite_eq_right ht3] at h
     by_cases ht4 : token = 4
-    · simp only [ht4, if_pos] at h
+    · simp only [ht4, ite_eq_left] at h
       rcases stack with _ | ⟨b, stack⟩
       · simp at h
       rcases stack with _ | ⟨a, rest⟩
@@ -3128,9 +3128,9 @@ lemma HasDay.streamStep {D : ℕ} {state next : EF.StreamState} {token : ℕ}
             le_trans (heq ▸ hrk) (le_max_left _ _)⟩
         · exact Or.inl ⟨e, List.mem_cons_of_mem _ he, hrk⟩
       · exact Or.inr htr
-    rw [if_neg ht4] at h
+    rw [ite_eq_right ht4] at h
     by_cases ht5 : token = 5
-    · simp only [ht5, if_pos] at h
+    · simp only [ht5, ite_eq_left] at h
       rcases stack with _ | ⟨a, rest⟩
       · simp at h
       obtain rfl := Option.some.inj h
@@ -3139,19 +3139,19 @@ lemma HasDay.streamStep {D : ℕ} {state next : EF.StreamState} {token : ℕ}
         · exact Or.inl ⟨EF.safeRecip a, List.mem_cons_self .., heq ▸ hrk⟩
         · exact Or.inl ⟨e, List.mem_cons_of_mem _ he, hrk⟩
       · exact Or.inr htr
-    rw [if_neg ht5] at h
+    rw [ite_eq_right ht5] at h
     by_cases ht6 : token = 6
-    · simp only [ht6, if_pos] at h
+    · simp only [ht6, ite_eq_left] at h
       obtain rfl := Option.some.inj h
       exact hd
-    rw [if_neg ht6] at h
+    rw [ite_eq_right ht6] at h
     by_cases ht7 : token = 7
-    · simp only [ht7, if_pos] at h
+    · simp only [ht7, ite_eq_left] at h
       obtain rfl := Option.some.inj h
       exact hd
-    rw [if_neg ht7] at h
+    rw [ite_eq_right ht7] at h
     by_cases ht8 : token = 8
-    · simp only [ht8, if_pos] at h
+    · simp only [ht8, ite_eq_left] at h
       rcases stack with _ | ⟨body, stack⟩
       · simp at h
       rcases stack with _ | ⟨x, rest⟩
@@ -3166,38 +3166,38 @@ lemma HasDay.streamStep {D : ℕ} {state next : EF.StreamState} {token : ℕ}
             le_trans (heq ▸ hrk) (le_max_left _ _)⟩
         · exact Or.inl ⟨e, List.mem_cons_of_mem _ he, hrk⟩
       · exact Or.inr htr
-    rw [if_neg ht8] at h
+    rw [ite_eq_right ht8] at h
     exact absurd h (by simp)
   simp only [EF.streamStep] at h
-  rw [if_neg h0] at h
+  rw [ite_eq_right h0] at h
   by_cases h1 : mode = 1
-  · rw [if_pos h1] at h
+  · rw [ite_eq_left h1] at h
     rcases hdec : Encodable.decode (α := Sentence) token with _ | φ <;>
       rw [hdec] at h
     · exact absurd h (by simp)
     · obtain rfl := Option.some.inj h
       exact hd
-  rw [if_neg h1] at h
+  rw [ite_eq_right h1] at h
   by_cases h2 : mode = 2
-  · rw [if_pos h2] at h
+  · rw [ite_eq_left h2] at h
     rcases pending with _ | φ
     · exact absurd h (by simp)
     · obtain rfl := Option.some.inj h
       rcases hd with ⟨e, he, hrk⟩ | htr
       · exact Or.inl ⟨e, List.mem_cons_of_mem _ he, hrk⟩
       · exact Or.inr htr
-  rw [if_neg h2] at h
+  rw [ite_eq_right h2] at h
   by_cases h3 : mode = 3
-  · rw [if_pos h3] at h
+  · rw [ite_eq_left h3] at h
     rcases hdec : Encodable.decode (α := ℚ) token with _ | q <;> rw [hdec] at h
     · exact absurd h (by simp)
     · obtain rfl := Option.some.inj h
       rcases hd with ⟨e, he, hrk⟩ | htr
       · exact Or.inl ⟨e, List.mem_cons_of_mem _ he, hrk⟩
       · exact Or.inr htr
-  rw [if_neg h3] at h
+  rw [ite_eq_right h3] at h
   by_cases h4 : mode = 4
-  · rw [if_pos h4] at h
+  · rw [ite_eq_left h4] at h
     rcases stack with _ | ⟨e, rest⟩
     · simp at h
     rcases hdec : Encodable.decode (α := Sentence) token with _ | φ <;>
@@ -3210,14 +3210,14 @@ lemma HasDay.streamStep {D : ℕ} {state next : EF.StreamState} {token : ℕ}
           heq ▸ hrk⟩
       · exact Or.inl ⟨e', he', hrk⟩
     · exact Or.inr ⟨tr, List.mem_append_left _ htr, hrk⟩
-  rw [if_neg h4] at h
+  rw [ite_eq_right h4] at h
   by_cases h5 : mode = 5
-  · rw [if_pos h5] at h
+  · rw [ite_eq_left h5] at h
     obtain rfl := Option.some.inj h
     rcases hd with ⟨e, he, hrk⟩ | htr
     · exact Or.inl ⟨e, List.mem_cons_of_mem _ he, hrk⟩
     · exact Or.inr htr
-  rw [if_neg h5] at h
+  rw [ite_eq_right h5] at h
   exact absurd h (by simp)
 
 /-- A mode-2 step captures its day token into the state. -/
@@ -3229,7 +3229,7 @@ lemma hasDay_of_mode2_step {state next : EF.StreamState} {token : ℕ}
   simp only at hmode
   subst hmode
   simp only [EF.streamStep] at h
-  simp only [if_neg (by norm_num : ¬ (2:ℕ) = 0), if_neg (by norm_num : ¬ (2:ℕ) = 1)] at h
+  simp only [ite_eq_right (by norm_num : ¬ (2:ℕ) = 0), ite_eq_right (by norm_num : ¬ (2:ℕ) = 1)] at h
   rcases pending with _ | φ
   · exact absurd h (by simp)
   · obtain rfl := Option.some.inj h
@@ -3328,12 +3328,12 @@ lemma bigDayFlagAt_eq_zero_iff (tf : ℕ → ℕ) (n J : ℕ) :
   | succ J ih =>
       rw [bigDayFlagAt]
       by_cases hc : freezeMode4 (vpre tf n J) = 2 ∧ n < tf (Nat.pair n J)
-      · rw [if_pos hc]
+      · rw [ite_eq_left hc]
         constructor
         · omega
         · intro hall
           exact absurd (hall J (by omega) hc.1) (by omega)
-      · rw [if_neg hc, ih]
+      · rw [ite_eq_right hc, ih]
         constructor
         · intro hall j hj hm
           rcases Nat.lt_or_ge j J with h | h
@@ -3397,17 +3397,17 @@ lemma _root_.LogicalInduction.PolySegStream.bigDayFlagScan {s : ℕ → List ℕ
   by_cases hm : freezeMode4 (vpre tf n j) = 2
   · have heq2z : freezeMode4 (vpre tf n j) - 2 + (2 - freezeMode4 (vpre tf n j)) = 0 := by
       omega
-    rw [if_pos heq2z]
+    rw [ite_eq_left heq2z]
     by_cases hd : n < tf (Nat.pair n j)
-    · rw [if_pos ⟨hm, hd⟩, Nat.min_eq_right (by omega : n + 1 ≤ tf (Nat.pair n j)),
-        if_neg (by omega : ¬ n + 1 - n = 0)]
-    · rw [if_neg (by tauto : ¬ (freezeMode4 (vpre tf n j) = 2 ∧ n < tf (Nat.pair n j))),
+    · rw [ite_eq_left ⟨hm, hd⟩, Nat.min_eq_right (by omega : n + 1 ≤ tf (Nat.pair n j)),
+        ite_eq_right (by omega : ¬ n + 1 - n = 0)]
+    · rw [ite_eq_right (by tauto : ¬ (freezeMode4 (vpre tf n j) = 2 ∧ n < tf (Nat.pair n j))),
         Nat.min_eq_left (by omega : tf (Nat.pair n j) ≤ n + 1),
-        if_pos (by omega : tf (Nat.pair n j) - n = 0)]
-  · rw [if_neg (by tauto : ¬ (freezeMode4 (vpre tf n j) = 2 ∧ n < tf (Nat.pair n j))),
-      if_neg (by omega : ¬ freezeMode4 (vpre tf n j) - 2 +
+        ite_eq_left (by omega : tf (Nat.pair n j) - n = 0)]
+  · rw [ite_eq_right (by tauto : ¬ (freezeMode4 (vpre tf n j) = 2 ∧ n < tf (Nat.pair n j))),
+      ite_eq_right (by omega : ¬ freezeMode4 (vpre tf n j) - 2 +
         (2 - freezeMode4 (vpre tf n j)) = 0),
-      if_pos rfl]
+      ite_eq_left rfl]
 
 /-! ## Segment identities
 
@@ -3447,7 +3447,7 @@ lemma conditionPriceTokenSegment_eq (tf ψCode : ℕ → ℕ) (ε : ℚ) (n j : 
     simp only [Nat.unpair_pair]
     exact freezeTokenControlAt_fst tf n j
   by_cases hm : freezeMode4 (vpre tf n j) = 2
-  · rw [if_pos hm]
+  · rw [ite_eq_left hm]
     match j with
     | 0 => exact absurd hm (by simp [vpre, freezeMode4])
     | j + 1 =>
@@ -3458,15 +3458,15 @@ lemma conditionPriceTokenSegment_eq (tf ψCode : ℕ → ℕ) (ε : ℚ) (n j : 
           Nat.unpair_pair]
         rw [hctrl]
         norm_num
-  · rw [if_neg hm]
+  · rw [ite_eq_right hm]
     simp only [conditionPriceTokenSegment]
     rw [hfst]
     by_cases h0 : freezeMode4 (vpre tf n j) = 0
-    · rw [if_pos h0]
-    rw [if_neg h0]
+    · rw [ite_eq_left h0]
+    rw [ite_eq_right h0]
     by_cases h1 : freezeMode4 (vpre tf n j) = 1
-    · rw [if_pos h1]
-    rw [if_neg h1, if_neg hm]
+    · rw [ite_eq_left h1]
+    rw [ite_eq_right h1, ite_eq_right hm]
 
 /-- The digitized long segment splits around its one bignum token
 (`conjunctionCode pending ψc`); every other token is either the (clampable) day, a
@@ -3599,7 +3599,7 @@ lemma guardedConditionRun_polySegStream {s : ℕ → List ℕ} (h : PolySegStrea
       rw [hget j hj]
       exact hall j hj (by rwa [vpre_eq_take hget (le_of_lt hj)] at hm)
   by_cases hflagn : bigDayFlagAt tf n (undigitize (s n)).length = 0
-  · rw [if_pos hflagn, guardedConditionTokens, if_pos (hguardIff.mp hflagn)]
+  · rw [ite_eq_left hflagn, guardedConditionTokens, ite_eq_left (hguardIff.mp hflagn)]
     have hts : undigitize (s n) =
         (List.range (undigitize (s n)).length).map fun j => tf (Nat.pair n j) := by
       conv_lhs => rw [list_eq_rangeMap_getD (undigitize (s n))]
@@ -3618,8 +3618,8 @@ lemma guardedConditionRun_polySegStream {s : ℕ → List ℕ} (h : PolySegStrea
     rw [List.mem_range] at hj
     rw [conditionPriceTokenSegment_eq]
     by_cases hm : freezeMode4 (vpre tf n j) = 2
-    · rw [if_pos (by omega : freezeMode4 (vpre tf n j) - 2 +
-        (2 - freezeMode4 (vpre tf n j)) = 0), if_pos hm]
+    · rw [ite_eq_left (by omega : freezeMode4 (vpre tf n j) - 2 +
+        (2 - freezeMode4 (vpre tf n j)) = 0), ite_eq_left hm]
       have hdle : tf (Nat.pair n j) ≤ n :=
         (bigDayFlagAt_eq_zero_iff tf n _).mp hflagn j hj hm
       have hclampEq : min (tf (Nat.pair n j)) (n + 1) = tf (Nat.pair n j) :=
@@ -3629,12 +3629,12 @@ lemma guardedConditionRun_polySegStream {s : ℕ → List ℕ} (h : PolySegStrea
         rw [htf]
         simp only [Nat.unpair_pair]
       rw [← htfj, ← htfj1, hclampEq]
-    · rw [if_neg (by omega : ¬ freezeMode4 (vpre tf n j) - 2 +
-        (2 - freezeMode4 (vpre tf n j)) = 0), if_neg hm, digitize_singleton]
+    · rw [ite_eq_right (by omega : ¬ freezeMode4 (vpre tf n j) - 2 +
+        (2 - freezeMode4 (vpre tf n j)) = 0), ite_eq_right hm, digitize_singleton]
       rw [htf]
       simp only [Nat.unpair_pair]
-  · rw [if_neg hflagn, guardedConditionTokens,
-      if_neg (fun hguard => hflagn (hguardIff.mpr hguard))]
+  · rw [ite_eq_right hflagn, guardedConditionTokens,
+      ite_eq_right (fun hguard => hflagn (hguardIff.mpr hguard))]
     simp [digitize]
 
 /-! ## Digit-side frame scans
@@ -3677,8 +3677,8 @@ lemma _root_.LogicalInduction.PolySegStream.tradeCountScan {s : ℕ → List ℕ
   simp only [tradeScanAt, freezeControlNat_fst]
   by_cases hm : freezeMode4 (vpre
       (fun w => (undigitize (s w.unpair.1)).getD w.unpair.2 0) n j) = 4
-  · rw [if_pos hm, if_pos (by omega)]
-  · rw [if_neg hm, if_neg (by omega)]
+  · rw [ite_eq_left hm, ite_eq_left (by omega)]
+  · rw [ite_eq_right hm, ite_eq_right (by omega)]
 
 lemma parserDepthNext_clamp (m t d : ℕ) :
     parserDepthNext m (min t 9) d = parserDepthNext m t d := by
@@ -3918,12 +3918,12 @@ lemma frameLegEmit_polySegStream (second : Bool) {src : ℕ → List ℕ}
           (fun w => (undigitize (src w.unpair.1)).getD w.unpair.2 0)
           z.unpair.1 z.unpair.2) = 0 ∧
           (undigitize (src z.unpair.1)).getD z.unpair.2 0 = 6
-      · rw [if_pos (by
+      · rw [ite_eq_left (by
           rcases hc1 with ⟨hm0, ht6⟩
           rw [hm0, ht6]
-          norm_num), if_pos hc1]
+          norm_num), ite_eq_left hc1]
         simp [digitize]
-      · rw [if_neg (by
+      · rw [ite_eq_right (by
           intro hz0
           apply hc1
           have h1 : freezeMode4 (vpre
@@ -3931,13 +3931,13 @@ lemma frameLegEmit_polySegStream (second : Bool) {src : ℕ → List ℕ}
               z.unpair.1 z.unpair.2) = 0 := by omega
           have h2 : min ((undigitize (src z.unpair.1)).getD z.unpair.2 0) 9 = 6 := by
             omega
-          exact ⟨h1, (hclampSix z).mp h2⟩), if_neg hc1]
+          exact ⟨h1, (hclampSix z).mp h2⟩), ite_eq_right hc1]
         by_cases hm4 : freezeMode4 (vpre
             (fun w => (undigitize (src w.unpair.1)).getD w.unpair.2 0)
             z.unpair.1 z.unpair.2) = 4
-        · rw [if_pos (by omega), if_pos hm4, frameBody_split_beta]
+        · rw [ite_eq_left (by omega), ite_eq_left hm4, frameBody_split_beta]
           simp [digitize, List.append_assoc]
-        · rw [if_neg (by omega), if_neg hm4, digitize_singleton]
+        · rw [ite_eq_right (by omega), ite_eq_right hm4, digitize_singleton]
   | true =>
       have hlong := (hblock0.append hconjSeg).append hmidSeg
       refine (hempty.ifZero (hlong.ifZero hcopy heq4) hsel1).of_eq fun z => ?_
@@ -3947,12 +3947,12 @@ lemma frameLegEmit_polySegStream (second : Bool) {src : ℕ → List ℕ}
           (fun w => (undigitize (src w.unpair.1)).getD w.unpair.2 0)
           z.unpair.1 z.unpair.2) = 0 ∧
           (undigitize (src z.unpair.1)).getD z.unpair.2 0 = 6
-      · rw [if_pos (by
+      · rw [ite_eq_left (by
           rcases hc1 with ⟨hm0, ht6⟩
           rw [hm0, ht6]
-          norm_num), if_pos hc1]
+          norm_num), ite_eq_left hc1]
         simp [digitize]
-      · rw [if_neg (by
+      · rw [ite_eq_right (by
           intro hz0
           apply hc1
           have h1 : freezeMode4 (vpre
@@ -3960,13 +3960,13 @@ lemma frameLegEmit_polySegStream (second : Bool) {src : ℕ → List ℕ}
               z.unpair.1 z.unpair.2) = 0 := by omega
           have h2 : min ((undigitize (src z.unpair.1)).getD z.unpair.2 0) 9 = 6 := by
             omega
-          exact ⟨h1, (hclampSix z).mp h2⟩), if_neg hc1]
+          exact ⟨h1, (hclampSix z).mp h2⟩), ite_eq_right hc1]
         by_cases hm4 : freezeMode4 (vpre
             (fun w => (undigitize (src w.unpair.1)).getD w.unpair.2 0)
             z.unpair.1 z.unpair.2) = 4
-        · rw [if_pos (by omega), if_pos hm4, frameBody_split_second]
+        · rw [ite_eq_left (by omega), ite_eq_left hm4, frameBody_split_second]
           simp [digitize, List.append_assoc]
-        · rw [if_neg (by omega), if_neg hm4, digitize_singleton]
+        · rw [ite_eq_right (by omega), ite_eq_right hm4, digitize_singleton]
 
 /-- The digitized full frame-leg output (segments plus end-of-stream flush) over any
 digit `PolySegStream`. -/
@@ -4026,9 +4026,9 @@ lemma frameLegOutput_polySegStream (second : Bool) {src : ℕ → List ℕ}
     by_cases hm4 : freezeMode4 (vpre
         (fun w => (undigitize (src w.unpair.1)).getD w.unpair.2 0) n
         ((undigitize (src n)).length)) = 4
-    · rw [if_pos (by omega), if_pos hm4]
+    · rw [ite_eq_left (by omega), ite_eq_left hm4]
       simp [digitize]
-    · rw [if_neg (by omega), if_neg hm4]
+    · rw [ite_eq_right (by omega), ite_eq_right hm4]
       simp [digitize]
 
 /-- The digitized safe two-leg frame join over any digit `PolySegStream`: the digit-model
@@ -4063,8 +4063,8 @@ lemma safeSeparatedFrameDigitOutput_polySegStream {src : ℕ → List ℕ}
   by_cases hacc : parserStructurallyAccepts
       (fun w => (undigitize (src w.unpair.1)).getD w.unpair.2 0)
       (fun m => (undigitize (src m)).length) n = 0
-  · rw [if_pos hacc, if_pos hacc]
-  · rw [if_neg hacc, if_neg hacc, digitize_append]
+  · rw [ite_eq_left hacc, ite_eq_left hacc]
+  · rw [ite_eq_right hacc, ite_eq_right hacc, digitize_append]
 
 /-- The frame join of an empty priced stream is empty. -/
 private lemma safeSeparatedFrameTokenOutput_nil (tfP lenP : ℕ → ℕ) (ψn : Sentence)
@@ -4164,7 +4164,7 @@ lemma conditionedTranslation_preserves_ecDigit
         (conditionPriceTokenRun (fun d => Encodable.encode (ψ d)) ε (0, 0)
           (undigitize (source n))).2 := by
       show undigitize (digitize _) = _
-      rw [undigitize_digitize, guardedConditionTokens, if_pos hguard]
+      rw [undigitize_digitize, guardedConditionTokens, ite_eq_left hguard]
     have hpricedEq : undigitize (priced n) =
         (List.range (lenP n)).map fun i => tfP (Nat.pair n i) := by
       conv_lhs => rw [list_eq_rangeMap_getD (undigitize (priced n))]
@@ -4193,7 +4193,7 @@ lemma conditionedTranslation_preserves_ecDigit
     have hpricedNil : undigitize (priced n) = [] := by
       show undigitize (digitize _) = _
       rw [undigitize_digitize, guardedConditionTokens,
-        if_neg (fun hall => absurd (hall j hj hm) (by omega))]
+        ite_eq_right (fun hall => absurd (hall j hj hm) (by omega))]
     rw [hpricedNil]
     rw [safeSeparatedFrameTokenOutput_nil]
     refine Strategy.ext ?_
@@ -4219,7 +4219,7 @@ lemma zeroAwareConditionPriceTokenSegment_eq (zeroDays : Finset ℕ)
   have hfst : (freezeControlNat tf (Nat.pair n j)).unpair.1 =
       freezeMode4 (vpre tf n j) := freezeControlNat_fst tf n j
   by_cases hm : freezeMode4 (vpre tf n j) = 2
-  · rw [if_pos hm]
+  · rw [ite_eq_left hm]
     match j with
     | 0 => exact absurd hm (by simp [vpre, freezeMode4])
     | j + 1 =>
@@ -4230,15 +4230,15 @@ lemma zeroAwareConditionPriceTokenSegment_eq (zeroDays : Finset ℕ)
           freezeControlNat, Nat.unpair_pair]
         rw [hctrl]
         norm_num
-  · rw [if_neg hm]
+  · rw [ite_eq_right hm]
     simp only [zeroAwareConditionPriceTokenSegment]
     rw [hfst]
     by_cases h0 : freezeMode4 (vpre tf n j) = 0
-    · rw [if_pos h0]
-    rw [if_neg h0]
+    · rw [ite_eq_left h0]
+    rw [ite_eq_right h0]
     by_cases h1 : freezeMode4 (vpre tf n j) = 1
-    · rw [if_pos h1]
-    rw [if_neg h1, if_neg hm]
+    · rw [ite_eq_left h1]
+    rw [ite_eq_right h1, ite_eq_right hm]
 
 /-- The guarded zero-aware token-level price rewrite. -/
 def guardedZeroAwareConditionTokens (zeroDays : Finset ℕ) (ψCode : ℕ → ℕ) (ε : ℚ)
@@ -4313,8 +4313,8 @@ lemma guardedZeroAwareConditionRun_polySegStream (zeroDays : Finset ℕ)
       rw [hget j hj]
       exact hall j hj (by rwa [vpre_eq_take hget (le_of_lt hj)] at hm)
   by_cases hflagn : bigDayFlagAt tf n (undigitize (s n)).length = 0
-  · rw [if_pos hflagn, guardedZeroAwareConditionTokens,
-      if_pos (hguardIff.mp hflagn)]
+  · rw [ite_eq_left hflagn, guardedZeroAwareConditionTokens,
+      ite_eq_left (hguardIff.mp hflagn)]
     have hts : undigitize (s n) =
         (List.range (undigitize (s n)).length).map fun j => tf (Nat.pair n j) := by
       conv_lhs => rw [list_eq_rangeMap_getD (undigitize (s n))]
@@ -4335,8 +4335,8 @@ lemma guardedZeroAwareConditionRun_polySegStream (zeroDays : Finset ℕ)
     rw [List.mem_range] at hj
     rw [zeroAwareConditionPriceTokenSegment_eq]
     by_cases hm : freezeMode4 (vpre tf n j) = 2
-    · rw [if_pos (by omega : freezeMode4 (vpre tf n j) - 2 +
-        (2 - freezeMode4 (vpre tf n j)) = 0), if_pos hm]
+    · rw [ite_eq_left (by omega : freezeMode4 (vpre tf n j) - 2 +
+        (2 - freezeMode4 (vpre tf n j)) = 0), ite_eq_left hm]
       have hdle : tf (Nat.pair n j) ≤ n :=
         (bigDayFlagAt_eq_zero_iff tf n _).mp hflagn j hj hm
       have hclampEq : min (tf (Nat.pair n j)) (n + 1) = tf (Nat.pair n j) :=
@@ -4347,14 +4347,14 @@ lemma guardedZeroAwareConditionRun_polySegStream (zeroDays : Finset ℕ)
         simp only [Nat.unpair_pair]
       rw [← htfj, ← htfj1, hclampEq]
       by_cases hzd : tf (Nat.pair n j) ∈ zeroDays
-      · rw [if_pos (by simp [hzd]), if_pos hzd]
-      · rw [if_neg (by simp [hzd]), if_neg hzd]
-    · rw [if_neg (by omega : ¬ freezeMode4 (vpre tf n j) - 2 +
-        (2 - freezeMode4 (vpre tf n j)) = 0), if_neg hm, digitize_singleton]
+      · rw [ite_eq_left (by simp [hzd]), ite_eq_left hzd]
+      · rw [ite_eq_right (by simp [hzd]), ite_eq_right hzd]
+    · rw [ite_eq_right (by omega : ¬ freezeMode4 (vpre tf n j) - 2 +
+        (2 - freezeMode4 (vpre tf n j)) = 0), ite_eq_right hm, digitize_singleton]
       rw [htf]
       simp only [Nat.unpair_pair]
-  · rw [if_neg hflagn, guardedZeroAwareConditionTokens,
-      if_neg (fun hguard => hflagn (hguardIff.mpr hguard))]
+  · rw [ite_eq_right hflagn, guardedZeroAwareConditionTokens,
+      ite_eq_right (fun hguard => hflagn (hguardIff.mpr hguard))]
     simp [digitize]
 
 /-- The eventual conditioning translation preserves digit-metered efficient computability.
@@ -4394,14 +4394,14 @@ lemma eventualConditionedTranslation_preserves_ecDigit
     refine (hemptyStream.ifZero hframed hlaunch).of_eq fun n => ?_
     show _ = if F.cutoff ≤ n then framed n else []
     by_cases hn : F.cutoff ≤ n
-    · rw [if_pos hn, if_neg (by omega)]
-    · rw [if_neg hn, if_pos (by omega)]
+    · rw [ite_eq_left hn, ite_eq_right (by omega)]
+    · rw [ite_eq_right hn, ite_eq_left (by omega)]
   apply ecDigit_of_rawSegStream (T.eventualConditionedTranslation F) houtput
   intro n
   by_cases hn : n < F.cutoff
   · have hout : output n = [] := by
       show (if F.cutoff ≤ n then framed n else []) = []
-      rw [if_neg (by omega)]
+      rw [ite_eq_right (by omega)]
     rw [hout, T.eventualConditionedTranslation_strat_of_lt F hn]
     simp [strategyOfTokens, deserializeTrades,
       EF.streamReadFrom, EF.streamInitial, Trader.zero, undigitize]
@@ -4409,7 +4409,7 @@ lemma eventualConditionedTranslation_preserves_ecDigit
   · have hcn : F.cutoff ≤ n := Nat.le_of_not_gt hn
     have hout : output n = framed n := by
       show (if F.cutoff ≤ n then framed n else []) = framed n
-      rw [if_pos hcn]
+      rw [ite_eq_left hcn]
     rw [hout]
     have horig : strategyOfTokens n (undigitize (source n)) = T.strat n :=
       congrFun (congrArg Trader.strat hcert) n
@@ -4427,7 +4427,7 @@ lemma eventualConditionedTranslation_preserves_ecDigit
             (fun d => Encodable.encode (ψ d)) F.epsilon (0, 0)
             (undigitize (source n))).2 := by
         show undigitize (digitize _) = _
-        rw [undigitize_digitize, guardedZeroAwareConditionTokens, if_pos hguard]
+        rw [undigitize_digitize, guardedZeroAwareConditionTokens, ite_eq_left hguard]
       have hpricedEq : undigitize (priced n) =
           (List.range (lenP n)).map fun i => tfP (Nat.pair n i) := by
         conv_lhs => rw [list_eq_rangeMap_getD (undigitize (priced n))]
@@ -4457,7 +4457,7 @@ lemma eventualConditionedTranslation_preserves_ecDigit
       have hpricedNil : undigitize (priced n) = [] := by
         show undigitize (digitize _) = _
         rw [undigitize_digitize, guardedZeroAwareConditionTokens,
-          if_neg (fun hall => absurd (hall j hj hm) (by omega))]
+          ite_eq_right (fun hall => absurd (hall j hj hm) (by omega))]
       rw [hpricedNil]
       rw [safeSeparatedFrameTokenOutput_nil]
       refine Strategy.ext ?_

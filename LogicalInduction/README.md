@@ -680,7 +680,7 @@ everything.
 
 ```lean
 private def clientReservedSentence : Sentence :=
-  LO.Propositional.Formula.atom (Nat.pair 5 (Nat.pair 0 0))
+  FFL.Propositional.Formula.atom (Nat.pair 5 (Nat.pair 0 0))
 
 lemma finiteSupport_of_singleReservedSentence {P P' : History}
     (hagree : ∀ d φ, (d, φ) ≠ (0, clientReservedSentence) → P d φ = P' d φ) :

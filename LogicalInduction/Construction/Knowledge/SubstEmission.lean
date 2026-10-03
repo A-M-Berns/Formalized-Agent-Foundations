@@ -43,7 +43,7 @@ glues, and `henc` emits the substituted run.  The skeleton is assembled by ordin
 structural recursion on the `Semiformula` *value*, to which `Classical.choice` is
 irrelevant.
 
-The de Bruijn bookkeeping under `∀⁰`/`∃⁰` is carried by the invariant `GoodRew`: every
+The de Bruijn bookkeeping under `∀¹`/`∃¹` is carried by the invariant `GoodRew`: every
 source bound variable goes to the substituted closed term or to a bound variable.  Passing
 a quantifier replaces `ω` by `Rew.q ω`, which sends `#0 ↦ #0` and
 `#i.succ ↦ Rew.bShift (ω #i)`; `Rew.bShift` fixes any closed operator constant
@@ -55,7 +55,7 @@ The biconditional closure is taken on the **source** language, not on
 `PolyArithmeticFormulaSeq`: `⟺` is a primitive of the paper's syntax (tex:560) and only a
 duplicating macro in Foundation's normal form (`dd:nnf`).
 
-The vacuous `∃⁰` wrapper is deliberate: `paperPrimeDecompose` contracts a whole sentence
+The vacuous `∃¹` wrapper is deliberate: `paperPrimeDecompose` contracts a whole sentence
 to a single prime only at an `.exs` head, and a `codeOfREPred` schema is chosen by
 `Classical.epsilon`, so its head constructor is unreachable.
 `provable_schemaDayClaim_iff` (`Construction/Knowledge/Endpoints.lean`) proves the wrapper changes
@@ -69,7 +69,7 @@ the day numeral; the certificate path the endpoints consume is the argument-term
 
 namespace LogicalInduction
 
-open LO LO.FirstOrder LO.FirstOrder.Arithmetic
+open FFL FFL.FirstOrder FFL.FirstOrder.Arithmetic
 
 /-! ## The unary numeral block
 
@@ -553,7 +553,7 @@ family built that way collapses to a constant family as soon as an endpoint's ow
 hypothesis pins that extension — and the sentence then names no machine at all.  That is
 why the term family is a parameter here.
 
-The `∃⁰` wrapper is vacuous, and deliberate.  `paperPrimeDecompose` contracts a whole
+The `∃¹` wrapper is vacuous, and deliberate.  `paperPrimeDecompose` contracts a whole
 sentence to a single prime only at an `.exs` head (and its `.all` negation); a
 `codeOfREPred` schema is chosen by `Classical.epsilon`, so its head constructor is
 unreachable and no equation for its decomposition can be written.  Wrapping in one

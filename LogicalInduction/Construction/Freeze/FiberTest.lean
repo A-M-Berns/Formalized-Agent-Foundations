@@ -167,7 +167,7 @@ Proof kind: `C` composition.  Provenance: (a) `DigitFP.unpairFstW_mem_FP`,
 Paper node: `app:ifp` -/
 lemma fiberW_mem_FP : ∀ χ : Sentence, fiberW χ ∈ FP := by
   intro χ
-  induction χ using LO.Propositional.Formula.rec' with
+  induction χ using FFL.Propositional.Formula.rec' with
   | hfalsum =>
       have h := ifNumEq_mem_FP idFn_mem_FP 0 (constFn_mem_FP [])
         (ifNumEq_mem_FP tagW_mem_FP 0 (constFn_mem_FP [true]) (constFn_mem_FP []))
@@ -222,12 +222,12 @@ private lemma bin_spec (tag : ℕ) {φ ψ : Sentence} {w : List Bool} (hw : IsDi
               sentenceMatches ψ (wordVal w).pred.unpair.2.unpair.2
           else 0) = 1 := by
   by_cases h0 : wordVal w = 0
-  · rw [if_pos ((numEqBits_iff_wordVal hw 0).mpr h0), if_pos h0]; simp
-  rw [if_neg (fun hc => h0 ((numEqBits_iff_wordVal hw 0).mp hc)), if_neg h0]
+  · rw [ite_eq_left ((numEqBits_iff_wordVal hw 0).mpr h0), ite_eq_left h0]; simp
+  rw [ite_eq_right (fun hc => h0 ((numEqBits_iff_wordVal hw 0).mp hc)), ite_eq_right h0]
   by_cases ht : (wordVal w).pred.unpair.1 = tag
   · have htw : wordVal (tagW w) = tag := by
       rw [wordVal_tagW hw, ← Nat.pred_eq_sub_one]; exact ht
-    rw [if_pos ((numEqBits_iff_wordVal (isDigitWord_tagW hw) tag).mpr htw), if_pos ht]
+    rw [ite_eq_left ((numEqBits_iff_wordVal (isDigitWord_tagW hw) tag).mpr htw), ite_eq_left ht]
     have hlv : wordVal (leftW w) = (wordVal w).pred.unpair.2.unpair.1 := by
       rw [wordVal_leftW hw, ← Nat.pred_eq_sub_one]
     have hrv : wordVal (rightW w) = (wordVal w).pred.unpair.2.unpair.2 := by
@@ -238,17 +238,17 @@ private lemma bin_spec (tag : ℕ) {φ ψ : Sentence} {w : List Bool} (hw : IsDi
     rw [hrv] at hψ
     have hbφ := sentenceMatches_le_one φ ((wordVal w).pred.unpair.2.unpair.1)
     by_cases hl : (fiberW φ (leftW w)).length = 1
-    · rw [if_pos hl, hφ.mp hl, one_mul]
+    · rw [ite_eq_left hl, hφ.mp hl, one_mul]
       exact hψ
-    · rw [if_neg hl]
+    · rw [ite_eq_right hl]
       have hne : sentenceMatches φ ((wordVal w).pred.unpair.2.unpair.1) ≠ 1 :=
         fun hc => hl (hφ.mpr hc)
       have hz : sentenceMatches φ ((wordVal w).pred.unpair.2.unpair.1) = 0 := by omega
       rw [hz, zero_mul]
       simp
-  · rw [if_neg (fun hc => ht (by
+  · rw [ite_eq_right (fun hc => ht (by
         rw [Nat.pred_eq_sub_one, ← wordVal_tagW hw]
-        exact (numEqBits_iff_wordVal (isDigitWord_tagW hw) tag).mp hc)), if_neg ht]
+        exact (numEqBits_iff_wordVal (isDigitWord_tagW hw) tag).mp hc)), ite_eq_right ht]
     simp
 
 /-- **The test computes `sentenceMatches`.**
@@ -258,41 +258,41 @@ Proof kind: `P` proved.  Provenance: (a) `numEqBits_iff_wordVal`, `wordVal_tagW`
 lemma length_fiberW_eq_one : ∀ (χ : Sentence) {w : List Bool}, IsDigitWord w →
     ((fiberW χ w).length = 1 ↔ sentenceMatches χ (wordVal w) = 1) := by
   intro χ
-  induction χ using LO.Propositional.Formula.rec' with
+  induction χ using FFL.Propositional.Formula.rec' with
   | hfalsum =>
       intro w hw
       simp only [fiberW, sentenceMatches]
       by_cases h0 : wordVal w = 0
-      · rw [if_pos ((numEqBits_iff_wordVal hw 0).mpr h0), if_pos h0]; simp
-      rw [if_neg (fun hc => h0 ((numEqBits_iff_wordVal hw 0).mp hc)), if_neg h0]
+      · rw [ite_eq_left ((numEqBits_iff_wordVal hw 0).mpr h0), ite_eq_left h0]; simp
+      rw [ite_eq_right (fun hc => h0 ((numEqBits_iff_wordVal hw 0).mp hc)), ite_eq_right h0]
       by_cases ht : (wordVal w).pred.unpair.1 = 0
-      · rw [if_pos ((numEqBits_iff_wordVal (isDigitWord_tagW hw) 0).mpr
-            (by rw [wordVal_tagW hw, ← Nat.pred_eq_sub_one]; exact ht)), if_pos ht]
+      · rw [ite_eq_left ((numEqBits_iff_wordVal (isDigitWord_tagW hw) 0).mpr
+            (by rw [wordVal_tagW hw, ← Nat.pred_eq_sub_one]; exact ht)), ite_eq_left ht]
         simp
-      · rw [if_neg (fun hc => ht (by
+      · rw [ite_eq_right (fun hc => ht (by
             rw [Nat.pred_eq_sub_one, ← wordVal_tagW hw]
-            exact (numEqBits_iff_wordVal (isDigitWord_tagW hw) 0).mp hc)), if_neg ht]
+            exact (numEqBits_iff_wordVal (isDigitWord_tagW hw) 0).mp hc)), ite_eq_right ht]
         simp
   | hatom a =>
       intro w hw
       simp only [fiberW, sentenceMatches]
       by_cases h0 : wordVal w = 0
-      · rw [if_pos ((numEqBits_iff_wordVal hw 0).mpr h0), if_pos h0]; simp
-      rw [if_neg (fun hc => h0 ((numEqBits_iff_wordVal hw 0).mp hc)), if_neg h0]
+      · rw [ite_eq_left ((numEqBits_iff_wordVal hw 0).mpr h0), ite_eq_left h0]; simp
+      rw [ite_eq_right (fun hc => h0 ((numEqBits_iff_wordVal hw 0).mp hc)), ite_eq_right h0]
       by_cases ht : (wordVal w).pred.unpair.1 = 1
-      · rw [if_pos ((numEqBits_iff_wordVal (isDigitWord_tagW hw) 1).mpr
-            (by rw [wordVal_tagW hw, ← Nat.pred_eq_sub_one]; exact ht)), if_pos ht]
+      · rw [ite_eq_left ((numEqBits_iff_wordVal (isDigitWord_tagW hw) 1).mpr
+            (by rw [wordVal_tagW hw, ← Nat.pred_eq_sub_one]; exact ht)), ite_eq_left ht]
         by_cases hp : (wordVal w).pred.unpair.2 = a
-        · rw [if_pos ((numEqBits_iff_wordVal (isDigitWord_payW hw) a).mpr
-              (by rw [wordVal_payW hw, ← Nat.pred_eq_sub_one]; exact hp)), if_pos hp]
+        · rw [ite_eq_left ((numEqBits_iff_wordVal (isDigitWord_payW hw) a).mpr
+              (by rw [wordVal_payW hw, ← Nat.pred_eq_sub_one]; exact hp)), ite_eq_left hp]
           simp
-        · rw [if_neg (fun hc => hp (by
+        · rw [ite_eq_right (fun hc => hp (by
               rw [Nat.pred_eq_sub_one, ← wordVal_payW hw]
-              exact (numEqBits_iff_wordVal (isDigitWord_payW hw) a).mp hc)), if_neg hp]
+              exact (numEqBits_iff_wordVal (isDigitWord_payW hw) a).mp hc)), ite_eq_right hp]
           simp
-      · rw [if_neg (fun hc => ht (by
+      · rw [ite_eq_right (fun hc => ht (by
             rw [Nat.pred_eq_sub_one, ← wordVal_tagW hw]
-            exact (numEqBits_iff_wordVal (isDigitWord_tagW hw) 1).mp hc)), if_neg ht]
+            exact (numEqBits_iff_wordVal (isDigitWord_tagW hw) 1).mp hc)), ite_eq_right ht]
         simp
   | himp φ ψ ihφ ihψ =>
       intro w hw

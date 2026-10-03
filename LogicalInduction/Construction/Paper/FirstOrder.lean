@@ -1,5 +1,5 @@
 import LogicalInduction.Construction.Knowledge.Syntax
-import Foundation.FirstOrder.Basic.Coding
+import Foundation.FirstOrder.Syntax.Classical.Coding
 
 /-!
 # Paper first-order sentences at the propositional ABI, and their numeric compiler
@@ -59,7 +59,7 @@ constructor tags, an unrelated tag space to the global atom-payload allocation t
 
 namespace LogicalInduction
 
-open LO LO.FirstOrder LO.FirstOrder.Arithmetic LO.Propositional
+open FFL FFL.FirstOrder FFL.FirstOrder.Arithmetic FFL.Propositional
 
 /-! ## The reserved tag and the prime atom codes -/
 
@@ -148,10 +148,10 @@ lemma PCWorld.holds_paperPrimeDecompose_neg (v : PCWorld)
   fun_induction paperPrimeDecompose φ with
   | case1 =>
       simp [Semiformula.neg_eq, Semiformula.neg,
-        PCWorld.Holds, LO.Propositional.Formula.Boolean.val]
+        PCWorld.Holds, FFL.Propositional.Formula.val]
   | case2 =>
       simp [Semiformula.neg_eq, Semiformula.neg,
-        PCWorld.Holds, LO.Propositional.Formula.Boolean.val]
+        PCWorld.Holds, FFL.Propositional.Formula.val]
   | case3 φ ψ ihφ ihψ =>
       rw [Semiformula.neg_eq] at ihφ ihψ
       simp only [Semiformula.neg_eq, Semiformula.neg, paperPrimeDecompose]
@@ -220,14 +220,14 @@ Injectivity of `paperPrimeCode` makes its value on every compiled atom canonical
 outside tag `5` remain false. -/
 
 /-- The propositional world induced by a first-order arithmetic structure. -/
-noncomputable def paperPrimeWorld (M : Type*) [Nonempty M] [Structure ℒₒᵣ M]
+noncomputable def paperPrimeWorld (M : Type*) [Nonempty M] [Tarski.Structure ℒₒᵣ M]
     (f : ℕ → M) : PCWorld :=
   fun a => ∃ (positive : Bool) (φ : ArithmeticProposition),
     a = paperPrimeCode positive φ ∧ if positive then φ.Evalf f else ¬φ.Evalf f
 
 /-- The model's prime world believes a positive prime exactly when the model satisfies the
 proposition, and a negative prime exactly when it does not. -/
-@[simp] lemma paperPrimeWorld_paperPrimeCode (M : Type*) [Nonempty M] [Structure ℒₒᵣ M]
+@[simp] lemma paperPrimeWorld_paperPrimeCode (M : Type*) [Nonempty M] [Tarski.Structure ℒₒᵣ M]
     (f : ℕ → M) (positive : Bool) (φ : ArithmeticProposition) :
     paperPrimeWorld M f (paperPrimeCode positive φ) ↔
       if positive then φ.Evalf f else ¬φ.Evalf f := by
@@ -240,7 +240,7 @@ proposition, and a negative prime exactly when it does not. -/
     exact ⟨positive, φ, rfl, hφ⟩
 
 /-- Prime decomposition preserves first-order truth in the induced p.c. world. -/
-lemma paperPrimeWorld_holds_decompose (M : Type*) [Nonempty M] [Structure ℒₒᵣ M]
+lemma paperPrimeWorld_holds_decompose (M : Type*) [Nonempty M] [Tarski.Structure ℒₒᵣ M]
     (f : ℕ → M) : ∀ φ : ArithmeticProposition,
       (paperPrimeWorld M f).Holds (paperPrimeDecompose φ) ↔ φ.Evalf f := by
   intro φ
@@ -248,21 +248,21 @@ lemma paperPrimeWorld_holds_decompose (M : Type*) [Nonempty M] [Structure ℒₒ
   | case1 =>
       simp [PCWorld.Holds,
         show (Semiformula.verum : ArithmeticProposition) = ⊤ from rfl,
-        LO.Propositional.Formula.Boolean.val]
+        FFL.Propositional.Formula.val]
   | case2 =>
       simp [PCWorld.Holds,
         show (Semiformula.falsum : ArithmeticProposition) = ⊥ from rfl,
-        LO.Propositional.Formula.Boolean.val]
+        FFL.Propositional.Formula.val]
   | case3 φ ψ ihφ ihψ =>
       simpa [PCWorld.Holds, models_iff,
         show Semiformula.and φ ψ = φ ⋏ ψ from rfl,
         LogicalConnective.HomClass.map_and,
-        LO.Propositional.Formula.Boolean.val] using and_congr ihφ ihψ
+        FFL.Propositional.Formula.val] using and_congr ihφ ihψ
   | case4 φ ψ ihφ ihψ =>
       simpa [PCWorld.Holds, models_iff,
         show Semiformula.or φ ψ = φ ⋎ ψ from rfl,
         LogicalConnective.HomClass.map_or,
-        LO.Propositional.Formula.Boolean.val] using or_congr ihφ ihψ
+        FFL.Propositional.Formula.val] using or_congr ihφ ihψ
   | case5 arity r v =>
       change paperPrimeWorld M f (paperPrimeCode true (.rel r v)) ↔
         Semiformula.Evalf f (.rel r v)
@@ -357,8 +357,8 @@ private lemma paperFirstOrderNegCode_spec_aux :
         Encodable.encode (Semiformula.neg φ) := by
   intro n φ
   induction φ <;>
-    simp_all [paperFirstOrderNegCode, LO.FirstOrder.Semiformula.neg,
-      LO.FirstOrder.Semiformula.encode_eq_toNat, LO.FirstOrder.Semiformula.toNat]
+    simp_all [paperFirstOrderNegCode, FFL.FirstOrder.Semiformula.neg,
+      FFL.FirstOrder.Semiformula.encode_eq_toNat, FFL.FirstOrder.Semiformula.toNat]
 
 /-- The raw negation code agrees with Foundation's typed negation on genuine codes. -/
 lemma paperFirstOrderNegCode_spec (φ : ArithmeticProposition) :
@@ -368,7 +368,7 @@ lemma paperFirstOrderNegCode_spec (φ : ArithmeticProposition) :
 private lemma paperFirstOrderNegCode_toNat {n : ℕ}
     (φ : ArithmeticSemiformula ℕ n) :
     paperFirstOrderNegCode φ.toNat = (Semiformula.neg φ).toNat := by
-  simpa [LO.FirstOrder.Semiformula.encode_eq_toNat] using
+  simpa [FFL.FirstOrder.Semiformula.encode_eq_toNat] using
     (paperFirstOrderNegCode_spec_aux φ)
 
 private def paperFirstOrderNegSucc (prior : List ℕ) (e : ℕ) : ℕ :=
@@ -544,8 +544,8 @@ lemma paperPrimeDecomposeCode_spec (φ : ArithmeticProposition) :
       paperPrimeAtomCodeRaw, paperPublicNegCode,
       paperPublicAndCode, paperPublicOrCode, paperPrimeSentence, paperPrimeCode,
       paperFirstOrderNegCode_toNat, Semiformula.neg_eq,
-      encode_public_formula_eq_toNat, LO.Propositional.Formula.toNat,
-      LO.FirstOrder.Semiformula.encode_eq_toNat, LO.FirstOrder.Semiformula.toNat]
+      encode_public_formula_eq_toNat, FFL.Propositional.Formula.toNat,
+      FFL.FirstOrder.Semiformula.encode_eq_toNat, FFL.FirstOrder.Semiformula.toNat]
 
 /-! ## Primitive recursiveness
 

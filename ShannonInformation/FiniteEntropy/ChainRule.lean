@@ -228,8 +228,8 @@ lemma summable_measureReal_mul_entropy_cond (hX : Measurable X) (hY : Measurable
     Summable fun y ↦ (μ.map Y).real {y} * H[X | Y ← y ; μ] := by
   haveI : FiniteEntropyOf (⟨Y, X⟩ : Ω → T × S) μ := finiteEntropyOf_pair hY hX
   haveI : IsProbabilityMeasure (μ.map (⟨Y, X⟩ : Ω → T × S)) :=
-    Measure.isProbabilityMeasure_map (hY.prodMk hX).aemeasurable
-  haveI : IsProbabilityMeasure (μ.map Y) := Measure.isProbabilityMeasure_map hY.aemeasurable
+    inferInstance
+  haveI : IsProbabilityMeasure (μ.map Y) := inferInstance
   have hent : Summable fun q : T × S ↦ negMulLog ((μ.map (⟨Y, X⟩ : Ω → T × S)).real {q}) :=
     FiniteEntropyMeasure.summable_real _
   have hY' : Summable fun y ↦ negMulLog ((μ.map Y).real {y}) :=
@@ -244,7 +244,7 @@ Lean's Bochner integral is `0` on a non-integrable integrand. -/
 lemma integrable_entropy_cond (hX : Measurable X) (hY : Measurable Y) (μ : Measure Ω)
     [IsProbabilityMeasure μ] [FiniteEntropyOf X μ] [FiniteEntropyOf Y μ] :
     Integrable (fun y ↦ H[X | Y ← y ; μ]) (μ.map Y) := by
-  haveI : IsProbabilityMeasure (μ.map Y) := Measure.isProbabilityMeasure_map hY.aemeasurable
+  haveI : IsProbabilityMeasure (μ.map Y) := inferInstance
   refine integrable_of_summable_measureReal_mul_norm ?_
   refine (summable_measureReal_mul_entropy_cond hX hY μ).congr fun y ↦ ?_
   rw [Real.norm_of_nonneg (entropy_nonneg _ _)]
@@ -276,8 +276,8 @@ lemma chain_rule'' (μ : Measure Ω) [IsZeroOrProbabilityMeasure μ] (hX : Measu
   · simp
   haveI : FiniteEntropyOf (⟨Y, X⟩ : Ω → T × S) μ := finiteEntropyOf_pair hY hX
   haveI : IsProbabilityMeasure (μ.map (⟨Y, X⟩ : Ω → T × S)) :=
-    Measure.isProbabilityMeasure_map (hY.prodMk hX).aemeasurable
-  haveI : IsProbabilityMeasure (μ.map Y) := Measure.isProbabilityMeasure_map hY.aemeasurable
+    inferInstance
+  haveI : IsProbabilityMeasure (μ.map Y) := inferInstance
   have hent : Summable fun q : T × S ↦ negMulLog ((μ.map (⟨Y, X⟩ : Ω → T × S)).real {q}) :=
     FiniteEntropyMeasure.summable_real _
   have hY' : Summable fun y ↦ negMulLog ((μ.map Y).real {y}) :=

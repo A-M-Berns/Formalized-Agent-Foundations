@@ -78,7 +78,7 @@ lemma buyDaily_exploits (P : History) (DP : DeductiveProcess) (φ : Sentence) (�
   refine exploits_of_nonneg_partialSums (buyDaily φ) P DP (fun i => 1 - P i φ) ε hε
     (fun i => by have := hunder i; linarith) (fun n v hv => ?_)
     (Filter.Frequently.of_forall (fun n => by have := hunder n; linarith)) hcons
-  have hpay : v.payout φ = 1 := by rw [PCWorld.payout, if_pos (hv φ (hded n))]
+  have hpay : v.payout φ = 1 := by rw [PCWorld.payout, ite_eq_left (hv φ (hded n))]
   rw [buyDaily_netWorth, hpay]
 
 /-- **Fixed-sentence fragment of Provability Induction**, stated against `def:lic`: a
@@ -109,7 +109,7 @@ lemma buyDaily_exploits_freq (P : History) (DP : DeductiveProcess) (φ : Sentenc
   refine exploits_of_nonneg_partialSums (buyDaily φ) P DP (fun i => 1 - P i φ) ε hε
     (fun i => by have := hP1 i; linarith) (fun n v hv => ?_)
     (hfreq.mono (fun n hn => by linarith)) hcons
-  have hpay : v.payout φ = 1 := by rw [PCWorld.payout, if_pos (hv φ (hded n))]
+  have hpay : v.payout φ = 1 := by rw [PCWorld.payout, ite_eq_left (hv φ (hded n))]
   rw [buyDaily_netWorth, hpay]
 
 /-- **Limiting form of the fixed-sentence fragment**: under a logical inductor, an

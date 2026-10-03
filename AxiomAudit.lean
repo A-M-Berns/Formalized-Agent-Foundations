@@ -75,9 +75,8 @@ paper node", not "the formalization is faithful". Faithfulness is the read-throu
 
 Scope is the whole repository, and it is now **strictly clean throughout**: the former
 sole intentional axiom `glFixedPoint_thm42` (GL fixed-point existence) has been discharged
-by the `ProvabilityLogic/` development (a vendored subset of
-FormalizedFormalLogic/ProvabilityLogic, pinned in `lakefile.lean`; see
-`ModalAgents/FixedPoint.lean`),
+by the `ProvabilityLogic` package (FormalizedFormalLogic/ProvabilityLogic, pinned by commit
+in `lakefile.lean`; see `ModalAgents/FixedPoint.lean`),
 so every ModalAgents endpoint — including the cooperation results that rest on the GL fixed
 point — is asserted under `#assert_axioms_clean`, the one assertion form this file has.
 
@@ -1130,7 +1129,7 @@ tail would otherwise assume, together with the criterion endpoints that consume 
 -- measure.  Metering is by symbol count, not by the derivation's Gödel number: the paper's
 -- `Con(T)(k)` bounds the size of a proof, and a code bound is a different predicate.
 -- Decidability is obtained without a proof checker: `Proof` is `𝚫₁`, so the packed proof predicate and its
--- negation are both `𝚺₁` by `definability`, and `re_iff_sigma1` +
+-- negation are both `𝚺₁` by `definability`, and `rePred_iff_sigma1` +
 -- `ComputablePred.computable_iff_re_compl_re'` decide it; the *search* is then finite by
 -- `bProv_iff_bounded`, which is where `le_G_dSize` is spent, giving
 -- `bprovValue T : ℕ → ℕ`.  `conRunValue T' f` is the universal decider actually represented
@@ -2817,9 +2816,9 @@ end LogicalInduction
 /-! ## ModalAgents — modal open-source game theory (Barász et al.)
 
 Every ModalAgents endpoint is now strictly clean. The former sole intentional axiom
-`glFixedPoint_thm42` (GL fixed-point existence) is discharged by the `ProvabilityLogic/`
-development (vendored from FormalizedFormalLogic/ProvabilityLogic, pinned in
-`lakefile.lean`; see `ModalAgents/FixedPoint.lean`); `glFixedPoint_thm42`
+`glFixedPoint_thm42` (GL fixed-point existence) is discharged by the `ProvabilityLogic`
+package (FormalizedFormalLogic/ProvabilityLogic, pinned by commit in `lakefile.lean`; see
+`ModalAgents/FixedPoint.lean`); `glFixedPoint_thm42`
 is a proved theorem, so the cooperation endpoints that rest on it are asserted strictly
 clean below, like every other endpoint in this file.
 
@@ -2841,9 +2840,11 @@ rule, and they stay inventoried and axiom-checked regardless:
 * `glFixedPoint_uniqueness` — the *rule* form of Theorem 4.3, derived from the printed
   internal form `glFixedPoint_uniqueness_internal` (which carries the annotation) by
   necessitation; it is the form the modal-agent development consumes.
-* `arithInterp` and `Realization.update` — the definitions the arithmetic statements are
-  phrased in: `arithInterp f φ` is the paper's `φ(ψ₁,…,ψₙ)`, and `Realization.update`
-  substitutes for the diagonal variable. Listed because they are statement surface.
+* `Realization.update` — the one definition of this development's own that the arithmetic
+  statements are phrased in: it substitutes for the diagonal variable of a realization,
+  so `φ.interpret (f.update p ψ) 𝔅` is the paper's `φ(ψ,ψ₁,…,ψₙ)`. (`Realization` and
+  `Formula.interpret` themselves are the `ProvabilityLogic` package's.) Listed because it
+  is statement surface.
 * The §4 arithmetic-agent vocabulary — `Agent`, `Agent.app`, `opponentRealization`,
   `IsModalAgentOfRank`, `IsModalAgent`, `BehaviorallyEquivalent`, `IsBehavioral`,
   `cliqueBotSpec`, `cliqueBot`, `cliqueBotVariant`. These are the paper's §4 and §2
@@ -2893,7 +2894,7 @@ rule, and they stay inventoried and axiom-checked regardless:
 #assert_axioms_clean
   subst_congr glFixedPoint_uniqueness glFixedPoint_uniqueness_internal glFixedPoint_thm42
   glFixedPoint_spec outcome_fixed_point
-  lob_theorem arithInterp Realization.update
+  lob_theorem Realization.update
   arithmetic_modal_substitution arithmetic_fixedPoint_uniqueness
   Agent Agent.app opponentRealization IsModalAgentOfRank IsModalAgent
   cooperateBot_isModalAgentOfRank_zero
@@ -2991,7 +2992,7 @@ a regression would fail the build. At the pinned Foundation revision it costs no
 `axiom`s that formerly sat in `Examples.lean`. The instantiation below is therefore
 asserted under ordinary `#assert_axioms_clean`. -/
 
-open LO LO.FirstOrder LO.FirstOrder.Arithmetic in
+open FFL FFL.FirstOrder FFL.FirstOrder.Arithmetic in
 /-- `thm:ceu` at the concrete theory `𝗜𝚺₁`. -/
 noncomputable def concreteArithmeticInstantiation :=
   @LogicalInduction.lic_no_expected_net_update_closed 𝗜𝚺₁ inferInstance inferInstance
@@ -3011,11 +3012,11 @@ typecheck.  The corresponding `grep` is
 `grep -rn SoundOnHierarchy LogicalInduction/ | grep -v loopsTheory`, which finds prose
 only. -/
 
-open LO LO.FirstOrder LO.FirstOrder.Arithmetic in
+open FFL FFL.FirstOrder FFL.FirstOrder.Arithmetic in
 /-- `thm:ref` at the concrete theory `𝗜𝚺₁`, soundness-free. -/
 example := @LogicalInduction.lic_introspection_closed 𝗜𝚺₁ inferInstance inferInstance inferInstance
 
-open LO LO.FirstOrder LO.FirstOrder.Arithmetic in
+open FFL FFL.FirstOrder FFL.FirstOrder.Arithmetic in
 /-- `thm:lp` at the concrete theory `𝗜𝚺₁`, soundness-free. -/
 example :=
   @LogicalInduction.lic_paradox_resistance_ofDiagonal_unconditional 𝗜𝚺₁
@@ -3030,12 +3031,12 @@ anywhere in the elaboration.  Any step of the lane that acquired one, whether di
 through a `QuotationTheoryPresentation` field, would break this term.  The `𝗣𝗔`
 instantiation is the same statement at the theory the paper actually cares about. -/
 
-open LO LO.FirstOrder LO.FirstOrder.Arithmetic in
+open FFL FFL.FirstOrder FFL.FirstOrder.Arithmetic in
 /-- `thm:ref` at `𝗣𝗔⁻`, with no `𝗜𝚺₁ ⪯ ·` instance in scope. -/
 example :=
   @LogicalInduction.lic_introspection_closed 𝗣𝗔⁻ inferInstance inferInstance inferInstance
 
-open LO LO.FirstOrder LO.FirstOrder.Arithmetic in
+open FFL FFL.FirstOrder FFL.FirstOrder.Arithmetic in
 /-- `thm:ref` at the concrete theory `𝗣𝗔`. -/
 example :=
   @LogicalInduction.lic_introspection_closed 𝗣𝗔 inferInstance inferInstance inferInstance
@@ -3668,8 +3669,9 @@ open FiniteFactoredSets in
   -- Definition 39's three preimages are Mathlib-rendered (README table); `Model.pullback`
   -- names the partition one and is a convenience, not a paper endpoint.  Definition 41 has
   -- two carriers, one per written form, as Definitions 18 and 19 do.  `Model` is spelled
-  -- with its root prefix: `ProvabilityLogic/Kripke/Basic.lean` declares a root-namespace
-  -- `Model`, so the bare name is ambiguous under this block's `open FiniteFactoredSets in`.
+  -- with its root prefix: the `ProvabilityLogic` package's `Kripke/Basic.lean` declares a
+  -- root-namespace `Model`, so the bare name is ambiguous under this block's
+  -- `open FiniteFactoredSets in`.
   FiniteFactoredSets.Model OrthDatabase OrthDatabase.Orth OrthDatabase.NotOrth
   OrthDatabase.Models OrthDatabase.Consistent OrthDatabase.Complete OrthDatabase.StrictlyBefore
   -- §6.2, Example 1 (FiniteFactoredSets/InferenceExamples.lean).  `Example1.D` is the

@@ -642,7 +642,7 @@ lemma unilateralSPIDecisionPrinted_of_reduced {Γ : Game N 𝒜} (h : Γ.Reduced
     rintro ⟨-, h2⟩
     obtain ⟨a, ha⟩ := Γ.profiles_nonempty
     have := h2 a ha i
-    simp only [bumpPayoff, if_true] at this
+    simp only [bumpPayoff, ite_true] at this
     linarith
   · refine (exists_paretoImproving_deriv_iff Γ (Γ.bumpPayoff i) hsub).2 ?_
     refine ⟨((Γ.bumpPayoffIso i).cast (Game.reduce_of_reduced h).symm

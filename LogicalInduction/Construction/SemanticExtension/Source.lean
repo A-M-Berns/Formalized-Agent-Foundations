@@ -221,15 +221,15 @@ lemma semanticFreshIncreasing_no_cutCertificate (DP : DeductiveProcess)
   have hcut := C.rationalCutAt hv 0
   have hone : v.Holds ((semanticFreshIncreasingLUVSeq 0).gt 1) := by
     simp [semanticFreshIncreasingLUVSeq_gt, PCWorld.Holds,
-      LO.Propositional.Formula.Boolean.val]
+      FFL.Propositional.Formula.val]
   have hzero := hcut.downward 0 1 (by norm_num) hone
   simp [semanticFreshIncreasingLUVSeq_gt, PCWorld.Holds,
-    LO.Propositional.Formula.Boolean.val] at hzero
+    FFL.Propositional.Formula.val] at hzero
 
 end
 
 section
-open LO LO.Propositional
+open FFL FFL.Propositional
 
 attribute [local irreducible] Nat.sqrt
 
@@ -427,8 +427,8 @@ lemma semanticSourceCutLawAtFuel_downward_spec {schema fuel n : ℕ} {r s : ℚ}
       law = (φs 🡒 φr) := by
   unfold semanticSourceCutLawAtFuel at h
   simp only [sourceCutDownwardJob, Nat.unpair_pair,
-    if_neg (by decide : ¬(2 : ℕ) = 0), if_neg (by decide : ¬(2 : ℕ) = 1),
-    decodedQuotationRat_encode, if_pos hrs] at h
+    ite_eq_right (by decide : ¬(2 : ℕ) = 0), ite_eq_right (by decide : ¬(2 : ℕ) = 1),
+    decodedQuotationRat_encode, ite_eq_left hrs] at h
   obtain ⟨φr, hφr, h⟩ := Option.bind_eq_some_iff.mp h
   obtain ⟨φs, hφs, h⟩ := Option.bind_eq_some_iff.mp h
   unfold freshImpSourceSentence at h
@@ -652,7 +652,7 @@ lemma semanticSourceCheckedDownward_spec {DP : DeductiveProcess}
       law = (φs 🡒 φr) := by
   have hsource := semanticSourceCheckedLawAtFuel_source base h
   unfold semanticSourceCheckedLawAtFuel at h
-  rw [if_pos hsource] at h
+  rw [ite_eq_left hsource] at h
   obtain ⟨law', hcut, h⟩ := Option.bind_eq_some_iff.mp h
   obtain ⟨stageIndex, _, h⟩ := Option.bind_eq_some_iff.mp h
   obtain ⟨stage, _, h⟩ := Option.bind_eq_some_iff.mp h
@@ -660,9 +660,9 @@ lemma semanticSourceCheckedDownward_spec {DP : DeductiveProcess}
   simp only [Option.some.injEq] at h
   subst law'
   unfold semanticSourceCutLawAtFuel at hcut
-  simp only [sourceCutDownwardJob, Nat.unpair_pair, if_neg (by decide : ¬(2 : ℕ) = 0),
-    if_neg (by decide : ¬(2 : ℕ) = 1),
-    decodedQuotationRat_encode, if_pos hrs] at hcut
+  simp only [sourceCutDownwardJob, Nat.unpair_pair, ite_eq_right (by decide : ¬(2 : ℕ) = 0),
+    ite_eq_right (by decide : ¬(2 : ℕ) = 1),
+    decodedQuotationRat_encode, ite_eq_left hrs] at hcut
   obtain ⟨φr, hφr, hcut⟩ := Option.bind_eq_some_iff.mp hcut
   obtain ⟨φs, hφs, hcut⟩ := Option.bind_eq_some_iff.mp hcut
   unfold freshImpSourceSentence at hcut
@@ -1076,7 +1076,7 @@ lemma semanticSourcePrefixValidAtFuel_downward {DP : DeductiveProcess}
 end
 
 section
-open LO LO.Propositional LO.FirstOrder LO.FirstOrder.Arithmetic
+open FFL FFL.Propositional FFL.FirstOrder FFL.FirstOrder.Arithmetic
 
 attribute [local irreducible] Nat.sqrt
 
@@ -1323,12 +1323,12 @@ lemma semanticSourceSentenceAtFuel_reflected {v : PCWorld}
   constructor
   · have h := holds_semanticSourceDefSentence hv
       (semanticSourceDefinitionJob schema input 1 fuel)
-    rw [semanticSourceDefSentence_job, if_pos hschema, hemit] at h
+    rw [semanticSourceDefSentence_job, ite_eq_left hschema, hemit] at h
     simp [hfreshB] at h
     exact h
   · have h := holds_semanticSourceDefSentence hv
       (semanticSourceDefinitionJob schema input 0 fuel)
-    rw [semanticSourceDefSentence_job, if_pos hschema, hemit] at h
+    rw [semanticSourceDefSentence_job, ite_eq_left hschema, hemit] at h
     simp [hfreshB] at h
     exact h
 

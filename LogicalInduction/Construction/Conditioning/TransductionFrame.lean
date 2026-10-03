@@ -351,20 +351,20 @@ lemma decodeBits_wFrameEmit (second : Bool) (ε : ℚ)
     rw [decodeBits_wMin (blockWF_tokBits _) hM1, decodeBits_tokBits, hM1d]
   rw [wFrameEmit, rpnFrameEmit]
   cases second
-  · simp only [Bool.false_eq_true, if_false]
+  · simp only [Bool.false_eq_true, ite_false]
     have hb0 : BlockWF (wLegBody false ε blkW bufW dayBlk bcW ibcW) := by
       rw [wLegBody]
       exact ((blockWF_wRatioSym hC hblk hd ε).append hMin).append (blockWF_tokBits _)
     rw [decodeBits_append (hb0.append (blockWF_tokBits _)) hC,
       decodeBits_append hb0 (blockWF_tokBits _), wLegBody]
-    simp only [Bool.false_eq_true, if_false]
+    simp only [Bool.false_eq_true, ite_false]
     rw [decodeBits_append ((blockWF_wRatioSym hC hblk hd ε).append hMin)
         (blockWF_tokBits _),
       decodeBits_append (blockWF_wRatioSym hC hblk hd ε) hMin,
       decodeBits_wRatioSym hC hblk hd hday ε, hCd, hMind]
     simp only [decodeBits_tokBits]
     simp [List.append_assoc]
-  · simp only [if_true]
+  · simp only [ite_true]
     have hb1 : BlockWF (wLegBody true ε blkW bufW dayBlk bcW ibcW) := by
       rw [wLegBody]
       exact ((blockWF_wRatioSym hC hblk hd ε).append
@@ -372,7 +372,7 @@ lemma decodeBits_wFrameEmit (second : Bool) (ε : ℚ)
           (blockWF_wMul hMin (blockWF_tokBits _)))).append (blockWF_tokBits _)
     rw [decodeBits_append (hb1.append (blockWF_tokBits _)) hblk,
       decodeBits_append hb1 (blockWF_tokBits _), wLegBody]
-    simp only [if_true]
+    simp only [ite_true]
     rw [decodeBits_append ((blockWF_wRatioSym hC hblk hd ε).append
           (blockWF_wMul (blockWF_wRat _)
             (blockWF_wMul hMin (blockWF_tokBits _)))) (blockWF_tokBits _),
@@ -412,13 +412,13 @@ def frameParams (dayW blkW bcW ibcW : List Bool) : List Bool :=
   pair dayW (pair blkW (pair bcW ibcW))
 
 /-- The trading day, in unary. -/
-def fpDay (W : List Bool) : List Bool := fstBlock W
+def fpDay (W : List Bool) : List Bool := pairFst W
 /-- The condition sentence's block. -/
-def fpBlk (W : List Bool) : List Bool := fstBlock (sndBlock W)
+def fpBlk (W : List Bool) : List Bool := pairFst (pairSnd W)
 /-- The frame budget's code, as one complete block. -/
-def fpBc (W : List Bool) : List Bool := fstBlock (sndBlock (sndBlock W))
+def fpBc (W : List Bool) : List Bool := pairFst (pairSnd (pairSnd W))
 /-- The inverse budget's code, as one complete block. -/
-def fpIbc (W : List Bool) : List Bool := sndBlock (sndBlock (sndBlock W))
+def fpIbc (W : List Bool) : List Bool := pairSnd (pairSnd (pairSnd W))
 
 @[simp] lemma fpDay_frameParams (d b c i : List Bool) :
     fpDay (frameParams d b c i) = d := by simp [fpDay, frameParams]
@@ -456,7 +456,7 @@ lemma frameEmitW_eq (second : Bool) (ε : ℚ) (W cli : List Bool) (cur : List �
     frameEmitW second ε (pair W (pair cli (digitsToBits cur)))
       = frameEmitR second ε W cli cur := by
   rw [frameEmitW, frameEmitR, clampTok_pair W cli cur hcur]
-  simp only [cvW, cvCli, cvTok, sndBlock_pair, fstBlock_pair]
+  simp only [cvW, cvCli, cvTok, pairSnd_pair, pairFst_pair]
 
 lemma blockWF_frameEmitR (second : Bool) (ε : ℚ) (W cli : List Bool) (cur : List ℕ)
     (hcur : ∀ d ∈ cur, d < 4) (hwf : BlockWF (csBuf cli)) (hblk : BlockWF (fpBlk W))
@@ -483,19 +483,19 @@ lemma decodeBits_frameEmitR (second : Bool) (ε : ℚ) (W cli : List Bool) (cur 
   rw [frameEmitR, frameEmitOf, rpnFrameEmitAt, hmode, ← hstep]
   simp only [List.length_replicate, e6]
   by_cases h1 : (csMode cli).length = 0 ∧ digitVal cur = 6
-  · rw [if_pos h1, if_pos h1, decodeBits_nil]
-  · rw [if_neg h1, if_neg h1]
+  · rw [ite_eq_left h1, ite_eq_left h1, decodeBits_nil]
+  · rw [ite_eq_right h1, ite_eq_right h1]
     by_cases h2 : (csMode cli).length = 4 ∨ (csMode cli).length = 7
         ∨ (csMode cli).length = 9
-    · rw [if_pos h2, if_pos h2]
+    · rw [ite_eq_left h2, ite_eq_left h2]
       by_cases h3 : (csModeStep cli (List.replicate (min (digitVal cur) 20) true)).length
           = 0
-      · rw [if_pos h3, if_pos h3,
+      · rw [ite_eq_left h3, ite_eq_left h3,
           decodeBits_wFrameEmit second ε hblk (blockWF_bufSnoc cli cur hcur hwf)
             (blockWF_unaryBlock _) hbc hibc (decodeBits_unaryBlock _) hbcv hibcv,
           decodeBits_bufSnoc cli cur hcur hwf]
-      · rw [if_neg h3, if_neg h3, decodeBits_nil]
-    · rw [if_neg h2, if_neg h2, decodeBits_run cur hcur]
+      · rw [ite_eq_right h3, ite_eq_right h3, decodeBits_nil]
+    · rw [ite_eq_right h2, ite_eq_right h2, decodeBits_run cur hcur]
 
 /-! ### The frame fold -/
 
@@ -560,12 +560,12 @@ lemma decodeBits_frameTailOf (st : List Bool) :
   have hmode : rcMode (csPack st) = (csMode st).length := by rw [csPack, rcMode_pack]
   rw [frameTailOf, hmode]
   by_cases h4 : (csMode st).length = 4
-  · rw [if_pos h4, if_pos (by tauto), decodeBits_tokBits]
+  · rw [ite_eq_left h4, ite_eq_left (by tauto), decodeBits_tokBits]
   · by_cases h7 : (csMode st).length = 7
-    · rw [if_neg h4, if_pos h7, if_pos (by tauto), decodeBits_tokBits]
+    · rw [ite_eq_right h4, ite_eq_left h7, ite_eq_left (by tauto), decodeBits_tokBits]
     · by_cases h9 : (csMode st).length = 9
-      · rw [if_neg h4, if_neg h7, if_pos h9, if_pos (by tauto), decodeBits_tokBits]
-      · rw [if_neg h4, if_neg h7, if_neg h9, if_neg (by tauto), decodeBits_nil]
+      · rw [ite_eq_right h4, ite_eq_right h7, ite_eq_left h9, ite_eq_left (by tauto), decodeBits_tokBits]
+      · rw [ite_eq_right h4, ite_eq_right h7, ite_eq_right h9, ite_eq_right (by tauto), decodeBits_nil]
 
 /-- One frame leg, on words. -/
 def frameLegW (second : Bool) (ε : ℚ) (W Src : List Bool) : List Bool :=
@@ -646,10 +646,10 @@ lemma decodeBits_safeFrameW (ε : ℚ) (W Src acc : List Bool) {bc ibc : ℕ}
   rw [safeFrameW, rpnSafeSeparatedFrameRuns]
   cases acc with
   | nil =>
-      rw [selectHead_emptyFlag_nil, if_pos (by simpa using hacc.symm),
+      rw [selectHead_emptyFlag_nil, ite_eq_left (by simpa using hacc.symm),
         decodeBits_frameLegW false ε W Src hblk hbc hibc hbcv hibcv]
   | cons b bs =>
-      rw [selectHead_emptyFlag_cons, if_neg (by simp at hacc; omega),
+      rw [selectHead_emptyFlag_cons, ite_eq_right (by simp at hacc; omega),
         decodeBits_append (blockWF_frameLegW false ε W Src hblk hbc hibc)
           (blockWF_frameLegW true ε W Src hblk hbc hibc),
         decodeBits_frameLegW false ε W Src hblk hbc hibc hbcv hibcv,
@@ -740,7 +740,7 @@ lemma length_wFrameEmit_le (second : Bool) (ε : ℚ)
   cases second <;>
     simp only [wFrameEmit, wLegBody, wRatioSym, wPriceSym, wFrameGate, wGate, wClip01,
       wMin, wMax, wMul, wAdd, wSafeRecip, wAbs, wLowerSafeRecip, wConst, wRat,
-      List.length_append, List.length_nil, Bool.false_eq_true, if_false, if_true] <;>
+      List.length_append, List.length_nil, Bool.false_eq_true, ite_false, ite_true] <;>
     omega
 
 lemma frameEmitW_length_le (second : Bool) (ε : ℚ) (W cli tok : List Bool) :
@@ -867,8 +867,8 @@ private lemma ifAndLen_mem_FP {A B X Y : List Bool → List Bool} (hA : A ∈ FP
   rwa [heq] at h
 
 lemma frameEmitW_mem_FP (second : Bool) (ε : ℚ) : frameEmitW second ε ∈ FP := by
-  have hWs : (fun v => sndBlock (cvW v)) ∈ FP := mem_FP_comp cvW_mem_FP sndBlock_mem_FP
-  have hWss : (fun v => sndBlock (sndBlock (cvW v))) ∈ FP :=
+  have hWs : (fun v => pairSnd (cvW v)) ∈ FP := mem_FP_comp cvW_mem_FP sndBlock_mem_FP
+  have hWss : (fun v => pairSnd (pairSnd (cvW v))) ∈ FP :=
     mem_FP_comp hWs sndBlock_mem_FP
   have hblk : (fun v => fpBlk (cvW v)) ∈ FP := mem_FP_comp hWs fstBlock_mem_FP
   have hday : (fun v => fpDay (cvW v)) ∈ FP := mem_FP_comp cvW_mem_FP fstBlock_mem_FP
@@ -1009,14 +1009,14 @@ theorem conditionedTranslation_preserves_ec
     EfficientlyComputable (T.conditionedTranslation ψ ε) := by
   obtain ⟨B, hB, hBwf, hBparse⟩ := machineSentenceBlocks_of_machine hψ
   obtain ⟨F, hF, hFspec⟩ := hT
-  refine ⟨fun x => condOutputW ε B sndBlock fstBlock (pair (F x) x),
+  refine ⟨fun x => condOutputW ε B pairSnd pairFst (pair (F x) x),
     mem_FP_withInput hF
       (condOutputW_mem_FP ε hB sndBlock_mem_FP fstBlock_mem_FP), fun n => ?_⟩
-  have hdec := decodeBits_condOutputW ε B sndBlock fstBlock hBwf
+  have hdec := decodeBits_condOutputW ε B pairSnd pairFst hBwf
     (pair (F (unaryDay n)) (unaryDay n)) (by simp [unaryDay])
-  simp only [sndBlock_pair, fstBlock_pair, length_unaryDay] at hdec
+  simp only [pairSnd_pair, pairFst_pair, length_unaryDay] at hdec
   show strategyOfTokens n (unRpn (decodeBits
-    (condOutputW ε B sndBlock fstBlock (pair (F (unaryDay n)) (unaryDay n))))) = _
+    (condOutputW ε B pairSnd pairFst (pair (F (unaryDay n)) (unaryDay n))))) = _
   rw [hdec]
   refine strategyOfTokens_rpnConditionOutput (blocksOf B) ψ hBparse ε T n _ ?_
   exact hFspec n
@@ -1040,8 +1040,8 @@ private lemma ifMemFinset_mem_FP {A X Y : List Bool → List Bool} (hA : A ∈ F
       = fun z => if A z ∈ S then X z else Y z := by
     funext z
     by_cases hc : A z ∈ S
-    · rw [if_pos hc, if_pos hc, selectHead_emptyFlag_cons]
-    · rw [if_neg hc, if_neg hc, selectHead_emptyFlag_nil]
+    · rw [ite_eq_left hc, ite_eq_left hc, selectHead_emptyFlag_cons]
+    · rw [ite_eq_right hc, ite_eq_right hc, selectHead_emptyFlag_nil]
   rwa [heq] at h
 
 /-- **The zero-day test may be clamped at the cutoff, and the clamp separates.**  Every zero
@@ -1093,7 +1093,7 @@ lemma zeroEmitW_eq (zeroDays : Finset ℕ) (cutoff : ℕ) (ε : ℚ) (B : List B
   have hd : bitsToDigits (digitsToBits cur) = cur :=
     bitsToDigits_digitsToBits cur (fun d hd => lt_trans (hcur d hd) (by norm_num))
   rw [zeroEmitW, zeroEmitR, zeroTokW, dayClamp]
-  simp only [cvW, cvCli, cvTok, sndBlock_pair, fstBlock_pair, hd]
+  simp only [cvW, cvCli, cvTok, pairSnd_pair, pairFst_pair, hd]
   rfl
 
 /-- The finite-zero price emitter with its condition-block oracle clamped to the trading
@@ -1128,15 +1128,15 @@ lemma decodeBits_zeroEmitR (zeroDays : Finset ℕ) (cutoff : ℕ) (ε : ℚ)
     rw [mem_image_unaryDay, mem_zeroDays_clamp zeroDays cutoff hlt]
   rw [zeroEmitR, hmode, clampedZeroEmit]
   by_cases h2 : (csMode cli).length = 2
-  · rw [if_pos h2, if_pos h2]
+  · rw [ite_eq_left h2, ite_eq_left h2]
     by_cases hz : digitVal cur ∈ zeroDays
-    · rw [if_pos (hzero.mpr hz), if_pos hz, dayBits,
+    · rw [ite_eq_left (hzero.mpr hz), ite_eq_left hz, dayBits,
         decodeBits_append (blockWF_run cur hcur) (blockWF_tokBits _),
         decodeBits_run cur hcur, decodeBits_tokBits]
       rfl
-    · rw [if_neg (fun hc => hz (hzero.mp hc)), if_neg hz,
+    · rw [ite_eq_right (fun hc => hz (hzero.mp hc)), ite_eq_right hz,
         decodeBits_condEmitOf ε _ _ cur hcur (hB _) hwf, csTokens, blocksOf]
-  · rw [if_neg h2, if_neg h2]
+  · rw [ite_eq_right h2, ite_eq_right h2]
     exact decodeBits_run cur hcur
 
 lemma zeroEmitW_mem_FP (zeroDays : Finset ℕ) (cutoff : ℕ) (ε : ℚ)
@@ -1288,32 +1288,32 @@ theorem eventualConditionedTranslation_preserves_ec
   obtain ⟨B, hB, hBwf, hBparse⟩ := machineSentenceBlocks_of_machine hψ
   obtain ⟨G, hG, hGspec⟩ := hT
   refine ⟨fun x =>
-    (if F.cutoff ≤ (sndBlock (pair (G x) x)).length then
-      zeroCondOutputW F.zeroDays F.cutoff F.epsilon B sndBlock fstBlock (pair (G x) x)
+    (if F.cutoff ≤ (pairSnd (pair (G x) x)).length then
+      zeroCondOutputW F.zeroDays F.cutoff F.epsilon B pairSnd pairFst (pair (G x) x)
      else []),
     mem_FP_withInput hG
       (ifConstLeLen_mem_FP sndBlock_mem_FP F.cutoff
         (zeroCondOutputW_mem_FP F.zeroDays F.cutoff F.epsilon hB sndBlock_mem_FP
           fstBlock_mem_FP) (constFn_mem_FP [])), fun n => ?_⟩
   dsimp only
-  have hsnd : sndBlock (pair (G (unaryDay n)) (unaryDay n)) = unaryDay n := by simp
+  have hsnd : pairSnd (pair (G (unaryDay n)) (unaryDay n)) = unaryDay n := by simp
   by_cases hn : F.cutoff ≤ n
-  · have hcond : F.cutoff ≤ (sndBlock (pair (G (unaryDay n)) (unaryDay n))).length := by
+  · have hcond : F.cutoff ≤ (pairSnd (pair (G (unaryDay n)) (unaryDay n))).length := by
       rw [hsnd, length_unaryDay]; exact hn
-    rw [if_pos hcond]
-    have hdec := decodeBits_zeroCondOutputW F.zeroDays F.cutoff F.epsilon B sndBlock
-      fstBlock hBwf F.zeroDays_lt (pair (G (unaryDay n)) (unaryDay n))
+    rw [ite_eq_left hcond]
+    have hdec := decodeBits_zeroCondOutputW F.zeroDays F.cutoff F.epsilon B pairSnd
+      pairFst hBwf F.zeroDays_lt (pair (G (unaryDay n)) (unaryDay n))
       (by simp [unaryDay])
-    simp only [sndBlock_pair, fstBlock_pair, length_unaryDay] at hdec
+    simp only [pairSnd_pair, pairFst_pair, length_unaryDay] at hdec
     show strategyOfTokens n (unRpn (decodeBits
-      (zeroCondOutputW F.zeroDays F.cutoff F.epsilon B sndBlock fstBlock
+      (zeroCondOutputW F.zeroDays F.cutoff F.epsilon B pairSnd pairFst
         (pair (G (unaryDay n)) (unaryDay n))))) = _
     rw [hdec, T.eventualConditionedTranslation_strat_of_le F hn]
     exact strategyOfTokens_rpnZeroAwareOutput F.zeroDays (blocksOf B) ψ hBparse F.epsilon
       T n _ (hGspec n)
-  · have hcond : ¬ F.cutoff ≤ (sndBlock (pair (G (unaryDay n)) (unaryDay n))).length := by
+  · have hcond : ¬ F.cutoff ≤ (pairSnd (pair (G (unaryDay n)) (unaryDay n))).length := by
       rw [hsnd, length_unaryDay]; exact hn
-    rw [if_neg hcond, T.eventualConditionedTranslation_strat_of_lt F (by omega)]
+    rw [ite_eq_right hcond, T.eventualConditionedTranslation_strat_of_lt F (by omega)]
     simp [strategyOfOutput, strategyOfTokens, deserializeTrades, unRpn, unRpnTokens,
       EF.streamReadFrom, EF.streamInitial, Trader.zero, undigitize, bitsToDigits]
     rfl

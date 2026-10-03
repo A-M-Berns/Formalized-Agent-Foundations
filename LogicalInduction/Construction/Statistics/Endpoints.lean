@@ -29,7 +29,7 @@ presentation whose literals a process must enumerate.
 namespace LogicalInduction
 namespace FeedbackTruth
 
-open LO LO.FirstOrder LO.FirstOrder.Arithmetic
+open FFL FFL.FirstOrder FFL.FirstOrder.Arithmetic
 open AffineCombination
 
 variable (T : ArithmeticTheory) [T.Δ₁] [𝗣𝗔⁻ ⪯ T] [Entailment.Consistent T]

@@ -44,7 +44,7 @@ reason.
 
 namespace LogicalInduction
 
-open LO LO.Propositional LO.FirstOrder LO.FirstOrder.Arithmetic
+open FFL FFL.Propositional FFL.FirstOrder FFL.FirstOrder.Arithmetic
 
 -- Deep `PolyFueled` compositions over paired inputs loop `whnf` on `Nat.sqrt`; keep it
 -- opaque (the standing `dd:fuel` safeguard, as in `Framework/Emission/CodeSource.lean`).
@@ -216,18 +216,18 @@ lemma semanticFactorPrefixValidAtFuel_mono {DP : DeductiveProcess}
     (h : semanticFactorPrefixValidAtFuel base schema limit fuel = true) :
     semanticFactorPrefixValidAtFuel base schema limit fuel' = true := by
   by_cases hzero : schema.unpair.1 = 0
-  · simp only [semanticFactorPrefixValidAtFuel, if_pos hzero] at h ⊢
+  · simp only [semanticFactorPrefixValidAtFuel, ite_eq_left hzero] at h ⊢
     simp only [Bool.or_eq_true] at h ⊢
     rcases h with h | h
     · exact Or.inl (semanticSourcePrefixValidAtFuel_mono base hff h)
     · exact Or.inr (entailedSourcePrefixValidAtFuel_mono base hff h)
   · have htwo : schema.unpair.1 = 2 := by
       unfold semanticFactorPrefixValidAtFuel at h
-      rw [if_neg hzero] at h
+      rw [ite_eq_right hzero] at h
       split at h
       · assumption
       · simp at h
-    simp only [semanticFactorPrefixValidAtFuel, if_neg hzero, if_pos htwo] at h ⊢
+    simp only [semanticFactorPrefixValidAtFuel, ite_eq_right hzero, ite_eq_left htwo] at h ⊢
     exact semanticQuoteFactorPrefixValidAtFuel_mono base schema limit hff h
 
 /-- **The activation primitive.**  Every product clause whose two factor schemas are
@@ -280,7 +280,7 @@ lemma holds_semanticRegistryProduct_pos_of_eventually {DP : DeductiveProcess}
     v.Holds (semanticProductAtom left right n r) := by
   have h := holds_semanticRegistryProduct_schema_of_eventually base hv left right hl hr
     n 0 r zs zt
-  rw [semanticProductSchemaInstance, if_pos rfl, if_pos hst] at h
+  rw [semanticProductSchemaInstance, ite_eq_left rfl, ite_eq_left hst] at h
   exact h ⟨hleft, hright⟩
 
 /-- Negative activation: above the product of two refused thresholds, the product atom
@@ -299,8 +299,8 @@ lemma not_holds_semanticRegistryProduct_neg_of_eventually {DP : DeductiveProcess
     ¬v.Holds (semanticProductAtom left right n r) := by
   have h := holds_semanticRegistryProduct_schema_of_eventually base hv left right hl hr
     n 1 r zs zt
-  rw [semanticProductSchemaInstance, if_neg (by decide : ¬(1 : ℕ) = 0),
-    if_pos rfl, if_pos hst] at h
+  rw [semanticProductSchemaInstance, ite_eq_right (by decide : ¬(1 : ℕ) = 0),
+    ite_eq_left rfl, ite_eq_left hst] at h
   intro hp
   rcases h hp with hx | hw
   · exact hleft hx
@@ -450,7 +450,7 @@ lemma semanticRegistryProductExtensionWorld_downward {DP : DeductiveProcess}
       schema (Nat.pair n (Encodable.encode (decodedQuotationRat zr))) hne).mpr hr'
   · have hquote : schema.unpair.1 = 2 := by
       unfold semanticFactorPrefixValidAtFuel at hvalid
-      rw [if_neg hsource] at hvalid
+      rw [ite_eq_right hsource] at hvalid
       split at hvalid
       · assumption
       · simp at hvalid
@@ -458,7 +458,7 @@ lemma semanticRegistryProductExtensionWorld_downward {DP : DeductiveProcess}
       simpa [semanticFactorPrefixValidAtFuel, hsource, hquote] using hvalid
     have hdown := semanticQuoteFactorPrefixValidAtFuel_downward base hquoteValid hn hzr hzs
     simp only [semanticQuoteFactorDownwardAtFuel, semanticQuoteFactorEvidenceAtFuel,
-      if_pos hrs, Bool.or_eq_true, Bool.and_eq_true] at hdown
+      ite_eq_left hrs, Bool.or_eq_true, Bool.and_eq_true] at hdown
     have hne : schema.unpair.1 ≠ 1 := by omega
     have hschemaEq : semanticQuoteSchema schema.unpair.2 = schema := by
       simp [semanticQuoteSchema, ← hquote]
@@ -477,7 +477,7 @@ lemma semanticRegistryProductExtensionWorld_downward {DP : DeductiveProcess}
             simpa [semanticQuoteFactorLink, lowInput, semanticQuoteDefSentence_job] using hlink
           have hclaim' : v₀.Holds (quoteAtom (Nat.pair schema.unpair.2 lowInput)) := by
             simpa [semanticQuoteFactorClaim, semanticQuoteSchema, lowInput] using hclaim
-          simp only [PCWorld.Holds, LO.Propositional.Formula.Boolean.val] at hlink' hclaim' ⊢
+          simp only [PCWorld.Holds, FFL.Propositional.Formula.val] at hlink' hclaim' ⊢
           exact hlink' hclaim'
         simpa [semanticQuoteLeaf, hschemaEq] using hleaf
       apply (semanticRegistryProductExtensionWorld_leaf base (semanticSourceExtensionWorld v₀)
@@ -497,7 +497,7 @@ lemma semanticRegistryProductExtensionWorld_downward {DP : DeductiveProcess}
           simpa [semanticQuoteFactorLink, highInput, semanticQuoteDefSentence_job] using hlink
         have hhigh' : v₀.Holds (semanticQuoteLeaf schema.unpair.2 highInput) := by
           simpa [semanticQuoteLeaf, hschemaEq] using hhigh₀
-        simp only [PCWorld.Holds, LO.Propositional.Formula.Boolean.val] at hlink' hhigh' ⊢
+        simp only [PCWorld.Holds, FFL.Propositional.Formula.val] at hlink' hhigh' ⊢
         exact hlink' hhigh'
       exfalso
       exact (PCWorld.holds_neg v₀ _).mp
@@ -719,7 +719,7 @@ lemma semanticRegistryProductExtensionWorld_holds_sourceDef {DP : DeductiveProce
       (semanticSourceExtensionWorld v₀)).Holds (semanticSourceDefSentence e) := by
   unfold semanticSourceDefSentence
   by_cases hschema : e.unpair.1.unpair.1 = 0
-  · rw [if_pos hschema]
+  · rw [ite_eq_left hschema]
     cases hemit : semanticSourceSentenceAtFuel e.unpair.1 e.unpair.2.unpair.1
         e.unpair.2.unpair.2.unpair.2 with
     | none => exact PCWorld.holds_top _
@@ -732,7 +732,7 @@ lemma semanticRegistryProductExtensionWorld_holds_sourceDef {DP : DeductiveProce
               else semanticPrimeSentence e.unpair.1 e.unpair.2.unpair.1 🡒 φ
             else ⊤)
         by_cases hfreshB : semanticPrimeFreshSentenceB φ = true
-        · rw [if_pos hfreshB]
+        · rw [ite_eq_left hfreshB]
           have hfresh := (semanticPrimeFreshSentenceB_eq_true φ).1 hfreshB
           have hformula := semanticRegistryProductExtensionWorld_holds_fresh base
             (semanticSourceExtensionWorld v₀) hfresh
@@ -742,15 +742,15 @@ lemma semanticRegistryProductExtensionWorld_holds_sourceDef {DP : DeductiveProce
           have hsource := semanticSourceExtensionWorld_leaf_iff v₀ e.unpair.1
             e.unpair.2.unpair.1 e.unpair.2.unpair.2.unpair.2 hschema hemit hfresh
           by_cases hdir : e.unpair.2.unpair.2.unpair.1 = 0
-          · rw [if_pos hdir]
+          · rw [ite_eq_left hdir]
             intro h
             exact hleaf.mpr (hsource.mpr (hsourceFormula.mp (hformula.mp h)))
-          · rw [if_neg hdir]
+          · rw [ite_eq_right hdir]
             intro h
             exact hformula.mpr (hsourceFormula.mpr (hsource.mp (hleaf.mp h)))
-        · rw [if_neg hfreshB]
+        · rw [ite_eq_right hfreshB]
           exact PCWorld.holds_top _
-  · rw [if_neg hschema]
+  · rw [ite_eq_right hschema]
     exact PCWorld.holds_top _
 
 /-- The complete registry substrate over a fixed base process. -/

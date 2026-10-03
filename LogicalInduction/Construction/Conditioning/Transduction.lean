@@ -290,13 +290,13 @@ buffered run in the other. -/
 def condSt (mW cW rW bufW : List Bool) : List Bool := pair (pair mW cW) (pair rW bufW)
 
 /-- The automaton's mode, as a unary word. -/
-def csMode (st : List Bool) : List Bool := fstBlock (fstBlock st)
+def csMode (st : List Bool) : List Bool := pairFst (pairFst st)
 /-- The open-subtree counter, as a unary word. -/
-def csCnt (st : List Bool) : List Bool := sndBlock (fstBlock st)
+def csCnt (st : List Bool) : List Bool := pairSnd (pairFst st)
 /-- The current run's length, as a unary word. -/
-def csLen (st : List Bool) : List Bool := fstBlock (sndBlock st)
+def csLen (st : List Bool) : List Bool := pairFst (pairSnd st)
 /-- The buffered sentence run, as its own digit bits. -/
-def csBuf (st : List Bool) : List Bool := sndBlock (sndBlock st)
+def csBuf (st : List Bool) : List Bool := pairSnd (pairSnd st)
 
 @[simp] lemma csMode_condSt (m c r b : List Bool) : csMode (condSt m c r b) = m := by
   simp [csMode, condSt]
@@ -336,9 +336,9 @@ def condStepOf (cli tw tok : List Bool) : List Bool :=
   condSt (csModeStep cli tw) (csCntStep cli tw) (csLenStep cli tw) (csBufStep cli tw tok)
 
 /-- The client state slot of a step argument `pair W (pair cli tok)`. -/
-def cvCli (v : List Bool) : List Bool := fstBlock (sndBlock v)
+def cvCli (v : List Bool) : List Bool := pairFst (pairSnd v)
 /-- The token-block slot of a step argument. -/
-def cvTok (v : List Bool) : List Bool := sndBlock (sndBlock v)
+def cvTok (v : List Bool) : List Bool := pairSnd (pairSnd v)
 
 /-- The incoming token, clamped to the automaton's test window and rendered in unary. -/
 def clampTok (v : List Bool) : List Bool :=
@@ -357,7 +357,7 @@ def condStepR (cli : List Bool) (cur : List ℕ) : List Bool :=
 lemma condStepW_eq (W cli : List Bool) (cur : List ℕ) (hcur : ∀ d ∈ cur, d < 4) :
     condStepW (pair W (pair cli (digitsToBits cur))) = condStepR cli cur := by
   rw [condStepW, condStepR, clampTok]
-  simp only [cvCli, cvTok, sndBlock_pair, fstBlock_pair,
+  simp only [cvCli, cvTok, pairSnd_pair, pairFst_pair,
     bitsToDigits_digitsToBits cur (fun d hd => lt_trans (hcur d hd) (by norm_num))]
 
 /-! ### Agreement with the paper-level automaton -/
@@ -382,14 +382,14 @@ lemma csTokens_condStepR (cli : List Bool) (cur : List ℕ) (hcur : ∀ d ∈ cu
   rw [csTokens, decodeBits, condStepR, condStepOf, csBuf_condSt, csBufStep, rpnCondBuf,
     hcond]
   by_cases h : rcLen (rpnCondStep (csPack cli) (digitVal cur)) = 0
-  · rw [if_pos h, if_pos h]
+  · rw [ite_eq_left h, ite_eq_left h]
     simp [bitsToDigits, undigitize]
   · have hterm : bitsToDigits (digitBits 4) = [4] := by
       have h4 := bitsToDigits_digitBits 4 (by norm_num) []
       rw [List.append_nil] at h4
       rw [h4]
       rfl
-    rw [if_neg h, if_neg h, hbd, List.append_assoc,
+    rw [ite_eq_right h, ite_eq_right h, hbd, List.append_assoc,
       bitsToDigits_append_digitsToBits bd hbd8,
       bitsToDigits_append_digitsToBits cur
         (fun d hd => lt_trans (hcur d hd) (by norm_num)),
@@ -402,8 +402,8 @@ lemma bufWF_condStepR (cli : List Bool) (cur : List ℕ) (hcur : ∀ d ∈ cur, 
   obtain ⟨bd, hbd, hbd8, hbdc⟩ := hwf
   rw [condStepR, condStepOf, csBuf_condSt, csBufStep]
   by_cases h : (csLenStep cli (List.replicate (min (digitVal cur) 20) true)).length = 0
-  · rw [if_pos h]; exact BlockWF.nil
-  · rw [if_neg h]
+  · rw [ite_eq_left h]; exact BlockWF.nil
+  · rw [ite_eq_right h]
     refine ⟨bd ++ (cur ++ [4]), ?_, ?_, ?_⟩
     · rw [digitsToBits_append, digitsToBits_append, hbd, List.append_assoc]
       rfl
@@ -460,8 +460,8 @@ state can reuse it. -/
 lemma condStepOf_mem_FP {C TW T : List Bool → List Bool}
     (hC : C ∈ FP) (hTW : TW ∈ FP) (hT : T ∈ FP) :
     (fun v => condStepOf (C v) (TW v) (T v)) ∈ FP := by
-  have hff : (fun v => fstBlock (C v)) ∈ FP := mem_FP_comp hC fstBlock_mem_FP
-  have hsf : (fun v => sndBlock (C v)) ∈ FP := mem_FP_comp hC sndBlock_mem_FP
+  have hff : (fun v => pairFst (C v)) ∈ FP := mem_FP_comp hC fstBlock_mem_FP
+  have hsf : (fun v => pairSnd (C v)) ∈ FP := mem_FP_comp hC sndBlock_mem_FP
   have hm : (fun v => csMode (C v)) ∈ FP := mem_FP_comp hff fstBlock_mem_FP
   have hc : (fun v => csCnt (C v)) ∈ FP := mem_FP_comp hff sndBlock_mem_FP
   have hr : (fun v => csLen (C v)) ∈ FP := mem_FP_comp hsf fstBlock_mem_FP
@@ -494,11 +494,11 @@ lemma condStepOf_length_le (cli tw tok : List Bool) :
     · simp
     · simp only [List.length_append, length_digitBits]
       omega
-  have H1 : 2 * (csMode cli).length + (csCnt cli).length ≤ (fstBlock cli).length :=
-    two_fstBlock_add_sndBlock_le (fstBlock cli)
-  have H2 : 2 * (csLen cli).length + (csBuf cli).length ≤ (sndBlock cli).length :=
-    two_fstBlock_add_sndBlock_le (sndBlock cli)
-  have H3 : 2 * (fstBlock cli).length + (sndBlock cli).length ≤ cli.length :=
+  have H1 : 2 * (csMode cli).length + (csCnt cli).length ≤ (pairFst cli).length :=
+    two_fstBlock_add_sndBlock_le (pairFst cli)
+  have H2 : 2 * (csLen cli).length + (csBuf cli).length ≤ (pairSnd cli).length :=
+    two_fstBlock_add_sndBlock_le (pairSnd cli)
+  have H3 : 2 * (pairFst cli).length + (pairSnd cli).length ≤ cli.length :=
     two_fstBlock_add_sndBlock_le cli
   rw [condStepOf, condSt, pair_length, pair_length, pair_length]
   omega
@@ -549,7 +549,7 @@ def condEmitOf (ε : ℚ) (blkW bufW tok : List Bool) : List Bool :=
     ++ dayBits tok ++ tokBits emitConstC
 
 /-- The parameter slot of a step argument: the trading day, in unary. -/
-def cvW (v : List Bool) : List Bool := fstBlock v
+def cvW (v : List Bool) : List Bool := pairFst v
 
 /-- The day the oracle is called at: the incoming token, clamped by the trading day.  The
 clamp is not optional — an unbounded day would name an unbounded block — and on the guarded
@@ -575,7 +575,7 @@ lemma condEmitW_eq (ε : ℚ) (B : List Bool → List Bool) (W cli : List Bool)
     condEmitW ε B (pair W (pair cli (digitsToBits cur)))
       = condEmitR ε B W.length cli cur := by
   rw [condEmitW, condEmitR, dayClamp]
-  simp only [cvCli, cvTok, cvW, sndBlock_pair, fstBlock_pair,
+  simp only [cvCli, cvTok, cvW, pairSnd_pair, pairFst_pair,
     bitsToDigits_digitsToBits cur (fun d hd => lt_trans (hcur d hd) (by norm_num))]
   rfl
 
@@ -844,12 +844,12 @@ lemma guardMarks_eq_zero_iff (n : ℕ) : ∀ (ts : List ℕ) (st : ℕ),
       · rintro h j hj hm
         have hA : ¬ (rcMode st = 2 ∧ n < t) := by
           by_contra hc
-          rw [if_pos hc] at h
+          rw [ite_eq_left hc] at h
           omega
         have hB : ∀ k < ts.length,
             rcMode ((ts.take k).foldl rpnCondStep (rpnCondStep st t)) = 2 →
               ts.getD k 0 ≤ n := by
-          rw [if_neg hA, Nat.zero_add] at h
+          rw [ite_eq_right hA, Nat.zero_add] at h
           exact ih.mp h
         cases j with
         | zero =>
@@ -866,7 +866,7 @@ lemma guardMarks_eq_zero_iff (n : ℕ) : ∀ (ts : List ℕ) (st : ℕ),
           have := h 0 (by simp) (by simpa using hm)
           simp only [List.getD_cons_zero] at this
           omega
-        rw [if_neg hA, Nat.zero_add]
+        rw [ite_eq_right hA, Nat.zero_add]
         refine ih.mpr ?_
         intro k hk hmk
         have := h (k + 1) (by simp; omega) (by rw [take_succ_foldl]; exact hmk)
@@ -884,16 +884,16 @@ lemma rpnConditionRun_congr_of_guard (n : ℕ) {emit₁ emit₂ : List ℕ → �
       rw [guardMarks] at hg
       have hA : ¬ (rcMode st = 2 ∧ n < t) := by
         by_contra hc
-        rw [if_pos hc] at hg
+        rw [ite_eq_left hc] at hg
         omega
       have hB : guardMarks n (rpnCondStep st t) ts = 0 := by
-        rw [if_neg hA, Nat.zero_add] at hg
+        rw [ite_eq_right hA, Nat.zero_add] at hg
         exact hg
       rw [rpnConditionRun, rpnConditionRun,
         rpnConditionRun_congr_of_guard n h ts (rpnCondStep st t) (rpnCondBuf st buf t) hB]
       by_cases hm : rcMode st = 2
-      · rw [if_pos hm, if_pos hm, h buf t (by omega)]
-      · rw [if_neg hm, if_neg hm]
+      · rw [ite_eq_left hm, ite_eq_left hm, h buf t (by omega)]
+      · rw [ite_eq_right hm, ite_eq_right hm]
 
 /-! ### The guard emitter -/
 
@@ -917,19 +917,19 @@ lemma guardEmitW_eq (W cli : List Bool) (cur : List ℕ) (hcur : ∀ d ∈ cur, 
   have hlen : (dayClampSucc (pair W (pair cli (digitsToBits cur)))).length
       = min (digitVal cur) (W.length + 1) := by
     rw [dayClampSucc, List.length_replicate]
-    simp only [cvTok, cvW, sndBlock_pair, fstBlock_pair, List.length_append,
+    simp only [cvTok, cvW, pairSnd_pair, pairFst_pair, List.length_append,
       List.length_cons, List.length_nil,
       bitsToDigits_digitsToBits cur (fun d hd => lt_trans (hcur d hd) (by norm_num))]
   rw [guardEmitW, guardEmitR, hlen]
-  simp only [cvCli, cvW, sndBlock_pair, fstBlock_pair]
+  simp only [cvCli, cvW, pairSnd_pair, pairFst_pair]
   by_cases hm : (csMode cli).length = 2
-  · rw [if_pos hm, if_pos hm]
+  · rw [ite_eq_left hm, ite_eq_left hm]
     by_cases h : digitVal cur ≤ W.length
-    · rw [if_pos h,
-        if_pos (by omega : min (digitVal cur) (W.length + 1) ≤ W.length)]
-    · rw [if_neg h,
-        if_neg (by omega : ¬ (min (digitVal cur) (W.length + 1) ≤ W.length))]
-  · rw [if_neg hm, if_neg hm]
+    · rw [ite_eq_left h,
+        ite_eq_left (by omega : min (digitVal cur) (W.length + 1) ≤ W.length)]
+    · rw [ite_eq_right h,
+        ite_eq_right (by omega : ¬ (min (digitVal cur) (W.length + 1) ≤ W.length))]
+  · rw [ite_eq_right hm, ite_eq_right hm]
 
 lemma guardEmitW_mem_FP : guardEmitW ∈ FP := by
   have hsucc : dayClampSucc ∈ FP :=
@@ -959,14 +959,14 @@ lemma guardOut_length (n : ℕ) : ∀ (rs : List (List ℕ)) (cli out : List Boo
         csPack_condStepR, List.map_cons, guardMarks, List.length_append, hmode]
       rw [guardEmitR]
       by_cases hm : (csMode cli).length = 2
-      · rw [if_pos hm]
+      · rw [ite_eq_left hm]
         by_cases hd : digitVal r ≤ n
-        · rw [if_pos hd, if_neg (by omega)]
+        · rw [ite_eq_left hd, ite_eq_right (by omega)]
           simp
-        · rw [if_neg hd, if_pos ⟨hm, by omega⟩]
+        · rw [ite_eq_right hd, ite_eq_left ⟨hm, by omega⟩]
           simp
           omega
-      · rw [if_neg hm, if_neg (by tauto)]
+      · rw [ite_eq_right hm, ite_eq_right (by tauto)]
         simp
 
 lemma guardOut_eq_nil_iff (n : ℕ) (rs : List (List ℕ)) :
@@ -1045,7 +1045,7 @@ lemma decodeBits_guardedOf {E : List Bool → List ℕ → List Bool}
       rw [← hmap]
       exact (guardOut_eq_nil_iff n _).mp hg
     rw [hg, selectHead_emptyFlag_nil, hpass, rpnGuardedConditionTokens,
-      if_pos ((guardMarks_eq_zero_iff n (undigitize ds) (rcPack 0 0 0)).mp hzero)]
+      ite_eq_left ((guardMarks_eq_zero_iff n (undigitize ds) (rcPack 0 0 0)).mp hzero)]
     exact congrArg Prod.snd
       (rpnConditionRun_congr_of_guard n hagree (undigitize ds) (rcPack 0 0 0) [] hzero)
   · obtain ⟨b, bs, hbs⟩ : ∃ b bs,
@@ -1058,7 +1058,7 @@ lemma decodeBits_guardedOf {E : List Bool → List ℕ → List Bool}
       intro hc
       exact hg ((guardOut_eq_nil_iff n _).mpr hc)
     rw [hbs, selectHead_emptyFlag_cons, decodeBits_nil, rpnGuardedConditionTokens,
-      if_neg (fun hc => hne
+      ite_eq_right (fun hc => hne
         ((guardMarks_eq_zero_iff n (undigitize ds) (rcPack 0 0 0)).mpr hc))]
 
 lemma decodeBits_guardedPass (ε : ℚ) (B : List Bool → List Bool) (n : ℕ)
@@ -1097,7 +1097,7 @@ lemma clampTok_pair (W cli : List Bool) (cur : List ℕ) (hcur : ∀ d ∈ cur, 
     clampTok (pair W (pair cli (digitsToBits cur)))
       = List.replicate (min (digitVal cur) 20) true := by
   rw [clampTok]
-  simp only [cvTok, sndBlock_pair,
+  simp only [cvTok, pairSnd_pair,
     bitsToDigits_digitsToBits cur (fun d hd => lt_trans (hcur d hd) (by norm_num))]
 
 /-- The mode the step lands in, as the paper automaton sees it. -/
@@ -1127,7 +1127,7 @@ def countEmitR (cli : List Bool) (cur : List ℕ) : List Bool :=
 lemma countEmitW_eq (W cli : List Bool) (cur : List ℕ) (hcur : ∀ d ∈ cur, d < 4) :
     countEmitW (pair W (pair cli (digitsToBits cur))) = countEmitR cli cur := by
   rw [countEmitW, countEmitR, clampTok_pair W cli cur hcur]
-  simp only [cvCli, sndBlock_pair, fstBlock_pair]
+  simp only [cvCli, pairSnd_pair, pairFst_pair]
 
 lemma countEmitW_mem_FP : countEmitW ∈ FP :=
   ifEqLen_mem_FP csModeStep_cvCli_mem_FP 0
@@ -1154,15 +1154,15 @@ lemma countOut_length : ∀ (rs : List (List ℕ)) (cli out : List Bool),
         csPack_condStepR, List.map_cons, rpnTradeRuns, List.length_append,
         countEmitR, countEmitOf, ← length_csModeStep cli r, hmode]
       by_cases hz : (csModeStep cli (List.replicate (min (digitVal r) 20) true)).length = 0
-      · rw [if_pos hz]
+      · rw [ite_eq_left hz]
         by_cases h4 : (csMode cli).length = 4
-        · rw [if_pos h4, if_pos (by tauto)]; simp; omega
+        · rw [ite_eq_left h4, ite_eq_left (by tauto)]; simp; omega
         · by_cases h7 : (csMode cli).length = 7
-          · rw [if_neg h4, if_pos h7, if_pos (by tauto)]; simp; omega
+          · rw [ite_eq_right h4, ite_eq_left h7, ite_eq_left (by tauto)]; simp; omega
           · by_cases h9 : (csMode cli).length = 9
-            · rw [if_neg h4, if_neg h7, if_pos h9, if_pos (by tauto)]; simp; omega
-            · rw [if_neg h4, if_neg h7, if_neg h9, if_neg (by tauto)]; simp
-      · rw [if_neg hz, if_neg (by tauto)]; simp
+            · rw [ite_eq_right h4, ite_eq_right h7, ite_eq_left h9, ite_eq_left (by tauto)]; simp; omega
+            · rw [ite_eq_right h4, ite_eq_right h7, ite_eq_right h9, ite_eq_right (by tauto)]; simp
+      · rw [ite_eq_right hz, ite_eq_right (by tauto)]; simp
 
 /-- **The count pass is polynomial time.** -/
 lemma countPass_mem_FP {Sf : List Bool → List Bool} (hSf : Sf ∈ FP) :
@@ -1217,8 +1217,8 @@ lemma uPair_mem_FP {A B : List Bool → List Bool} (hA : A ∈ FP) (hB : B ∈ F
     funext z
     rw [uPair]
     by_cases hc : (A z).length < (B z).length
-    · rw [if_pos hc, if_neg (by omega)]
-    · rw [if_neg hc, if_pos (by omega)]
+    · rw [ite_eq_left hc, ite_eq_right (by omega)]
+    · rw [ite_eq_right hc, ite_eq_left (by omega)]
   rwa [heq] at h
 
 /-- The budget denominator `(n + 1)(n + 2)·count`, as a unary numeral. -/
@@ -1276,9 +1276,9 @@ lemma blockWF_invBudgetCodeW (nW cntW : List Bool) : BlockWF (invBudgetCodeW nW 
   rw [budgetCodeW, frameBudgetCode]
   cases cntW with
   | nil =>
-      rw [selectHead_emptyFlag_nil, decodeBits_tokBits, if_pos (by simp)]
+      rw [selectHead_emptyFlag_nil, decodeBits_tokBits, ite_eq_left (by simp)]
   | cons b bs =>
-      rw [selectHead_emptyFlag_cons, decodeBits_unaryBlock, if_neg (by simp),
+      rw [selectHead_emptyFlag_cons, decodeBits_unaryBlock, ite_eq_right (by simp),
         length_uPair, length_denW, length_uw]
 
 @[simp] lemma decodeBits_invBudgetCodeW (nW cntW : List Bool) :
@@ -1286,9 +1286,9 @@ lemma blockWF_invBudgetCodeW (nW cntW : List Bool) : BlockWF (invBudgetCodeW nW 
   rw [invBudgetCodeW, frameInverseBudgetCode]
   cases cntW with
   | nil =>
-      rw [selectHead_emptyFlag_nil, decodeBits_tokBits, if_pos (by simp)]
+      rw [selectHead_emptyFlag_nil, decodeBits_tokBits, ite_eq_left (by simp)]
   | cons b bs =>
-      rw [selectHead_emptyFlag_cons, decodeBits_unaryBlock, if_neg (by simp),
+      rw [selectHead_emptyFlag_cons, decodeBits_unaryBlock, ite_eq_right (by simp),
         length_uPair, List.length_append, length_denW, length_uw]
       ring_nf
 
@@ -1364,7 +1364,7 @@ lemma length_depthNextW (cs dW : List Bool) (cur : List ℕ) :
   rw [depthNextW, rpnDepthNext, parserDepthNext, hm, hstep]
   simp only [apply_ite List.length, List.length_tail, List.length_append,
     List.length_cons, List.length_nil, List.length_replicate, e2, e3, e4, e8,
-    if_true, Nat.pred_eq_sub_one]
+    ite_true, Nat.pred_eq_sub_one]
 
 /-- The "inside a trade sentence" test: the three exit modes, as a nest of single length
 comparisons.  The frame emitter of `Conditioning/TransductionFrame.lean` branches on it
@@ -1406,8 +1406,8 @@ lemma depthNextW_length_le (cs tw dW : List Bool) :
 lemma depthNextW_mem_FP {C TW D : List Bool → List Bool}
     (hC : C ∈ FP) (hTW : TW ∈ FP) (hD : D ∈ FP) :
     (fun v => depthNextW (C v) (TW v) (D v)) ∈ FP := by
-  have hff : (fun v => fstBlock (C v)) ∈ FP := mem_FP_comp hC fstBlock_mem_FP
-  have hsf : (fun v => sndBlock (C v)) ∈ FP := mem_FP_comp hC sndBlock_mem_FP
+  have hff : (fun v => pairFst (C v)) ∈ FP := mem_FP_comp hC fstBlock_mem_FP
+  have hsf : (fun v => pairSnd (C v)) ∈ FP := mem_FP_comp hC sndBlock_mem_FP
   have hm : (fun v => csMode (C v)) ∈ FP := mem_FP_comp hff fstBlock_mem_FP
   have hc : (fun v => csCnt (C v)) ∈ FP := mem_FP_comp hff sndBlock_mem_FP
   have hstep : (fun v => csModeStep (C v) (TW v)) ∈ FP := rcModeW_mem_FP hm hc hTW
@@ -1425,9 +1425,9 @@ lemma depthNextW_mem_FP {C TW D : List Bool → List Bool}
 def acceptSt (dW cs : List Bool) : List Bool := pair dW cs
 
 /-- The parser depth, as a unary word. -/
-def asDepth (st : List Bool) : List Bool := fstBlock st
+def asDepth (st : List Bool) : List Bool := pairFst st
 /-- The conditioning automaton's own client state. -/
-def asCond (st : List Bool) : List Bool := sndBlock st
+def asCond (st : List Bool) : List Bool := pairSnd st
 
 @[simp] lemma asDepth_acceptSt (d c : List Bool) : asDepth (acceptSt d c) = d := by
   simp [asDepth, acceptSt]
@@ -1450,7 +1450,7 @@ def acceptStepR (cli : List Bool) (cur : List ℕ) : List Bool :=
 lemma acceptStepW_eq (W cli : List Bool) (cur : List ℕ) (hcur : ∀ d ∈ cur, d < 4) :
     acceptStepW (pair W (pair cli (digitsToBits cur))) = acceptStepR cli cur := by
   rw [acceptStepW, acceptStepR, clampTok_pair W cli cur hcur]
-  simp only [cvCli, cvTok, sndBlock_pair, fstBlock_pair]
+  simp only [cvCli, cvTok, pairSnd_pair, pairFst_pair]
 
 lemma acceptStepW_mem_FP : acceptStepW ∈ FP := by
   have hcond : (fun v => asCond (cvCli v)) ∈ FP :=

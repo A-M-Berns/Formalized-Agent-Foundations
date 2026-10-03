@@ -55,7 +55,7 @@ noncomputable def pdRepresentatives : Representatives.{0, 0, 0} Two PDUniverse :
   (Book.const (N := Two) (𝒜 := PDUniverse) Unit).toRepresentatives
     (μ := Measure.dirac ()) (fun _ _ => trivial)
 
-lemma pdRepresentatives_play (ω : Unit) :
+lemma pdRepresentatives_play (ω : pdRepresentatives.Ω) :
     pdRepresentatives.play prisonersDilemma ω = fun _ => PD.defect :=
   eventually_top.1 (prisonersDilemma_play _ ⊤ ((Book.const Unit).satisfiesA1 ⊤)) ω
 
@@ -127,7 +127,7 @@ noncomputable def demandRandomBook : Book Two DUniverse Bool :=
 noncomputable def demandRandomRepresentatives : Representatives.{0, 0, 0} Two DUniverse :=
   demandRandomBook.toRepresentatives (μ := coin) (fun _ _ => trivial)
 
-lemma demandRandom_play (ω : Bool) :
+lemma demandRandom_play (ω : demandRandomRepresentatives.Ω) :
     demandRandomRepresentatives.play demandGame ω = demandPages ω :=
   Book.prescribedRandom_play _ demandPages_mem demandGame demandGame.reduce_eq ω
 
@@ -135,7 +135,7 @@ lemma demandRandom_play (ω : Bool) :
 lemma demandRandom_play_ne :
     demandRandomRepresentatives.play demandGame true ≠
       demandRandomRepresentatives.play demandGame false := by
-  rw [demandRandom_play, demandRandom_play]
+  erw [demandRandom_play, demandRandom_play]
   intro h
   have := congrFun h Two.two
   simp [demandPages, Two.pair] at this
@@ -212,7 +212,7 @@ representatives on the one-point space. -/
 noncomputable def demandRepresentatives : Representatives.{0, 0, 0} Two DUniverse :=
   demandBook.toRepresentatives (μ := Measure.dirac ()) (fun _ _ => trivial)
 
-lemma demandRepresentatives_play (ω : Unit) :
+lemma demandRepresentatives_play (ω : demandRepresentatives.Ω) :
     demandRepresentatives.play demandGame ω = Two.pair DAct.DM DAct.DM :=
   Book.prescribed_play _ demandGame_pair_DM_mem Unit demandGame demandGame.reduce_eq ω
 
@@ -248,7 +248,11 @@ lemma pdCooperateMixed_ne_defect (i : Two) (ω : Unit) :
       (pdRepresentatives.toPlay.mem prisonersDilemma ω i) := by
   intro h
   have := congrArg (fun p => p.val ⟨PD.cooperate, Finset.mem_univ _⟩) h
-  simp [pdCooperateMixed, Game.pureMixed_val, pdRepresentatives_play] at this
+  simp only [Game.pureMixed_val] at this
+  erw [pdRepresentatives_play] at this
+  simp only [pdCooperateMixed] at this
+  erw [Game.pureMixed_val] at this
+  simp at this
 
 /-- **Participation independence is not constant-true**: in the Prisoner's Dilemma, an
 instruction that punishes non-participation with `Cooperate` is not participation
@@ -320,7 +324,7 @@ lemma demandGame_algorithm2_not_participationIndependent :
   refine not_participationIndependent_algorithm2 demandRandomRepresentatives _ _ Two.one
     (j := Two.two) (by decide) ⟨true, ?_⟩
   have hplay : demandRandomRepresentatives.play demandGame true Two.one = DAct.RM := by
-    rw [demandRandom_play]; rfl
+    erw [demandRandom_play]; rfl
   intro h
   exact demandGame_minimax_two_one_ne_RM (by rw [h]; congr 1)
 

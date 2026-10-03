@@ -129,9 +129,9 @@ lemma BigDigits.ofBase16Digits {L : ℕ → List ℕ} {cl cd : Code}
     simp only [Nat.unpair_pair, ifzSelFn]
     rw [dig4_ofDigits_sixteen (hmem _)]
     by_cases hz : z.unpair.2 % 2 = 0
-    · rw [if_pos hz, hz, pow_zero, Nat.div_one]
+    · rw [ite_eq_left hz, hz, pow_zero, Nat.div_one]
     · have hz1 : z.unpair.2 % 2 = 1 := by omega
-      rw [if_neg hz, hz1, pow_one]
+      rw [ite_eq_right hz, hz1, pow_one]
       exact (Nat.mod_eq_of_lt (by have := hlt z.unpair.1 (z.unpair.2 / 2); omega)).symm
   obtain ⟨cm, hcm⟩ := mulc_polyFueled 2
   obtain ⟨clen, hclen⟩ := BigDigits.len_of_digits hdigit (hcm.comp hlen) (fun n => by
@@ -166,10 +166,10 @@ lemma BigDigits.ofBase16PolySegStream {L : ℕ → List ℕ} (h : PolySegStream 
       simp only [Nat.unpair_pair, ifzSelFn]
       have hlz : (L z.unpair.1).length = lenFn z.unpair.1 := hslen _
       rcases lt_or_ge z.unpair.2 (lenFn z.unpair.1) with hj | hj
-      · rw [if_neg (by omega)]
+      · rw [ite_eq_right (by omega)]
         have hg := hget z.unpair.1 z.unpair.2 hj
         rwa [Nat.pair_unpair] at hg
-      · rw [if_pos (by omega)]
+      · rw [ite_eq_left (by omega)]
         exact (List.getD_eq_default _ _ (by omega)).symm)
   have hbound : ∀ n j, (L n).getD j 0 < 16 := by
     intro n j
@@ -269,10 +269,10 @@ lemma BigDigits.ofBase64Digits {L : ℕ → List ℕ} {cl cd : Code}
     rw [dig4_ofDigits_sixtyFour (hmem _)]
     have hr : z.unpair.2 % 3 = 0 ∨ z.unpair.2 % 3 = 1 ∨ z.unpair.2 % 3 = 2 := by omega
     rcases hr with hr | hr | hr
-    · rw [if_pos hr, hr, pow_zero, Nat.div_one]
-    · rw [if_neg (by omega : ¬ z.unpair.2 % 3 = 0), hr]
+    · rw [ite_eq_left hr, hr, pow_zero, Nat.div_one]
+    · rw [ite_eq_right (by omega : ¬ z.unpair.2 % 3 = 0), hr]
       norm_num
-    · rw [if_neg (by omega : ¬ z.unpair.2 % 3 = 0), hr]
+    · rw [ite_eq_right (by omega : ¬ z.unpair.2 % 3 = 0), hr]
       norm_num
   obtain ⟨cm, hcm⟩ := mulc_polyFueled 3
   obtain ⟨clen, hclen⟩ := BigDigits.len_of_digits hdigit (hcm.comp hlen) (fun n => by
@@ -400,11 +400,11 @@ lemma BigDigits.ofTokenListNat {L : ℕ → List ℕ} (h : PolySegStream L)
     · have htz : tokenFn z = (L z.unpair.1).getD z.unpair.2 0 := by
         have hg := hget z.unpair.1 z.unpair.2 hj
         rwa [Nat.pair_unpair] at hg
-      rw [if_neg (by omega), htz,
+      rw [ite_eq_right (by omega), htz,
         getD_append_of_lt (by omega : z.unpair.2 < (L z.unpair.1).length)]
-    · rw [if_pos (by omega), if_pos (by omega), hj, ← hlz,
+    · rw [ite_eq_left (by omega), ite_eq_left (by omega), hj, ← hlz,
         getD_append_singleton_length]
-    · rw [if_pos (by omega), if_neg (by omega),
+    · rw [ite_eq_left (by omega), ite_eq_right (by omega),
         List.getD_eq_default _ _ (by
           simp only [List.length_append, List.length_singleton]; omega)])
   have hbound : ∀ n j, (L n ++ [63]).getD j 0 < 64 := by
@@ -815,10 +815,10 @@ lemma getD_revTags (n : ℕ) : ∀ j,
       match j with
       | 0 =>
           rw [List.getD_cons_zero]
-          unfold nestDig; rw [if_neg (by omega), if_pos (by omega)]
+          unfold nestDig; rw [ite_eq_right (by omega), ite_eq_left (by omega)]
       | (k + 1) =>
           rw [List.getD_eq_default _ _ (by simp)]
-          unfold nestDig; rw [if_pos (by omega)]
+          unfold nestDig; rw [ite_eq_left (by omega)]
   | succ n ih =>
       intro j
       have hcons : (List.replicate (n + 1) [5, 1]).flatten ++ [1]
@@ -829,11 +829,11 @@ lemma getD_revTags (n : ℕ) : ∀ j,
       | 0 =>
           rw [List.getD_cons_zero]
           unfold nestDig
-          rw [if_neg (by omega), if_neg (by omega), if_pos (by decide)]
+          rw [ite_eq_right (by omega), ite_eq_right (by omega), ite_eq_left (by decide)]
       | 1 =>
           rw [List.getD_cons_succ, List.getD_cons_zero]
           unfold nestDig
-          rw [if_neg (by omega), if_neg (by omega), if_neg (by decide)]
+          rw [ite_eq_right (by omega), ite_eq_right (by omega), ite_eq_right (by decide)]
       | (k + 2) =>
           rw [List.getD_cons_succ, List.getD_cons_succ, ih k]
           unfold nestDig
@@ -879,11 +879,11 @@ lemma bigDigits_sourceNat_nest : BigDigits (fun n => (nest n).sourceNat) := by
       (((PolyFueled.const 0).pair hB).pair hsel1)).of_eq (fun z => ?_)⟩
     simp only [Nat.unpair_pair, ifzSelFn, nestDig]
     by_cases h1 : 2 * z.unpair.1 < z.unpair.2
-    · rw [if_pos (by omega : 2 * z.unpair.1 + 1 - z.unpair.2 = 0), if_pos h1]
-    · rw [if_neg (by omega : ¬ (2 * z.unpair.1 + 1 - z.unpair.2 = 0)), if_neg h1]
+    · rw [ite_eq_left (by omega : 2 * z.unpair.1 + 1 - z.unpair.2 = 0), ite_eq_left h1]
+    · rw [ite_eq_right (by omega : ¬ (2 * z.unpair.1 + 1 - z.unpair.2 = 0)), ite_eq_right h1]
       by_cases h2 : z.unpair.2 = 2 * z.unpair.1
-      · rw [if_pos (by omega : 2 * z.unpair.1 - z.unpair.2 = 0), if_pos h2]
-      · rw [if_neg (by omega : ¬ (2 * z.unpair.1 - z.unpair.2 = 0)), if_neg h2]
+      · rw [ite_eq_left (by omega : 2 * z.unpair.1 - z.unpair.2 = 0), ite_eq_left h2]
+      · rw [ite_eq_right (by omega : ¬ (2 * z.unpair.1 - z.unpair.2 = 0)), ite_eq_right h2]
   have hdig : PolyFueled _ (fun z : ℕ =>
       ((sourceTags (nest z.unpair.1)).reverse).getD z.unpair.2 0) :=
     hA.of_eq (fun z => (getD_reverse_sourceTags_nest _ _).symm)

@@ -848,11 +848,12 @@ private lemma condInteractionInfo_jointOn_le (F G K : Set (PPlus I)) :
   haveI : ShannonInformation.FiniteEntropyOf (Am.lat₂.jointOn G) Am.P₀ :=
     Am.lat₂.L.finiteEntropy_jointOn G
   haveI : IsProbabilityMeasure (α := Am.lat₂.Λ) Am.P₀ := Am.probP₀
+  haveI : IsZeroOrProbabilityMeasure (α := Am.lat₂.Λ) Am.P₀ := ⟨Or.inr Am.probP₀.measure_univ⟩
   have h : (0 : ℝ) ≤ I[Am.lat₂.jointOn F : Am.lat₂.jointOn G | ⟨X, Am.lat₂.jointOn K⟩ ;
       Am.P₀] :=
     ShannonInformation.condMutualInfo_nonneg
       (Am.lat₂.L.measurable_jointOn F) (Am.lat₂.L.measurable_jointOn G)
-  rw [condInteractionInfo]
+  unfold condInteractionInfo
   linarith
 
 end Induction
@@ -1017,6 +1018,7 @@ private lemma condEntropy_jointAbove_le_reconScore_term {A B : PPlus I} (hBA : B
     H[Am.lat₁.jointAbove A.toFinset | Am.lat₁.pullbackJoint B.toFinset ; Am.P₀]
       ≤ Am.lat₁.reconScore B.toFinset := by
   haveI : IsProbabilityMeasure (α := Am.lat₁.Λ) Am.P₀ := Am.probP₀
+  haveI : IsZeroOrProbabilityMeasure (α := Am.lat₁.Λ) Am.P₀ := ⟨Or.inr Am.probP₀.measure_univ⟩
   exact condEntropy_le_of_aeFunctionOf
     (hfX := Am.finiteEntropyOf' (Am.lat₁.L.measurable_jointOn (above B.toFinset)))
     (hfV := Am.finiteEntropyOf' (Am.lat₁.L.measurable_jointOn (above A.toFinset)))
@@ -1162,7 +1164,7 @@ private lemma card_famFinset_kSubsets (A : PPlus I) {k : ℕ} (hk : 1 ≤ k) :
   · intro D hD
     rw [Finset.mem_powersetCard] at hD
     have hne : D.Nonempty := Finset.card_pos.mp (by omega)
-    exact ⟨⟨D, hne⟩, by rw [mem_famFinset]; exact ⟨hD.1, hD.2⟩, rfl⟩
+    exact ⟨⟨D, hne⟩, by erw [mem_famFinset]; exact ⟨hD.1, hD.2⟩, rfl⟩
 
 /-- **Corollary 5.10**, equation (5.25): with `F` the `k`-element subsets of `A` and
 `ϱ_Y(C) ≤ α` for every `C` of cardinality `k`, the leaf sum of (5.21) is at most

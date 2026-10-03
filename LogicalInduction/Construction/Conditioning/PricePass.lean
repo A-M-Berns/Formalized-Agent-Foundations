@@ -170,7 +170,7 @@ lemma rpnCondStep_clamp (st t : ℕ) :
       show ((20 : ℕ) = 0) = False by simp, show ((20 : ℕ) = 1) = False by simp,
       show ((20 : ℕ) = 2 ∨ (20 : ℕ) = 3 ∨ (20 : ℕ) = 4) = False by simp,
       show ((20 : ℕ) = 6) = False by simp, show ((20 : ℕ) = 7) = False by simp,
-      show ((20 : ℕ) = 19) = False by simp, if_false]
+      show ((20 : ℕ) = 19) = False by simp, ite_false]
 
 lemma rcMode_step_le (st t : ℕ) : rcMode (rpnCondStep st t) ≤ 9 := by
   rw [rpnCondStep]
@@ -208,7 +208,7 @@ lemma foldl_rpnCondStep_stay {a s : ℕ} {exit : ℕ → ℕ}
         rcPack s (c + 1) (r + w.length)
   | [], _, c, r => by simp
   | x :: w, hw, c, r => by
-      rw [List.foldl_cons, hstr, if_neg (hw x (List.mem_cons_self ..)),
+      rw [List.foldl_cons, hstr, ite_eq_right (hw x (List.mem_cons_self ..)),
         foldl_rpnCondStep_stay hstr w
           (fun y hy => hw y (List.mem_cons_of_mem _ hy)) c (r + 1),
         show r + 1 + w.length = r + (x :: w).length by
@@ -246,7 +246,7 @@ lemma foldl_rpnCondStep_run {a b s : ℕ} {exit : ℕ → ℕ}
       | t :: ts' =>
           rw [parseRpn_cons] at h
           by_cases h0 : t = 0
-          · rw [if_pos h0] at h
+          · rw [ite_eq_left h0] at h
             obtain ⟨-, rfl⟩ := Prod.mk.injEq .. ▸ Option.some.inj h
             subst h0
             refine ⟨[0], rfl, fun c r => ?_, fun c r k hk => ?_⟩
@@ -257,9 +257,9 @@ lemma foldl_rpnCondStep_run {a b s : ℕ} {exit : ℕ → ℕ}
               subst hk0
               simp only [List.take_zero, List.foldl_nil, rcMode_pack]
               exact Or.inl trivial
-          · rw [if_neg h0] at h
+          · rw [ite_eq_right h0] at h
             by_cases h1 : t = 1
-            · rw [if_pos h1] at h
+            · rw [ite_eq_left h1] at h
               match ts' with
               | [] => simp at h
               | c₀ :: ts'' =>
@@ -272,17 +272,17 @@ lemma foldl_rpnCondStep_run {a b s : ℕ} {exit : ℕ → ℕ}
                       subst hspan
                       refine ⟨1 :: 0 :: (w ++ [19]), by simp, fun c r => ?_,
                         fun c r k hk => ?_⟩
-                      · rw [List.foldl_cons, List.foldl_cons, hrun, if_pos rfl,
-                          hesc, if_pos rfl, List.foldl_append,
+                      · rw [List.foldl_cons, List.foldl_cons, hrun, ite_eq_left rfl,
+                          hesc, ite_eq_left rfl, List.foldl_append,
                           foldl_rpnCondStep_stay hstr w hw c (r + 2),
-                          List.foldl_cons, List.foldl_nil, hstr, if_pos rfl]
+                          List.foldl_cons, List.foldl_nil, hstr, ite_eq_left rfl]
                         simp only [List.length_cons, List.length_append,
                           List.length_nil]
                         by_cases hc : c = 0
-                        · rw [if_pos hc, if_pos hc]
+                        · rw [ite_eq_left hc, ite_eq_left hc]
                           congr 1
                           omega
-                        · rw [if_neg hc, if_neg hc]
+                        · rw [ite_eq_right hc, ite_eq_right hc]
                           congr 1
                           omega
                       · simp only [List.length_cons, List.length_append,
@@ -296,7 +296,7 @@ lemma foldl_rpnCondStep_run {a b s : ℕ} {exit : ℕ → ℕ}
                             show rcMode (List.foldl rpnCondStep
                               (rcPack a (c + 1) r) [1]) = b
                             rw [List.foldl_cons, List.foldl_nil, hrun,
-                              if_pos rfl, rcMode_pack]
+                              ite_eq_left rfl, rcMode_pack]
                         | (k + 2), hk2 =>
                             refine Or.inr (Or.inr ?_)
                             have hkw : k ≤ w.length := by omega
@@ -307,7 +307,7 @@ lemma foldl_rpnCondStep_run {a b s : ℕ} {exit : ℕ → ℕ}
                               rw [Nat.sub_eq_zero_of_le hkw, List.take_zero,
                                 List.append_nil]
                             rw [htk, List.foldl_cons, List.foldl_cons, hrun,
-                              if_pos rfl, hesc, if_pos rfl,
+                              ite_eq_left rfl, hesc, ite_eq_left rfl,
                               foldl_rpnCondStep_stay hstr (w.take k)
                                 (fun y hy => hw y (List.mem_of_mem_take hy)) c
                                 (r + 2), rcMode_pack]
@@ -330,7 +330,7 @@ lemma foldl_rpnCondStep_run {a b s : ℕ} {exit : ℕ → ℕ}
                           refine ⟨[1, c₀ + 1], rfl, fun c r => ?_,
                             fun c r k hk => ?_⟩
                           · rw [List.foldl_cons, List.foldl_cons, List.foldl_nil,
-                              hrun, if_pos rfl, hesc, if_neg (by omega)]
+                              hrun, ite_eq_left rfl, hesc, ite_eq_right (by omega)]
                             by_cases hc : c = 0 <;> simp [hc]
                           · simp only [List.length_cons, List.length_nil] at hk
                             match k, hk with
@@ -343,8 +343,8 @@ lemma foldl_rpnCondStep_run {a b s : ℕ} {exit : ℕ → ℕ}
                                 show rcMode (List.foldl rpnCondStep
                                   (rcPack a (c + 1) r) [1]) = b
                                 rw [List.foldl_cons, List.foldl_nil, hrun,
-                                  if_pos rfl, rcMode_pack]
-            · rw [if_neg h1] at h
+                                  ite_eq_left rfl, rcMode_pack]
+            · rw [ite_eq_right h1] at h
               have hbin : ∀ (mk : Sentence → Sentence → Sentence),
                   ((parseRpn fuel ts').bind fun p =>
                     (parseRpn fuel p.2).bind fun q =>
@@ -380,18 +380,18 @@ lemma foldl_rpnCondStep_run {a b s : ℕ} {exit : ℕ → ℕ}
                           rw [hts', hp2, hrest]; simp, fun c r => ?_,
                           fun c r k hk => ?_⟩
                         · rw [List.cons_append, List.foldl_cons, hrun,
-                            if_neg h1, if_pos ht, List.foldl_append]
+                            ite_eq_right h1, ite_eq_left ht, List.foldl_append]
                           have hb1 := hblk₁ (c + 1) (r + 1)
-                          rw [if_neg (by omega)] at hb1
+                          rw [ite_eq_right (by omega)] at hb1
                           rw [show rcPack a (c + 1 + 1) (r + 1) =
                             rcPack a ((c + 1) + 1) (r + 1) from rfl, hb1]
                           rw [hblk₂ c (r + 1 + blk₁.length)]
                           simp only [List.length_append, List.length_cons]
                           by_cases hc : c = 0
-                          · rw [if_pos hc, if_pos hc]
+                          · rw [ite_eq_left hc, ite_eq_left hc]
                             congr 1
                             omega
-                          · rw [if_neg hc, if_neg hc]
+                          · rw [ite_eq_right hc, ite_eq_right hc]
                             congr 1
                             omega
                         · simp only [List.length_append, List.length_cons] at hk
@@ -401,14 +401,14 @@ lemma foldl_rpnCondStep_run {a b s : ℕ} {exit : ℕ → ℕ}
                             exact Or.inl trivial
                           · rw [List.cons_append,
                               show k = (k - 1) + 1 by omega, List.take_succ_cons,
-                              List.foldl_cons, hrun, if_neg h1, if_pos ht,
+                              List.foldl_cons, hrun, ite_eq_right h1, ite_eq_left ht,
                               List.take_append, List.foldl_append]
                             by_cases hj : k - 1 < blk₁.length
                             · rw [Nat.sub_eq_zero_of_le (le_of_lt hj),
                                 List.take_zero, List.foldl_nil]
                               exact hinv₁ (c + 1) (r + 1) (k - 1) hj
                             · have hb1 := hblk₁ (c + 1) (r + 1)
-                              rw [if_neg (by omega)] at hb1
+                              rw [ite_eq_right (by omega)] at hb1
                               rw [List.take_of_length_le (by omega),
                                 show rcPack a (c + 1 + 1) (r + 1) =
                                   rcPack a ((c + 1) + 1) (r + 1) from rfl, hb1]
@@ -419,21 +419,21 @@ lemma foldl_rpnCondStep_run {a b s : ℕ} {exit : ℕ → ℕ}
                               · exact hinv₂ c (r + 1 + blk₁.length)
                                   (k - 1 - blk₁.length) (by omega)
               by_cases h2 : t = 2
-              · rw [if_pos h2] at h
+              · rw [ite_eq_left h2] at h
                 exact hbin _ h (Or.inl h2)
-              · rw [if_neg h2] at h
+              · rw [ite_eq_right h2] at h
                 by_cases h3 : t = 3
-                · rw [if_pos h3] at h
+                · rw [ite_eq_left h3] at h
                   exact hbin _ h (Or.inr (Or.inl h3))
-                · rw [if_neg h3] at h
+                · rw [ite_eq_right h3] at h
                   by_cases h4 : t = 4
-                  · rw [if_pos h4] at h
+                  · rw [ite_eq_left h4] at h
                     exact hbin _ h (Or.inr (Or.inr h4))
-                  · rw [if_neg h4] at h
+                  · rw [ite_eq_right h4] at h
                     obtain ⟨-, rfl⟩ := Prod.mk.injEq .. ▸ Option.some.inj h
                     refine ⟨[t], rfl, fun c r => ?_, fun c r k hk => ?_⟩
-                    · rw [List.foldl_cons, List.foldl_nil, hrun, if_neg h1,
-                        if_neg (by omega)]
+                    · rw [List.foldl_cons, List.foldl_nil, hrun, ite_eq_right h1,
+                        ite_eq_right (by omega)]
                       by_cases hc : c = 0 <;> simp [hc]
                     · simp only [List.length_cons, List.length_nil] at hk
                       have hk0 : k = 0 := by omega
@@ -650,7 +650,7 @@ lemma parseRpn_and_block {b₁ b₂ : List ℕ} {φ ψ : Sentence}
     (h₂ : parseRpn b₂.length b₂ = some (ψ, [])) :
     parseRpn (3 :: b₁ ++ b₂).length (3 :: b₁ ++ b₂) = some (φ ⋏ ψ, []) := by
   rw [List.cons_append, List.length_cons, parseRpn_cons,
-    if_neg (by norm_num), if_neg (by norm_num), if_neg (by norm_num), if_pos rfl]
+    ite_eq_right (by norm_num), ite_eq_right (by norm_num), ite_eq_right (by norm_num), ite_eq_left rfl]
   rw [parseRpn_block_head h₁ b₂ (by simp)]
   simp only [Option.bind_some]
   rw [parseRpn_mono b₂ (by simp) h₂]
@@ -1045,11 +1045,11 @@ lemma parse_of_runWalk {a b s : ℕ} {exit : ℕ → ℕ}
       | [] =>
           rw [List.foldl_nil] at h1
           by_cases hc : c = 0
-          · rw [if_pos hc] at h1
+          · rw [ite_eq_left hc] at h1
             have hcnt := congrArg rcCnt h1
             rw [rcCnt_pack, hexitCnt] at hcnt
             omega
-          · rw [if_neg hc] at h1
+          · rw [ite_eq_right hc] at h1
             simp only [rcPack, Nat.pair_eq_pair] at h1
             omega
       | t :: u' => exact absurd hu (by simp)
@@ -1059,11 +1059,11 @@ lemma parse_of_runWalk {a b s : ℕ} {exit : ℕ → ℕ}
       | [] =>
           rw [List.foldl_nil] at h1
           by_cases hc : c = 0
-          · rw [if_pos hc] at h1
+          · rw [ite_eq_left hc] at h1
             have hcnt := congrArg rcCnt h1
             rw [rcCnt_pack, hexitCnt] at hcnt
             omega
-          · rw [if_neg hc] at h1
+          · rw [ite_eq_right hc] at h1
             simp only [rcPack, Nat.pair_eq_pair] at h1
             omega
       | t :: u' =>
@@ -1076,13 +1076,13 @@ lemma parse_of_runWalk {a b s : ℕ} {exit : ℕ → ℕ}
             match u' with
             | [] =>
                 rw [List.foldl_cons, List.foldl_nil, hrun,
-                  if_pos rfl] at h1
+                  ite_eq_left rfl] at h1
                 by_cases hc : c = 0
-                · rw [if_pos hc] at h1
+                · rw [ite_eq_left hc] at h1
                   have hcnt := congrArg rcCnt h1
                   rw [rcCnt_pack, hexitCnt] at hcnt
                   omega
-                · rw [if_neg hc] at h1
+                · rw [ite_eq_right hc] at h1
                   simp only [rcPack, Nat.pair_eq_pair] at h1
                   omega
             | p :: u'' =>
@@ -1092,7 +1092,7 @@ lemma parse_of_runWalk {a b s : ℕ} {exit : ℕ → ℕ}
                         [1, p + 1] =
                         (if c = 0 then exit (r + 2) else rcPack a c (r + 2)) := by
                       rw [List.foldl_cons, List.foldl_cons, List.foldl_nil,
-                        hrun, if_pos rfl, hesc, if_neg (by omega)]
+                        hrun, ite_eq_left rfl, hesc, ite_eq_right (by omega)]
                     have hu'' : u'' = [] := by
                       by_contra hne
                       have h2len : 2 < (1 :: (p + 1) :: u'').length := by
@@ -1103,11 +1103,11 @@ lemma parse_of_runWalk {a b s : ℕ} {exit : ℕ → ℕ}
                       rw [show ((1 : ℕ) :: (p + 1) :: u'').take 2 = [1, p + 1]
                         from rfl, hW2] at this
                       by_cases hc : c = 0
-                      · rw [if_pos hc] at this
+                      · rw [ite_eq_left hc] at this
                         have hcnt := this.2
                         rw [hexitCnt] at hcnt
                         omega
-                      · rw [if_neg hc] at this
+                      · rw [ite_eq_right hc] at this
                         simp only [rcMode_pack, rcCnt_pack] at this
                         omega
                     subst hu''
@@ -1123,7 +1123,7 @@ lemma parse_of_runWalk {a b s : ℕ} {exit : ℕ → ℕ}
                         | 0 => rfl
                         | fuel + 1 =>
                             rw [List.cons_append, List.cons_append, parseRpn_cons,
-                              if_neg (by norm_num), if_pos rfl]
+                              ite_eq_right (by norm_num), ite_eq_left rfl]
                             simp [hdec]
                 | zero =>
                     by_cases hmem : (19 : ℕ) ∈ u''
@@ -1135,14 +1135,14 @@ lemma parse_of_runWalk {a b s : ℕ} {exit : ℕ → ℕ}
                           rcPack s (c + 1) (r + 2 + v.length) := by
                         rw [show ((1 : ℕ) :: 0 :: v) = [1, 0] ++ v from rfl,
                           List.foldl_append, List.foldl_cons, List.foldl_cons,
-                          List.foldl_nil, hrun, if_pos rfl, hesc, if_pos rfl,
+                          List.foldl_nil, hrun, ite_eq_left rfl, hesc, ite_eq_left rfl,
                           foldl_rpnCondStep_stay hstr v hvfree' c (r + 2)]
                       have hW19 : List.foldl rpnCondStep (rcPack a (c + 1) r)
                           ((1 :: 0 :: v) ++ [19]) =
                           (if c = 0 then exit (r + 2 + v.length + 1)
                             else rcPack a c (r + 2 + v.length + 1)) := by
                         rw [List.foldl_append, hWv, List.foldl_cons,
-                          List.foldl_nil, hstr, if_pos rfl]
+                          List.foldl_nil, hstr, ite_eq_left rfl]
                       have hu''' : u''' = [] := by
                         by_contra hne
                         have hklen : v.length + 3 <
@@ -1161,11 +1161,11 @@ lemma parse_of_runWalk {a b s : ℕ} {exit : ℕ → ℕ}
                           rfl
                         rw [htk, hW19] at hstep
                         by_cases hc : c = 0
-                        · rw [if_pos hc] at hstep
+                        · rw [ite_eq_left hc] at hstep
                           have hcnt := hstep.2
                           rw [hexitCnt] at hcnt
                           omega
-                        · rw [if_neg hc] at hstep
+                        · rw [ite_eq_right hc] at hstep
                           simp only [rcMode_pack, rcCnt_pack] at hstep
                           omega
                       subst hu'''
@@ -1180,7 +1180,7 @@ lemma parse_of_runWalk {a b s : ℕ} {exit : ℕ → ℕ}
                             exact (first19_split_unique hvfree' hw' hspan).2.symm
                           rw [show (1 :: 0 :: (v ++ 19 :: [])).length =
                             (v.length + 2) + 1 by simp, parseRpn_cons,
-                            if_neg (by norm_num), if_pos rfl]
+                            ite_eq_right (by norm_num), ite_eq_left rfl]
                           show parseStructuredPaperPrime (v ++ [19]) = _
                           rw [hp, show pr = (pr.1, pr.2) from rfl, hrest]
                       | none =>
@@ -1190,7 +1190,7 @@ lemma parse_of_runWalk {a b s : ℕ} {exit : ℕ → ℕ}
                           | fuel + 1 =>
                               rw [show (1 :: 0 :: (v ++ 19 :: [])) ++ tail =
                                 1 :: 0 :: (v ++ 19 :: tail) by simp,
-                                parseRpn_cons, if_neg (by norm_num), if_pos rfl]
+                                parseRpn_cons, ite_eq_right (by norm_num), ite_eq_left rfl]
                               show parseStructuredPaperPrime (v ++ 19 :: tail) =
                                 none
                               rw [parseStructuredPaperPrime_first19 v hvfree'
@@ -1204,22 +1204,22 @@ lemma parse_of_runWalk {a b s : ℕ} {exit : ℕ → ℕ}
                           rcPack s (c + 1) (r + 2 + u''.length) := by
                         rw [show ((1 : ℕ) :: 0 :: u'') = [1, 0] ++ u'' from rfl,
                           List.foldl_append, List.foldl_cons, List.foldl_cons,
-                          List.foldl_nil, hrun, if_pos rfl, hesc, if_pos rfl,
+                          List.foldl_nil, hrun, ite_eq_left rfl, hesc, ite_eq_left rfl,
                           foldl_rpnCondStep_stay hstr u'' hfree c (r + 2)]
                       rw [hWall] at h1
                       by_cases hc : c = 0
-                      · rw [if_pos hc] at h1
+                      · rw [ite_eq_left hc] at h1
                         have hcnt := congrArg rcCnt h1
                         rw [rcCnt_pack, hexitCnt] at hcnt
                         omega
-                      · rw [if_neg hc] at h1
+                      · rw [ite_eq_right hc] at h1
                         simp only [rcPack, Nat.pair_eq_pair] at h1
                         omega
           · by_cases htop : t = 2 ∨ t = 3 ∨ t = 4
             · -- Operator: split the tail at the first counter return.
               have hstep1 : rpnCondStep (rcPack a (c + 1) r) t =
                   rcPack a (c + 1 + 1) (r + 1) := by
-                rw [hrun, if_neg ht1, if_pos htop]
+                rw [hrun, ite_eq_right ht1, ite_eq_left htop]
               -- The tail walk.
               set W' : ℕ → ℕ := fun k =>
                 List.foldl rpnCondStep (rcPack a (c + 1 + 1) (r + 1)) (u'.take k)
@@ -1257,9 +1257,9 @@ lemma parse_of_runWalk {a b s : ℕ} {exit : ℕ → ℕ}
                 ⟨u'.length, le_rfl, by
                   rw [hW'len]
                   by_cases hc : c = 0
-                  · rw [if_pos hc, hexitCnt]
+                  · rw [ite_eq_left hc, hexitCnt]
                     omega
-                  · rw [if_neg hc, rcCnt_pack]
+                  · rw [ite_eq_right hc, rcCnt_pack]
                     omega⟩
               classical
               obtain ⟨k1, hk1le, hk1cnt, hmin⟩ :
@@ -1344,7 +1344,7 @@ lemma parse_of_runWalk {a b s : ℕ} {exit : ℕ → ℕ}
               -- Child 1 hypotheses.
               have hchild1 := ih u1 (by rw [hu1len]; omega) (c + 1) (r + 1)
                 (by
-                  rw [if_neg (Nat.succ_ne_zero c), hu1len, hu1]
+                  rw [ite_eq_right (Nat.succ_ne_zero c), hu1len, hu1]
                   exact hk1state)
                 (by
                   intro k hk
@@ -1369,8 +1369,8 @@ lemma parse_of_runWalk {a b s : ℕ} {exit : ℕ → ℕ}
                     simp only [List.length_cons]
                     omega
                   by_cases hc : c = 0
-                  · rw [if_pos hc, if_pos hc, harg]
-                  · rw [if_neg hc, if_neg hc, harg])
+                  · rw [ite_eq_left hc, ite_eq_left hc, harg]
+                  · rw [ite_eq_right hc, ite_eq_right hc, harg])
                 (by
                   intro k hk
                   rw [hW2eq k]
@@ -1393,20 +1393,20 @@ lemma parse_of_runWalk {a b s : ℕ} {exit : ℕ → ℕ}
                     rw [hsplit]
                     simp
                   rw [hlen', hsplit]
-                  rw [parseRpn_cons, if_neg (by omega), if_neg ht1]
+                  rw [parseRpn_cons, ite_eq_right (by omega), ite_eq_right ht1]
                   rcases htop with rfl | rfl | rfl
-                  · exact ⟨LO.Propositional.Formula.imp φ1 φ2, by
-                      rw [if_pos rfl, hb1]
+                  · exact ⟨FFL.Propositional.Formula.imp φ1 φ2, by
+                      rw [ite_eq_left rfl, hb1]
                       simp only [Option.bind_some]
                       rw [hb2]
                       simp only [Option.bind_some]⟩
-                  · exact ⟨LO.Propositional.Formula.and φ1 φ2, by
-                      rw [if_neg (by omega), if_pos rfl, hb1]
+                  · exact ⟨FFL.Propositional.Formula.and φ1 φ2, by
+                      rw [ite_eq_right (by omega), ite_eq_left rfl, hb1]
                       simp only [Option.bind_some]
                       rw [hb2]
                       simp only [Option.bind_some]⟩
-                  · exact ⟨LO.Propositional.Formula.or φ1 φ2, by
-                      rw [if_neg (by omega), if_neg (by omega), if_pos rfl, hb1]
+                  · exact ⟨FFL.Propositional.Formula.or φ1 φ2, by
+                      rw [ite_eq_right (by omega), ite_eq_right (by omega), ite_eq_left rfl, hb1]
                       simp only [Option.bind_some]
                       rw [hb2]
                       simp only [Option.bind_some]⟩
@@ -1415,8 +1415,8 @@ lemma parse_of_runWalk {a b s : ℕ} {exit : ℕ → ℕ}
                   match fuel with
                   | 0 => rfl
                   | fuel + 1 =>
-                      rw [List.cons_append, parseRpn_cons, if_neg (by omega),
-                        if_neg ht1]
+                      rw [List.cons_append, parseRpn_cons, ite_eq_right (by omega),
+                        ite_eq_right ht1]
                       have hrest : u' ++ tail = u1 ++ (u2 ++ tail) := by
                         rw [hsplit, List.append_assoc]
                       have hnone : ∀ (mk : Sentence → Sentence → Sentence),
@@ -1441,19 +1441,19 @@ lemma parse_of_runWalk {a b s : ℕ} {exit : ℕ → ℕ}
                             rw [hpoison2 fuel tail]
                             rfl
                       rcases htop with rfl | rfl | rfl
-                      · rw [if_pos rfl]
+                      · rw [ite_eq_left rfl]
                         exact hnone _
-                      · rw [if_neg (by omega), if_pos rfl]
+                      · rw [ite_eq_right (by omega), ite_eq_left rfl]
                         exact hnone _
-                      · rw [if_neg (by omega), if_neg (by omega), if_pos rfl]
+                      · rw [ite_eq_right (by omega), ite_eq_right (by omega), ite_eq_left rfl]
                         exact hnone _
               · -- First child poisons.
                 refine Or.inr fun fuel tail => ?_
                 match fuel with
                 | 0 => rfl
                 | fuel + 1 =>
-                    rw [List.cons_append, parseRpn_cons, if_neg (by omega),
-                      if_neg ht1]
+                    rw [List.cons_append, parseRpn_cons, ite_eq_right (by omega),
+                      ite_eq_right ht1]
                     have hrest : u' ++ tail = u1 ++ (u2 ++ tail) := by
                       rw [hsplit, List.append_assoc]
                     have hnone : ∀ (mk : Sentence → Sentence → Sentence),
@@ -1464,16 +1464,16 @@ lemma parse_of_runWalk {a b s : ℕ} {exit : ℕ → ℕ}
                       rw [hrest, hpoison1 fuel (u2 ++ tail)]
                       rfl
                     rcases htop with rfl | rfl | rfl
-                    · rw [if_pos rfl]
+                    · rw [ite_eq_left rfl]
                       exact hnone _
-                    · rw [if_neg (by omega), if_pos rfl]
+                    · rw [ite_eq_right (by omega), ite_eq_left rfl]
                       exact hnone _
-                    · rw [if_neg (by omega), if_neg (by omega), if_pos rfl]
+                    · rw [ite_eq_right (by omega), ite_eq_right (by omega), ite_eq_left rfl]
                       exact hnone _
             · -- Leaf (`0` or an atom): the run is exactly `[t]`.
               have hstep1 : rpnCondStep (rcPack a (c + 1) r) t =
                   (if c = 0 then exit (r + 1) else rcPack a c (r + 1)) := by
-                rw [hrun, if_neg ht1, if_neg htop]
+                rw [hrun, ite_eq_right ht1, ite_eq_right htop]
               have hu' : u' = [] := by
                 by_contra hne
                 have h1len : 1 < (t :: u').length := by
@@ -1483,22 +1483,22 @@ lemma parse_of_runWalk {a b s : ℕ} {exit : ℕ → ℕ}
                 have := h2 1 h1len
                 rw [show (t :: u').take 1 = [t] from rfl, hW1, hstep1] at this
                 by_cases hc : c = 0
-                · rw [if_pos hc] at this
+                · rw [ite_eq_left hc] at this
                   have hcnt := this.2
                   rw [hexitCnt] at hcnt
                   omega
-                · rw [if_neg hc] at this
+                · rw [ite_eq_right hc] at this
                   simp only [rcMode_pack, rcCnt_pack] at this
                   omega
               subst hu'
               by_cases ht0 : t = 0
-              · exact Or.inl ⟨LO.Propositional.Formula.falsum, by
+              · exact Or.inl ⟨FFL.Propositional.Formula.falsum, by
                   subst ht0
                   rfl⟩
-              · exact Or.inl ⟨LO.Propositional.Formula.atom (t - 5), by
+              · exact Or.inl ⟨FFL.Propositional.Formula.atom (t - 5), by
                   rw [show ([t] : List ℕ).length = 0 + 1 from rfl, parseRpn_cons,
-                    if_neg ht0, if_neg ht1, if_neg (by omega), if_neg (by omega),
-                    if_neg (by omega)]⟩
+                    ite_eq_right ht0, ite_eq_right ht1, ite_eq_right (by omega), ite_eq_right (by omega),
+                    ite_eq_right (by omega)]⟩
 
 /-- Price-run instance of the converse walk lemma: exit into the day-expect mode. -/
 lemma parse_of_priceRunWalk : ∀ (N : ℕ) (u : List ℕ), u.length ≤ N → ∀ (c r : ℕ),
@@ -1587,7 +1587,7 @@ lemma rpnCondStep_base_seven : rpnCondStep (rcPack 0 0 0) 7 = rcPack 5 0 0 := by
 lemma rpnCondStep_base_other (t : ℕ)
     (h0 : t ≠ 0) (h1 : t ≠ 1) (h6 : t ≠ 6) (h7 : t ≠ 7) :
     rpnCondStep (rcPack 0 0 0) t = rcPack 0 0 0 := by
-  rw [rpnCondStep_base, if_neg h0, if_neg h1, if_neg h6, if_neg h7]
+  rw [rpnCondStep_base, ite_eq_right h0, ite_eq_right h1, ite_eq_right h6, ite_eq_right h7]
 
 /-- Any mode outside the walking set falls back to base. -/
 lemma rpnCondStep_fallback (st t : ℕ)
@@ -1595,8 +1595,8 @@ lemma rpnCondStep_fallback (st t : ℕ)
     (h4 : rcMode st ≠ 4) (h7 : rcMode st ≠ 7)
     (h8 : rcMode st ≠ 8) (h9 : rcMode st ≠ 9) :
     rpnCondStep st t = rcPack 0 0 0 := by
-  rw [rpnCondStep, if_neg h0, if_neg h1, if_neg h6, if_neg h8, if_neg h4,
-    if_neg h7, if_neg h9]
+  rw [rpnCondStep, ite_eq_right h0, ite_eq_right h1, ite_eq_right h6, ite_eq_right h8, ite_eq_right h4,
+    ite_eq_right h7, ite_eq_right h9]
 
 /-- The day slot consumes the day token and falls back to base. -/
 lemma rpnCondStep_day (r t : ℕ) : rpnCondStep (rcPack 2 0 r) t = rcPack 0 0 0 :=
@@ -1618,7 +1618,7 @@ lemma rcLen_step_base (t : ℕ) : rcLen (rpnCondStep (rcPack 0 0 0) t) = 0 := by
 
 lemma rpnCondBuf_of_len_zero (st : ℕ) (buf : List ℕ) (t : ℕ)
     (h : rcLen (rpnCondStep st t) = 0) : rpnCondBuf st buf t = [] := by
-  rw [rpnCondBuf, if_pos h]
+  rw [rpnCondBuf, ite_eq_left h]
 
 lemma rpnCondBuf_base (buf : List ℕ) (t : ℕ) :
     rpnCondBuf (rcPack 0 0 0) buf t = [] :=
@@ -1635,7 +1635,7 @@ lemma rpnConditionRun_from_payload (emit : List ℕ → ℕ → List ℕ)
   have hbuf : rpnCondBuf (rcPack m c' r') buf t = [] :=
     rpnCondBuf_of_len_zero _ _ _ (by rw [hstep]; simp)
   rw [rpnConditionRun_cons, hstep, hbuf,
-    if_neg (by rcases hm with rfl | rfl <;> simp)]
+    ite_eq_right (by rcases hm with rfl | rfl <;> simp)]
   simp
 
 /-- The cons unfolding at a price-day slot: emit the conditional-price expansion and
@@ -1650,7 +1650,7 @@ lemma rpnConditionRun_from_day (emit : List ℕ → ℕ → List ℕ)
     rpnCondStep_day r' d
   have hbuf : rpnCondBuf (rcPack 2 0 r') buf d = [] :=
     rpnCondBuf_of_len_zero _ _ _ (by rw [hstep]; simp)
-  rw [rpnConditionRun_cons, hstep, hbuf, if_pos (by simp)]
+  rw [rpnConditionRun_cons, hstep, hbuf, ite_eq_left (by simp)]
 
 /-! ### Copy behavior and the buffer fold -/
 
@@ -1682,7 +1682,7 @@ lemma rpnConditionRun_copy_of_ne_two (emit : List ℕ → ℕ → List ℕ)
       have h0 : rcMode st ≠ 2 := by
         have := h 0 (by simp)
         simpa using this
-      rw [rpnConditionRun_cons, if_neg h0,
+      rw [rpnConditionRun_cons, ite_eq_right h0,
         ih (rpnCondStep st t) (rpnCondBuf st buf t) (fun k hk => by
           have := h (k + 1) (by simp only [List.length_cons]; omega)
           rwa [List.take_succ_cons, List.foldl_cons] at this)]
@@ -1702,7 +1702,7 @@ lemma rpnCondBufFold_run (st : ℕ) (buf : List ℕ) (ts : List ℕ)
         have := h 0 (by simp)
         simpa using this
       have hbuf : rpnCondBuf st buf t = buf ++ [t] := by
-        rw [rpnCondBuf, rcLen_run_step st t h0, if_neg (by omega)]
+        rw [rpnCondBuf, rcLen_run_step st t h0, ite_eq_right (by omega)]
       rw [show rpnCondBufFold st buf (t :: ts) =
           rpnCondBufFold (rpnCondStep st t) (rpnCondBuf st buf t) ts from rfl,
         hbuf, ih (rpnCondStep st t) (buf ++ [t]) (fun k hk => by
@@ -1995,7 +1995,7 @@ lemma unRpn_rpnConditionRun_of (emit : List ℕ → ℕ → List ℕ) (R : List 
                               have := hinv j (by omega)
                               omega))
                     have hun : unRpn (0 :: rest) = [0, Encodable.encode φ] := by
-                      rw [unRpn, List.length_cons, unRpnTokens_cons, if_pos rfl,
+                      rw [unRpn, List.length_cons, unRpnTokens_cons, ite_eq_left rfl,
                         hblk]
                     rw [hout, hun, hRpricePair]
                 | d :: r2 =>
@@ -2011,7 +2011,7 @@ lemma unRpn_rpnConditionRun_of (emit : List ℕ → ℕ → List ℕ) (R : List 
                         (0 :: (blk ++ d :: r2))).2 =
                       0 :: blk ++ emit blk d ++
                         (rpnConditionRun emit (rcPack 0 0 0, []) r2).2 := by
-                      rw [rpnConditionRun_cons, if_neg (by simp),
+                      rw [rpnConditionRun_cons, ite_eq_right (by simp),
                         rpnCondStep_base_price, rpnCondBuf_base,
                         rpnConditionRun_append]
                       simp [hblkcopy, rpnConditionRun_from_day,
@@ -2027,7 +2027,7 @@ lemma unRpn_rpnConditionRun_of (emit : List ℕ → ℕ → List ℕ) (R : List 
                       hRprice]
             | none =>
                 have hun0 : unRpn (0 :: rest) = [0, 0] := by
-                  rw [unRpn, List.length_cons, unRpnTokens_cons, if_pos rfl, hp]
+                  rw [unRpn, List.length_cons, unRpnTokens_cons, ite_eq_left rfl, hp]
                 by_cases hex : ∃ k, k < rest.length ∧
                     rcMode (List.foldl rpnCondStep (rcPack 1 1 0)
                       (rest.take k)) = 2
@@ -2047,7 +2047,7 @@ lemma unRpn_rpnConditionRun_of (emit : List ℕ → ℕ → List ℕ) (R : List 
                   have hconv := parse_of_priceRunWalk k₀ (rest.take k₀)
                     (le_of_eq htakelen) 0 0
                     (by
-                      rw [if_pos rfl, htakelen]
+                      rw [ite_eq_left rfl, htakelen]
                       simpa using hW)
                     (by
                       intro k hk
@@ -2079,13 +2079,13 @@ lemma unRpn_rpnConditionRun_of (emit : List ℕ → ℕ → List ℕ) (R : List 
                       conv_lhs =>
                         rw [show rest = rest.take k₀ ++ rest.drop k₀ from
                           (List.take_append_drop k₀ rest).symm]
-                      rw [rpnConditionRun_cons, if_neg (by simp),
+                      rw [rpnConditionRun_cons, ite_eq_right (by simp),
                         rpnCondStep_base_price, rpnCondBuf_base,
                         rpnConditionRun_append]
                       simp [hucopy]
                     have hunL : ∀ Y, unRpn (0 :: (rest.take k₀ ++ Y)) =
                         [0, 0] := fun Y => by
-                      rw [unRpn, List.length_cons, unRpnTokens_cons, if_pos rfl,
+                      rw [unRpn, List.length_cons, unRpnTokens_cons, ite_eq_left rfl,
                         hpoison _ _]
                     rw [hout, hunL, hun0, hRpricePair]
                 · -- No completion: pure copy, both contractions stop.
@@ -2126,7 +2126,7 @@ lemma unRpn_rpnConditionRun_of (emit : List ℕ → ℕ → List ℕ) (R : List 
                       (6 :: (blk ++ r1))).2 =
                     6 :: (blk ++
                       (rpnConditionRun emit (rcPack 0 0 0, []) r1).2) := by
-                    rw [rpnConditionRun_cons, if_neg (by simp),
+                    rw [rpnConditionRun_cons, ite_eq_right (by simp),
                       rpnCondStep_base_trade, rpnCondBuf_base,
                       rpnConditionRun_append]
                     simp [hblkcopy]
@@ -2140,7 +2140,7 @@ lemma unRpn_rpnConditionRun_of (emit : List ℕ → ℕ → List ℕ) (R : List 
               | none =>
                   have hun0 : unRpn (6 :: rest) = [6, 0] := by
                     rw [unRpn, List.length_cons, unRpnTokens_cons,
-                      if_neg (by norm_num), if_pos rfl, hp]
+                      ite_eq_right (by norm_num), ite_eq_left rfl, hp]
                   by_cases hex : ∃ k, k ≤ rest.length ∧
                       rcMode (List.foldl rpnCondStep (rcPack 4 1 0)
                         (rest.take k)) = 0
@@ -2159,7 +2159,7 @@ lemma unRpn_rpnConditionRun_of (emit : List ℕ → ℕ → List ℕ) (R : List 
                     have hconv := parse_of_tradeRunWalk k₀ (rest.take k₀)
                       (le_of_eq htakelen) 0 0
                       (by
-                        rw [if_pos rfl]
+                        rw [ite_eq_left rfl]
                         exact hW)
                       (by
                         intro k hk
@@ -2191,14 +2191,14 @@ lemma unRpn_rpnConditionRun_of (emit : List ℕ → ℕ → List ℕ) (R : List 
                         conv_lhs =>
                           rw [show rest = rest.take k₀ ++ rest.drop k₀ from
                             (List.take_append_drop k₀ rest).symm]
-                        rw [rpnConditionRun_cons, if_neg (by simp),
+                        rw [rpnConditionRun_cons, ite_eq_right (by simp),
                           rpnCondStep_base_trade, rpnCondBuf_base,
                           rpnConditionRun_append]
                         simp [hucopy]
                       have hunL : ∀ Y, unRpn (6 :: (rest.take k₀ ++ Y)) =
                           [6, 0] := fun Y => by
                         rw [unRpn, List.length_cons, unRpnTokens_cons,
-                          if_neg (by norm_num), if_pos rfl, hpoison _ _]
+                          ite_eq_right (by norm_num), ite_eq_left rfl, hpoison _ _]
                       rw [hout, hunL, hun0]
                       rw [hRtrade, hRnil]
                   · -- Never exits: pure copy of an unfinished trade run.
@@ -2229,7 +2229,7 @@ lemma unRpn_rpnConditionRun_of (emit : List ℕ → ℕ → List ℕ) (R : List 
                 | [] =>
                     have hout : (rpnConditionRun emit (rcPack 0 0 0, [])
                         [1]).2 = [1] := by
-                      rw [rpnConditionRun_cons, if_neg (by simp)]
+                      rw [rpnConditionRun_cons, ite_eq_right (by simp)]
                       rfl
                     rw [hout, show unRpn [1] = [1] from rfl,
                       hRone]
@@ -2238,7 +2238,7 @@ lemma unRpn_rpnConditionRun_of (emit : List ℕ → ℕ → List ℕ) (R : List 
                         (1 :: c :: rest')).2 =
                       1 :: c :: (rpnConditionRun emit (rcPack 0 0 0, [])
                         rest').2 := by
-                      rw [rpnConditionRun_cons, if_neg (by simp),
+                      rw [rpnConditionRun_cons, ite_eq_right (by simp),
                         rpnCondStep_base_one, rpnCondBuf_base,
                         rpnConditionRun_from_payload emit 3 0 0
                           (Or.inl rfl) [] c rest']
@@ -2257,7 +2257,7 @@ lemma unRpn_rpnConditionRun_of (emit : List ℕ → ℕ → List ℕ) (R : List 
                   | [] =>
                       have hout : (rpnConditionRun emit (rcPack 0 0 0, [])
                           [7]).2 = [7] := by
-                        rw [rpnConditionRun_cons, if_neg (by simp)]
+                        rw [rpnConditionRun_cons, ite_eq_right (by simp)]
                         rfl
                       rw [hout, show unRpn [7] = [7] from rfl,
                         hRone]
@@ -2266,7 +2266,7 @@ lemma unRpn_rpnConditionRun_of (emit : List ℕ → ℕ → List ℕ) (R : List 
                           (7 :: c :: rest')).2 =
                         7 :: c :: (rpnConditionRun emit (rcPack 0 0 0, [])
                           rest').2 := by
-                        rw [rpnConditionRun_cons, if_neg (by simp),
+                        rw [rpnConditionRun_cons, ite_eq_right (by simp),
                           rpnCondStep_base_seven, rpnCondBuf_base,
                           rpnConditionRun_from_payload emit 5 0 0
                             (Or.inr rfl) [] c rest']
@@ -2282,7 +2282,7 @@ lemma unRpn_rpnConditionRun_of (emit : List ℕ → ℕ → List ℕ) (R : List 
                   have hout : (rpnConditionRun emit (rcPack 0 0 0, [])
                       (t :: rest)).2 =
                     t :: (rpnConditionRun emit (rcPack 0 0 0, []) rest).2 := by
-                    rw [rpnConditionRun_cons, if_neg (by simp),
+                    rw [rpnConditionRun_cons, ite_eq_right (by simp),
                       rpnCondStep_base_other t ht0 ht1 ht6 ht7, rpnCondBuf_base]
                     rfl
                   rw [hout, unRpn_single_chunk t ⟨ht0, ht1, ht6, ht7⟩ _,
@@ -2486,7 +2486,7 @@ lemma rpn_mode2_localize : ∀ (N : ℕ) (ts : List ℕ), ts.length ≤ N →
                 | none =>
                     refine Or.inr ?_
                     rw [show unRpn (0 :: rest) = [0, 0] from by
-                      rw [unRpn, List.length_cons, unRpnTokens_cons, if_pos rfl,
+                      rw [unRpn, List.length_cons, unRpnTokens_cons, ite_eq_left rfl,
                         hp]]
                     exact unreadable_price_poison
               · by_cases ht6 : t = 6
@@ -2541,7 +2541,7 @@ lemma rpn_mode2_localize : ∀ (N : ℕ) (ts : List ℕ), ts.length ≤ N →
                       refine Or.inr ?_
                       rw [show unRpn (6 :: rest) = [6, 0] from by
                         rw [unRpn, List.length_cons, unRpnTokens_cons,
-                          if_neg (by norm_num), if_pos rfl, hp]]
+                          ite_eq_right (by norm_num), ite_eq_left rfl, hp]]
                       exact unreadable_trade_poison
                 · by_cases ht1 : t = 1
                   · -- Constant payload chunk.

@@ -200,7 +200,6 @@ lemma exec_update_fallback (i : N) (c' : Prog Γ₀) (hc : c' ≠ fallback Γs h
     have := hall i
     rw [Function.update_self, Function.update_of_ne hj] at this
     exact hc this
-  rw [programGame_exec]
   show execAt R (Function.update (fun _ : N => fallback Γs h) i c') j
     (Function.update (fun _ : N => fallback Γs h) i c' j) ω = _
   rw [Function.update_of_ne hj]
@@ -231,9 +230,9 @@ lemma fallback_isProgramEquilibrium
 lemma exec_update_default (c : N → Prog Γ₀) (i : N) (ω : R.Ω) :
     (programGame Γ₀ R).exec (Function.update c i (default Γ₀)) ω i =
       Γ₀.pureMixed (R.play Γ₀ ω i) (R.toPlay.mem Γ₀ ω i) := by
-  rw [programGame_exec]
   show execAt R _ i (Function.update c i (default Γ₀) i) ω = _
-  rw [Function.update_self, default, execAt_delegate]
+  rw [Function.update_self, default]
+  erw [execAt_delegate]
 
 /-- Everybody at the default executes as the baseline play, as a mixed action. -/
 lemma exec_default (i : N) (ω : R.Ω) :
@@ -255,7 +254,8 @@ lemma foreknowledgeIndependent_of_participationIndependent (c : N → Prog Γ₀
     (hpi : (programGame Γ₀ R).ParticipationIndependent (defaultInstr Γ₀ R) c i) :
     (programGame Γ₀ R).ForeknowledgeIndependent (defaultInstr Γ₀ R) c π := by
   intro j hj ω
-  rw [hno, hinf j, exec_update_default]
+  rw [hno, hinf j]
+  erw [exec_update_default]
   have hself : (Function.update (Function.update c j ((defaultInstr Γ₀ R).default j)) i (c i) :
       ∀ a, (programGame Γ₀ R).Instr a) = Function.update c j ((defaultInstr Γ₀ R).default j) :=
     Function.update_eq_self_iff.2 (Function.update_of_ne (Ne.symm hj) _ _).symm

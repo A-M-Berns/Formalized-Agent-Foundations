@@ -778,7 +778,7 @@ lemma dSeparated_singleton_parents [Fintype V] [DecidableRel G.Adj] (hG : G.IsAc
     refine zClosure_induction (P := fun m => m ≠ v) ?_ ?_ v hv rfl
     · rintro m hm rfl
       rcases Relation.reflTransGen_iff_eq_or_transGen.mp
-        (Relation.ReflTransGen.mono (fun _ _ hab => hab.1) hm) with h | h
+        (Relation.ReflTransGen.mono (fun _ _ hab => hab.1) _ _ hm) with h | h
       · exact hune h
       · exact hnanc h
     · rintro w hw m hm _ rfl

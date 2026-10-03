@@ -162,7 +162,7 @@ lemma selectHead_false (x y : List Bool) : selectHead [false] x y = y := by
 /-! ### Length bounds on the block projections
 
 The clamp inside `FPFold.foldlBits_mem_FP` has to be discharged on malformed words, where
-`fstBlock`/`sndBlock` are the partial decoders rather than projections.  Both are still
+`pairFst`/`pairSnd` are the partial decoders rather than projections.  Both are still
 non-expanding, which is all a client's length hypothesis needs; the fork proves neither. -/
 
 lemma unpair?_length_le : ∀ (z : List Bool) (p : List Bool × List Bool),
@@ -186,16 +186,16 @@ lemma unpair?_length_le : ∀ (z : List Bool) (p : List Bool × List Bool),
   | [_], _, h => by simp [Complexity.unpair?] at h
   | true :: false :: _, _, h => by simp [Complexity.unpair?] at h
 
-lemma sndBlock_length_le (z : List Bool) : (sndBlock z).length ≤ z.length := by
-  rw [sndBlock]
+lemma sndBlock_length_le (z : List Bool) : (pairSnd z).length ≤ z.length := by
+  rw [pairSnd]
   cases hz : Complexity.unpair? z with
   | none => simp
   | some p => exact unpair?_length_le z p hz
 
 /-- The suffix decoder ignores a leading doubled bit. -/
 private lemma sndBlock_cons_cons (b : Bool) (z : List Bool) (h : b = false ∨ b = true) :
-    sndBlock (b :: b :: z) = sndBlock z := by
-  rw [sndBlock, sndBlock]
+    pairSnd (b :: b :: z) = pairSnd z := by
+  rw [pairSnd, pairSnd]
   cases b <;>
     · rw [Complexity.unpair?]
       cases hz : Complexity.unpair? z with
@@ -208,69 +208,69 @@ client whose state is a nest of `pair`s on an *additive* per-step bound: boundin
 projection separately by the whole word gives a multiplier, and a multiplicative per-step
 bound compounds to `k ^ L`, which is not polynomial.
 
-Proof kind: `P` proved.  Provenance: (b) `Complexity.unpair?`, `Cobham.fstBlock`. -/
+Proof kind: `P` proved.  Provenance: (b) `Complexity.unpair?`, `Cobham.pairFst`. -/
 lemma two_fstBlock_add_sndBlock_le : ∀ z : List Bool,
-    2 * (fstBlock z).length + (sndBlock z).length ≤ z.length
-  | [] => by simp [fstBlock, sndBlock, Complexity.unpair?]
-  | [_] => by simp [fstBlock, sndBlock, Complexity.unpair?]
+    2 * (pairFst z).length + (pairSnd z).length ≤ z.length
+  | [] => by simp [pairFst, pairSnd, Complexity.unpair?]
+  | [_] => by simp [pairFst, pairSnd, Complexity.unpair?]
   | false :: true :: y => by
-      rw [show fstBlock (false :: true :: y) = [] from rfl,
-        show sndBlock (false :: true :: y) = y by rw [sndBlock, Complexity.unpair?]]
+      rw [show pairFst (false :: true :: y) = [] from rfl,
+        show pairSnd (false :: true :: y) = y by rw [pairSnd, Complexity.unpair?]]
       simp
       omega
   | true :: false :: y => by
-      rw [show fstBlock (true :: false :: y) = [] from rfl,
-        show sndBlock (true :: false :: y) = [] by
-          rw [sndBlock, show Complexity.unpair? (true :: false :: y) = none from rfl]]
+      rw [show pairFst (true :: false :: y) = [] from rfl,
+        show pairSnd (true :: false :: y) = [] by
+          rw [pairSnd, show Complexity.unpair? (true :: false :: y) = none from rfl]]
       simp
   | false :: false :: z => by
-      rw [show fstBlock (false :: false :: z) = false :: fstBlock z from rfl,
+      rw [show pairFst (false :: false :: z) = false :: pairFst z from rfl,
         sndBlock_cons_cons false z (Or.inl rfl)]
       have := two_fstBlock_add_sndBlock_le z
       simp only [List.length_cons]
       omega
   | true :: true :: z => by
-      rw [show fstBlock (true :: true :: z) = true :: fstBlock z from rfl,
+      rw [show pairFst (true :: true :: z) = true :: pairFst z from rfl,
         sndBlock_cons_cons true z (Or.inr rfl)]
       have := two_fstBlock_add_sndBlock_le z
       simp only [List.length_cons]
       omega
 
-lemma fstBlock_length_le : ∀ z : List Bool, (fstBlock z).length ≤ z.length
-  | [] => by simp [fstBlock]
-  | [_] => by simp [fstBlock]
+lemma fstBlock_length_le : ∀ z : List Bool, (pairFst z).length ≤ z.length
+  | [] => by simp [pairFst]
+  | [_] => by simp [pairFst]
   | false :: false :: z => by
-      rw [fstBlock]
+      rw [pairFst]
       have := fstBlock_length_le z
       simp only [List.length_cons]
       omega
   | true :: true :: z => by
-      rw [fstBlock]
+      rw [pairFst]
       have := fstBlock_length_le z
       simp only [List.length_cons]
       omega
-  | false :: true :: _ => by simp [fstBlock]
-  | true :: false :: _ => by simp [fstBlock]
+  | false :: true :: _ => by simp [pairFst]
+  | true :: false :: _ => by simp [pairFst]
 
 /-! ### The three-block packing
 
 The argument word every automaton below is folded over is `pair W (pair cli tok)`: the
-guard word, the client's own state, and the incoming token block.  `fstBlock` reads the
+guard word, the client's own state, and the incoming token block.  `pairFst` reads the
 first component; these two read the other two. -/
 
 /-- The middle component of a word packed as `pair W (pair cli tok)`. -/
-def midBlock (v : List Bool) : List Bool := fstBlock (sndBlock v)
+def midBlock (v : List Bool) : List Bool := pairFst (pairSnd v)
 
 /-- The last component of a word packed as `pair W (pair cli tok)`. -/
-def lastBlock (v : List Bool) : List Bool := sndBlock (sndBlock v)
+def lastBlock (v : List Bool) : List Bool := pairSnd (pairSnd v)
 
 lemma midBlock_pair (W cli tok : List Bool) :
     midBlock (pair W (pair cli tok)) = cli := by
-  rw [midBlock, sndBlock_pair, fstBlock_pair]
+  rw [midBlock, pairSnd_pair, pairFst_pair]
 
 lemma lastBlock_pair (W cli tok : List Bool) :
     lastBlock (pair W (pair cli tok)) = tok := by
-  rw [lastBlock, sndBlock_pair, sndBlock_pair]
+  rw [lastBlock, pairSnd_pair, pairSnd_pair]
 
 lemma midBlock_mem_FP : midBlock ∈ FP := mem_FP_comp sndBlock_mem_FP fstBlock_mem_FP
 
@@ -308,9 +308,9 @@ lemma selectHead_leFlag (a b x y : List Bool) :
     selectHead (leFlag a b) x y = if b.length ≤ a.length then x else y := by
   rw [leFlag]
   by_cases h : b.length ≤ a.length
-  · rw [if_pos h, List.drop_eq_nil_of_le h]
+  · rw [ite_eq_left h, List.drop_eq_nil_of_le h]
     exact selectHead_emptyFlag_nil x y
-  · rw [if_neg h]
+  · rw [ite_eq_right h]
     obtain ⟨c, cs, hc⟩ : ∃ c cs, b.drop a.length = c :: cs := by
       cases hd : b.drop a.length with
       | nil =>
@@ -346,9 +346,9 @@ lemma selectHeadFn_eqLen_mem_FP {A B X Y : List Bool → List Bool}
     funext z
     by_cases h1 : (B z).length ≤ (A z).length
     · by_cases h2 : (A z).length ≤ (B z).length
-      · rw [if_pos h1, if_pos h2, if_pos (by omega)]
-      · rw [if_pos h1, if_neg h2, if_neg (by omega)]
-    · rw [if_neg h1, if_neg (by omega)]
+      · rw [ite_eq_left h1, ite_eq_left h2, ite_eq_left (by omega)]
+      · rw [ite_eq_left h1, ite_eq_right h2, ite_eq_right (by omega)]
+    · rw [ite_eq_right h1, ite_eq_right (by omega)]
   rwa [heq] at h
 
 /-- The `tail` of a member of the class: the unary predecessor. -/
@@ -399,8 +399,8 @@ lemma eqConstFn_mem_FP : ∀ (c : List Bool) {A X Y : List Bool → List Bool},
           = fun z => if A z = [] then X z else Y z := by
         funext z
         by_cases hz : A z = []
-        · rw [if_pos hz, if_pos (by rw [hz]; rfl)]
-        · rw [if_neg hz, if_neg (by simpa using hz)]
+        · rw [ite_eq_left hz, ite_eq_left (by rw [hz]; rfl)]
+        · rw [ite_eq_right hz, ite_eq_right (by simpa using hz)]
       rwa [heq] at h
   | (b :: cs), A, X, Y, hA, hX, hY => by
       have hT : (fun z => (A z).tail) ∈ FP := tail_mem_FP hA
@@ -421,10 +421,10 @@ lemma eqConstFn_mem_FP : ∀ (c : List Bool) {A X Y : List Bool → List Bool},
         funext z
         cases hz : A z with
         | nil =>
-            rw [selectHead_emptyFlag_nil, if_neg (by simp)]
+            rw [selectHead_emptyFlag_nil, ite_eq_right (by simp)]
         | cons a t =>
             rw [selectHead_emptyFlag_cons, selectHead]
-            cases a <;> cases b <;> simp [List.cons.injEq]
+            cases a <;> cases b <;> simp [List.cons.injEq] <;> try congr 1
       rwa [heq] at h
 
 /-! ## The digit-level fold -/
@@ -434,9 +434,9 @@ def dgSt (ph cli : List Bool) : List Bool := pair ph cli
 
 -- The digit step's argument is `pair W (dgSt (pair p0 p1) cli)`; `midBlock` is the phase
 -- and `lastBlock` the client state, and these read the guard word and the two phase slots.
-private def dW (v : List Bool) : List Bool := fstBlock v
-private def dp0 (v : List Bool) : List Bool := fstBlock (midBlock v)
-private def dp1 (v : List Bool) : List Bool := sndBlock (midBlock v)
+private def dW (v : List Bool) : List Bool := pairFst v
+private def dp0 (v : List Bool) : List Bool := pairFst (midBlock v)
+private def dp1 (v : List Bool) : List Bool := pairSnd (midBlock v)
 
 /-- One bit of a three-bit digit fold: two slots fill, the third completes the digit and
 hands the client its three bits. -/
@@ -468,7 +468,7 @@ trailing partial digit is discarded exactly as `bitsToDigits` discards it, so th
 needs no well-formedness hypothesis on `W`. -/
 lemma dgFold_cli (STEP : List Bool → List Bool) (W : List Bool) :
     ∀ (w cli : List Bool),
-      sndBlock (foldlBits (dgStep STEP false) (dgStep STEP true) W
+      pairSnd (foldlBits (dgStep STEP false) (dgStep STEP true) W
           (dgSt (pair [] []) cli) w)
         = dgFold STEP W cli (bitsToDigits w)
   | [], cli => by
@@ -606,7 +606,7 @@ lemma dgFold_mem_FP {STEP Wf Sf : List Bool → List Bool} {c : ℕ} {qP : Polyn
       nlinarith [h1, h2]
     omega
   have hcomp := mem_FP_comp hfold sndBlock_mem_FP
-  have heq : (sndBlock ∘ fun z => foldlBits (dgStep STEP false) (dgStep STEP true) (Wf z)
+  have heq : (pairSnd ∘ fun z => foldlBits (dgStep STEP false) (dgStep STEP true) (Wf z)
         (dgSt (pair [] []) cli₀) (Sf z))
       = fun z => dgFold STEP (Wf z) cli₀ (bitsToDigits (Sf z)) := by
     funext z
@@ -667,12 +667,12 @@ lemma leAccVal_spec (cap : ℕ) : ∀ (ds : List ℕ) (m p : ℕ), m ≤ cap →
 
 -- The guarded-expansion client's state is `pair cap (pair acc (pair pow bits))`; these read
 -- its parts.
-private def leCap (v : List Bool) : List Bool := fstBlock v
-private def leAcc (v : List Bool) : List Bool := fstBlock (midBlock v)
-private def lePow (v : List Bool) : List Bool := sndBlock (midBlock v)
-private def leB0 (v : List Bool) : List Bool := fstBlock (lastBlock v)
-private def leB1 (v : List Bool) : List Bool := fstBlock (sndBlock (lastBlock v))
-private def leB2 (v : List Bool) : List Bool := sndBlock (sndBlock (lastBlock v))
+private def leCap (v : List Bool) : List Bool := pairFst v
+private def leAcc (v : List Bool) : List Bool := pairFst (midBlock v)
+private def lePow (v : List Bool) : List Bool := pairSnd (midBlock v)
+private def leB0 (v : List Bool) : List Bool := pairFst (lastBlock v)
+private def leB1 (v : List Bool) : List Bool := pairFst (pairSnd (lastBlock v))
+private def leB2 (v : List Bool) : List Bool := pairSnd (pairSnd (lastBlock v))
 
 private def rep : ℕ → List Bool → List Bool
   | 0, _ => []
@@ -762,14 +762,14 @@ lemma unaryOfDigitsLE_le_mem_FP {V C : List Bool → List Bool} (hV : V ∈ FP) 
     dgFold_mem_FP (c := 0) (qP := 3 * Polynomial.X + 3) leDigit_mem_FP hC hV
       (fun W cli b0 b1 b2 => by simpa using leDigit_length_le W cli b0 b1 b2) (pair [] [true])
   have hcomp := mem_FP_comp hfold fstBlock_mem_FP
-  have heq : (fstBlock ∘ fun z => dgFold leDigit (C z) (pair [] [true]) (bitsToDigits (V z)))
+  have heq : (pairFst ∘ fun z => dgFold leDigit (C z) (pair [] [true]) (bitsToDigits (V z)))
       = fun z => List.replicate (min (digitVal (bitsToDigits (V z))) (C z).length) true := by
     funext z
     have hrun := dgFold_leDigit (C z) (bitsToDigits (V z)) 0 1
       (mem_bitsToDigits_lt_eight (V z))
     rw [show (List.replicate 0 true : List Bool) = [] from rfl,
       show (List.replicate 1 true : List Bool) = [true] from rfl] at hrun
-    simp only [Function.comp_apply, hrun, fstBlock_pair]
+    simp only [Function.comp_apply, hrun, pairFst_pair]
     rw [leAccVal_spec (C z).length (bitsToDigits (V z)) 0 1 (Nat.zero_le _)]
     simp
   rwa [heq] at hcomp
@@ -786,11 +786,11 @@ one — `undigitize` reads a token's value, and that is what `unaryToDigits_val`
 namespace Increment
 
 -- The increment client's state, and the three digit-bit slots it is handed.
-private def icDone (v : List Bool) : List Bool := fstBlock (midBlock v)
-private def icOut (v : List Bool) : List Bool := sndBlock (midBlock v)
-private def icB0 (v : List Bool) : List Bool := fstBlock (lastBlock v)
-private def icB1 (v : List Bool) : List Bool := fstBlock (sndBlock (lastBlock v))
-private def icB2 (v : List Bool) : List Bool := sndBlock (sndBlock (lastBlock v))
+private def icDone (v : List Bool) : List Bool := pairFst (midBlock v)
+private def icOut (v : List Bool) : List Bool := pairSnd (midBlock v)
+private def icB0 (v : List Bool) : List Bool := pairFst (lastBlock v)
+private def icB1 (v : List Bool) : List Bool := pairFst (pairSnd (lastBlock v))
+private def icB2 (v : List Bool) : List Bool := pairSnd (pairSnd (lastBlock v))
 
 /-- One digit of the little-endian carry increment: once the carry is resolved every
 further digit is copied; before that a digit below three is raised and resolves it, and a
@@ -852,15 +852,15 @@ private lemma dgFold_incDigit_carry (W : List Bool) : ∀ (ds : List ℕ) (out :
           interval_cases d <;>
             simp [incDigit, midBlock, icDone, icOut, lastBlock, icB0, icB1, icB2, digitSlots,
               digitBits, selectHead_true, selectHead_false]
-        rw [hstep, dgFold_incDigit_done W ds _ htail, if_pos hlt]
-        simp only [digitsToBits_cons, List.append_assoc, if_true]
+        rw [hstep, dgFold_incDigit_done W ds _ htail, ite_eq_left hlt]
+        simp only [digitsToBits_cons, List.append_assoc, ite_true]
       · have hge : 3 ≤ d := by omega
         have hstep : incDigit (pair W (pair (pair [] out) (digitSlots d)))
             = pair [] (out ++ digitBits 0) := by
           interval_cases d <;>
             simp [incDigit, midBlock, icDone, icOut, lastBlock, icB0, icB1, icB2, digitSlots,
               digitBits, selectHead_true, selectHead_false]
-        rw [hstep, dgFold_incDigit_carry W ds _ htail, if_neg hlt]
+        rw [hstep, dgFold_incDigit_carry W ds _ htail, ite_eq_right hlt]
         simp only [digitsToBits_cons, List.append_assoc]
 
 /-! ### What the increment computes -/
@@ -885,12 +885,12 @@ lemma incRun_digits_lt : ∀ (ds : List ℕ), (∀ d ∈ ds, d < 4) →
       have hd : d < 4 := hds d (List.mem_cons_self ..)
       have htail : ∀ e ∈ ds, e < 4 := fun e he => hds e (List.mem_cons_of_mem _ he)
       by_cases h : d < 3
-      · simp only [if_pos h]
+      · simp only [ite_eq_left h]
         intro e he
         rcases List.mem_cons.mp he with rfl | he
         · omega
         · exact htail e he
-      · simp only [if_neg h]
+      · simp only [ite_eq_right h]
         intro e he
         rcases List.mem_cons.mp he with rfl | he
         · omega
@@ -908,9 +908,9 @@ lemma incRun_spec : ∀ (ds : List ℕ), (∀ d ∈ ds, d < 4) →
       obtain ⟨ih1, ih2⟩ := incRun_spec ds htail
       rw [incRun]
       by_cases h : d < 3
-      · simp only [if_pos h]
+      · simp only [ite_eq_left h]
         exact ⟨fun _ => by simp; omega, fun hf => by simp at hf⟩
-      · simp only [if_neg h]
+      · simp only [ite_eq_right h]
         have hd3 : d = 3 := by omega
         refine ⟨fun hf => ?_, fun hf => ?_⟩
         · have := ih1 hf
@@ -925,7 +925,7 @@ lemma incDigits_digits_lt (ds : List ℕ) (hds : ∀ d ∈ ds, d < 4) :
   rw [incDigits]
   by_cases h : (incRun ds).1
   · simpa [h] using incRun_digits_lt ds hds
-  · simp only [if_neg h]
+  · simp only [ite_eq_right h]
     intro e he
     rcases List.mem_append.mp he with he | he
     · exact incRun_digits_lt ds hds e he
@@ -936,43 +936,43 @@ lemma incDigits_val (ds : List ℕ) (hds : ∀ d ∈ ds, d < 4) :
   obtain ⟨h1, h2⟩ := incRun_spec ds hds
   rw [incDigits]
   by_cases h : (incRun ds).1
-  · rw [if_pos h]
+  · rw [ite_eq_left h]
     exact h1 h
-  · rw [if_neg h, digitVal_append_singleton, incRun_length]
+  · rw [ite_eq_right h, digitVal_append_singleton, incRun_length]
     have := h2 (by simpa using h)
     omega
 
 lemma incDigits_length (ds : List ℕ) : (incDigits ds).length ≤ ds.length + 1 := by
   rw [incDigits]
   by_cases h : (incRun ds).1
-  · rw [if_pos h, incRun_length]; omega
-  · rw [if_neg h]; simp [incRun_length]
+  · rw [ite_eq_left h, incRun_length]; omega
+  · rw [ite_eq_right h]; simp [incRun_length]
 
 /-! ### The increment as a word function -/
 
 private def icState (v : List Bool) : List Bool :=
-  dgFold incDigit [] (pair [] []) (bitsToDigits (sndBlock v))
+  dgFold incDigit [] (pair [] []) (bitsToDigits (pairSnd v))
 
 /-- One mark of the unary counter: increment the digit word held in the fold state,
 discharging at the top any carry the run did not absorb. -/
 def incStep (v : List Bool) : List Bool :=
-  selectHead (emptyFlag (fstBlock (icState v)))
-    (sndBlock (icState v) ++ digitBits 1)
-    (sndBlock (icState v))
+  selectHead (emptyFlag (pairFst (icState v)))
+    (pairSnd (icState v) ++ digitBits 1)
+    (pairSnd (icState v))
 
 lemma incStep_spec (ds : List ℕ) (hds : ∀ d ∈ ds, d < 4) :
     incStep (pair [] (digitsToBits ds)) = digitsToBits (incDigits ds) := by
   have hlt8 : ∀ d ∈ ds, d < 8 := fun d hd => lt_trans (hds d hd) (by norm_num)
   have hst : icState (pair [] (digitsToBits ds))
       = pair (if (incRun ds).1 then [true] else []) (digitsToBits (incRun ds).2) := by
-    rw [icState, sndBlock_pair, bitsToDigits_digitsToBits ds hlt8,
+    rw [icState, pairSnd_pair, bitsToDigits_digitsToBits ds hlt8,
       dgFold_incDigit_carry [] ds [] hlt8]
     simp
   rw [incStep, hst, incDigits]
   by_cases h : (incRun ds).1
-  · rw [if_pos h, if_pos h, fstBlock_pair, sndBlock_pair]
+  · rw [ite_eq_left h, ite_eq_left h, pairFst_pair, pairSnd_pair]
     exact selectHead_emptyFlag_cons true [] _ _
-  · rw [if_neg h, if_neg h, fstBlock_pair, sndBlock_pair,
+  · rw [ite_eq_right h, ite_eq_right h, pairFst_pair, pairSnd_pair,
       selectHead_emptyFlag_nil, digitsToBits_append]
     rfl
 
@@ -1058,12 +1058,12 @@ private lemma incDigit_length_le (W cli : List Bool) (b0 b1 b2 : Bool) :
   have hslots := lastBlock_pair W cli (pair [b0] (pair [b1] [b2]))
   have hsnd := sndBlock_length_le cli
   have hbound : ∀ (d w : List Bool), d.length ≤ 1 → w.length ≤ 3 →
-      (pair d (sndBlock cli ++ w)).length ≤ cli.length + 7 := by
+      (pair d (pairSnd cli ++ w)).length ≤ cli.length + 7 := by
     intro d w hd hw
     simp only [pair_length, List.length_append]
     omega
   simp only [incDigit, hcli, hslots, icDone, icOut, icB0, icB1, icB2, Polynomial.eval_zero,
-    Nat.zero_add, fstBlock_pair, sndBlock_pair]
+    Nat.zero_add, pairFst_pair, pairSnd_pair]
   refine le_trans (selectHead_length_le _ _ _) ?_
   refine max_le ?_ ?_
   · refine le_trans (selectHead_length_le _ _ _) (max_le ?_ ?_)
@@ -1143,10 +1143,10 @@ namespace Strip
 -- The strip client's state slots (inside `midBlock`), and the two low digit-bit slots it
 -- branches on (inside `lastBlock`).  The leading slot is ignored: a digit word's digits are
 -- below four, so it is always `false`.
-private def spB1 (v : List Bool) : List Bool := fstBlock (sndBlock (lastBlock v))
-private def spB2 (v : List Bool) : List Bool := sndBlock (sndBlock (lastBlock v))
-private def spPend (v : List Bool) : List Bool := fstBlock (midBlock v)
-private def spKept (v : List Bool) : List Bool := sndBlock (midBlock v)
+private def spB1 (v : List Bool) : List Bool := pairFst (pairSnd (lastBlock v))
+private def spB2 (v : List Bool) : List Bool := pairSnd (pairSnd (lastBlock v))
+private def spPend (v : List Bool) : List Bool := pairFst (midBlock v)
+private def spKept (v : List Bool) : List Bool := pairSnd (midBlock v)
 
 /-- One digit of the strip pass: a zero extends the pending run, anything else flushes the
 pending run into the kept run behind the digit's own emission.  Prepending is what makes
@@ -1181,11 +1181,11 @@ lemma stripStep_mem_FP (E : ℕ → List Bool) : stripStep E ∈ FP := by
 private lemma stripStep_pair (E : ℕ → List Bool) (W cli : List Bool) (b0 b1 b2 : Bool) :
     stripStep E (pair W (pair cli (pair [b0] (pair [b1] [b2]))))
       = if b1 then
-          (if b2 then pair [] (E 3 ++ fstBlock cli ++ sndBlock cli)
-           else pair [] (E 2 ++ fstBlock cli ++ sndBlock cli))
+          (if b2 then pair [] (E 3 ++ pairFst cli ++ pairSnd cli)
+           else pair [] (E 2 ++ pairFst cli ++ pairSnd cli))
         else
-          (if b2 then pair [] (E 1 ++ fstBlock cli ++ sndBlock cli)
-           else pair (E 0 ++ fstBlock cli) (sndBlock cli)) := by
+          (if b2 then pair [] (E 1 ++ pairFst cli ++ pairSnd cli)
+           else pair (E 0 ++ pairFst cli) (pairSnd cli)) := by
   cases b1 <;> cases b2 <;>
     simp [stripStep, midBlock, lastBlock, spB1, spB2, spPend, spKept,
       selectHead_true, selectHead_false]
@@ -1199,16 +1199,16 @@ lemma stripStep_length_le (E : ℕ → List Bool) (W cli : List Bool) (b0 b1 b2 
   have hsplit := two_fstBlock_add_sndBlock_le cli
   rw [stripStep_pair]
   cases b1 <;> cases b2
-  · show (pair (E 0 ++ fstBlock cli) (sndBlock cli)).length ≤ _
+  · show (pair (E 0 ++ pairFst cli) (pairSnd cli)).length ≤ _
     simp only [pair_length, List.length_append]
     omega
-  · show (pair [] (E 1 ++ fstBlock cli ++ sndBlock cli)).length ≤ _
+  · show (pair [] (E 1 ++ pairFst cli ++ pairSnd cli)).length ≤ _
     simp only [pair_length, List.length_append, List.length_nil]
     omega
-  · show (pair [] (E 2 ++ fstBlock cli ++ sndBlock cli)).length ≤ _
+  · show (pair [] (E 2 ++ pairFst cli ++ pairSnd cli)).length ≤ _
     simp only [pair_length, List.length_append, List.length_nil]
     omega
-  · show (pair [] (E 3 ++ fstBlock cli ++ sndBlock cli)).length ≤ _
+  · show (pair [] (E 3 ++ pairFst cli ++ pairSnd cli)).length ≤ _
     simp only [pair_length, List.length_append, List.length_nil]
     omega
 
@@ -1216,8 +1216,8 @@ lemma stripStep_length_le (E : ℕ → List Bool) (W cli : List Bool) (b0 b1 b2 
 private lemma stripStep_digitSlots (E : ℕ → List Bool) (W cli : List Bool) :
     ∀ d : ℕ, d < 4 →
       stripStep E (pair W (pair cli (digitSlots d)))
-        = if d = 0 then pair (E 0 ++ fstBlock cli) (sndBlock cli)
-          else pair [] (E d ++ fstBlock cli ++ sndBlock cli) := by
+        = if d = 0 then pair (E 0 ++ pairFst cli) (pairSnd cli)
+          else pair [] (E d ++ pairFst cli ++ pairSnd cli) := by
   intro d hd
   interval_cases d
   · rw [show digitSlots 0 = pair [false] (pair [false] [false]) from rfl, stripStep_pair]
@@ -1247,9 +1247,9 @@ lemma dgFold_stripStep (E : ℕ → List Bool) (W : List Bool) :
         stripAcc]
       have htail : ∀ e ∈ ds, e < 4 := fun e he => h e (List.mem_cons_of_mem _ he)
       by_cases h0 : d = 0
-      · rw [if_pos h0, if_pos h0, fstBlock_pair, sndBlock_pair]
+      · rw [ite_eq_left h0, ite_eq_left h0, pairFst_pair, pairSnd_pair]
         exact dgFold_stripStep E W ds _ _ htail
-      · rw [if_neg h0, if_neg h0, fstBlock_pair, sndBlock_pair]
+      · rw [ite_eq_right h0, ite_eq_right h0, pairFst_pair, pairSnd_pair]
         exact dgFold_stripStep E W ds _ _ htail
 
 /-- The model, one digit appended at the *high* end — the shape the closed form's
@@ -1262,13 +1262,13 @@ private lemma stripAcc_append (E : ℕ → List Bool) (d : ℕ) :
   | [], p, k => by
       rw [List.nil_append, stripAcc, stripAcc]
       by_cases h0 : d = 0
-      · rw [if_pos h0, if_pos h0, stripAcc]
-      · rw [if_neg h0, if_neg h0, stripAcc]
+      · rw [ite_eq_left h0, ite_eq_left h0, stripAcc]
+      · rw [ite_eq_right h0, ite_eq_right h0, stripAcc]
   | e :: ds, p, k => by
       rw [List.cons_append, stripAcc, stripAcc]
       by_cases he : e = 0
-      · rw [if_pos he, if_pos he, stripAcc_append E d ds]
-      · rw [if_neg he, if_neg he, stripAcc_append E d ds]
+      · rw [ite_eq_left he, ite_eq_left he, stripAcc_append E d ds]
+      · rw [ite_eq_right he, ite_eq_right he, stripAcc_append E d ds]
 
 /-- A digit run with its high zeros removed. -/
 def trimZeros (ds : List ℕ) : List ℕ := (ds.reverse.dropWhile (fun d => d == 0)).reverse
@@ -1349,14 +1349,14 @@ lemma stripAcc_closed (E : ℕ → List Bool) : ∀ ds : List ℕ,
       obtain ⟨hpad, hle⟩ := trimZeros_spec l
       by_cases ha : a = 0
       · subst ha
-        rw [stripAcc_append, if_pos rfl, trimZeros_append_zero]
+        rw [stripAcc_append, ite_eq_left rfl, trimZeros_append_zero]
         refine ⟨?_, ih2⟩
         show E 0 ++ (stripAcc E l [] []).1 = _
         have hm : (l ++ [0]).length - (trimZeros l).length
             = (l.length - (trimZeros l).length) + 1 := by
           simp only [List.length_append, List.length_singleton]; omega
         rw [ih1, hm, List.replicate_succ, List.flatten_cons]
-      · rw [stripAcc_append, if_neg ha, trimZeros_append_ne l ha]
+      · rw [stripAcc_append, ite_eq_right ha, trimZeros_append_ne l ha]
         refine ⟨by simp, ?_⟩
         show E a ++ (stripAcc E l [] []).1 ++ (stripAcc E l [] []).2 = _
         rw [ih1, ih2]
@@ -1380,23 +1380,23 @@ output so far. -/
 def tkSt (ph tok cli out : List Bool) : List Bool := pair ph (pair tok (pair cli out))
 
 /-- The output component of a tokenizer state. -/
-def outOf (st : List Bool) : List Bool := sndBlock (sndBlock (sndBlock st))
+def outOf (st : List Bool) : List Bool := pairSnd (pairSnd (pairSnd st))
 
 /-- The client-state component of a tokenizer state.  A client that computes a *value*
 rather than a stream — an acceptance test, a counter read at the end — needs this rather
 than `outOf`. -/
-def cliOf (st : List Bool) : List Bool := fstBlock (sndBlock (sndBlock st))
+def cliOf (st : List Bool) : List Bool := pairFst (pairSnd (pairSnd st))
 
 -- The token step's argument is `pair W (tkSt (pair p0 p1) tok cli out)`; these read its
 -- parts.
-private def wpar (v : List Bool) : List Bool := fstBlock v
-private def sst (v : List Bool) : List Bool := sndBlock v
-private def phv (v : List Bool) : List Bool := fstBlock (sst v)
-private def p0v (v : List Bool) : List Bool := fstBlock (phv v)
-private def p1v (v : List Bool) : List Bool := sndBlock (phv v)
-private def tokv (v : List Bool) : List Bool := fstBlock (sndBlock (sst v))
-private def cliv (v : List Bool) : List Bool := fstBlock (sndBlock (sndBlock (sst v)))
-private def outv (v : List Bool) : List Bool := sndBlock (sndBlock (sndBlock (sst v)))
+private def wpar (v : List Bool) : List Bool := pairFst v
+private def sst (v : List Bool) : List Bool := pairSnd v
+private def phv (v : List Bool) : List Bool := pairFst (sst v)
+private def p0v (v : List Bool) : List Bool := pairFst (phv v)
+private def p1v (v : List Bool) : List Bool := pairSnd (phv v)
+private def tokv (v : List Bool) : List Bool := pairFst (pairSnd (sst v))
+private def cliv (v : List Bool) : List Bool := pairFst (pairSnd (pairSnd (sst v)))
+private def outv (v : List Bool) : List Bool := pairSnd (pairSnd (pairSnd (sst v)))
 private def argv (v : List Bool) : List Bool := pair (wpar v) (pair (cliv v) (tokv v))
 
 /-- One bit of the tokenizer: fill the phase, then on a complete digit either close the
@@ -1472,9 +1472,9 @@ lemma tkFold_cli_out (STEP EMIT : List Bool → List Bool) (W : List Bool) :
         show (b0 :: b1 :: b2 :: rest) = [b0, b1, b2] ++ rest from rfl,
         foldlBits_append, tkStep_three]
       by_cases hd : 4 * b2n b0 + 2 * b2n b1 + b2n b2 < 4
-      · rw [if_pos hd, if_pos hd]
+      · rw [ite_eq_left hd, ite_eq_left hd]
         exact tkFold_cli_out STEP EMIT W rest _ _ _
-      · rw [if_neg hd, if_neg hd]
+      · rw [ite_eq_right hd, ite_eq_right hd]
         exact tkFold_cli_out STEP EMIT W rest _ _ _
 
 /-- The output projection of `tkFold_cli_out`. -/
@@ -1708,7 +1708,7 @@ lemma tkFold_mem_FP {STEP EMIT Wf Sf : List Bool → List Bool} {c k : ℕ}
     (fun z => (tkFold STEP EMIT (Wf z) [] cli₀ out₀ (bitsToDigits (Sf z))).2.2) ∈ FP := by
   have hcomp := mem_FP_comp (tkFoldBits_mem_FP hSTEP hEMIT hW hSf hSbnd hEbnd cli₀ out₀)
     (mem_FP_comp (mem_FP_comp sndBlock_mem_FP sndBlock_mem_FP) sndBlock_mem_FP)
-  have heq : ((sndBlock ∘ sndBlock ∘ sndBlock) ∘
+  have heq : ((pairSnd ∘ pairSnd ∘ pairSnd) ∘
         fun z => foldlBits (tkStep STEP EMIT false) (tkStep STEP EMIT true) (Wf z)
           (tkSt (pair [] []) [] cli₀ out₀) (Sf z))
       = fun z => (tkFold STEP EMIT (Wf z) [] cli₀ out₀ (bitsToDigits (Sf z))).2.2 := by
@@ -1730,7 +1730,7 @@ lemma tkFold_cli_mem_FP {STEP EMIT Wf Sf : List Bool → List Bool} {c k : ℕ}
     (fun z => (tkFold STEP EMIT (Wf z) [] cli₀ out₀ (bitsToDigits (Sf z))).2.1) ∈ FP := by
   have hcomp := mem_FP_comp (tkFoldBits_mem_FP hSTEP hEMIT hW hSf hSbnd hEbnd cli₀ out₀)
     (mem_FP_comp (mem_FP_comp sndBlock_mem_FP sndBlock_mem_FP) fstBlock_mem_FP)
-  have heq : ((fstBlock ∘ sndBlock ∘ sndBlock) ∘
+  have heq : ((pairFst ∘ pairSnd ∘ pairSnd) ∘
         fun z => foldlBits (tkStep STEP EMIT false) (tkStep STEP EMIT true) (Wf z)
           (tkSt (pair [] []) [] cli₀ out₀) (Sf z))
       = fun z => (tkFold STEP EMIT (Wf z) [] cli₀ out₀ (bitsToDigits (Sf z))).2.1 := by
@@ -1756,12 +1756,12 @@ lemma foldl_blockStep_append : ∀ (ds : List ℕ) (bs : List (List ℕ)) (cur :
   | d :: ds, bs, cur => by
       by_cases h : d < 4
       · rw [List.foldl_cons, List.foldl_cons,
-          show blockStep (bs, cur) d = (bs, cur ++ [d]) from if_pos h,
-          show blockStep (([] : List (List ℕ)), cur) d = ([], cur ++ [d]) from if_pos h]
+          show blockStep (bs, cur) d = (bs, cur ++ [d]) from ite_eq_left h,
+          show blockStep (([] : List (List ℕ)), cur) d = ([], cur ++ [d]) from ite_eq_left h]
         exact foldl_blockStep_append ds bs (cur ++ [d])
       · rw [List.foldl_cons, List.foldl_cons,
-          show blockStep (bs, cur) d = (bs ++ [cur], []) from if_neg h,
-          show blockStep (([] : List (List ℕ)), cur) d = ([cur], []) from if_neg h]
+          show blockStep (bs, cur) d = (bs ++ [cur], []) from ite_eq_right h,
+          show blockStep (([] : List (List ℕ)), cur) d = ([cur], []) from ite_eq_right h]
         obtain ⟨h1, h2⟩ := foldl_blockStep_append ds (bs ++ [cur]) []
         obtain ⟨h1', h2'⟩ := foldl_blockStep_append ds [cur] []
         exact ⟨by rw [h1, h1', List.append_assoc], by rw [h2, h2']⟩
@@ -1787,7 +1787,7 @@ lemma blockSplit_of_digits_lt_four : ∀ (cur : List ℕ), (∀ d ∈ cur, d < 4
       intro acc hcur
       rw [List.foldl_cons,
         show blockStep (([] : List (List ℕ)), acc) d = ([], acc ++ [d]) from
-          if_pos (hcur d (List.mem_cons_self ..)),
+          ite_eq_left (hcur d (List.mem_cons_self ..)),
         ih (acc ++ [d]) (fun e he => hcur e (List.mem_cons_of_mem _ he)),
         List.append_assoc]
       rfl
@@ -1798,7 +1798,7 @@ lemma undigitize_run_terminator (cur : List ℕ) (hcur : ∀ d ∈ cur, d < 4) :
     undigitize (cur ++ [4]) = [digitVal cur] ∧ (blockSplit (cur ++ [4])).2 = [] := by
   have hb : blockSplit (cur ++ [4]) = ([cur], []) := by
     rw [blockSplit_snoc, blockSplit_of_digits_lt_four cur hcur,
-      show blockStep (([] : List (List ℕ)), cur) 4 = ([] ++ [cur], []) from if_neg (by omega)]
+      show blockStep (([] : List (List ℕ)), cur) 4 = ([] ++ [cur], []) from ite_eq_right (by omega)]
     rfl
   exact ⟨by rw [undigitize_eq_blockSplit, hb]; rfl, by rw [hb]⟩
 
@@ -1941,8 +1941,8 @@ lemma ifNumEq_mem_FP {A X Y : List Bool → List Bool} (hA : A ∈ FP) (K : ℕ)
       funext z
       simp only [List.length_replicate, List.length_singleton]
       by_cases hv : digitVal (bitsToDigits ((A z).drop (numBits K).length)) = 0
-      · rw [if_pos (by omega), if_pos hv]
-      · rw [if_neg (by omega), if_neg hv]
+      · rw [ite_eq_left (by omega), ite_eq_left hv]
+      · rw [ite_eq_right (by omega), ite_eq_right hv]
     rwa [heq] at h
   have h := eqConstFn_mem_FP (numBits K) htake hzero hY
   have heq : (fun z => if (A z).take (numBits K).length = numBits K then
@@ -1950,12 +1950,13 @@ lemma ifNumEq_mem_FP {A X Y : List Bool → List Bool} (hA : A ∈ FP) (K : ℕ)
       else Y z)
       = fun z => if NumEqBits K (A z) then X z else Y z := by
     funext z
-    simp only [NumEqBits]
+    -- `simp` (not `rw`) so that the `Decidable` instance of the unfolded `NumEqBits`
+    -- condition is rewritten along with the condition
     by_cases h1 : (A z).take (numBits K).length = numBits K
     · by_cases h2 : digitVal (bitsToDigits ((A z).drop (numBits K).length)) = 0
-      · rw [if_pos h1, if_pos h2, if_pos (And.intro h1 h2)]
-      · rw [if_pos h1, if_neg h2, if_neg (fun hc => h2 hc.2)]
-    · rw [if_neg h1, if_neg (fun hc => h1 hc.1)]
+      · simp [NumEqBits, h1, h2]
+      · simp [NumEqBits, h1, h2]
+    · simp [NumEqBits, h1]
   rwa [heq] at h
 
 /-! ### Block-complete words
@@ -2061,12 +2062,12 @@ lemma blockSplit_eq_nil_fst {ds cur : List ℕ} (h : blockSplit ds = ([], cur)) 
   | append_singleton ds d ih =>
       rw [blockSplit_snoc, blockStep] at h
       by_cases hd : d < 4
-      · rw [if_pos hd] at h
+      · rw [ite_eq_left hd] at h
         have h1 : (blockSplit ds).1 = [] := congrArg Prod.fst h
         have h2 : (blockSplit ds).2 ++ [d] = cur := congrArg Prod.snd h
         have := ih (cur := (blockSplit ds).2) (by rw [Prod.ext_iff]; exact ⟨h1, rfl⟩)
         rw [← h2, ← this]
-      · rw [if_neg hd] at h
+      · rw [ite_eq_right hd] at h
         have h1 : (blockSplit ds).1 ++ [(blockSplit ds).2] = [] := congrArg Prod.fst h
         simp at h1
 
@@ -2079,10 +2080,10 @@ lemma blockSplit_eq_single {ds cur : List ℕ} (h : blockSplit ds = ([cur], []))
   | append_singleton ds d ih =>
       rw [blockSplit_snoc, blockStep] at h
       by_cases hd : d < 4
-      · rw [if_pos hd] at h
+      · rw [ite_eq_left hd] at h
         have h2 : (blockSplit ds).2 ++ [d] = [] := congrArg Prod.snd h
         simp at h2
-      · rw [if_neg hd] at h
+      · rw [ite_eq_right hd] at h
         have h1 : (blockSplit ds).1 ++ [(blockSplit ds).2] = [cur] := congrArg Prod.fst h
         have hnil : (blockSplit ds).1 = [] ∧ (blockSplit ds).2 = cur := by
           cases hb : (blockSplit ds).1 with
@@ -2225,9 +2226,9 @@ lemma unaryPair_mem_FP {A B : List Bool → List Bool} (hA : A ∈ FP) (hB : B �
     congr 1
     rw [Nat.pair]
     by_cases hz : (B z).length ≤ (A z).length
-    · rw [if_pos hz, if_neg (by omega)]
+    · rw [ite_eq_left hz, ite_eq_right (by omega)]
       simp only [List.length_append, List.length_replicate]
-    · rw [if_neg hz, if_pos (by omega)]
+    · rw [ite_eq_right hz, ite_eq_left (by omega)]
       simp only [List.length_append, List.length_replicate]
   rwa [heq] at h
 
@@ -2288,8 +2289,8 @@ lemma tkFold_runFold {STEP EMIT : List Bool → List Bool}
   | d :: ds, cur, cli, out, hcur => by
       rw [tkFold, List.foldl_cons]
       by_cases h : d < 4
-      · rw [if_pos h, show blockStep (([] : List (List ℕ)), cur) d = ([], cur ++ [d])
-              from if_pos h,
+      · rw [ite_eq_left h, show blockStep (([] : List (List ℕ)), cur) d = ([], cur ++ [d])
+              from ite_eq_left h,
           show digitsToBits cur ++ digitBits d = digitsToBits (cur ++ [d]) by
             rw [digitsToBits_append]; rfl]
         exact tkFold_runFold W hS hE ds (cur ++ [d]) cli out (by
@@ -2297,8 +2298,8 @@ lemma tkFold_runFold {STEP EMIT : List Bool → List Bool}
           rcases List.mem_append.mp he with he | he
           · exact hcur e he
           · simp at he; omega)
-      · rw [if_neg h, show blockStep (([] : List (List ℕ)), cur) d = ([cur], [])
-              from if_neg h,
+      · rw [ite_eq_right h, show blockStep (([] : List (List ℕ)), cur) d = ([cur], [])
+              from ite_eq_right h,
           hS cli cur hcur, hE cli cur hcur,
           (foldl_blockStep_append ds [cur] []).1]
         rw [show ([cur] ++ (List.foldl blockStep ([], []) ds).1)
@@ -2468,8 +2469,8 @@ polynomial is needed, and none of the write-out classes acquires such a field. -
 -- counter and the output word are `midBlock` and `lastBlock`, and these read the parameter
 -- block.  That block is `pair (R z) z` rather than `pair z (R z)` so that
 -- `Complexity.mem_FP_pairWithInput` builds it, the input word itself being the day.
-private def cvRl (v : List Bool) : List Bool := fstBlock (fstBlock v)
-private def cvDay (v : List Bool) : List Bool := sndBlock (fstBlock v)
+private def cvRl (v : List Bool) : List Bool := pairFst (pairFst v)
+private def cvDay (v : List Bool) : List Bool := pairSnd (pairFst v)
 
 /-- The loop counter, clamped against the ruler: never longer than the ruler, so the paired
 argument the step builds is never larger than `Nat.pair day (cnt day)`. -/
@@ -2510,10 +2511,10 @@ private lemma cvFold_replicate (F : List Bool → List Bool) (day rl : List Bool
           = List.replicate k false ++ [false] := List.replicate_succ'
       rw [hrep, foldlBits_append_singleton, cvFold_replicate F day rl k, cvFlat_succ]
       simp only [cond_false, cvStep, cvDay, cvRl, midBlock, lastBlock, cvJc,
-        fstBlock_pair, sndBlock_pair, List.length_replicate]
+        pairFst_pair, pairSnd_pair, List.length_replicate]
       by_cases hk : rl.length ≤ k
-      · rw [if_pos hk, min_eq_right hk]
-      · rw [if_neg hk, List.length_replicate,
+      · rw [ite_eq_left hk, min_eq_right hk]
+      · rw [ite_eq_right hk, List.length_replicate,
           min_eq_left (by omega : k ≤ rl.length)]
 
 /-- Both branches of the fold are the same step, so only the *length* of the folded word
@@ -2598,10 +2599,10 @@ lemma concatUnaryPair_mem_FP {F R D : List Bool → List Bool} (hF : F ∈ FP) (
       Polynomial.eval_X, Polynomial.eval_ofNat]
     omega
   refine ⟨fun z =>
-      sndBlock (foldlBits (cvStep F) (cvStep F) (pair (R z) (D z)) (pair [] []) (R z)),
+      pairSnd (foldlBits (cvStep F) (cvStep F) (pair (R z) (D z)) (pair [] []) (R z)),
     mem_FP_comp hfold sndBlock_mem_FP, fun z => ?_⟩
-  show sndBlock (foldlBits (cvStep F) (cvStep F) (pair (R z) (D z)) (pair [] []) (R z)) = _
-  rw [cvFold_any F (pair (R z) (D z)) (pair [] []) (R z), cvFold_replicate, sndBlock_pair,
+  show pairSnd (foldlBits (cvStep F) (cvStep F) (pair (R z) (D z)) (pair [] []) (R z)) = _
+  rw [cvFold_any F (pair (R z) (D z)) (pair [] []) (R z), cvFold_replicate, pairSnd_pair,
     cvFlat]
   refine List.flatMap_congr (fun j hj => ?_)
   rw [min_eq_left (le_of_lt (List.mem_range.mp hj))]

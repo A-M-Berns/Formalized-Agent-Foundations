@@ -79,7 +79,7 @@ process that runs both of them on each product job is
 
 namespace LogicalInduction
 
-open LO LO.Propositional LO.FirstOrder LO.FirstOrder.Arithmetic
+open FFL FFL.Propositional FFL.FirstOrder FFL.FirstOrder.Arithmetic
 
 -- Keep the pairing decoder opaque while elaborating fixed job syntax.
 attribute [local irreducible] Nat.sqrt
@@ -349,7 +349,7 @@ lemma holds_semanticProduct_pos {v : PCWorld}
     v.Holds (semanticProductAtom left right n r) := by
   have h := holds_semanticProductDefSentence hv (semanticProductJob left right n 0 r zs zt)
   rw [semanticProductDefSentence_job, semanticProductSchemaInstance,
-    if_pos rfl, if_pos hst] at h
+    ite_eq_left rfl, ite_eq_left hst] at h
   exact h ⟨hX, hW⟩
 
 lemma not_holds_semanticProduct_neg {v : PCWorld}
@@ -362,7 +362,7 @@ lemma not_holds_semanticProduct_neg {v : PCWorld}
     ¬ v.Holds (semanticProductAtom left right n r) := by
   have h := holds_semanticProductDefSentence hv (semanticProductJob left right n 1 r zs zt)
   rw [semanticProductDefSentence_job, semanticProductSchemaInstance,
-    if_neg (by decide : ¬ (1 : ℕ) = 0), if_pos rfl, if_pos hst] at h
+    ite_eq_right (by decide : ¬ (1 : ℕ) = 0), ite_eq_left rfl, ite_eq_left hst] at h
   intro hp
   rcases h hp with hx | hw
   · exact hX hx
@@ -431,10 +431,10 @@ lemma semanticFreshIncreasingLUVSeq_fresh :
     SemanticPrimeFreshLUVSeq semanticFreshIncreasingLUVSeq := by
   intro n r a ha
   by_cases hr : r < 1
-  · rw [semanticFreshIncreasingLUVSeq_gt, if_pos hr] at ha
+  · rw [semanticFreshIncreasingLUVSeq_gt, ite_eq_left hr] at ha
     change a ∈ sentenceAtomCodes (⊥ : Sentence) at ha
     simp at ha
-  · rw [semanticFreshIncreasingLUVSeq_gt, if_neg hr] at ha
+  · rw [semanticFreshIncreasingLUVSeq_gt, ite_eq_right hr] at ha
     change a ∈ sentenceAtomCodes (⊤ : Sentence) at ha
     simp at ha
 
@@ -478,13 +478,13 @@ lemma semanticFreshIncreasing_not_jointly_reflected (Xhat : PresentedLUVSeq) :
     rw [← PresentedLUVSeq.gt_eq]
     have h := hreflect 0 0
     simpa [semanticFreshIncreasingLUVSeq_gt, PCWorld.Holds,
-      LO.Propositional.Formula.Boolean.val] using not_congr h
+      FFL.Propositional.Formula.val] using not_congr h
   have hone : v.Holds (semanticPrimeSentence Xhat.thresholdSchema
       (Nat.pair 0 (Encodable.encode (1 : ℚ)))) := by
     rw [← PresentedLUVSeq.gt_eq]
     exact (hreflect 0 1).mpr (by
       simp [semanticFreshIncreasingLUVSeq_gt, PCWorld.Holds,
-        LO.Propositional.Formula.Boolean.val])
+        FFL.Propositional.Formula.val])
   exact semanticProductDP_no_increasing_factor_assignment hv
     Xhat.thresholdSchema Xhat.thresholdSchema 0 hone hone hzero hzero
 
@@ -580,11 +580,11 @@ lemma theoremQuoteProductWorld_consistent_quote (T : ArithmeticTheory) :
   obtain ⟨e, -, rfl⟩ := mem_prefixProcess.mp hφ
   rw [semanticQuoteDefSentence]
   by_cases hkind : e.unpair.1 = 0
-  · rw [if_pos hkind]
+  · rw [ite_eq_left hkind]
     intro hbase
     exact (theoremQuoteProductWorld_quote T _ _).mpr
       ((theoremQuoteProductWorld_quoteAtom T _).mp hbase)
-  · rw [if_neg hkind]
+  · rw [ite_eq_right hkind]
     intro hleaf
     exact (theoremQuoteProductWorld_quoteAtom T _).mpr
       ((theoremQuoteProductWorld_quote T _ _).mp hleaf)
@@ -899,26 +899,32 @@ lemma semanticQuoteFactorPrefixValidAtFuel_computable {DP : DeductiveProcess}
   have hdown := semanticQuoteFactorDownwardAtFuel_computable base
   have hzs : Computable fun p : ((((ℕ × ℕ) × ℕ) × ℕ) × ℕ) =>
       semanticQuoteFactorZsValid base p.1.1.1.1 p.1.1.1.2 p.1.1.2 p.1.2 p.2 := by
+    -- unfold first: left to `apply`, unification unfolds the definition itself and times out
+    unfold semanticQuoteFactorZsValid
     apply listRangeAll_computable Computable.snd
     have hpack : Computable fun a : (((((ℕ × ℕ) × ℕ) × ℕ) × ℕ) × ℕ) =>
         (a.1.1, a.2) := (Computable.fst.comp Computable.fst).pair Computable.snd
-    exact hdown.comp hpack
+    exact (hdown.comp hpack).of_eq fun _ => rfl
   have hzr : Computable fun p : (((ℕ × ℕ) × ℕ) × ℕ) =>
       semanticQuoteFactorZrValid base p.1.1.1 p.2 p.1.1.2 p.1.2 := by
+    -- unfold first: left to `apply`, unification unfolds the definition itself and times out
+    unfold semanticQuoteFactorZrValid
     apply listRangeAll_computable Computable.snd
     have hpack : Computable fun a : ((((ℕ × ℕ) × ℕ) × ℕ) × ℕ) =>
         ((a.1.1, a.2), a.1.2) :=
       ((Computable.fst.comp Computable.fst).pair Computable.snd).pair
         (Computable.snd.comp Computable.fst)
-    exact hzs.comp hpack
+    exact (hzs.comp hpack).of_eq fun _ => rfl
   have hn : Computable fun p : ((ℕ × ℕ) × ℕ) =>
       semanticQuoteFactorNValid base p.1.1 p.2 p.1.2 := by
+    -- unfold first: left to `apply`, unification unfolds the definition itself and times out
+    unfold semanticQuoteFactorNValid
     apply listRangeAll_computable Computable.snd
     have hpack : Computable fun a : (((ℕ × ℕ) × ℕ) × ℕ) =>
         ((a.1.1, a.2), a.1.2) :=
       ((Computable.fst.comp Computable.fst).pair Computable.snd).pair
         (Computable.snd.comp Computable.fst)
-    exact hzr.comp hpack
+    exact (hzr.comp hpack).of_eq fun _ => rfl
   have htag : Computable fun p : (ℕ × ℕ) × ℕ => p.1.1.unpair.1 == 2 :=
     (Primrec.eq.comp
       (Primrec.fst.comp (Primrec.unpair.comp (Primrec.fst.comp Primrec.fst)))
@@ -961,7 +967,7 @@ lemma semanticQuoteFactorDownwardAtFuel_mono {DP : DeductiveProcess}
     semanticQuoteFactorDownwardAtFuel base schema fuel' n zr zs = true := by
   by_cases hrs : decodedQuotationRat zr < decodedQuotationRat zs
   · simp only [semanticQuoteFactorDownwardAtFuel, semanticQuoteFactorEvidenceAtFuel,
-      if_pos hrs, Bool.or_eq_true, Bool.and_eq_true] at h ⊢
+      ite_eq_left hrs, Bool.or_eq_true, Bool.and_eq_true] at h ⊢
     rcases h with h | h
     · exact Or.inl ⟨semanticSentenceSeenAtFuel_mono base hff h.1,
         semanticSentenceSeenAtFuel_mono base hff h.2⟩
@@ -1070,7 +1076,7 @@ lemma rationalQuote_semanticQuoteFactorDownward_eventually_of_subprocess
         (Nat.le_max_right fuel linkFuel) hlinkFuel
       exact ⟨common, by
         simp only [semanticQuoteFactorDownwardAtFuel, semanticQuoteFactorEvidenceAtFuel,
-          if_pos hrs, Bool.or_eq_true, Bool.and_eq_true]
+          ite_eq_left hrs, Bool.or_eq_true, Bool.and_eq_true]
         exact Or.inl ⟨hc, hl⟩⟩
     · have hvs : value n < decodedQuotationRat zs :=
         lt_of_le_of_lt (not_lt.mp hrv) hrs
@@ -1100,7 +1106,7 @@ lemma rationalQuote_semanticQuoteFactorDownward_eventually_of_subprocess
         (Nat.le_max_right fuel linkFuel) hlinkFuel
       exact ⟨common, by
         simp only [semanticQuoteFactorDownwardAtFuel, semanticQuoteFactorEvidenceAtFuel,
-          if_pos hrs, Bool.or_eq_true, Bool.and_eq_true]
+          ite_eq_left hrs, Bool.or_eq_true, Bool.and_eq_true]
         exact Or.inr ⟨hc, hl⟩⟩
   · exact ⟨0, by simp [semanticQuoteFactorDownwardAtFuel, hrs]⟩
 

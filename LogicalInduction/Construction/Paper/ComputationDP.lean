@@ -4,7 +4,7 @@ import LogicalInduction.Construction.Quotation.Packages
 import LogicalInduction.Construction.LIACompiler
 import Foundation.FirstOrder.Incompleteness.Halting
 -- for `ISigma1_delta1Definable`; not reachable through `Incompleteness.Halting`
-import Foundation.FirstOrder.Incompleteness.InductionSchemeDelta1
+import Foundation.FirstOrder.Arithmetic.Bootstrapping.Syntax.Theory
 import LogicalInduction.Framework.Emission.WriteOut
 
 /-!
@@ -68,8 +68,8 @@ non-vacuity; that is the whole premise set.
 
 namespace LogicalInduction
 
-open LO LO.FirstOrder LO.FirstOrder.Arithmetic LO.Entailment
-open LO.Propositional
+open FFL FFL.FirstOrder FFL.FirstOrder.Arithmetic FFL.Entailment
+open FFL.Propositional
 open Filter Topology
 
 /-! ## Provability of schema instances is recursively enumerable -/
@@ -77,7 +77,7 @@ open Filter Topology
 open Classical in
 /-- For a fixed schema `φ` and a `Δ₁` theory `T`, provability of `φ`'s numerical instances
 is recursively enumerable: the predicate is `𝚺₁` by `definability` and internalisation, and
-`re_iff_sigma1` converts it.  Mirrors the positive-path assembly inside FFL's
+`rePred_iff_sigma1` converts it.  Mirrors the positive-path assembly inside FFL's
 `incomplete_of_REPred_not_ComputablePred_Nat'`. -/
 lemma provable_instances_re (T : ArithmeticTheory) [T.Δ₁]
     (φ : ArithmeticSemisentence 1) :
@@ -86,7 +86,7 @@ lemma provable_instances_re (T : ArithmeticTheory) [T.Δ₁]
       Bootstrapping.Provable T
         (Bootstrapping.subst ℒₒᵣ ?[Bootstrapping.Arithmetic.numeral b] ⌜φ⌝) := by
     definability
-  apply REPred.of_eq (re_iff_sigma1.mpr hsig)
+  apply REPred.of_eq (rePred_iff_sigma1.mpr hsig)
   intro a
   constructor
   · rintro hP
@@ -247,7 +247,7 @@ lemma theoremDP_hworld [T.Δ₁] [𝗣𝗔⁻ ⪯ T] [Entailment.Consistent T] (
     simp only [eventAtom, h, haltingClaimSentence, computationClaimSentence, PCWorld.holds_neg,
       PCWorld.holds_atom, provabilityWorld_halting]
     intro hpos
-    exact (Entailment.Consistent.not_bot (𝓢 := T) inferInstance) (by cl_prover [hpos, hfires])
+    exact (Entailment.Consistent.not_bot (𝓢 := T)) (by cl_prover [hpos, hfires])
   · -- tag 2: positive bounded halting
     simp only [eventFires, h] at hfires
     simpa only [eventAtom, h, boundedHaltingClaimSentence, computationClaimSentence,
@@ -257,7 +257,7 @@ lemma theoremDP_hworld [T.Δ₁] [𝗣𝗔⁻ ⪯ T] [Entailment.Consistent T] (
     simp only [eventAtom, h, boundedHaltingClaimSentence, computationClaimSentence,
       PCWorld.holds_neg, PCWorld.holds_atom, provabilityWorld_boundedHalting]
     intro hbh
-    exact (Entailment.Consistent.not_bot (𝓢 := T) inferInstance) (by cl_prover [hbh, hfires])
+    exact (Entailment.Consistent.not_bot (𝓢 := T)) (by cl_prover [hbh, hfires])
   · -- tag 4: positive quotation
     simp only [eventFires, h] at hfires
     simpa only [eventAtom, h, quoteAtom, quotationClaimSentence, PCWorld.holds_atom,
@@ -270,12 +270,12 @@ lemma theoremDP_hworld [T.Δ₁] [𝗣𝗔⁻ ⪯ T] [Entailment.Consistent T] (
       PCWorld.holds_atom, provabilityWorld_quote]
     intro hpos
     have hexc := universalQuote_exclusive_prov T e.unpair.2
-    exact (Entailment.Consistent.not_bot (𝓢 := T) inferInstance)
+    exact (Entailment.Consistent.not_bot (𝓢 := T))
       (by cl_prover [hpos, hfires, hexc])
   · -- default tag: atom is ⊤, always held
     simp only [eventAtom, h]
-    show LO.Propositional.Formula.Boolean.val (provabilityWorld T) ⊤
-    simp [LO.Propositional.Formula.Boolean.val]
+    show FFL.Propositional.Formula.val (provabilityWorld T) ⊤
+    simp [FFL.Propositional.Formula.val]
 
 /-! ## Computability of the stage enumerator
 
@@ -340,8 +340,8 @@ lemma eventAtom_prim : Primrec (fun e : ℕ => eventAtom e) := by
       encode_atom, hKQP, hKQN]
   · simp [h, eventAtom, quoteAtom, quotationClaimSentence, quotationClaimCode,
       encode_negAtom, hKQP, hKQN]
-  · rw [if_neg (by omega), if_neg (by omega), if_neg (by omega), if_neg (by omega),
-      if_neg (by omega), if_neg (by omega)]
+  · rw [ite_eq_right (by omega), ite_eq_right (by omega), ite_eq_right (by omega), ite_eq_right (by omega),
+      ite_eq_right (by omega), ite_eq_right (by omega)]
     simp [eventAtom, h, encode_top]
 
 /-! ### Assembling the computation -/

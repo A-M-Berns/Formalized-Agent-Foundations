@@ -115,7 +115,7 @@ returns on a non-summable family. -/
 lemma FiniteEntropyOf.summable {X : Ω → S} (μ : Measure Ω) [IsProbabilityMeasure μ]
     (hX : Measurable X) [FiniteEntropyOf X μ] :
     Summable fun x ↦ negMulLog ((μ.map X).real {x}) := by
-  haveI : IsProbabilityMeasure (μ.map X) := Measure.isProbabilityMeasure_map hX.aemeasurable
+  haveI : IsProbabilityMeasure (μ.map X) := inferInstance
   exact FiniteEntropyMeasure.summable_real _
 
 /-! ### Instances: `FiniteSupport` and `FiniteRange` both give finite entropy -/
@@ -130,7 +130,21 @@ instance (priority := 100) finiteEntropy_of_finiteSupport (μ : Measure S) [Fini
 
 instance (priority := 100) finiteEntropy_of_finiteRange [MeasurableSingletonClass S]
     {X : Ω → S} (μ : Measure Ω) [FiniteRange X] : FiniteEntropyOf X μ := by
-  haveI : FiniteSupport (μ.map X) := ⟨FiniteRange.toFinset X, FiniteRange.ae_mem_toFinset μ X⟩
+  -- Mathlib's `map` of a non-`AEMeasurable` function is a Dirac mass at an arbitrary point,
+  -- so the finite support must be allowed to contain that point.
+  haveI : FiniteSupport (μ.map X) := by
+    by_cases hX : AEMeasurable X μ
+    · exact ⟨FiniteRange.toFinset X, FiniteRange.ae_mem_toFinset hX⟩
+    · classical
+      haveI : Nonempty S := by
+        by_contra h
+        haveI : IsEmpty S := not_nonempty_iff.mp h
+        exact hX (measurable_of_subsingleton_codomain X).aemeasurable
+      refine ⟨insert (Classical.ofNonempty : S) (FiniteRange.toFinset X), ?_⟩
+      rw [Measure.map_def, dite_eq_right hX]
+      split_ifs
+      · simp
+      · simp [MeasureTheory.ae_dirac_iff]
   infer_instance
 
 /-! ### Measure-theoretic bookkeeping
@@ -208,7 +222,7 @@ lemma finiteEntropyMeasure_map [Countable S] [MeasurableSingletonClass S]
     [MeasurableSingletonClass U] (μ : Measure S) [IsProbabilityMeasure μ]
     [FiniteEntropyMeasure μ] {f : S → U} (hf : Measurable f) :
     FiniteEntropyMeasure (μ.map f) := by
-  haveI : IsProbabilityMeasure (μ.map f) := Measure.isProbabilityMeasure_map hf.aemeasurable
+  haveI : IsProbabilityMeasure (μ.map f) := inferInstance
   refine FiniteEntropyMeasure.of_summable_real ?_
   have h := summable_negMulLog_tsum_fiber (p := fun s ↦ μ.real {s})
     (fun s ↦ measureReal_nonneg) (summable_measureReal_singleton μ)
@@ -226,9 +240,9 @@ lemma finiteEntropyMeasure_prod [Countable S] [MeasurableSingletonClass S] [Coun
     [FiniteEntropyMeasure (ρ.map Prod.fst)] [FiniteEntropyMeasure (ρ.map Prod.snd)] :
     FiniteEntropyMeasure ρ := by
   haveI hfst : IsProbabilityMeasure (ρ.map Prod.fst) :=
-    Measure.isProbabilityMeasure_map measurable_fst.aemeasurable
+    inferInstance
   haveI hsnd : IsProbabilityMeasure (ρ.map Prod.snd) :=
-    Measure.isProbabilityMeasure_map measurable_snd.aemeasurable
+    inferInstance
   set a : S → ℝ := fun x ↦ (ρ.map Prod.fst).real {x} with ha
   set b : T → ℝ := fun y ↦ (ρ.map Prod.snd).real {y} with hb
   set r : S × T → ℝ := fun q ↦ ρ.real {q} with hr
@@ -312,7 +326,7 @@ variable [Countable S] [MeasurableSingletonClass S]
 /-- A function of a finite-entropy variable has finite entropy. -/
 lemma finiteEntropyOf_comp [MeasurableSingletonClass U] {X : Ω → S} (hX : Measurable X)
     {f : S → U} (hf : Measurable f) [FiniteEntropyOf X μ] : FiniteEntropyOf (f ∘ X) μ := by
-  haveI : IsProbabilityMeasure (μ.map X) := Measure.isProbabilityMeasure_map hX.aemeasurable
+  haveI : IsProbabilityMeasure (μ.map X) := inferInstance
   rw [FiniteEntropyOf, ← Measure.map_map hf hX]
   exact finiteEntropyMeasure_map _ hf
 
@@ -323,7 +337,7 @@ lemma finiteEntropyOf_fst {X : Ω → S} {Y : Ω → T} (hX : Measurable X) (hY 
     [FiniteEntropyOf (fun ω ↦ (X ω, Y ω)) μ] : FiniteEntropyOf X μ := by
   haveI hXY : Measurable fun ω ↦ (X ω, Y ω) := hX.prodMk hY
   haveI : IsProbabilityMeasure (μ.map fun ω ↦ (X ω, Y ω)) :=
-    Measure.isProbabilityMeasure_map hXY.aemeasurable
+    inferInstance
   have h : μ.map X = (μ.map fun ω ↦ (X ω, Y ω)).map Prod.fst := by
     rw [Measure.map_map measurable_fst hXY]; rfl
   rw [FiniteEntropyOf, h]
@@ -334,7 +348,7 @@ lemma finiteEntropyOf_snd {X : Ω → S} {Y : Ω → T} (hX : Measurable X) (hY 
     [FiniteEntropyOf (fun ω ↦ (X ω, Y ω)) μ] : FiniteEntropyOf Y μ := by
   haveI hXY : Measurable fun ω ↦ (X ω, Y ω) := hX.prodMk hY
   haveI : IsProbabilityMeasure (μ.map fun ω ↦ (X ω, Y ω)) :=
-    Measure.isProbabilityMeasure_map hXY.aemeasurable
+    inferInstance
   have h : μ.map Y = (μ.map fun ω ↦ (X ω, Y ω)).map Prod.snd := by
     rw [Measure.map_map measurable_snd hXY]; rfl
   rw [FiniteEntropyOf, h]
@@ -346,7 +360,7 @@ lemma finiteEntropyOf_pair {X : Ω → S} {Y : Ω → T} (hX : Measurable X) (hY
     FiniteEntropyOf (fun ω ↦ (X ω, Y ω)) μ := by
   haveI hXY : Measurable fun ω ↦ (X ω, Y ω) := hX.prodMk hY
   haveI : IsProbabilityMeasure (μ.map fun ω ↦ (X ω, Y ω)) :=
-    Measure.isProbabilityMeasure_map hXY.aemeasurable
+    inferInstance
   have h1 : (μ.map fun ω ↦ (X ω, Y ω)).map Prod.fst = μ.map X := by
     rw [Measure.map_map measurable_fst hXY]; rfl
   have h2 : (μ.map fun ω ↦ (X ω, Y ω)).map Prod.snd = μ.map Y := by

@@ -490,7 +490,7 @@ theorem generatesSub_spec (C D : Set (Setoid S)) (X Y Z : Subpartition S)
 example {C : Set (Setoid S)} (hC : C ⊆ F.B) (X : Subpartition S) (h : F.GeneratesSub C X)
     {s t : S} (hs : s ∈ X.dom) (ht : t ∈ X.dom) : F.chimera C s t ∈ X.dom := by
   have h6 : ∀ s ∈ X.dom, ∀ t ∈ X.dom, F.chimera C s t ∈ X.dom ∧ X (F.chimera C s t) s :=
-    ((F.generatesSub_tfae hC X).out 0 5).1 h
+    ((F.generatesSub_tfae hC X).out 1 6).1 h
   exact (h6 s hs t ht).1
 
 /-- Proposition 21 read as a client would: the generating sets of a subpartition are closed

@@ -37,7 +37,7 @@ quotation layer.
 
 namespace LogicalInduction
 
-open LO LO.FirstOrder LO.FirstOrder.Arithmetic LO.Entailment
+open FFL FFL.FirstOrder FFL.FirstOrder.Arithmetic FFL.Entailment
 
 /-! ## Single-valuedness of a code formula -/
 
@@ -159,18 +159,18 @@ citations — `Arithmetic.complete`, `ModelsTheory.of_provably_subtheory`,
 lemma valueSchema_exclusive_prov (T : ArithmeticTheory) [𝗣𝗔⁻ ⪯ T] (c : Code 1)
     {y y' : ℕ} (hne : y ≠ y') (z : ℕ) :
     T ⊢ ∼(((valueSchema c y)/[‘↑z’] : ArithmeticSentence) ⋏ (valueSchema c y')/[‘↑z’]) := by
-  haveI : 𝗘𝗤 ℒₒᵣ ⪯ T := Entailment.WeakerThan.trans (𝓣 := 𝗣𝗔⁻) inferInstance inferInstance
+  have : 𝗘𝗤 ℒₒᵣ ⪯ T := Entailment.WeakerThan.trans (𝓣 := 𝗣𝗔⁻) inferInstance inferInstance
   refine Arithmetic.complete.{0} T _ fun M _ _ => ?_
-  haveI : M↓[ℒₒᵣ] ⊧* 𝗣𝗔⁻ := ModelsTheory.of_provably_subtheory M 𝗣𝗔⁻ T inferInstance
+  have : M↓[ℒₒᵣ] ⊧* 𝗣𝗔⁻ := ModelsTheory.of_provably_subtheory M 𝗣𝗔⁻ T inferInstance
   simp only [valueSchema_subst, models_iff, LogicalConnective.HomClass.map_neg,
     LogicalConnective.HomClass.map_and, Semiformula.eval_substs]
   rintro ⟨h1, h2⟩
   have hval : (ORingStructure.numeral y : M) = ORingStructure.numeral y' := by
     refine code_uniq (M := M) (c := c) (v := ![(ORingStructure.numeral z : M)]) ?_ ?_
     · simpa [Matrix.comp_vecCons', Function.comp_def, Matrix.constant_eq_singleton,
-        Matrix.empty_eq, Structure.numeral_eq_numeral] using h1
+        Matrix.empty_eq, Tarski.Structure.numeral_eq_numeral] using h1
     · simpa [Matrix.comp_vecCons', Function.comp_def, Matrix.constant_eq_singleton,
-        Matrix.empty_eq, Structure.numeral_eq_numeral] using h2
+        Matrix.empty_eq, Tarski.Structure.numeral_eq_numeral] using h2
   exact hne (by simpa using hval)
 
 end ValueSchema

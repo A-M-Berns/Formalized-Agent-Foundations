@@ -185,14 +185,14 @@ lemma decode_write (t : CodedTape) (s : Γ) :
             Function.update_of_ne (by omega : (0:ℕ) ≠ t.head)]
       | succ i =>
           have hd : t.decode.head = t.head := rfl
-          rw [Tape.write, hd, if_neg h]
-          simp only [write, if_neg h, decode, Nat.succ_ne_zero, if_false,
+          rw [Tape.write, hd, ite_eq_right h]
+          simp only [write, ite_eq_right h, decode, Nat.succ_ne_zero, ite_false,
             Function.update_apply]
           rw [getElem?_setAt]
           simp only [Nat.add_sub_cancel]
           by_cases hi : i + 1 = t.head
-          · rw [if_pos (by omega : i = t.head - 1), if_pos hi]
-          · rw [if_neg (by omega : ¬ i = t.head - 1), if_neg hi]
+          · rw [ite_eq_left (by omega : i = t.head - 1), ite_eq_left hi]
+          · rw [ite_eq_right (by omega : ¬ i = t.head - 1), ite_eq_right hi]
 
 /-- Coded write-then-move decodes to `Tape.writeAndMove`. -/
 lemma decode_writeAndMove (t : CodedTape) (s : Γ) (d : Dir3) :
@@ -262,9 +262,9 @@ lemma codedStep_eq (d : TMDesc) (c : CodedCfg) :
       ↔ (min c.state (2 ^ d.w) = min d.qhalt (2 ^ d.w)) := by
     simp [CodedCfg.decode, CodedCfg.decodeState, TMDesc.toTM, Fin.ext_iff]
   by_cases h : min c.state (2 ^ d.w) = min d.qhalt (2 ^ d.w)
-  · rw [codedStep, if_pos h, TM.step, if_pos (hq.mpr h)]
+  · rw [codedStep, ite_eq_left h, TM.step, ite_eq_left (hq.mpr h)]
     rfl
-  · rw [codedStep, if_neg h, TM.step, if_neg (fun hh => h (hq.mp hh))]
+  · rw [codedStep, ite_eq_right h, TM.step, ite_eq_right (fun hh => h (hq.mp hh))]
     simp only [Option.map_some]
     -- both sides name the same table action
     have hwork : (fun i : Fin 1 => ((CodedCfg.decode d c).work i).read)
@@ -699,8 +699,8 @@ lemma CodedTape.NoStart.setAt {l : List Γ} (hl : ∀ g ∈ l, g ≠ Γ.start) (
   rw [CodedTape.setAt, List.mem_map] at hg
   obtain ⟨j, -, rfl⟩ := hg
   by_cases hj : j = i
-  · rw [if_pos hj]; exact hs
-  · rw [if_neg hj]
+  · rw [ite_eq_left hj]; exact hs
+  · rw [ite_eq_right hj]
     cases hlj : l[j]? with
     | none => simp
     | some a => simpa using hl a (List.mem_of_getElem? hlj)
@@ -830,7 +830,7 @@ lemma halted_of_codedStep_none {d : TMDesc} {c : CodedCfg} (h : codedStep d c = 
   have h2 := codedStep_eq d c
   rw [h, Option.map_none] at h2
   by_contra hne
-  rw [TM.step, if_neg hne] at h2
+  rw [TM.step, ite_eq_right hne] at h2
   simp at h2
 
 /-- **One budgeted step.**  A successful run on budget `t + 1` either finds the machine
@@ -850,7 +850,7 @@ private lemma runUntilHalt_succ {d : TMDesc} {t : ℕ} {c c' : CodedCfg}
   cases hs : codedStep d c with
   | none =>
       rw [hs] at h
-      simp only [stepFrozen_frozen, if_pos, Option.some.injEq] at h
+      simp only [stepFrozen_frozen, ite_eq_left, Option.some.injEq] at h
       exact Or.inl ⟨rfl, h.symm⟩
   | some c₁ =>
       rw [hs] at h
@@ -1285,7 +1285,7 @@ lemma codedStep_eq_none_iff {d : TMDesc} {c : CodedCfg} :
     codedStep d c = none ↔ (d.toTM).halted (CodedCfg.decode d c) := by
   refine ⟨halted_of_codedStep_none, fun h => ?_⟩
   have h2 := codedStep_eq d c
-  rw [TM.step, if_pos h] at h2
+  rw [TM.step, ite_eq_left h] at h2
   exact Option.map_eq_none_iff.mp h2
 
 /-- **Completeness of the budgeted run.** If the real machine reaches a halted configuration

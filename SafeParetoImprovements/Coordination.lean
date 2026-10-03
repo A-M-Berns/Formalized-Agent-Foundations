@@ -94,14 +94,14 @@ noncomputable def Correlated.pure [DecidableEq (∀ i, 𝒜 i)] {a : ∀ i, 𝒜
     Γ.Correlated where
   weight b := if b = a then 1 else 0
   nonneg b := by split_ifs <;> norm_num
-  support b hb := if_neg fun h => hb (by subst h; exact ha)
+  support b hb := ite_eq_right fun h => hb (by subst h; exact ha)
   sum_eq_one := by
-    rw [Finset.sum_ite_eq' Γ.profilesFinset a, if_pos (Γ.mem_profilesFinset.2 ha)]
+    rw [Finset.sum_ite_eq' Γ.profilesFinset a, ite_eq_left (Γ.mem_profilesFinset.2 ha)]
 
 lemma Correlated.pure_payoff [DecidableEq (∀ i, 𝒜 i)] {a : ∀ i, 𝒜 i} (ha : a ∈ Γ.profiles) :
     (Correlated.pure Γ ha).payoff = Γ.u a := by
   unfold Correlated.payoff Correlated.pure
-  simp only [ite_smul, one_smul, zero_smul, Finset.sum_ite_eq', if_pos (Γ.mem_profilesFinset.2 ha)]
+  simp only [ite_smul, one_smul, zero_smul, Finset.sum_ite_eq', ite_eq_left (Γ.mem_profilesFinset.2 ha)]
 
 lemma u_mem_feasible {a : ∀ i, 𝒜 i} (ha : a ∈ Γ.profiles) : Γ.u a ∈ Γ.feasible := by
   classical
@@ -145,10 +145,10 @@ noncomputable def Correlated.ofStdSimplex [DecidableEq (∀ i, 𝒜 i)]
     split_ifs
     · exact f.2.1 _
     · exact le_rfl
-  support a ha := dif_neg fun h => ha (Γ.mem_profilesFinset.1 h)
+  support a ha := dite_eq_right fun h => ha (Γ.mem_profilesFinset.1 h)
   sum_eq_one := by
     rw [← f.2.2, ← Finset.sum_coe_sort Γ.profilesFinset]
-    exact Finset.sum_congr rfl fun a _ => dif_pos a.2
+    exact Finset.sum_congr rfl fun a _ => dite_eq_left a.2
 
 lemma Correlated.ofStdSimplex_toStdSimplex [DecidableEq (∀ i, 𝒜 i)] (p : Γ.Correlated) :
     Correlated.ofStdSimplex p.toStdSimplex = p := by
@@ -163,7 +163,7 @@ lemma Correlated.toStdSimplex_ofStdSimplex [DecidableEq (∀ i, 𝒜 i)]
     (f : stdSimplex ℝ Γ.profilesFinset) : (Correlated.ofStdSimplex f).toStdSimplex = f := by
   apply Subtype.ext
   funext a
-  exact dif_pos a.2
+  exact dite_eq_left a.2
 
 lemma Correlated.toStdSimplex_injective : Function.Injective (Correlated.toStdSimplex (Γ := Γ)) := by
   classical
@@ -389,12 +389,12 @@ lemma hasRoomOutside_of_infinite [∀ i, Infinite (𝒜 i)] (B : ∀ i, Finset (
     fun x => (e ((Fintype.equivFin {x : 𝒜 i // x ∈ Γ.S i}) x : ℕ) : 𝒜 i) with hg
   refine ⟨fun a => if ha : a ∈ Γ.S i then g ⟨a, ha⟩ else a, ?_, ?_⟩
   · intro a ha b hb hab
-    simp only [dif_pos (Finset.mem_coe.1 ha), dif_pos (Finset.mem_coe.1 hb), hg] at hab
+    simp only [dite_eq_left (Finset.mem_coe.1 ha), dite_eq_left (Finset.mem_coe.1 hb), hg] at hab
     have h1 := e.injective (Subtype.ext hab)
     have h2 := Fin.val_injective h1
     simpa using (Fintype.equivFin {x : 𝒜 i // x ∈ Γ.S i}).injective h2
   · intro a ha
-    simp only [dif_pos ha, hg]
+    simp only [dite_eq_left ha, hg]
     exact (e _).2
 
 end Game

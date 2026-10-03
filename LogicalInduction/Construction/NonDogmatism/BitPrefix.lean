@@ -43,7 +43,7 @@ over `paperDP T` (`Endpoints.lean`).
 
 namespace LogicalInduction
 
-open LO.Propositional
+open FFL.Propositional
 
 /-! ## Literal conjunctions and their exact semantics -/
 
@@ -60,7 +60,7 @@ def bitPrefixSentence (atom : ℕ → Sentence) (σ : List Bool) : Sentence :=
     (v : PCWorld) (atom : ℕ → Sentence) (k : ℕ) (b : Bool) :
     v.Holds (bitPrefixLiteral atom k b) ↔ (v.Holds (atom k) ↔ b = true) := by
   cases b <;>
-    simp [bitPrefixLiteral, PCWorld.Holds, LO.Propositional.Formula.Boolean.val]
+    simp [bitPrefixLiteral, PCWorld.Holds, FFL.Propositional.Formula.val]
 
 /-- Exact Boolean semantics of the literal conjunction, including the empty prefix. -/
 @[simp] lemma PCWorld.holds_bitPrefixSentence
@@ -68,16 +68,16 @@ def bitPrefixSentence (atom : ℕ → Sentence) (σ : List Bool) : Sentence :=
     v.Holds (bitPrefixSentence atom σ) ↔
       ∀ k : Fin σ.length, (v.Holds (atom k) ↔ σ.get k = true) := by
   have hlist (l : List Sentence) :
-      LO.Propositional.Formula.Boolean.val v l.conj ↔
-        ∀ φ ∈ l, LO.Propositional.Formula.Boolean.val v φ := by
+      FFL.Propositional.Formula.val v l.conj ↔
+        ∀ φ ∈ l, FFL.Propositional.Formula.val v φ := by
     induction l with
-    | nil => simp [List.conj, LO.Propositional.Formula.Boolean.val]
+    | nil => simp [List.conj, FFL.Propositional.Formula.val]
     | cons φ l ih =>
-        simp [List.conj, LO.Propositional.Formula.Boolean.val, ih]
+        simp [List.conj, FFL.Propositional.Formula.val, ih]
   rw [bitPrefixSentence, show v.Holds
       (List.ofFn fun k : Fin σ.length ↦
         bitPrefixLiteral atom k (σ.get k)).conj =
-      LO.Propositional.Formula.Boolean.val v
+      FFL.Propositional.Formula.val v
         (List.ofFn fun k : Fin σ.length ↦
           bitPrefixLiteral atom k (σ.get k)).conj from rfl]
   rw [hlist, List.forall_mem_ofFn_iff]
@@ -118,7 +118,7 @@ something, is therefore **not exercised** by this witness; what is exercised is 
 `lic_domination_universalSemimeasure_ofIndependentAtoms` is proved for an arbitrary
 deductive process, so the degeneracy bounds the witness, not the theorem. -/
 def ordinaryIndependentBitAtoms : IndependentBitAtoms emptyBitDeductiveProcess where
-  atom := LO.Propositional.Formula.atom
+  atom := FFL.Propositional.Formula.atom
   realizable := by
     intro n f
     refine ⟨fun a ↦ f a = true, ?_, ?_⟩
@@ -376,14 +376,14 @@ lemma badCount_eq_zero_iff (a j : ℕ) :
         have h1 : badCount a j = 0 := by omega
         have h2 : headC (tailC^[j] a) ≤ 1 := by
           by_contra hc
-          rw [if_neg hc] at h
+          rw [ite_eq_right hc] at h
           omega
         rcases Nat.lt_or_ge i j with hij | hij
         · exact (ih.mp h1) i hij
         · have : i = j := by omega
           subst this; exact h2
       · intro h
-        rw [ih.mpr (fun i hi => h i (by omega)), if_pos (h j (by omega))]
+        rw [ih.mpr (fun i hi => h i (by omega)), ite_eq_left (h j (by omega))]
 
 /-- Every head along the whole chain is a legal `Bool` code. -/
 def ChainOK (i : ℕ) : Prop := ∀ j, headC (tailC^[j] i) ≤ 1
@@ -435,7 +435,7 @@ lemma decode_chain : ∀ i, Encodable.decode (α := List Bool) i =
   | _ i ih =>
     match i with
     | 0 =>
-        rw [if_pos]
+        rw [ite_eq_left]
         · simp [chainBits]
         · intro j; simp [Function.iterate_fixed]
     | (c + 1) =>
@@ -444,7 +444,7 @@ lemma decode_chain : ∀ i, Encodable.decode (α := List Bool) i =
       by_cases hh : headC (c + 1) ≤ 1
       · rw [decode_bool_of_le_one hh, ih _ hlt]
         by_cases htail : ChainOK (tailC (c + 1))
-        · rw [if_pos htail, if_pos]
+        · rw [ite_eq_left htail, ite_eq_left]
           · rw [chainBits, chainBits, chainLen_succ, List.range_succ_eq_map,
               List.map_cons, List.map_map]
             simp only [Function.comp_def, Function.iterate_zero_apply,
@@ -454,12 +454,12 @@ lemma decode_chain : ∀ i, Encodable.decode (α := List Bool) i =
             cases j with
             | zero => simpa using hh
             | succ j => simpa [Function.iterate_succ_apply] using htail j
-        · rw [if_neg htail, if_neg]
+        · rw [ite_eq_right htail, ite_eq_right]
           · rfl
           · intro hOK
             exact htail (fun j => by
               simpa [Function.iterate_succ_apply] using hOK (j + 1))
-      · rw [Encodable.decode_ge_two _ (by omega), if_neg]
+      · rw [Encodable.decode_ge_two _ (by omega), ite_eq_right]
         · rfl
         · intro hOK
           exact hh (by simpa using hOK 0)
@@ -470,8 +470,8 @@ lemma bitStringEnumeration_eq (i : ℕ) :
     bitStringEnumeration i = if badCount i i = 0 then chainBits i else [] := by
   rw [bitStringEnumeration, decode_chain]
   by_cases h : ChainOK i
-  · rw [if_pos h, if_pos ((chainOK_iff_badCount i).mp h)]; rfl
-  · rw [if_neg h, if_neg (fun hb => h ((chainOK_iff_badCount i).mpr hb))]; rfl
+  · rw [ite_eq_left h, ite_eq_left ((chainOK_iff_badCount i).mp h)]; rfl
+  · rw [ite_eq_right h, ite_eq_right (fun hb => h ((chainOK_iff_badCount i).mpr hb))]; rfl
 
 /-! ### The two scans are poly-fueled -/
 
@@ -492,10 +492,10 @@ lemma chainLen_polyFueled : ∃ c, PolyFueled c chainLen := by
       simp only [Nat.unpair_pair, ifzSelFn]
       have hiff := iterate_eq_zero_iff a j
       by_cases h : tailC^[j] a = 0
-      · rw [if_pos h]
+      · rw [ite_eq_left h]
         have : chainLen a ≤ j := hiff.mp h
         omega
-      · rw [if_neg h]
+      · rw [ite_eq_right h]
         have : ¬ chainLen a ≤ j := fun hc => h (hiff.mpr hc)
         omega) hst
   refine ⟨_, (hscan.comp (PolyFueled.id.pair PolyFueled.id)).of_eq (fun t => ?_)⟩
@@ -528,8 +528,8 @@ lemma badCount_diag_polyFueled : ∃ c, PolyFueled c (fun i => badCount i i) := 
       simp only [Nat.unpair_pair, ifzSelFn]
       rw [badCount_succ]
       by_cases h : headC (tailC^[j] a) - 1 = 0
-      · rw [if_pos h, if_pos (by omega)]
-      · rw [if_neg h, if_neg (by omega)]) hst
+      · rw [ite_eq_left h, ite_eq_left (by omega)]
+      · rw [ite_eq_right h, ite_eq_right (by omega)]) hst
   exact ⟨_, (hscan.comp (PolyFueled.id.pair PolyFueled.id)).of_eq (fun t => by
     simp only [Nat.unpair_pair])⟩
 
@@ -610,7 +610,7 @@ lemma prefixRun_eq (nameMap : ℕ → ℕ) (i : ℕ) :
       rpn (bitPrefixSentence (fun k ↦ Formula.atom (nameMap k)) (bitStringEnumeration i)) := by
   rw [rpn_bitPrefixSentence, bitStringEnumeration_eq, prefixRun]
   by_cases h : badCount i i = 0
-  · rw [if_pos h, if_pos h, chainBits, List.length_map, List.length_range]
+  · rw [ite_eq_left h, ite_eq_left h, chainBits, List.length_map, List.length_range]
     congr 1
     apply List.flatMap_congr
     intro j hj
@@ -618,7 +618,7 @@ lemma prefixRun_eq (nameMap : ℕ → ℕ) (i : ℕ) :
     congr 1
     rw [List.getD_eq_getElem _ _ (by simpa using hj)]
     simp
-  · rw [if_neg h, if_neg h]
+  · rw [ite_eq_right h, ite_eq_right h]
     simp
 
 /-- The emitted run is a polynomial segment stream: the two scans and the per-position
@@ -654,9 +654,9 @@ lemma prefixRun_polySegStream {cname : Nat.Partrec.Code} {nameMap : ℕ → ℕ}
       bitBlock (nameMap z.unpair.2) (decide (headC (tailC^[z.unpair.2] z.unpair.1) = 1))) := by
     refine (PolySegStream.ifZero hpos hneg htest).of_eq (fun z => ?_)
     by_cases hb : headC (tailC^[z.unpair.2] z.unpair.1) = 1
-    · rw [if_pos (by omega), hb]
+    · rw [ite_eq_left (by omega), hb]
       simp [bitBlock]
-    · rw [if_neg (by omega)]
+    · rw [ite_eq_right (by omega)]
       simp [bitBlock, hb]
   have htail : PolySegStream (fun _ : ℕ => [2, 0, 0]) :=
     (PolySegStream.ofTokenStream
@@ -666,12 +666,12 @@ lemma prefixRun_polySegStream {cname : Nat.Partrec.Code} {nameMap : ℕ → ℕ}
   refine (PolySegStream.ifZero hbody htail hbad).of_eq (fun i => ?_)
   rw [prefixRun]
   by_cases h : badCount i i = 0
-  · rw [if_pos h, if_pos h]
+  · rw [ite_eq_left h, ite_eq_left h]
     congr 1
     apply List.flatMap_congr
     intro j _
     simp only [Nat.unpair_pair]
-  · rw [if_neg h, if_neg h]
+  · rw [ite_eq_right h, ite_eq_right h]
 
 /-- **The prefix-conjunction sequence is write-out metered efficiently computable.** -/
 lemma bigSentenceCodes_bitPrefixSentence {cname : Nat.Partrec.Code} {nameMap : ℕ → ℕ}

@@ -103,7 +103,7 @@ lemma disintegration (κ : Kernel T (S × U)) [IsFiniteKernel κ] :
   · intro a a' haa'
     rw [Function.onFun, Set.disjoint_iff]
     intro su
-    simp only [Set.mem_inter_iff, Set.mem_preimage, Set.mem_singleton_iff, Set.mem_setOf_eq,
+    simp only [Set.mem_inter_iff, Set.mem_preimage, Set.mem_singleton_iff, Set.mem_ofPred_eq,
       Set.mem_empty_iff_false, and_imp]
     intro h1 _ h1' _
     exact haa' (h1.symm.trans h1')
@@ -178,7 +178,7 @@ lemma condKernel_map_prodMk_left {V : Type*} [Nonempty V] [MeasurableSpace V]
     refine fun h_zero ↦ hy.2 ?_
     refine measure_mono_null ?_ h_zero
     intro p
-    simp only [Set.mem_setOf_eq, Set.mem_preimage, Set.mem_singleton_iff]
+    simp only [Set.mem_ofPred_eq, Set.mem_preimage, Set.mem_singleton_iff]
     conv_lhs => rw [← Prod.eta x, Prod.mk_inj]
     exact fun h ↦ h.2
   have h_preimage : (fun p ↦ (p.1, f p)) ⁻¹' (Prod.fst ⁻¹' {x.2}) = Prod.fst ⁻¹' {x.2} := by
@@ -193,7 +193,7 @@ lemma condKernel_map_prodMk_left {V : Type*} [Nonempty V] [MeasurableSpace V]
   congr
   ext p
   simp only [Set.singleton_prod, Set.mem_preimage, Set.mem_image, Prod.mk.injEq,
-    exists_eq_right_right, Set.mem_setOf_eq]
+    exists_eq_right_right, Set.mem_ofPred_eq]
   refine ⟨fun h ↦ ⟨p.2, ?_, ?_⟩, fun ⟨p2, h_mem, h_eq⟩ ↦ ?_⟩
   · rw [h.2, Prod.mk.eta]
     exact h.1
@@ -215,7 +215,7 @@ variable {X : Ω → S} {Y : Ω → T} {Z : Ω → U}
 lemma condDistrib_apply' [Nonempty S] (hX : Measurable X) (hY : Measurable Y) (μ : Measure Ω)
     [IsFiniteMeasure μ] (x : T) (hYx : μ (Y ⁻¹' {x}) ≠ 0) {s : Set S} (hs : MeasurableSet s) :
     condDistrib X Y μ x s = (μ (Y ⁻¹' {x}))⁻¹ * μ (Y ⁻¹' {x} ∩ X ⁻¹' s) := by
-  rw [condDistrib_apply_of_ne_zero hX]
+  rw [condDistrib_apply_of_ne_zero hY hX]
   · rw [Measure.map_apply hY (.singleton _),
       Measure.map_apply (hY.prodMk hX) ((measurableSet_singleton _).prod hs)]
     congr
@@ -599,7 +599,7 @@ def AEFiniteKernelSupport.mk {μ} {κ : Kernel T S} (_hκ : AEFiniteKernelSuppor
     Kernel T S := by
   classical
   exact if hS : Nonempty S then
-    κ.piecewise (s := {t | ∃ A : Finset S, κ t Aᶜ = 0}) (by rw [Set.setOf_exists]; measurability)
+    κ.piecewise (s := {t | ∃ A : Finset S, κ t Aᶜ = 0}) (by rw [Set.ofPred_exists]; measurability)
        (.const _ <| .dirac hS.some)
   else 0
 
@@ -620,7 +620,7 @@ open Classical in
 lemma AEFiniteKernelSupport.mk_eq
     [hS : Nonempty S] {κ : Kernel T S} (hκ : AEFiniteKernelSupport κ μ) :
     hκ.mk = κ.piecewise (s := {t | ∃ A : Finset S, κ t Aᶜ = 0})
-      (by rw [Set.setOf_exists]; measurability) (.const _ <| .dirac hS.some) := by
+      (by rw [Set.ofPred_exists]; measurability) (.const _ <| .dirac hS.some) := by
   simp [mk, hS]
 
 lemma AEFiniteKernelSupport.finiteKernelSupport_mk [MeasurableSingletonClass S] {κ : Kernel T S}
@@ -645,7 +645,7 @@ lemma AEFiniteKernelSupport.ae_eq_mk
     simp [Set.eq_empty_of_isEmpty s]
   filter_upwards [hκ] with t ht
   classical
-  rw [AEFiniteKernelSupport.mk_eq, Kernel.piecewise_apply, if_pos (by exact ht)]
+  rw [AEFiniteKernelSupport.mk_eq, Kernel.piecewise_apply, ite_eq_left (by exact ht)]
 
 instance AEFiniteKernelSupport.isMarkovKernel_mk
     {κ : Kernel T S} [IsMarkovKernel κ] (hκ : AEFiniteKernelSupport κ μ) :
@@ -772,7 +772,7 @@ lemma AEFiniteKernelSupport.comap_equiv [Countable U] [MeasurableSingletonClass 
   rw [ae_map_iff f.symm.measurable.aemeasurable]
   · simp only [MeasurableEquiv.apply_symm_apply]
     exact hκ
-  · rw [Set.setOf_exists]
+  · rw [Set.ofPred_exists]
     measurability
 
 /-- Projecting a kernel to first coordinate preserves finite kernel support. -/
@@ -922,7 +922,7 @@ protected lemma AEFiniteKernelSupport.prodMkRight [MeasurableSingletonClass S]
   rw [Measure.ae_prod_mem_iff_ae_ae_mem]
   · filter_upwards [hκ.ae_eq_mk] with x hx
     simp [hx]
-  · simp only [prodMkRight_apply, measurableSet_setOf]
+  · simp only [prodMkRight_apply, measurableSet_setOfPred]
     exact .of_discrete
 
 /-- prodMkLeft preserves finite kernel support. -/

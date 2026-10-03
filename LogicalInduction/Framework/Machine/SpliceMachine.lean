@@ -49,7 +49,7 @@ machine forms above.
 None of these combinators asks for one. `Complexity.FP` membership already bounds an emitted
 word's length by a polynomial in its argument (`Cobham.output_length_poly_of_mem_FP`), which
 is what the streaming concatenation behind `concatVar` needs; the scaffolding tag blocks are
-`FPFold.constFn_mem_FP`; and no token's *value* is bounded anywhere.
+`Complexity.constFn_mem_FP`; and no token's *value* is bounded anywhere.
 
 ## Completeness of the mirror
 
@@ -447,7 +447,7 @@ lemma MachineSpliceStream.ec (Tr : Trader)
       · next trades' hsome =>
           rw [hdecode] at hsome
           obtain rfl := Option.some.inj hsome
-          rw [dif_pos rank_le]
+          rw [dite_eq_left rank_le]
 
 /-- **Single-trade realization over machine data.** A trader whose day-`n` strategy is the
 single trade `(f n, φ n)`, with a price-free coefficient stream and a machine-metered

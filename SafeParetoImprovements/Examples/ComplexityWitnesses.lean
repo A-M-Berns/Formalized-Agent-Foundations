@@ -230,7 +230,11 @@ be `λ = 2`. -/
 
 /-- The four actions. -/
 inductive SAct | a0 | a1 | a2 | a3
-  deriving DecidableEq, Fintype
+  deriving DecidableEq
+
+instance : Fintype SAct where
+  elems := {.a0, .a1, .a2, .a3}
+  complete := by intro x; cases x <;> simp
 
 abbrev SUniverse : Two → Type := fun _ => SAct
 

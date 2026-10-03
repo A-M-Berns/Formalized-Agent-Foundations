@@ -34,7 +34,7 @@ fuel-metered proof builds them, and each is converted to a ruler on the spot.
 None of these combinators asks for one. `Complexity.FP` membership already bounds an
 emitted word's length by a polynomial in its argument
 (`Cobham.output_length_poly_of_mem_FP`), which is what the streaming concatenation behind
-`bigAnd` needs; the constant scaffolding blocks are `FPFold.constFn_mem_FP`; and no token's
+`bigAnd` needs; the constant scaffolding blocks are `Complexity.constFn_mem_FP`; and no token's
 *value* is bounded anywhere, which is the whole point of the write-out layer.
 
 ## The asymmetry, and where the threshold interfaces live
@@ -159,7 +159,7 @@ lemma and {φ ψ : ℕ → Sentence} (hφ : MachineSentenceCodes φ) (hψ : Mach
     fun z => ?_⟩
   have hlen : (3 :: (a z ++ b z)).length = (a z).length + (b z).length + 1 := by simp
   rw [hlen, parseRpn_cons]
-  rw [if_neg (by norm_num), if_neg (by norm_num), if_neg (by norm_num), if_pos rfl]
+  rw [ite_eq_right (by norm_num), ite_eq_right (by norm_num), ite_eq_right (by norm_num), ite_eq_left rfl]
   rw [parseRpn_block_head (hpa z) (b z) (by omega)]
   simp only [Option.bind_some]
   rw [parseRpn_mono (b z) (show (b z).length ≤ (a z).length + (b z).length by omega)
@@ -178,7 +178,7 @@ lemma neg {φ : ℕ → Sentence} (hφ : MachineSentenceCodes φ) :
     fun z => ?_⟩
   have hlen : (2 :: (a z ++ b z)).length = (a z).length + (b z).length + 1 := by simp
   rw [hlen, parseRpn_cons]
-  rw [if_neg (by norm_num), if_neg (by norm_num), if_pos rfl]
+  rw [ite_eq_right (by norm_num), ite_eq_right (by norm_num), ite_eq_left rfl]
   rw [parseRpn_block_head (hpa z) (b z) (by omega)]
   simp only [Option.bind_some]
   rw [parseRpn_mono (b z) (show (b z).length ≤ (a z).length + (b z).length by omega)
@@ -294,12 +294,12 @@ lemma MachineSentenceCodes.modDispatch {k : ℕ} (hk : 0 < k) {φ : ℕ → ℕ 
           ((hφ m hmk).comp (f := fun n : ℕ => (Nat.unpair n).1) hleft)
           (ih (le_of_lt hm)) htest).of_eq (fun z => ?_)
         by_cases heq : z.unpair.2 % k = m
-        · rw [if_pos (by omega), if_pos (by omega), heq]
-        · rw [if_neg (by omega)]
+        · rw [ite_eq_left (by omega), ite_eq_left (by omega), heq]
+        · rw [ite_eq_right (by omega)]
           by_cases hlt : z.unpair.2 % k < m + 1
-          · rw [if_pos hlt, if_pos (by omega)]
-          · rw [if_neg hlt, if_neg (by omega)]
+          · rw [ite_eq_left hlt, ite_eq_left (by omega)]
+          · rw [ite_eq_right hlt, ite_eq_right (by omega)]
   exact (H k le_rfl).of_eq (fun z => by
-    rw [if_pos (Nat.mod_lt z.unpair.2 hk)])
+    rw [ite_eq_left (Nat.mod_lt z.unpair.2 hk)])
 
 end LogicalInduction

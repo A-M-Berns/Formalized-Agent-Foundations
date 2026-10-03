@@ -327,7 +327,7 @@ lemma UnaryRuler.of_polyFueled {c : Nat.Partrec.Code} {cnt : ℕ → ℕ}
     rw [hval, min_eq_left hcap]
   rw [heqT] at htrue
   have hfalse := Complexity.Cobham.mulLenFn_mem_FP htrue
-    (LogicalInduction.FPFold.constFn_mem_FP [true])
+    (Complexity.constFn_mem_FP [true])
   simpa using hfalse
 
 /-! ## The write-out token stream, machine reading -/
@@ -381,11 +381,11 @@ to it by `TokenFold.decodeBits_tokBits`; the certificate does not read the day a
 length side condition.
 
 This is where the fuel side's whole `PolyTokenStream` layer collapses to on the machine
-side: a constant word is `FPFold.constFn_mem_FP`, so the token-metered scaffolding class
+side: a constant word is `Complexity.constFn_mem_FP`, so the token-metered scaffolding class
 `BigTokenStream.ofPolySegStream ∘ PolySegStream.ofTokenStream ∘ PolyTokenStream.const`
 runs through has no machine counterpart to build. -/
 lemma MachineTokenStream.const (ts : List ℕ) : MachineTokenStream (fun _ => ts) :=
-  ⟨fun _ => TokenFold.tokBits ts, FPFold.constFn_mem_FP _,
+  ⟨fun _ => TokenFold.tokBits ts, Complexity.constFn_mem_FP _,
     fun _ => TokenFold.blockWF_tokBits ts, fun _ => TokenFold.decodeBits_tokBits ts⟩
 
 /-- **The class is closed under reindexing by a machine-readable map.** The reindexer
@@ -435,12 +435,12 @@ lemma MachineTokenStream.ifZero {s₀ s₁ : ℕ → List ℕ} {tf : ℕ → ℕ
     TokenFold.ifEqLen_mem_FP ht 0 hF₀ hF₁, fun d => ?_, fun d => ?_⟩
   · simp only [length_unaryDay, List.length_replicate]
     by_cases hz : tf d = 0
-    · rw [if_pos hz]; exact hwf₀ d
-    · rw [if_neg hz]; exact hwf₁ d
+    · rw [ite_eq_left hz]; exact hwf₀ d
+    · rw [ite_eq_right hz]; exact hwf₁ d
   · simp only [length_unaryDay, List.length_replicate]
     by_cases hz : tf d = 0
-    · rw [if_pos hz, if_pos hz]; exact hd₀ d
-    · rw [if_neg hz, if_neg hz]; exact hd₁ d
+    · rw [ite_eq_left hz, ite_eq_left hz]; exact hd₀ d
+    · rw [ite_eq_right hz, ite_eq_right hz]; exact hd₁ d
 
 /-- **Variable-count concatenation**: `cnt n` machine-metered segments, the `j`-th indexed
 `Nat.pair n j`, concatenated on day `n`.
@@ -615,7 +615,7 @@ lemma MachineDigits.exists_digitWord {x : ℕ → ℕ} (h : MachineDigits x) :
   obtain ⟨F, hF, hwf, hd⟩ := h
   refine ⟨fun z => (F z).take ((F z).drop 3).length,
     Complexity.Cobham.takeLenFn_mem_FP
-      (TokenFold.dropLenFn_mem_FP (FPFold.constFn_mem_FP [false, false, false]) hF) hF,
+      (TokenFold.dropLenFn_mem_FP (Complexity.constFn_mem_FP [false, false, false]) hF) hF,
     fun d => ?_, fun d => ?_⟩
   · obtain ⟨cur, hcur, -, he⟩ := TokenFold.digitRun_of_blockWF (hwf d) (hd d)
     show DigitFP.IsDigitWord ((F (unaryDay d)).take ((F (unaryDay d)).drop 3).length)
@@ -635,7 +635,7 @@ lemma MachineDigits.of_digitWord {x : ℕ → ℕ} {D : List Bool → List Bool}
     (hw : ∀ d, DigitFP.IsDigitWord (D (unaryDay d)))
     (hv : ∀ d, DigitFP.wordVal (D (unaryDay d)) = x d) : MachineDigits x := by
   refine ⟨fun z => D z ++ digitBits 4,
-    Complexity.Cobham.appendFn_mem_FP hD (FPFold.constFn_mem_FP (digitBits 4)),
+    Complexity.Cobham.appendFn_mem_FP hD (Complexity.constFn_mem_FP (digitBits 4)),
     fun d => ?_, fun d => ?_⟩
   · obtain ⟨cur, hcur, he⟩ := hw d
     show TokenFold.BlockWF (D (unaryDay d) ++ digitBits 4)
@@ -660,11 +660,11 @@ lemma MachineDigits.of_eq {x x' : ℕ → ℕ} (h : MachineDigits x) (he : ∀ n
   MachineTokenStream.of_eq h (fun n => by rw [he n])
 
 /-- **A constant is machine-metered.** The emitted word is the constant base-four run of
-`K` (`FPFold.constFn_mem_FP`), so the certificate does not read its argument at all. No
+`K` (`Complexity.constFn_mem_FP`), so the certificate does not read its argument at all. No
 length side condition. Fuel-side twin: `BigDigits.const`. -/
 lemma MachineDigits.const (K : ℕ) : MachineDigits (fun _ => K) :=
   MachineDigits.of_digitWord (D := fun _ => digitsToBits (natDigits4 K))
-    (FPFold.constFn_mem_FP _)
+    (Complexity.constFn_mem_FP _)
     (fun _ => DigitFP.isDigitWord_digitsToBits (natDigits4_lt K))
     (fun _ => by rw [DigitFP.wordVal_digitsToBits (natDigits4_lt K), digitVal_natDigits4])
 
@@ -808,9 +808,9 @@ lemma MachineDigits.natPair {x y : ℕ → ℕ} (hx : MachineDigits x) (hy : Mac
     · rw [DigitFP.wordVal_addW
           (DigitFP.isDigitWord_addW (DigitFP.isDigitWord_mulW (hXw d) (hXw d)) (hXw d)) (hYw d),
         DigitFP.wordVal_addW (DigitFP.isDigitWord_mulW (hXw d) (hXw d)) (hXw d),
-        DigitFP.wordVal_mulW (hXw d) (hXw d), hXv d, hYv d, Nat.pair, if_neg (by omega)]
+        DigitFP.wordVal_mulW (hXw d) (hXw d), hXv d, hYv d, Nat.pair, ite_eq_right (by omega)]
     · rw [DigitFP.wordVal_addW (DigitFP.isDigitWord_mulW (hYw d) (hYw d)) (hXw d),
-        DigitFP.wordVal_mulW (hYw d) (hYw d), hXv d, hYv d, Nat.pair, if_pos (by omega)]
+        DigitFP.wordVal_mulW (hYw d) (hYw d), hXv d, hYv d, Nat.pair, ite_eq_left (by omega)]
 
 /-! ### Naming an emitted token run
 
@@ -927,24 +927,24 @@ lemma MachineDigits.ofTokenListNat {L : ℕ → List ℕ} (h : MachineTokenStrea
     (hlt : ∀ n, ∀ t ∈ L n, t < 63) :
     MachineDigits (fun n => tokenListNat (L n)) := by
   obtain ⟨F, hF, -, hdec⟩ := h
-  have hSTEP : (fun v : List Bool => fstBlock (sndBlock v)) ∈ Complexity.FP :=
+  have hSTEP : (fun v : List Bool => pairFst (pairSnd v)) ∈ Complexity.FP :=
     Complexity.mem_FP_comp sndBlock_mem_FP fstBlock_mem_FP
   have hEMIT : (fun v : List Bool =>
-      (sndBlock (sndBlock v) ++ digitsToBits [0, 0, 0]).take 9) ∈ Complexity.FP := by
+      (pairSnd (pairSnd v) ++ digitsToBits [0, 0, 0]).take 9) ∈ Complexity.FP := by
     have hraw := takeLenFn_mem_FP (a := fun _ : List Bool => List.replicate 9 true)
-      (b := fun v : List Bool => sndBlock (sndBlock v) ++ digitsToBits [0, 0, 0])
-      (FPFold.constFn_mem_FP _)
+      (b := fun v : List Bool => pairSnd (pairSnd v) ++ digitsToBits [0, 0, 0])
+      (Complexity.constFn_mem_FP _)
       (appendFn_mem_FP (Complexity.mem_FP_comp sndBlock_mem_FP sndBlock_mem_FP)
-        (FPFold.constFn_mem_FP _))
+        (Complexity.constFn_mem_FP _))
     simpa using hraw
   have hSbnd : ∀ W cli tok : List Bool,
-      (fstBlock (sndBlock (Complexity.pair W (Complexity.pair cli tok)))).length
+      (pairFst (pairSnd (Complexity.pair W (Complexity.pair cli tok)))).length
         ≤ cli.length + tok.length + 0 := by
     intro W cli tok
-    rw [sndBlock_pair, fstBlock_pair]
+    rw [pairSnd_pair, pairFst_pair]
     omega
   have hEbnd : ∀ W cli tok : List Bool,
-      ((sndBlock (sndBlock (Complexity.pair W (Complexity.pair cli tok)))
+      ((pairSnd (pairSnd (Complexity.pair W (Complexity.pair cli tok)))
           ++ digitsToBits [0, 0, 0]).take 9).length
         ≤ (Polynomial.C 9).eval W.length + 0 * (cli.length + tok.length) := by
     intro W cli tok
@@ -952,23 +952,23 @@ lemma MachineDigits.ofTokenListNat {L : ℕ → List ℕ} (h : MachineTokenStrea
     simp only [Polynomial.eval_C]
     omega
   have hSeq : ∀ (W cli : List Bool) (cur : List ℕ), (∀ d ∈ cur, d < 4) →
-      fstBlock (sndBlock (Complexity.pair W (Complexity.pair cli (digitsToBits cur))))
+      pairFst (pairSnd (Complexity.pair W (Complexity.pair cli (digitsToBits cur))))
         = cli := by
     intro W cli cur _
-    rw [sndBlock_pair, fstBlock_pair]
+    rw [pairSnd_pair, pairFst_pair]
   have hEeq : ∀ (W cli : List Bool) (cur : List ℕ), (∀ d ∈ cur, d < 4) →
-      (sndBlock (sndBlock (Complexity.pair W (Complexity.pair cli (digitsToBits cur))))
+      (pairSnd (pairSnd (Complexity.pair W (Complexity.pair cli (digitsToBits cur))))
           ++ digitsToBits [0, 0, 0]).take 9
         = digitsToBits (padTriple (digitVal cur)) := by
     intro W cli cur hcur
-    rw [sndBlock_pair, sndBlock_pair,
+    rw [pairSnd_pair, pairSnd_pair,
       show digitsToBits cur ++ digitsToBits [0, 0, 0]
         = digitsToBits (cur ++ [0, 0, 0]) from (digitsToBits_append _ _).symm,
       take_nine_digitsToBits, take_three_pad cur hcur]
   have hfold := TokenFold.natFold_mem_FP (STEPn := fun c (_ : ℕ) => c)
     (EMITn := fun (_ : List Bool) t => digitsToBits (padTriple t))
     (c := 0) (k := 0) (qQ := Polynomial.C 9)
-    hSTEP hEMIT (FPFold.constFn_mem_FP []) hF hSbnd hEbnd hSeq hEeq [] []
+    hSTEP hEMIT (Complexity.constFn_mem_FP []) hF hSbnd hEbnd hSeq hEeq [] []
   have hword : ∀ d : ℕ,
       (TokenFold.natFold (fun c (_ : ℕ) => c)
           (fun (_ : List Bool) t => digitsToBits (padTriple t)) [] []
@@ -983,7 +983,7 @@ lemma MachineDigits.ofTokenListNat {L : ℕ → List ℕ} (h : MachineTokenStrea
     (D := fun z => (TokenFold.natFold (fun c (_ : ℕ) => c)
         (fun (_ : List Bool) t => digitsToBits (padTriple t)) [] []
         (undigitize (bitsToDigits (F z)))).2 ++ digitsToBits [3, 3, 3])
-    (appendFn_mem_FP hfold (FPFold.constFn_mem_FP _)) (fun d => ?_) (fun d => ?_)
+    (appendFn_mem_FP hfold (Complexity.constFn_mem_FP _)) (fun d => ?_) (fun d => ?_)
   · rw [hword d]
     exact DigitFP.isDigitWord_digitsToBits mem_flatMap_padTriple
   · have hbound : ∀ t ∈ L d ++ [63], t < 64 := by
@@ -1015,15 +1015,15 @@ lemma MachineTokenStream.lengthRuler {t : ℕ → List ℕ} (h : MachineTokenStr
   have hDay : (fun z : List Bool => F (List.replicate z.length true)) ∈ Complexity.FP := by
     simpa [Function.comp_def] using
       Complexity.mem_FP_comp Complexity.unaryLength_mem_FP hF
-  have hSTEP : (fun v : List Bool => fstBlock (sndBlock v)) ∈ Complexity.FP :=
+  have hSTEP : (fun v : List Bool => pairFst (pairSnd v)) ∈ Complexity.FP :=
     Complexity.mem_FP_comp sndBlock_mem_FP fstBlock_mem_FP
   have hfold := TokenFold.natFold_mem_FP (STEPn := fun c (_ : ℕ) => c)
     (EMITn := fun (_ : List Bool) (_ : ℕ) => ([false] : List Bool))
     (c := 0) (k := 0) (qQ := Polynomial.C 1)
-    hSTEP (FPFold.constFn_mem_FP [false]) (FPFold.constFn_mem_FP []) hDay
-    (fun W cli tok => by rw [sndBlock_pair, fstBlock_pair]; omega)
+    hSTEP (Complexity.constFn_mem_FP [false]) (Complexity.constFn_mem_FP []) hDay
+    (fun W cli tok => by rw [pairSnd_pair, pairFst_pair]; omega)
     (fun W cli tok => by simp)
-    (fun W cli cur _ => by rw [sndBlock_pair, fstBlock_pair])
+    (fun W cli cur _ => by rw [pairSnd_pair, pairFst_pair])
     (fun _ _ _ _ => rfl) [] []
   have heq : (fun z : List Bool => (TokenFold.natFold (fun c (_ : ℕ) => c)
         (fun (_ : List Bool) (_ : ℕ) => ([false] : List Bool)) [] []

@@ -220,7 +220,7 @@ Since `0 ≤ H[X]` always (`ProbabilityTheory.entropy_nonneg`), the hypothesis i
 lemma const_of_nonpos_entropy [IsProbabilityMeasure μ] (hX : Measurable X)
     [FiniteEntropyOf X μ] (hent : H[X ; μ] ≤ 0) :
     ∃ s : S, μ.real (X ⁻¹' {s}) = 1 := by
-  haveI : IsProbabilityMeasure (μ.map X) := Measure.isProbabilityMeasure_map hX.aemeasurable
+  haveI : IsProbabilityMeasure (μ.map X) := inferInstance
   have hnn : ∀ x : S, 0 ≤ negMulLog ((μ.map X).real {x}) := fun x ↦
     negMulLog_nonneg measureReal_nonneg (measureReal_singleton_le_one _ x)
   have hsum : Summable fun x : S ↦ negMulLog ((μ.map X).real {x}) :=
@@ -282,7 +282,7 @@ lemma finiteEntropyMeasure_of_injective [Countable Ω] [MeasurableSingletonClass
     [MeasurableSingletonClass S] {μ : Measure Ω} [IsProbabilityMeasure μ] {f : Ω → S}
     (hf : Measurable f) (hinj : Function.Injective f) [FiniteEntropyOf f μ] :
     FiniteEntropyMeasure μ := by
-  haveI : IsProbabilityMeasure (μ.map f) := Measure.isProbabilityMeasure_map hf.aemeasurable
+  haveI : IsProbabilityMeasure (μ.map f) := inferInstance
   refine FiniteEntropyMeasure.of_summable_real ?_
   have hsum : Summable fun s ↦ negMulLog ((μ.map f).real {s}) :=
     FiniteEntropyMeasure.summable_real _

@@ -150,7 +150,7 @@ lemma cpdOfDist_mass_of_pos {P : Distr (Pt Val)} {v : V} (x : Pt Val)
     (cpdOfDist P v (parentConfig G Val x v)).mass (x v) =
       P.prob (agreeOn ({v} ∪ G.parents v) x) / P.prob (agreeOn (G.parents v) x) := by
   have he : cpdOfDist P v (parentConfig G Val x v)
-      = (condDist P (agreeOn (G.parents v) x) h).map fun y => y v := dif_pos h
+      = (condDist P (agreeOn (G.parents v) x) h).map fun y => y v := dite_eq_left h
   rw [he, Distr.map_mass, condDist_prob, ← agreeOn_singleton, agreeOn_inter]
 
 omit [∀ v, DecidableEq (Val v)] in
@@ -387,15 +387,15 @@ def ind (W₁ W₂ W₃ : Finset Bool) : Prop :=
   else (W₁ = ∅ ∨ W₂ = ∅)
 
 lemma ind_of_mem_false {W₁ W₂ W₃ : Finset Bool} (h : false ∈ W₃) : ind W₁ W₂ W₃ := by
-  simp only [ind, if_pos h]
+  simp only [ind, ite_eq_left h]
 
 lemma ind_iff_of_mem_true {W₁ W₂ W₃ : Finset Bool} (h1 : false ∉ W₃) (h2 : true ∈ W₃) :
     ind W₁ W₂ W₃ ↔ (false ∉ W₁ ∨ false ∉ W₂) := by
-  simp only [ind, if_neg h1, if_pos h2]
+  simp only [ind, ite_eq_right h1, ite_eq_left h2]
 
 lemma ind_iff_of_notMem {W₁ W₂ W₃ : Finset Bool} (h1 : false ∉ W₃) (h2 : true ∉ W₃) :
     ind W₁ W₂ W₃ ↔ (W₁ = ∅ ∨ W₂ = ∅) := by
-  simp only [ind, if_neg h1, if_neg h2]
+  simp only [ind, ite_eq_right h1, ite_eq_right h2]
 
 lemma eq_empty_of_notMem {S : Finset Bool} (h1 : false ∉ S) (h2 : true ∉ S) : S = ∅ :=
   Finset.eq_empty_iff_forall_notMem.mpr fun w => by cases w <;> assumption

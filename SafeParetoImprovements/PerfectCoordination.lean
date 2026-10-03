@@ -155,7 +155,7 @@ lemma exists_tokenGame_ue_eq (hA1 : X.SatisfiesA1 L) (hA2 : X.SatisfiesA2 L) (Γ
   show (if X.play (Γ.tokenCopy h) ω ∈ (Γ.tokenCopy h).reduce.profiles
       then f (ψ.symm.map (X.play (Γ.tokenCopy h) ω)) else (Γ.tokenCopy h).u (X.play (Γ.tokenCopy h) ω)) =
     f (X.play Γ ω)
-  rw [← hredC, hmap, if_pos (ψ.map_mem hmem), ψ.symm_map_map hmem, hred]
+  rw [← hredC, hmap, ite_eq_left (ψ.map_mem hmem), ψ.symm_map_map hmem, hred]
 
 end Play
 
@@ -223,7 +223,7 @@ lemma exists_strictSPI_of_support_not_paretoOptimal (Γ : Game N 𝒜)
     intro a ha
     by_cases hab : a = a₀
     · simp [hfdef, hab, hy]
-    · simp only [hfdef, if_neg hab]
+    · simp only [hfdef, ite_eq_right hab]
       exact Γ.u_mem_feasible (Γ.reduce_isSubsetGameOf.profiles_subset ha)
   obtain ⟨T, -, hT⟩ := Play.exists_tokenGame_ue_eq hA1 hA2 Γ h f hf
   have hge : ∀ a, Γ.u a ≤ f a := by

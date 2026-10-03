@@ -8,7 +8,7 @@ import Foundation.Propositional.Logic.Basic
 The §2 substrate the logical induction criterion is stated over: the propositional object
 language, and the valuation and history types that carry prices.
 
-* `Sentence` is `LO.Propositional.Formula ℕ`, a reducible `abbrev`, so Foundation's
+* `Sentence` is `FFL.Propositional.Formula ℕ`, a reducible `abbrev`, so Foundation's
   `DecidableEq` and `Encodable` instances transfer; `Encodable` — a computable `ℕ`-coding
   of sentences — is what `def:ec` needs to emit sentence codes at all. The paper fixes its
   language `ℒ` only up to "some language of propositional logic" with the usual
@@ -46,7 +46,7 @@ namespace LogicalInduction
 `Formula ℕ`. Atoms over `ℕ` give a concrete countable language; the wrapper is a reducible
 `abbrev` so Foundation's instances (`DecidableEq`, and — the fact that gates `def:ec` —
 `Encodable`, a computable `ℕ`-coding of sentences) transfer for free. -/
-abbrev Sentence : Type := LO.Propositional.Formula ℕ
+abbrev Sentence : Type := FFL.Propositional.Formula ℕ
 
 -- The two substrate facts `def:ec` relies on, confirmed available on `Sentence`.
 example : DecidableEq Sentence := inferInstance
@@ -55,11 +55,11 @@ example : Encodable Sentence := inferInstance
 /-- The `Sentence` decoder is Foundation's `Formula.ofNat`, definitionally. -/
 lemma decode_sentence_eq_ofNat (n : ℕ) :
     (Encodable.decode n : Option Sentence) =
-      LO.Propositional.Formula.ofNat n := rfl
+      FFL.Propositional.Formula.ofNat n := rfl
 
 /-- The `Sentence` encoder is Foundation's `Formula.toNat`, definitionally. -/
 lemma encode_sentence_eq_toNat (φ : Sentence) :
-    Encodable.encode φ = LO.Propositional.Formula.toNat φ := rfl
+    Encodable.encode φ = FFL.Propositional.Formula.toNat φ := rfl
 
 /-! ### The constructor codes
 
@@ -69,30 +69,30 @@ machine's validity test, the deductive-process atom encoders, the emission lanes
 them off here rather than restating them. -/
 
 /-- `⌜⊥⌝ = 1`. -/
-lemma encode_falsum : Encodable.encode (LO.Propositional.Formula.falsum : Sentence) = 1 := rfl
+lemma encode_falsum : Encodable.encode (FFL.Propositional.Formula.falsum : Sentence) = 1 := rfl
 
 /-- `⌜atom a⌝ = ⟪1, a⟫ + 1`. -/
 lemma encode_atom (a : ℕ) :
-    Encodable.encode (LO.Propositional.Formula.atom a : Sentence) = Nat.pair 1 a + 1 := rfl
+    Encodable.encode (FFL.Propositional.Formula.atom a : Sentence) = Nat.pair 1 a + 1 := rfl
 
 /-- `⌜φ 🡒 ψ⌝ = ⟪2, ⟪⌜φ⌝, ⌜ψ⌝⟫⟫ + 1`. -/
 lemma encode_imp (φ ψ : Sentence) :
-    Encodable.encode (LO.Propositional.Formula.imp φ ψ) =
+    Encodable.encode (FFL.Propositional.Formula.imp φ ψ) =
       Nat.pair 2 (Nat.pair (Encodable.encode φ) (Encodable.encode ψ)) + 1 := rfl
 
 /-- `⌜φ ⋏ ψ⌝ = ⟪3, ⟪⌜φ⌝, ⌜ψ⌝⟫⟫ + 1`. -/
 lemma encode_and (φ ψ : Sentence) :
-    Encodable.encode (LO.Propositional.Formula.and φ ψ) =
+    Encodable.encode (FFL.Propositional.Formula.and φ ψ) =
       Nat.pair 3 (Nat.pair (Encodable.encode φ) (Encodable.encode ψ)) + 1 := rfl
 
 /-- `⌜φ ⋎ ψ⌝ = ⟪4, ⟪⌜φ⌝, ⌜ψ⌝⟫⟫ + 1`. -/
 lemma encode_or (φ ψ : Sentence) :
-    Encodable.encode (LO.Propositional.Formula.or φ ψ) =
+    Encodable.encode (FFL.Propositional.Formula.or φ ψ) =
       Nat.pair 4 (Nat.pair (Encodable.encode φ) (Encodable.encode ψ)) + 1 := rfl
 
 /-- `⌜∼atom m⌝`, the negated-atom code the deductive-process lanes publish. -/
 lemma encode_negAtom (m : ℕ) :
-    Encodable.encode (∼(LO.Propositional.Formula.atom m) : Sentence) =
+    Encodable.encode (∼(FFL.Propositional.Formula.atom m) : Sentence) =
       Nat.pair 2 (Nat.pair (Nat.pair 1 m + 1) (Nat.pair 0 0 + 1)) + 1 := rfl
 
 /-- `⌜⊤⌝`, i.e. `⌜⊥ 🡒 ⊥⌝`. -/

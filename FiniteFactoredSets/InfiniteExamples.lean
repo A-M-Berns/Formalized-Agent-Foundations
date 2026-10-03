@@ -456,7 +456,7 @@ lemma not_isDistribution_diracAt_infFS :
     ¬ infFS.IsDistribution (ProbDist.diracAt (fun _ => false)) := by
   intro h
   have hs := h (fun _ => true)
-  rw [ProbDist.diracAt_apply, if_neg (by
+  rw [ProbDist.diracAt_apply, ite_eq_right (by
     intro hm
     have : (fun _ => false : ℕ → Bool) = (fun _ => true : ℕ → Bool) := hm
     exact Bool.noConfusion (congrFun this 0))] at hs
@@ -464,7 +464,7 @@ lemma not_isDistribution_diracAt_infFS :
       (part b (fun _ => true : ℕ → Bool)) = 0 := by
     rintro b hb
     obtain ⟨n, rfl⟩ := hb
-    rw [ProbDist.diracAt_apply, if_neg]
+    rw [ProbDist.diracAt_apply, ite_eq_right]
     intro hm
     exact Bool.noConfusion (hm : (false : Bool) = true)
   rw [finprod_mem_def] at hs
