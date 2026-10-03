@@ -134,7 +134,7 @@ variable (Γ₀) in
 /-- **The realization**: `Prog` with `execAt` is a program game on `Γ₀` for the
 representatives `R`.  Every player's instruction set is `Prog Γ₀`; player `k`'s realized
 mixed action is the execution of her own code. -/
-noncomputable def programGame : ProgramGame.{u, v, w, max u v} Γ₀ R where
+@[reducible] noncomputable def programGame : ProgramGame.{u, v, w, max u v} Γ₀ R where
   Instr _ := Prog Γ₀
   exec c ω k := execAt R c k (c k) ω
   measurable_exec c k b := measurable_execAt R c k (c k) b
@@ -176,7 +176,6 @@ lemma exec_update_algorithm2 (i : N) (c' : Prog Γ₀) (hc : c' ≠ algorithm2 �
     have := hall i
     rw [Function.update_self, Function.update_of_ne hj] at this
     exact hc this
-  rw [programGame_exec]
   show execAt R (Function.update (fun _ : N => algorithm2 Γs h) i c') j
     (Function.update (fun _ : N => algorithm2 Γs h) i c' j) ω = _
   rw [Function.update_of_ne hj]

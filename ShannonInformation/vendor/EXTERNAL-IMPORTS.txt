@@ -11,8 +11,10 @@ Mathlib.MeasureTheory.Integral.Bochner.Basic
 Mathlib.MeasureTheory.Integral.Lebesgue.Basic
 Mathlib.MeasureTheory.Integral.Lebesgue.Countable
 Mathlib.MeasureTheory.Integral.Prod
-Mathlib.MeasureTheory.Measure.Dirac
+Mathlib.MeasureTheory.MeasurableSpace.Constructions
+Mathlib.MeasureTheory.Measure.Dirac.Def
 Mathlib.MeasureTheory.Measure.Map
+Mathlib.MeasureTheory.Measure.MeasureSpaceDef
 Mathlib.MeasureTheory.Measure.Prod
 Mathlib.MeasureTheory.Measure.Real
 Mathlib.Probability.ConditionalProbability

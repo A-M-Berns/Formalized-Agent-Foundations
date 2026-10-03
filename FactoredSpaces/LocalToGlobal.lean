@@ -87,7 +87,7 @@ theorem interp_prob_pos (P P' : ∀ i, Distr (Ω i)) {C : Set (Pt Ω)}
         rw [Finset.prod_mul_distrib, Finset.prod_const, Finset.card_univ, Distr.prod_mass]
       rw [hrw]
       simp only [interp, Distr.prod_mass, Distr.mix]
-      refine Finset.prod_le_prod (fun i _ => mul_nonneg ht.le ((P' i).nonneg _))
+      refine Finset.prod_le_prod₀ (fun i _ => mul_nonneg ht.le ((P' i).nonneg _))
         fun i _ => ?_
       have h1 : (0 : ℝ) ≤ 1 - (t : ℝ) := by linarith [t.2.2]
       nlinarith [(P i).nonneg (ω i)]

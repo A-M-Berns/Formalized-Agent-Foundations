@@ -45,7 +45,11 @@ open scoped ENNReal
 
 /-- The three actions of Table 7. -/
 inductive CAct | a | b | c
-  deriving DecidableEq, Fintype, Inhabited
+  deriving DecidableEq, Inhabited
+
+instance : Fintype CAct where
+  elems := {.a, .b, .c}
+  complete := by intro x; cases x <;> simp
 
 /-- Both players choose from `CAct ⊕ ℕ`: Table 7's board in the `inl` copy, and infinitely
 many spare actions for token games (`dd:room`, RULING 13). -/
@@ -268,16 +272,18 @@ noncomputable def chickenBook : Book Two CUniverse Bool :=
 noncomputable def chickenRepresentatives : Representatives.{0, 0, 0} Two CUniverse :=
   chickenBook.toRepresentatives (μ := coin) (fun _ _ => trivial)
 
-lemma chickenRepresentatives_play (ω : Bool) :
+lemma chickenRepresentatives_play (ω : chickenRepresentatives.Ω) :
     chickenRepresentatives.play chicken ω = chickenPages ω :=
   Book.prescribedRandom_play _ chickenPages_mem chicken chicken.reduce_eq ω
 
 /-- The expected payoff of the default play is `(2, 2)`. -/
 lemma chickenRepresentatives_integral (i : Two) :
     ∫ ω, chicken.u (chickenRepresentatives.play chicken ω) i ∂chickenRepresentatives.μ = 2 := by
-  simp only [chickenRepresentatives_play]
-  show ∫ ω, chicken.u (chickenPages ω) i ∂coin = 2
+  show ∫ ω, chicken.u (chickenRepresentatives.play chicken ω) i ∂coin = 2
   rw [integral_coin]
+  show 2⁻¹ * (chicken.u (chickenRepresentatives.play chicken true) i
+    + chicken.u (chickenRepresentatives.play chicken false) i) = 2
+  erw [chickenRepresentatives_play true, chickenRepresentatives_play false]
   cases i <;> norm_num [chickenPages, u_inl, chickenPayoff]
 
 /-! ### The label-free kernel of Proposition 16
@@ -451,7 +457,7 @@ noncomputable def chickenBookBB : Book Two CUniverse Bool :=
 noncomputable def chickenRepresentativesBB : Representatives.{0, 0, 0} Two CUniverse :=
   chickenBookBB.toRepresentatives (μ := coin) (fun _ _ => trivial)
 
-lemma chickenRepresentativesBB_play (ω : Bool) :
+lemma chickenRepresentativesBB_play (ω : chickenRepresentativesBB.Ω) :
     chickenRepresentativesBB.toPlay.play chicken ω =
       pair (Sum.inl CAct.b) (Sum.inl CAct.b) :=
   Book.prescribed_play reducedChicken chickenBB_mem Bool chicken chicken.reduce_eq ω

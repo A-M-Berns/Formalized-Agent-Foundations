@@ -214,7 +214,7 @@ omit [DecidableEq V] in
 unblocked descendant of `v`. -/
 lemma IsAcyclic.not_mem_unblockedDesc_of_adj (hG : G.IsAcyclic) {Z : Finset V} {p v : V}
     (hadj : G.Adj p v) : p ∉ G.unblockedDesc Z v :=
-  fun h => hG v (Relation.TransGen.tail' (h.mono fun _ _ hab => hab.1) hadj)
+  fun h => hG v (Relation.TransGen.tail' (Relation.ReflTransGen.mono (fun _ _ hab => hab.1) _ _ h) hadj)
 
 /-! ### `S_Z(A)` -/
 
@@ -274,7 +274,7 @@ omit [DecidableEq V] in
 /-- With `Z = pa(v)` no `A_Z(w)` for `w ∈ Z` contains `v`: that would close a cycle. -/
 lemma notMem_unblockedAnc_of_mem_parents (hG : G.IsAcyclic) {v w : V}
     (hw : w ∈ G.parents v) : v ∉ G.unblockedAnc (G.parents v) w := fun hv =>
-  hG v (Relation.TransGen.tail' (Relation.ReflTransGen.mono (fun _ _ hab => hab.1) hv)
+  hG v (Relation.TransGen.tail' (Relation.ReflTransGen.mono (fun _ _ hab => hab.1) _ _ hv)
     ((mem_parents G).mp hw))
 
 end Parents
@@ -478,10 +478,10 @@ lemma mem_iff_mem_adj [∀ v, Nontrivial (Val v)] (hG : G.IsAcyclic) {Z : Finset
   -- the second point `β`
   have hβk : β (idxAt G Val x v) = bad v := by rw [hβ]; exact Function.update_self _ _ _
   have hβi : β (idxAt G Val x u) = bad u := by
-    rw [hβ, Function.update_of_ne hik]; exact Function.update_self _ _ _
+    rw [hβ]; exact (Function.update_of_ne hik _ _).trans (Function.update_self _ _ _)
   have hβoff : ∀ j, j ≠ idxAt G Val x u → j ≠ idxAt G Val x v → β j = α j := by
     intro j h1 h2
-    rw [hβ, Function.update_of_ne h2, Function.update_of_ne h1]
+    rw [hβ]; exact (Function.update_of_ne h2 _ _).trans (Function.update_of_ne h1 _ _)
   have hβgood : ∀ q, nodeVar hG q β = Function.update x u (bad u) q := by
     refine nodeVar_eq_of_diag hG fun q => ?_
     by_cases hqu : q = u
@@ -524,8 +524,8 @@ lemma mem_iff_mem_adj [∀ v, Nontrivial (Val v)] (hG : G.IsAcyclic) {Z : Finset
     intro q hq y
     have hqv : q ≠ v := by rintro rfl; exact hq hvD
     have h1 : (⟨q, y⟩ : bnIndex G Val) ≠ idxAt G Val x v := idx_ne_of_node_ne hqv
-    rw [hμ, Function.update_of_ne h1, hα]
-    exact propTable_of_not_mem hq y
+    rw [hμ]
+    exact (Function.update_of_ne h1 _ _).trans (by rw [hα]; exact propTable_of_not_mem hq y)
   have hμconst : ∀ q, q ∉ G.unblockedDesc Z v → nodeVar hG q μ = x q := fun q hq =>
     nodeVar_eq_of_const hG (hμoff q hq)
   have hμv : nodeVar hG v μ = bad v := by
@@ -533,13 +533,13 @@ lemma mem_iff_mem_adj [∀ v, Nontrivial (Val v)] (hG : G.IsAcyclic) {Z : Finset
       funext fun p => hμconst p.1 (hpar_v p)
     have h1 : nodeVar hG v μ = μ (idxAt G Val x v) :=
       (nodeVar_eq_idxAt hG v μ).trans (table_congr μ hcfg)
-    rw [h1, hμ, Function.update_self]
+    rw [h1, hμ]; exact Function.update_self _ _ _
   have hμbad : ∀ q ∈ G.unblockedDesc Z v, nodeVar hG q μ ≠ x q := by
     refine nodeVar_ne_of_prop hG (Z := Z) (ω := μ) (d := v) hbad ?_ ?_ ?_
     · rintro q hqD hqv y ⟨p, hpD, hpZ, hne⟩
       have h1 : (⟨q, y⟩ : bnIndex G Val) ≠ idxAt G Val x v := idx_ne_of_node_ne hqv
-      rw [hμ, Function.update_of_ne h1, hα]
-      exact propTable_of_bad hqD p hpD hpZ hne
+      rw [hμ]
+      exact (Function.update_of_ne h1 _ _).trans (by rw [hα]; exact propTable_of_bad hqD p hpD hpZ hne)
     · rw [hμv]; exact hbad v
     · exact fun q hqD hqv => G.unblockedDesc_step hqD hqv
   have hμC : μ ∉ fiber (nodesVar (Val := Val) hG Z) z := fun h =>

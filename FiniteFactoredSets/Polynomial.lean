@@ -74,7 +74,7 @@ private lemma filter_zero_of_notMem {V : σ → Prop} [DecidablePred V] {f : σ 
 
 /-- **`coeff_add_mul_of_split`** — when two polynomials have disjoint variable sets there is
 no combining of like terms in their product: the coefficient of `a + b` in `p * q`, for
-`a` supported in `p`'s variables and `b` in `q`'s, is `coeff a p * coeff b q`.  This is the
+`a` supported in `p`'s variables and `b` in `q`'s, is `p.coeff a * q.coeff b`.  This is the
 generic fact behind Proposition 28's "there can be no combining like terms"; it is not
 FFS-specific and is upstreamable. -/
 lemma coeff_add_mul_of_split {σ : Type*} {p q : MvPolynomial σ ℝ}
@@ -94,9 +94,9 @@ lemma coeff_add_mul_of_split {σ : Type*} {p q : MvPolynomial σ ℝ}
   refine Finset.sum_eq_single (a, b) ?_ ?_
   · rintro ⟨c, d⟩ hcd hne
     rw [Finset.mem_antidiagonal] at hcd
-    rcases eq_or_ne (coeff c p) 0 with h | hcp
+    rcases eq_or_ne (p.coeff c) 0 with h | hcp
     · rw [h, zero_mul]
-    rcases eq_or_ne (coeff d q) 0 with h | hdq
+    rcases eq_or_ne (q.coeff d) 0 with h | hdq
     · rw [h, mul_zero]
     exfalso
     have hc : ∀ i, c i ≠ 0 → i ∈ p.vars := hp c (mem_support_iff.2 hcp)
@@ -237,7 +237,7 @@ private lemma poly_eq_finsum_monomial {C : Set (Setoid S)} (hC : C.Finite) (E : 
 
 private lemma coeff_poly_monoExp [Finite S] (C : Set (Setoid S)) (E : Set S)
     (d : (Set S) →₀ ℕ) :
-    coeff d (poly C E) = if d ∈ monoExp C '' E then 1 else 0 := by
+    (poly C E).coeff d = if d ∈ monoExp C '' E then 1 else 0 := by
   have hfin : (monoExp C '' E).Finite := (Set.toFinite E).image _
   rw [poly_eq_finsum_monomial (Set.toFinite C), ← hfin.coe_toFinset, finsum_mem_coe_finset,
     coeff_sum]
@@ -262,7 +262,7 @@ private lemma monomial_mem_monos_iff [Finite S] (C : Set (Setoid S)) (E : Set S)
 of `monos^F_C(E)`.  (Definition 33 is an *image*, so a monomial occurring for several points
 of `E` still occurs once.) -/
 lemma coeff_poly [Finite S] (C : Set (Setoid S)) (E : Set S) (d : (Set S) →₀ ℕ) :
-    coeff d (poly C E) = if (monomial d (1 : ℝ) : Poly S) ∈ monos C E then 1 else 0 := by
+    (poly C E).coeff d = if (monomial d (1 : ℝ) : Poly S) ∈ monos C E then 1 else 0 := by
   rw [coeff_poly_monoExp C E d]
   exact if_congr (monomial_mem_monos_iff C E d).symm rfl rfl
 
@@ -566,7 +566,7 @@ theorem eq_C_mul_poly_of_dvd_Q [Finite S] {E : Set S} (hE : E.Nonempty) {p : Pol
     refine F.exists_of_coeff_Q_ne_zero ?_
     rw [hq, coeff_add_mul_of_split hdisj (hpv a ha) (hqv b hb)]
     exact mul_ne_zero (mem_support_iff.1 ha) (mem_support_iff.1 hb)
-  have hA1 : ∀ a ∈ p.support, ∀ b ∈ q.support, coeff a p * coeff b q = 1 := by
+  have hA1 : ∀ a ∈ p.support, ∀ b ∈ q.support, p.coeff a * q.coeff b = 1 := by
     intro a ha b hb
     obtain ⟨s, hs, hsa⟩ := hA a ha b hb
     have h1 : (F.Q E).coeff (a + b) = 1 := by rw [← hsa]; exact F.coeff_Q_monoExp hs
@@ -651,7 +651,7 @@ theorem eq_C_mul_poly_of_dvd_Q [Finite S] {E : Set S} (hE : E.Nonempty) {p : Pol
   -- (B) all coefficients of `p` are the same real.
   obtain ⟨a₀, ha₀⟩ := support_nonempty.2 hp0
   obtain ⟨b₀, hb₀⟩ := support_nonempty.2 hq0
-  have hconst : ∀ a ∈ p.support, coeff a p = coeff a₀ p := by
+  have hconst : ∀ a ∈ p.support, p.coeff a = p.coeff a₀ := by
     intro a ha
     refine mul_right_cancel₀ (mem_support_iff.1 hb₀) ?_
     rw [hA1 a ha b₀ hb₀, hA1 a₀ ha₀ b₀ hb₀]
@@ -680,13 +680,13 @@ theorem eq_C_mul_poly_of_dvd_Q [Finite S] {E : Set S} (hE : E.Nonempty) {p : Pol
           (monomial d (1 : ℝ) : Poly S) := by
     rw [poly_eq_sum_image, himg]
     exact Finset.sum_image fun d _ d' _ h => monomial_left_injective one_ne_zero h
-  refine ⟨coeff a₀ p, C, hCsub, ?_⟩
+  refine ⟨p.coeff a₀, C, hCsub, ?_⟩
   rw [hpolyC, Finset.mul_sum]
-  calc p = ∑ d ∈ p.support, monomial d (coeff d p) := (support_sum_monomial_coeff p).symm
-    _ = ∑ d ∈ p.support, monomial d (coeff a₀ p) :=
+  calc p = ∑ d ∈ p.support, monomial d (p.coeff d) := (support_sum_monomial_coeff p).symm
+    _ = ∑ d ∈ p.support, monomial d (p.coeff a₀) :=
         Finset.sum_congr rfl fun d hd => by rw [hconst d hd]
     _ = ∑ d ∈ (Set.toFinite E).toFinset.image (fun s => monoExp C s),
-          (monomial d (coeff a₀ p) : Poly S) := by rw [hsupp]
+          (monomial d (p.coeff a₀) : Poly S) := by rw [hsupp]
     _ = _ := Finset.sum_congr rfl fun d _ => by rw [C_mul_monomial, mul_one]
 
 /-! ### Client-style uses of the §5.1 surface -/

@@ -41,11 +41,19 @@ open scoped SetRel
 
 /-- Player 1's actions. -/
 inductive CT1 | T1 | T2 | R1 | R2
-  deriving DecidableEq, Fintype, Inhabited
+  deriving DecidableEq, Inhabited
+
+instance : Fintype CT1 where
+  elems := {.T1, .T2, .R1, .R2}
+  complete := by intro x; cases x <;> simp
 
 /-- Player 2's actions. -/
 inductive CT2 | C1 | C2 | F1 | F2
-  deriving DecidableEq, Fintype, Inhabited
+  deriving DecidableEq, Inhabited
+
+instance : Fintype CT2 where
+  elems := {.C1, .C2, .F1, .F2}
+  complete := by intro x; cases x <;> simp
 
 /-- The action universe. -/
 abbrev CTUniverse : Two → Type

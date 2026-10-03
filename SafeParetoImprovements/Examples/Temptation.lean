@@ -30,11 +30,19 @@ open scoped SetRel
 
 /-- Player 1's actions in the Temptation Game. -/
 inductive T1 | T | R
-  deriving DecidableEq, Fintype, Inhabited
+  deriving DecidableEq, Inhabited
+
+instance : Fintype T1 where
+  elems := {.T, .R}
+  complete := by intro x; cases x <;> simp
 
 /-- Player 2's actions in the Temptation Game. -/
 inductive T2 | C | F
-  deriving DecidableEq, Fintype, Inhabited
+  deriving DecidableEq, Inhabited
+
+instance : Fintype T2 where
+  elems := {.C, .F}
+  complete := by intro x; cases x <;> simp
 
 /-- The action universe of the Temptation Game: different action types per player. -/
 abbrev TemptUniverse : Two → Type

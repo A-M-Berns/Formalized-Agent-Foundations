@@ -75,7 +75,7 @@ lemma mem_history_nodeVar_iff [∀ v, Nontrivial (Val v)] (hG : G.IsAcyclic) (v 
     subst ha
     have hsub : G.zClosure ∅ a ⊆ {u | Relation.ReflTransGen G.Adj u a} :=
       Digraph.zClosure_subset (fun w hw => absurd hw (Finset.notMem_empty w))
-        (fun u hu => hu.mono fun _ _ h => h.1)
+        (fun u hu => Relation.ReflTransGen.mono (fun _ _ h => h.1) _ _ hu)
     rcases Relation.reflTransGen_iff_eq_or_transGen.mp (hsub hia) with h | h
     · exact Or.inl h.symm
     · exact Or.inr h
@@ -85,8 +85,8 @@ lemma mem_history_nodeVar_iff [∀ v, Nontrivial (Val v)] (hG : G.IsAcyclic) (v 
       (fun p hp => absurd hp (Finset.notMem_empty _)) ?_
     rcases h with h | h
     · exact h ▸ Digraph.mem_unblockedAnc_self _ _
-    · exact (Relation.reflTransGen_iff_eq_or_transGen.mpr (Or.inr h)).mono
-        fun a b hab => ⟨hab, Finset.notMem_empty a⟩
+    · exact Relation.ReflTransGen.mono (fun a b hab => ⟨hab, Finset.notMem_empty a⟩) _ _
+        (Relation.reflTransGen_iff_eq_or_transGen.mpr (Or.inr h))
 
 /-- **Ancestor relation.** For distinct nodes `v₁ ≠ v₂`: `v₁` is an ancestor of `v₂` in `G`
 iff `X_{v₁} <_{Ω^G} X_{v₂}`.  Needs every `Val_v` to have at least two elements (the

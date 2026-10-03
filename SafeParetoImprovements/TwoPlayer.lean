@@ -21,7 +21,11 @@ namespace SafeParetoImprovements
 
 /-- The two players. -/
 inductive Two | one | two
-  deriving DecidableEq, Fintype
+  deriving DecidableEq
+
+instance : Fintype Two where
+  elems := {.one, .two}
+  complete := by intro x; cases x <;> simp
 
 namespace Two
 

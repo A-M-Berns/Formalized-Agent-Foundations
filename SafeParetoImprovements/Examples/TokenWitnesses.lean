@@ -212,7 +212,7 @@ lemma conflictBook_page (ω : Bool) :
   rw [dif_pos rfl]
 
 /-- The representatives' play of the token copy is the book's translation of the page. -/
-lemma conflictRepresentatives_play_hat (ω : Bool) :
+lemma conflictRepresentatives_play_hat (ω : conflictRepresentatives.Ω) :
     conflictRepresentatives.toPlay.play conflictTokenCopy ω =
       conflictBookIso.map (conflictPages ω) := by
   show conflictBook.playReduced conflictTokenCopy.reduce ω = _
@@ -221,7 +221,7 @@ lemma conflictRepresentatives_play_hat (ω : Bool) :
       conflictTokenCopy_cls ω, conflictBook_page]
   rfl
 
-lemma conflictRepresentatives_play (ω : Bool) :
+lemma conflictRepresentatives_play (ω : conflictRepresentatives.Ω) :
     conflictRepresentatives.toPlay.play conflictGame ω = conflictPages ω :=
   Book.prescribedRandom_play conflictGame conflictPages_mem conflictGame
     (Game.reduce_of_reduced conflictGame_reduced) ω
@@ -242,7 +242,7 @@ lemma conflictPlainToken_isSPI :
   show conflictGame.u (conflictRepresentatives.toPlay.play conflictGame ω) ≤
     conflictGame.u (conflictBookIso.symm.map
       (conflictRepresentatives.toPlay.play conflictTokenCopy ω))
-  rw [conflictRepresentatives_play, conflictRepresentatives_play_hat,
+  erw [conflictRepresentatives_play, conflictRepresentatives_play_hat,
     conflictBookIso.symm_map_map (conflictPages_mem ω)]
 
 /-- …but not a *strict* one: `uᵉ(Π(Aˢ, uˢ)) = u(Π(Γ))` at every sample point. -/
@@ -315,7 +315,7 @@ lemma conflictStrictToken_isSPI :
   refine Filter.Eventually.of_forall fun ω => ?_
   show conflictGame.u (conflictRepresentatives.toPlay.play conflictGame ω) ≤
     conflictStrictUe (conflictRepresentatives.toPlay.play conflictTokenCopy ω)
-  rw [conflictRepresentatives_play, conflictRepresentatives_play_hat]
+  erw [conflictRepresentatives_play, conflictRepresentatives_play_hat]
   cases ω
   · rw [conflictStrictUe_tails]
   · rw [conflictStrictUe_heads]

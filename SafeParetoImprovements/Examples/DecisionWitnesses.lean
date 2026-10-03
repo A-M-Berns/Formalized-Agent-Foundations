@@ -70,7 +70,7 @@ lemma chicken_support_paretoOptimal :
       ext ω
       simp only [Set.mem_setOf_eq, Set.mem_empty_iff_false, iff_false]
       intro h
-      exact hna ⟨ω, by rw [← chickenRepresentatives_play, h]⟩
+      exact hna ⟨ω, (chickenRepresentatives_play ω).symm.trans h⟩
     rw [this]; exact measure_empty
   obtain ⟨ω, rfl⟩ := hmem
   rintro ⟨y, hy, hlt⟩

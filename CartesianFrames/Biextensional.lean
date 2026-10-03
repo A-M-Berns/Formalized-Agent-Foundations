@@ -243,9 +243,7 @@ lemma homotopyEquiv_collapse (C : Frame W) : HomotopyEquiv C C.collapse := by
   · intro a e
     exact (Quotient.exact ((Quotient.mk C.agentSetoid a).out_eq) e).symm
   · intro â ê
-    show C.collapse.outcome â ê =
-      C.collapse.outcome (Quotient.mk C.agentSetoid â.out) ê
-    rw [Quotient.out_eq]
+    exact congrArg (fun x => C.collapse.outcome x ê) (Quotient.out_eq â).symm
 
 /-! ## Claims 38–40 and Claim 8 -/
 

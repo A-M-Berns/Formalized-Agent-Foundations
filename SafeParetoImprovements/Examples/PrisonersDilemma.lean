@@ -28,7 +28,11 @@ open scoped SetRel
 
 /-- The Prisoner's Dilemma's actions. -/
 inductive PD | cooperate | defect
-  deriving DecidableEq, Fintype, Inhabited
+  deriving DecidableEq, Inhabited
+
+instance : Fintype PD where
+  elems := {.cooperate, .defect}
+  complete := by intro x; cases x <;> simp
 
 /-- The action universe: both players choose from `PD`. -/
 abbrev PDUniverse : Two → Type := fun _ => PD

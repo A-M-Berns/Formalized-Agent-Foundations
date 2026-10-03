@@ -34,7 +34,11 @@ open scoped SetRel
 
 /-- The Demand Game's actions. -/
 inductive DAct | DM | RM | DL | RL
-  deriving DecidableEq, Fintype, Inhabited
+  deriving DecidableEq, Inhabited
+
+instance : Fintype DAct where
+  elems := {.DM, .RM, .DL, .RL}
+  complete := by intro x; cases x <;> simp
 
 /-- Both players choose from `DAct`. -/
 abbrev DUniverse : Two → Type := fun _ => DAct

@@ -55,7 +55,7 @@ noncomputable def pdRepresentatives : Representatives.{0, 0, 0} Two PDUniverse :
   (Book.const (N := Two) (𝒜 := PDUniverse) Unit).toRepresentatives
     (μ := Measure.dirac ()) (fun _ _ => trivial)
 
-lemma pdRepresentatives_play (ω : Unit) :
+lemma pdRepresentatives_play (ω : pdRepresentatives.Ω) :
     pdRepresentatives.play prisonersDilemma ω = fun _ => PD.defect :=
   eventually_top.1 (prisonersDilemma_play _ ⊤ ((Book.const Unit).satisfiesA1 ⊤)) ω
 
@@ -127,7 +127,7 @@ noncomputable def demandRandomBook : Book Two DUniverse Bool :=
 noncomputable def demandRandomRepresentatives : Representatives.{0, 0, 0} Two DUniverse :=
   demandRandomBook.toRepresentatives (μ := coin) (fun _ _ => trivial)
 
-lemma demandRandom_play (ω : Bool) :
+lemma demandRandom_play (ω : demandRandomRepresentatives.Ω) :
     demandRandomRepresentatives.play demandGame ω = demandPages ω :=
   Book.prescribedRandom_play _ demandPages_mem demandGame demandGame.reduce_eq ω
 
@@ -212,7 +212,7 @@ representatives on the one-point space. -/
 noncomputable def demandRepresentatives : Representatives.{0, 0, 0} Two DUniverse :=
   demandBook.toRepresentatives (μ := Measure.dirac ()) (fun _ _ => trivial)
 
-lemma demandRepresentatives_play (ω : Unit) :
+lemma demandRepresentatives_play (ω : demandRepresentatives.Ω) :
     demandRepresentatives.play demandGame ω = Two.pair DAct.DM DAct.DM :=
   Book.prescribed_play _ demandGame_pair_DM_mem Unit demandGame demandGame.reduce_eq ω
 

@@ -140,10 +140,10 @@ lean_lib Scratchpad where
 -- its immediate neighbours. The same containment discipline `PFR/` ↔
 -- `ShannonInformation.API` follows.
 require complexitylib from git
-  "https://github.com/A-M-Berns/complexitylib" @ "1b0d107587653d16d5f5d4fd99b282adfcbbf3c1"
+  "https://github.com/SamuelSchlesinger/complexitylib" @ "175f4124f9f4d997119762e122df673289e0167f"
 
 require Foundation from git
-  "https://github.com/FormalizedFormalLogic/Foundation" @ "41d20b5158e9331e9b8dd86e16dbf488cc688bdb"
+  "https://github.com/FormalizedFormalLogic/Foundation" @ "7906b595899b0823922baf03a942b7126b52e759"
 
 -- Game-theory substrate for `SafeParetoImprovements` (Oesterheld–Conitzer 2022):
 -- `StrategicGame`, strict dominance, best response, Nash equilibrium, mixed strategies
@@ -157,6 +157,11 @@ require Foundation from git
 -- internal directly.
 require EconCSLib from git
   "https://github.com/gametheoryinlean/EconCSLib" @ "cef01c709a7d238f076b45818f2ff2629518efe3"
+
+-- Measurement scratch: pin Mathlib at the root LAST, so Mathlib's own dependency versions take
+-- precedence over those inherited from complexitylib/Foundation/EconCSLib (Lake's advice).
+require mathlib from git
+  "https://github.com/leanprover-community/mathlib4" @ "5ed2965256430c3649e86755f9576b54eca72435"
 
 -- Vendored subset of FormalizedFormalLogic/ProvabilityLogic @ 7ed4a427 (2026-07-27,
 -- the last upstream commit in CI lockstep with the Foundation pin above): the

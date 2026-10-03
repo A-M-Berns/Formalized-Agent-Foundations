@@ -209,11 +209,11 @@ private lemma generatesSub_sdiff_of_dvd [Finite S] {W : Setoid S} {z : Set S}
   rw [hC₀] at hp₀
   -- `r₀ = 1`: both `poly^F_C(z)` and `poly^F_C(w∩z)` have all coefficients `0` or `1`.
   obtain ⟨d, hd⟩ := support_nonempty.2 (poly_ne_zero C (⟨s, hs⟩ : (w ∩ z).Nonempty))
-  have hcd : coeff d (poly C (w ∩ z)) = 1 := by
+  have hcd : (poly C (w ∩ z)).coeff d = 1 := by
     rw [coeff_poly, if_pos ((mem_support_poly C (w ∩ z)).1 hd)]
-  have hcz : coeff d (poly C z) = r₀ := by rw [hp₀, coeff_C_mul, hcd, mul_one]
+  have hcz : (poly C z).coeff d = r₀ := by rw [hp₀, coeff_C_mul, hcd, mul_one]
   have hdz : d ∈ (poly C z).support := mem_support_iff.2 (by rw [hcz]; exact hr₀)
-  have hcz1 : coeff d (poly C z) = 1 := by
+  have hcz1 : (poly C z).coeff d = 1 := by
     rw [coeff_poly, if_pos ((mem_support_poly C z).1 hdz)]
   have hr₀1 : r₀ = 1 := by rw [← hcz, hcz1]
   rw [hr₀1, map_one, one_mul] at hp₀
@@ -243,16 +243,16 @@ private lemma generatesSub_sdiff_of_dvd [Finite S] {W : Setoid S} {z : Set S}
   -- `r₁ = 1`: the coefficients of `Q^F_{w∩z}` are `0` or `1`, and the two factors have
   -- disjoint variables, so no like terms combine.
   obtain ⟨e, he⟩ := support_nonempty.2 (poly_ne_zero (F.B \ C) (⟨s, hs⟩ : (w ∩ z).Nonempty))
-  have hce : coeff e (poly (F.B \ C) (w ∩ z)) = 1 := by
+  have hce : (poly (F.B \ C) (w ∩ z)).coeff e = 1 := by
     rw [coeff_poly, if_pos ((mem_support_poly (F.B \ C) (w ∩ z)).1 he)]
-  have hceq : coeff e q = r₁ := by rw [hp₁, coeff_C_mul, hce, mul_one]
+  have hceq : q.coeff e = r₁ := by rw [hp₁, coeff_C_mul, hce, mul_one]
   have heq' : e ∈ q.support := mem_support_iff.2 (by rw [hceq]; exact hr₁)
-  have hsplit : coeff (d + e) (F.Q (w ∩ z)) = r₁ := by
+  have hsplit : (F.Q (w ∩ z)).coeff (d + e) = r₁ := by
     rw [hq, coeff_add_mul_of_split hdisjv
       (fun i hi => support_subset_vars_of_mem_support hdz hi)
       (fun i hi => support_subset_vars_of_mem_support heq' hi), hcz1, hceq, one_mul]
-  have hQ1 : coeff (d + e) (F.Q (w ∩ z)) = 1 := by
-    have hne' : coeff (d + e) (F.Q (w ∩ z)) ≠ 0 := by rw [hsplit]; exact hr₁
+  have hQ1 : (F.Q (w ∩ z)).coeff (d + e) = 1 := by
+    have hne' : (F.Q (w ∩ z)).coeff (d + e) ≠ 0 := by rw [hsplit]; exact hr₁
     rw [F.Q_eq_poly] at hne' ⊢
     rw [coeff_poly, if_pos ((mem_support_poly F.B (w ∩ z)).1 (mem_support_iff.2 hne'))]
   have hr₁1 : r₁ = 1 := by rw [← hsplit, hQ1]
@@ -329,7 +329,7 @@ lemma Q_mul_Q_eq_of_orthogonalGiven [Finite S] {X Y Z : Setoid S}
     (hz : z ∈ Z.classes) : F.Q z * F.Q (x ∩ y ∩ z) = F.Q (x ∩ z) * F.Q (y ∩ z) := by
   have h3 : ∀ x ∈ X.classes, ∀ y ∈ Y.classes, ∀ z ∈ Z.classes,
       F.Q z * F.Q (x ∩ y ∩ z) = F.Q (x ∩ z) * F.Q (y ∩ z) :=
-    ((F.orthogonalGiven_tfae X Y Z).out 0 2).1 h
+    ((F.orthogonalGiven_tfae X Y Z).out 1 3).1 h
   exact h3 x hx y hy z hz
 
 /-- Lemma 3, clause 3 → clause 1, isolated: the direction the fundamental theorem's hard
@@ -337,7 +337,7 @@ half uses. -/
 lemma orthogonalGiven_of_Q_mul_Q_eq [Finite S] {X Y Z : Setoid S}
     (h : ∀ x ∈ X.classes, ∀ y ∈ Y.classes, ∀ z ∈ Z.classes,
       F.Q z * F.Q (x ∩ y ∩ z) = F.Q (x ∩ z) * F.Q (y ∩ z)) : F.OrthogonalGiven X Y Z :=
-  ((F.orthogonalGiven_tfae X Y Z).out 2 0).1 h
+  ((F.orthogonalGiven_tfae X Y Z).out 3 1).1 h
 
 /-! ### Client-style uses of Lemma 3
 
@@ -352,7 +352,7 @@ example (F : FactoredSet S) [Finite S] (X Y Z : Setoid S) (h : F.OrthogonalGiven
     {x y z : Set S} (hx : x ∈ X.classes) (hy : y ∈ Y.classes) (hz : z ∈ Z.classes) :
     F.Q z ∣ F.Q (x ∩ z) * F.Q (y ∩ z) := by
   have h2 : ∀ x ∈ X.classes, ∀ y ∈ Y.classes, ∀ z ∈ Z.classes,
-      F.Q z ∣ F.Q (x ∩ z) * F.Q (y ∩ z) := ((F.orthogonalGiven_tfae X Y Z).out 0 1).1 h
+      F.Q z ∣ F.Q (x ∩ z) * F.Q (y ∩ z) := ((F.orthogonalGiven_tfae X Y Z).out 1 2).1 h
   exact h2 x hx y hy z hz
 
 /-- Lemma 3 composed with Proposition 25 (§4.3): `X ⊥^F X | Z` holds exactly when `Z ≤ X`,

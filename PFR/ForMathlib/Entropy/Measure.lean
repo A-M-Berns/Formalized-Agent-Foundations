@@ -3,7 +3,9 @@ module
 public import Mathlib.Analysis.SpecialFunctions.Log.NegMulLog
 public import Mathlib.MeasureTheory.Integral.Bochner.Basic
 public import PFR.ForMathlib.FiniteRange.Defs
-public import PFR.Mathlib.MeasureTheory.Measure.Dirac
+public import PFR.Mathlib.MeasureTheory.MeasurableSpace.Constructions
+public import PFR.Mathlib.MeasureTheory.Measure.Dirac.Def
+public import PFR.Mathlib.MeasureTheory.Measure.MeasureSpaceDef
 public import PFR.Mathlib.MeasureTheory.Measure.Real
 public import PFR.Mathlib.Probability.UniformOn
 
@@ -63,7 +65,7 @@ lemma measure_compl_support (μ : Measure S) [hμ : FiniteSupport μ] : μ μ.su
   let A := hμ.finite.choose
   have : (μ.support : Set S)ᶜ ⊆ (A : Set S)ᶜ ∪ ⋃ x ∈ A.filter (μ {·} = 0), {x} := by
     intro z hz
-    simp only [Measure.support, ne_eq, Finset.coe_filter, mem_compl_iff, mem_setOf_eq, not_and,
+    simp only [Measure.support, ne_eq, Finset.coe_filter, mem_compl_iff, mem_ofPred_eq, not_and,
       Decidable.not_not] at hz
     by_cases h'z : z ∈ A
     · simp [hz h'z, h'z]
@@ -137,8 +139,15 @@ lemma ae_mem_of_finiteRange {μ : Measure Ω} {X : Ω → S} (hX : Measurable X)
 
 instance finiteSupport_of_finiteRange {μ : Measure Ω} {X : Ω → S} [hX' : FiniteRange X] :
     FiniteSupport (μ.map X) := by
-  use hX'.toFinset
-  exact FiniteRange.null_of_compl μ X
+  by_cases hX : AEMeasurable X μ
+  · exact ⟨hX'.toFinset, FiniteRange.null_of_compl μ X hX⟩
+  obtain rfl | hμ := eq_or_ne μ 0
+  · exact ⟨∅, by simp⟩
+  have : Nonempty S := by
+    contrapose! hX
+    exact (measurable_of_empty_codomain X).aemeasurable
+  exact ⟨{Classical.ofNonempty}, by
+    rw [Measure.map_of_not_aemeasurable_of_ne_zero hX hμ]; simp⟩
 
 instance finiteSupport_of_prod {μ : Measure S} [FiniteSupport μ] {ν : Measure T} [SigmaFinite ν]
     [FiniteSupport ν] :
@@ -584,10 +593,6 @@ lemma measureMutualInfo_nonneg_aux {μ : Measure (S × U)} [FiniteSupport μ]
     (Im[μ] = 0 ↔ ∀ p, μ.real {p} = (μ.map Prod.fst).real {p.1} * (μ.map Prod.snd).real {p.2}) := by
   rcases eq_zero_or_isProbabilityMeasure μ with rfl | hμ
   · simp
-  have : IsProbabilityMeasure (μ.map Prod.fst) :=
-    Measure.isProbabilityMeasure_map measurable_fst.aemeasurable
-  have : IsProbabilityMeasure (μ.map Prod.snd) :=
-    Measure.isProbabilityMeasure_map measurable_snd.aemeasurable
   let E := μ.support
   have hE := measure_compl_support μ
   classical
@@ -792,15 +797,25 @@ end measureMutualInfo
 
 end ProbabilityTheory
 
--- FAF VENDOR PATCH 1 (compatibility only; see ShannonInformation/vendor/PROVENANCE.md).
---
--- Upstream defines a `positivity` tactic extension for `measureMutualInfo` here.  It does
--- not elaborate against FAF's pinned Mathlib: `Mathlib.Meta.Positivity.PositivityExt.eval`
--- takes its partial-order argument as `Q(PartialOrder $α)` in this Mathlib, where the
--- upstream Mathlib pin had `Option _`.
---
--- The extension is removed rather than repaired.  This is tactic plumbing, NOT
--- mathematics: the theorem it wrapped, `measureMutualInfo_nonneg`, is defined above and
--- is untouched, and is re-exported by `ShannonInformation.API`.  The only consequence is
--- that `positivity` will not discharge `0 ≤ Im[μ]` automatically; cite
--- `measureMutualInfo_nonneg` instead.
+namespace Mathlib.Meta.Positivity
+open Lean Meta Qq Function ProbabilityTheory
+
+/-- Extension for `measureMutualInfo`. -/
+@[positivity measureMutualInfo _]
+meta def evalMeasureMutualInfo : PositivityExt where eval {u α} _
+  | none, _ => pure .none
+  | some _, e => do
+  match u, α, e with
+  | 0, ~q(ℝ), ~q(@measureMutualInfo $S $T $measS $measT $μ) =>
+    assertInstancesCommute
+    let _ ← synthInstanceQ q(MeasurableSingletonClass $S)
+    let _ ← synthInstanceQ q(MeasurableSingletonClass $T)
+    let _ ← synthInstanceQ q(FiniteSupport $μ)
+    pure <| .nonnegative q(measureMutualInfo_nonneg (μ := $μ))
+  | _, _, _ => throwError "failed to match ProbabilityTheory.measureMutualInfo"
+
+example {S T : Type*} [MeasurableSpace S] [MeasurableSpace T] [MeasurableSingletonClass S]
+    [MeasurableSingletonClass T] {μ : Measure (S × T)} [FiniteSupport μ] : 0 ≤ Im[μ] := by
+  positivity
+
+end Mathlib.Meta.Positivity

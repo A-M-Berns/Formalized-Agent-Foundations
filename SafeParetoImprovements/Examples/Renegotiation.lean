@@ -103,7 +103,11 @@ open Two MeasureTheory
 
 /-- The demands that occur in the source: 50%, 60%, 80% of the successor's values. -/
 inductive Share | s50 | s60 | s80
-  deriving DecidableEq, Fintype, Inhabited
+  deriving DecidableEq, Inhabited
+
+instance : Fintype Share where
+  elems := {.s50, .s60, .s80}
+  complete := by intro x; cases x <;> simp
 
 /-- The share as a real number. -/
 noncomputable def Share.toReal : Share → ℝ
@@ -121,7 +125,11 @@ lemma Share.compatible_iff (a b : Share) : a.compatible b = true ↔ a.toReal + 
 
 /-- Whether a base strategy triggers a doomsday device on refusal. -/
 inductive Device | none | doomsday
-  deriving DecidableEq, Fintype, Inhabited
+  deriving DecidableEq, Inhabited
+
+instance : Fintype Device where
+  elems := {.none, .doomsday}
+  complete := by intro x; cases x <;> simp
 
 /-- A base strategy: a demand, and what to do if refused. -/
 abbrev Base := Share × Device
@@ -379,14 +387,14 @@ noncomputable def rnRepresentatives (t d : ℝ) (b₀ : Two → Base) :
   measurableSet_fiber _ _ := trivial
 
 open Classical in
-lemma rnRepresentatives_play (t d : ℝ) (b₀ : Two → Base) (ω : Unit) :
+lemma rnRepresentatives_play (t d : ℝ) (b₀ : Two → Base) (ω : (rnRepresentatives t d b₀).Ω) :
     (rnRepresentatives t d b₀).play (negotiation t d) ω = b₀ := by
   show (if negotiation t d = negotiation t d then b₀ else _) = b₀
   rw [if_pos rfl]
 
 /-- **The program game of renegotiation programs**: every player submits an `RnProg`, and
 the execution is `run`, as a pure mixed action. -/
-noncomputable def rnProgramGame (t d : ℝ) (b₀ : Two → Base) :
+@[reducible] noncomputable def rnProgramGame (t d : ℝ) (b₀ : Two → Base) :
     ProgramGame (negotiation t d) (rnRepresentatives t d b₀) where
   Instr _ := RnProg
   exec c _ i := (negotiation t d).pureMixed (realized c i) (Finset.mem_univ _)

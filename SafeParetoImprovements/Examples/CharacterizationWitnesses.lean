@@ -256,7 +256,7 @@ noncomputable def mixRepresentatives : Representatives.{0, 0, 0} Two MixUniverse
   toPlay := mixPlay
   measurableSet_fiber _ _ := trivial
 
-lemma mixRepresentatives_play_base (ω : Bool) :
+lemma mixRepresentatives_play_base (ω : mixRepresentatives.Ω) :
     mixRepresentatives.play mixBase ω = pair 0 0 := by
   funext i
   show (if 3 ≤ (mixBase.S i).card ∧ ω = true then (mixBase.S i).max' (mixBase.nonempty i)

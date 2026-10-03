@@ -478,7 +478,7 @@ strict-implicit `∀ ⦃x y⦄`, and `List.TFAE.out`'s autoparams then fail in t
 lemma generates_singleton_fstFactor : coordFS.Generates {fstFactor} fstFactor := by
   have h7 : commonRefinement ({fstFactor} : Set (Setoid (Bool × Bool))) ≤ fstFactor :=
     fun {_ _} h => commonRefinement_iff.1 h fstFactor rfl
-  exact ((coordFS.generates_tfae singleton_fstFactor_subset fstFactor).out 6 0).1 h7
+  exact ((coordFS.generates_tfae singleton_fstFactor_subset fstFactor).out 7 1).1 h7
 
 /-- Proposition 13 clause 4 on a witness: `h^F(b) = {b}` for a factor `b`. -/
 lemma history_fstFactor : coordFS.history fstFactor = {fstFactor} :=
@@ -851,7 +851,7 @@ lemma generatesSub_tfae_on_sndOnEfst :
       ((ofSetoid (commonRefinement ({sndFactor} : Set (Setoid (Bool × Bool))))).restrict
             sndOnEfst.dom ≤ sndOnEfst ∧
         coordFS.chimeraImage {sndFactor} sndOnEfst.dom sndOnEfst.dom = sndOnEfst.dom) :=
-  (coordFS.generatesSub_tfae singleton_sndFactor_subset sndOnEfst).out 0 6
+  (coordFS.generatesSub_tfae singleton_sndFactor_subset sndOnEfst).out 1 7
 
 /-- The §4.2 replacement for `generates_iff_history_subset`, on the witness: containing the
 history is only half of the criterion. -/
@@ -2894,7 +2894,7 @@ lemma lemma3_clause2_top_crosscheck :
     ring⟩
 
 /-- …and the same proposition **applied**: clause 2 of Lemma 3's `TFAE`, projected with
-`.out 0 1` and fed the §4.3 fact `fstFactor ⊥^F sndFactor | Ind_S`.  Projecting the clause
+`.out 1 2` and fed the §4.3 fact `fstFactor ⊥^F sndFactor | Ind_S`.  Projecting the clause
 needs the typed `have` that `List.TFAE.out` forces in term position. -/
 lemma lemma3_clause2_top_applied :
     coordFS.Q (Set.univ : Set (Bool × Bool)) ∣
@@ -2902,7 +2902,7 @@ lemma lemma3_clause2_top_applied :
   have h2 : ∀ x ∈ fstFactor.classes, ∀ y ∈ sndFactor.classes,
       ∀ z ∈ (⊤ : Setoid (Bool × Bool)).classes,
       coordFS.Q z ∣ coordFS.Q (x ∩ z) * coordFS.Q (y ∩ z) :=
-    ((coordFS.orthogonalGiven_tfae fstFactor sndFactor ⊤).out 0 1).1 orthogonalGiven_fst_snd_top
+    ((coordFS.orthogonalGiven_tfae fstFactor sndFactor ⊤).out 1 2).1 orthogonalGiven_fst_snd_top
   exact h2 Efst Efst_mem_fstFactor_classes (vsnd true) vsnd_true_mem_sndFactor_classes
     Set.univ univ_mem_top_classes
 
