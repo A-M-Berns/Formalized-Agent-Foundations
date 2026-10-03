@@ -95,12 +95,15 @@ class RepresentsComputations (T : ArithmeticTheory) : Prop where
 Both directions are derived from the interface alone, under `[𝗥₀ ⪯ T]` for the numeral
 apparatus.  Neither uses soundness or any semantic hypothesis. -/
 
-/-- Distinct numerals are provably distinct in any theory extending `𝗥₀`.
+/-- Distinct numerals are provably distinct in any theory extending `𝗥₀`: `↑n ≠ ↑m` is a
+true `Σ₁` sentence, and extensions of `𝗥₀` prove every true `Σ₁` sentence.
 
-Kind `C` (composition).  Provenance: (b) Foundation citation — `R0.Ω₃`. -/
-lemma numeral_ne_prov (T : ArithmeticTheory) [h : 𝗥₀ ⪯ T] (n m : ℕ) (hnm : n ≠ m) :
+Kind `C` (composition).  Provenance: (b) Foundation citation — `sigma_one_completeness`
+(Foundation derives it from `R0.Ω₃`, whose statement is now the bounded-quantifier
+characterisation of `<` on numerals rather than numeral inequality itself). -/
+lemma numeral_ne_prov (T : ArithmeticTheory) [𝗥₀ ⪯ T] (n m : ℕ) (hnm : n ≠ m) :
     T ⊢ (“↑n ≠ ↑m” : ArithmeticSentence) :=
-  weakening h (Entailment.by_axm (R0.Ω₃ n m hnm))
+  sigma_one_completeness (by simp) (by simp [models_iff, hnm])
 
 /-- Reflexivity of equality at a numeral, from `𝗥₀`'s equality axioms.
 
@@ -353,7 +356,7 @@ lemma provable_subst_iff_of_val (T : ArithmeticTheory) [𝗣𝗔⁻ ⪯ T]
     refine iff_of_eq (congrArg (fun w => (Semiformula.Eval w Empty.elim) φ) ?_)
     funext i
     fin_cases i
-    simpa [Structure.numeral_eq_numeral, numeral_eq_natCast] using hval M
+    simpa [Tarski.Structure.numeral_eq_numeral, numeral_eq_natCast] using hval M
   constructor
   · intro h
     refine Arithmetic.complete.{0} T _ fun M _ _ => ?_

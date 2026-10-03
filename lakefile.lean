@@ -43,10 +43,10 @@ lean_lib SafeParetoImprovements where
   globs := #[.andSubmodules `SafeParetoImprovements]
 
 -- Vendored Shannon-information substrate: the entropy import closure of
--- teorth/pfr @ 01c9b666945eaf73b3f7d8b20ffe003f8640e630 (Apache-2.0), 25 modules, kept at
--- upstream module paths so diffs against upstream stay readable. Two compatibility
--- patches, both recorded as diffs; no mathematics altered. This is dependency code, not a
--- paper this project formalizes — see `ShannonInformation/vendor/PROVENANCE.md`.
+-- teorth/pfr @ 65691129be2d8ca3e164c0822d95a456b88ee259 (Apache-2.0), 27 modules, kept at
+-- upstream module paths so diffs against upstream stay readable. Byte-identical to upstream:
+-- no compatibility patches are carried. This is dependency code, not a paper this project
+-- formalizes — see `ShannonInformation/vendor/PROVENANCE.md`.
 -- Do not edit these files: re-vendor with `ShannonInformation/vendor/vendor-pfr.sh`.
 @[default_target]
 lean_lib PFR where
@@ -77,30 +77,13 @@ lean_lib AxiomAudit where
 lean_lib Scratchpad where
   srcDir := "."
 
--- Upstream Foundation, pinned by commit. The Matrix-rename patch this project once
--- carried on a fork (PR #835: `vecMap`/`vecForall_iff`/`vecExists_iff`, avoiding Mathlib
--- name clashes that blocked co-importing matrix/analysis theory) is included upstream
--- as of v4.31; the fork is retired.
+-- Pinned Lean-4.34 compatibility branch of SamuelSchlesinger/complexitylib (Apache-2.0), the
+-- complexity substrate for the machine reading of `def:ec`.
 --
--- The pin is the last upstream commit that still contains `Foundation.Modal` (removed
--- upstream in #852 in favor of the separate FormalizedFormalLogic/ModalLogic repo).
--- It sits in the four-day window (2026-07-18 → 2026-07-22) that has *both* the Matrix
--- rename (#835, merged 07-18 — without it Foundation cannot co-import with Mathlib's
--- matrix/analysis theory) *and* `Foundation.Modal`. `ModalAgents` is stated over
--- `Foundation.Modal`, so moving past this pin means migrating it onto the ModalLogic
--- repo — a scoped follow-up, not part of routine bumping. Mathlib and all other pins
--- are transitive through Foundation's manifest; keep `lean-toolchain` matched to
--- Foundation's.
--- Pinned Lean-4.31 compatibility fork of SamuelSchlesinger/complexitylib (Apache-2.0),
--- the complexity-theory substrate for the machine-efficiency recalibration of `dd:fuel`
--- the complexity substrate for the machine reading of `def:ec`.
+-- A *compatibility pin*, not a conceptual fork. `faf/v4.34` is upstream `175f412` plus a
+-- two-file port to this toolchain and twelve purely additive commits, none of which alters a
+-- mathematical statement, definition or proof of upstream's:
 --
--- A *compatibility pin*, not a conceptual fork. `faf/v4.31` is upstream `b673821` plus
--- twenty commits, every one of them either a mechanical port or purely additive; no
--- mathematical statement, definition or proof of upstream's is altered:
---
---   * a 36-line port to this project's Lean/Mathlib pin (upstream is on 4.30), plus a
---     later port of `Subroutines/Counter` in the same style;
 --   * `utmTM_simulates_computer` and `TM.exists_singleTape_computesInTime`, which expose
 --     *arbitrary function output* rather than only a decision cell — strictly weaker
 --     projections of theorems upstream already proves;
@@ -111,25 +94,18 @@ lean_lib Scratchpad where
 --     `Nat.unpair` with correctness and polynomial runtime bounds;
 --   * register-tuple plumbing — `regsWork` sub-windows (`regsWork_restrict`,
 --     `regsWork_window`) and offset sub-tuples (`shiftEmb`), which let a machine written
---     against a small fixed tuple run at any offset of a larger register file;
---   * a second mechanical port wave unblocking `Classes/P/{Composition,PairWithInput}`
---     (`mem_FP_comp`, `mem_FP_pairWithInput`), the whole `Classes/P/Cobham` subtree
---     (`CobhamFP_eq_FP`, `iterate_mem_FP`, `recFoldClamp_mem_FP` and the string kit), and
---     the binary-arithmetic subroutine library, which the machine readings of `thm:scon`
---     and `thm:ifp` need. Seven additive
---     `rfl` simp lemmas (`Γ.ofBool`/`Γw.ofBool` equations, `seqTM_qstart`/`_qhalt`,
---     `phase1Wrap_initCfg`) carry most of it — the rest is `simpa` drift.
+--     against a small fixed tuple run at any offset of a larger register file.
 --
 -- Nothing carries a FAF-specific or `Nat.Partrec.Code` name; all of it is upstreamable and
--- meant to be upstreamed. The fork retires into a plain upstream `require` once upstream
--- reaches this toolchain.
+-- meant to be upstreamed. The branch retires into a plain upstream `require` once the additive
+-- commits land there. `scripts/pin_bump.py` tracks the branch head rather than upstream `dev`
+-- for exactly this reason.
 --
--- Required rather than vendored: the useful upstream slice is ~35k lines — 3.4× this
--- repository's largest vendored body — while the port is 36 mechanical lines that a
--- rebase carries forward. Vendoring would re-pay that port inside FAF on every toolchain
--- bump and degrade the diff-against-upstream story each time.
+-- Required rather than vendored: the useful upstream slice is ~35k lines, while the port is a
+-- handful of mechanical lines that a rebase carries forward. Vendoring would re-pay that port
+-- inside FAF on every toolchain bump and degrade the diff-against-upstream story each time.
 --
--- FAF's own import surface is far narrower than the fork. `Complexity.FP` is the
+-- FAF's own import surface is far narrower than the branch. `Complexity.FP` is the
 -- paper-facing reading of `def:ec` and so is named at the criterion itself
 -- (`Framework/Criterion.lean`); the *deep* imports are exactly two:
 --   * `Construction/Descriptions` imports `…UTM.Internal.Interp` (a 5-file /
@@ -140,17 +116,41 @@ lean_lib Scratchpad where
 -- its immediate neighbours. The same containment discipline `PFR/` ↔
 -- `ShannonInformation.API` follows.
 require complexitylib from git
-  "https://github.com/SamuelSchlesinger/complexitylib" @ "175f4124f9f4d997119762e122df673289e0167f"
+  "https://github.com/A-M-Berns/complexitylib" @ "d3013c36bd416cf62f68d1e411519bc158f6bfba"
 
+-- Upstream Foundation, pinned by commit. The Matrix-rename patch this project once
+-- carried on a fork (PR #835: `vecMap`/`vecForall_iff`/`vecExists_iff`, avoiding Mathlib
+-- name clashes that blocked co-importing matrix/analysis theory) is included upstream
+-- as of v4.31; the fork is retired.
+--
+-- The pin is tied to the ProvabilityLogic pin below, not chosen on its own: it is the
+-- Foundation commit that ProvabilityLogic's own `lake-manifest.json` records at *its* pinned
+-- commit, i.e. the Foundation that development was last tested against. Foundation's `master`
+-- moves its syntax and bootstrapping namespaces between releases, and ProvabilityLogic follows
+-- a few days later; pinning Foundation independently (at head) has broken the GL development
+-- in exactly that window. So a bump moves ProvabilityLogic first and reads the Foundation rev
+-- off its manifest — `scripts/pin_bump.py` does this. Keep `lean-toolchain` matched to
+-- Foundation's.
 require Foundation from git
-  "https://github.com/FormalizedFormalLogic/Foundation" @ "7906b595899b0823922baf03a942b7126b52e759"
+  "https://github.com/FormalizedFormalLogic/Foundation" @ "abd0cb9044dedc6bb1755871ee30724b8f3c1d12"
+
+-- Upstream Gödel–Löb provability logic (FormalizedFormalLogic/ProvabilityLogic), pinned by
+-- commit: `Formula`, `LogicGL` with finite Kripke completeness, the de Jongh–Sambin fixed-point
+-- theorem (`LogicGL.fixpointTheorem`) and the arithmetical soundness of GL
+-- (`LogicGL.arithmetical_soundness'`). `ModalAgents` is stated directly over its `LogicGL`,
+-- so this is the substrate of that formalization the way Foundation is of LogicInduction's.
+-- Only the modules ModalAgents imports are built (about forty of ninety-five). The package
+-- also requires `Forgive`, the FFL axiom auditor, at the toolchain tag — the same pin
+-- Foundation already carries, so it adds no dependency.
+require ProvabilityLogic from git
+  "https://github.com/FormalizedFormalLogic/ProvabilityLogic" @ "60c41f4e6b1914b5f24f498d47c2cb8c003160f6"
 
 -- Game-theory substrate for `SafeParetoImprovements` (Oesterheld–Conitzer 2022):
 -- `StrategicGame`, strict dominance, best response, Nash equilibrium, mixed strategies
 -- and expected payoff, simultaneous-round IESDS. Pinned to a commit because the library
--- is young and its API moves; a bump is a deliberate act. Upstream pins Mathlib v4.30.0
--- while this repository is on v4.31.0 — Lake takes the root's Mathlib, and the imported
--- strategic-game modules compile unmodified against it (probe of 2026-09-04, recorded in
+-- is young and its API moves; a bump is a deliberate act. Upstream pins an older Mathlib
+-- than this repository — Lake takes the root's Mathlib, and the imported strategic-game
+-- modules compile unmodified against it (probe of 2026-09-04, recorded in
 -- `SafeParetoImprovements/notes/scoping.md` §2). Only the modules FAF imports are built.
 -- The paper's set-based `Game` maps to `StrategicGame` through one bridge
 -- (`SafeParetoImprovements/Game.lean`); paper-facing statements never name an EconCSLib
@@ -158,23 +158,11 @@ require Foundation from git
 require EconCSLib from git
   "https://github.com/gametheoryinlean/EconCSLib" @ "cef01c709a7d238f076b45818f2ff2629518efe3"
 
--- Measurement scratch: pin Mathlib at the root LAST, so Mathlib's own dependency versions take
--- precedence over those inherited from complexitylib/Foundation/EconCSLib (Lake's advice).
+-- Mathlib, pinned at the root and placed LAST on purpose. With no root `require mathlib`, Lake
+-- inherits whichever Mathlib the first dependency above pins — EconCSLib's older one — and
+-- `lake exe cache get` then refuses ("mismatched dependencies"). A root pin that comes last
+-- makes Mathlib's own dependency versions take precedence over those inherited from the
+-- packages above (Lake's documented rule), so the whole workspace resolves to one Mathlib: the
+-- release tag matching `lean-toolchain`, which is also what Foundation and ProvabilityLogic pin.
 require mathlib from git
   "https://github.com/leanprover-community/mathlib4" @ "5ed2965256430c3649e86755f9576b54eca72435"
-
--- Vendored subset of FormalizedFormalLogic/ProvabilityLogic @ 7ed4a427 (2026-07-27,
--- the last upstream commit in CI lockstep with the Foundation pin above): the
--- sequent-calculus + Solovay development supplying the GL fixed-point theorem
--- (`ModalAgents/FixedPoint.lean` bridge) and the arithmetical soundness of GL
--- (`ModalAgents/Cooperation.lean`). Vendored rather than required as a package for one
--- reason: upstream declares its `Formula` connective notations globally at precedences
--- that capture the parse of Foundation's modal notation wherever the two are
--- co-imported (upstream never co-imports them; we must). The patch class is exactly
--- that: the clashing notation declarations are made `scoped` plus matching
--- `open scoped Formula` lines — no mathematical divergence. Diff against the upstream
--- commit to audit.
-lean_lib ProvabilityLogic where
-  srcDir := "."
-  globs := #[.submodules `ProvabilityLogic]
-  leanOptions := #[⟨`autoImplicit, true⟩]

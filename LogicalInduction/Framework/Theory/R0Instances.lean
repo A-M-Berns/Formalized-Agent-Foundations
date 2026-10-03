@@ -1,7 +1,7 @@
 import LogicalInduction.Framework.Theory.QuoteRepresentability
 import Foundation.FirstOrder.Arithmetic.R0.Representation
 import Foundation.FirstOrder.Arithmetic.PeanoMinus.Basic
-import Foundation.FirstOrder.Arithmetic.Induction.Basic
+import Foundation.FirstOrder.Arithmetic.Induction
 
 /-!
 # Non-vacuity of `RepresentsComputations`: the standard arithmetical theories satisfy it

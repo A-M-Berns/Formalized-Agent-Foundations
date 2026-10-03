@@ -2,16 +2,15 @@ import ModalAgents.API
 
 namespace APITests.ModalAgents
 
-open FFL FFL.Modal
 open scoped ModalAgent
 
 /-- A client-defined rank-zero agent that asks for two nested proofs of cooperation. -/
 def cautiousBot : ModalAgent :=
-  ModalAgent.mkRank0 (□□(.atom 0 : Modal.Formula ℕ))
+  ModalAgent.mkRank0 (□□(.atom 0 : Formula ℕ))
 
-example : cautiousBot.formula = □□(.atom 0 : Modal.Formula ℕ) := by simp [cautiousBot]
-example : cautiousBot.arity = 0 := by simp [cautiousBot]
-example : cautiousBot.rank = 0 := by simp [cautiousBot]
+example : cautiousBot.formula = □□(.atom 0 : Formula ℕ) := rfl
+example : cautiousBot.arity = 0 := rfl
+example : cautiousBot.rank = 0 := rfl
 
 /-- PrudentBot's supported theorem composes into the usual no-exploitation statement. -/
 example (Y : ModalAgent) : ¬ (Cooperates prudentBot Y ∧ Defects Y prudentBot) := by
@@ -57,7 +56,7 @@ example : IsBehavioral T (⊤ : Agent) :=
   modalAgent_isBehavioral cooperateBot_isModalAgentOfRank_zero
 
 /-- A fact neither paper endpoint states on its own: no modal agent *is* CliqueBot. -/
-example [Entailment.Consistent T] {k : ℕ} {X : Agent}
+example [FFL.Entailment.Consistent T] {k : ℕ} {X : Agent}
     (hX : IsModalAgentOfRank T k X) : X ≠ cliqueBot := by
   rintro rfl
   exact cliqueBot_not_modalAgent ⟨k, hX⟩

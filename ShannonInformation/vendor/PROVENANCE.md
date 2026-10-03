@@ -9,37 +9,34 @@ reproduce or update it. **`PFR/` is third-party source. Do not edit it by hand.*
 | --- | --- |
 | repository | <https://github.com/teorth/pfr> |
 | project | Polynomial Freiman–Ruzsa conjecture formalization (Tao et al.) |
-| commit | `01c9b666945eaf73b3f7d8b20ffe003f8640e630` |
-| commit date | 2026-06-27 |
-| commit subject | `fix: use site.url for header nav links (#276)` |
-| upstream toolchain | `leanprover/lean4:v4.31.0` |
-| upstream Mathlib pin | `e1d1de3bbb575ceb968a895a3462d5a9ca4b22c9` |
+| commit | `65691129be2d8ca3e164c0822d95a456b88ee259` |
+| commit date | 2026-09-17 |
+| commit subject | `chore: bump mathlib to db1c574, fix breaking changes (#306)` |
+| upstream toolchain | `leanprover/lean4:v4.34.0` |
+| upstream Mathlib pin | `db1c5741da0acf96c97584de6ccf0e3bfbc0ae99` |
 | licence | Apache License 2.0 — full text in `LICENSE-PFR` |
 
-### Why this commit and not `master`
+### Why this commit
 
-`master` is on `leanprover/lean4:v4.34.0-rc1`. FAF is pinned at **v4.31.0**, and
-`lakefile.lean` documents why that pin is load-bearing (it is the last upstream Foundation
-commit that still contains `Foundation.Modal`, which `ModalAgents` is stated over).
-
-PFR was itself on v4.31.0 from `38e9417` (2026-06-16) through `b56e834^` (2026-07-03).
-`01c9b66` is the **last commit in that window**, so vendoring from it removes the
-toolchain gap entirely and the Foundation pin does not have to move. That is the single
-decision that makes this vendoring cheap; see the PR description.
+It is the upstream commit on **this repository's toolchain**, `v4.34.0`, closest to the
+Mathlib release tag FAF pins (`5ed2965`, the `v4.34.0` tag): upstream moved to `v4.34.0`
+with this commit and to a later Mathlib than the tag with it, and nothing in the vendored
+closure depends on that later Mathlib — the 27 modules compile against the tag unmodified.
+Vendoring from a commit on the same toolchain is what keeps the tree patch-free.
 
 ## FAF context at import time
 
 | field | value |
 | --- | --- |
-| FAF toolchain | `leanprover/lean4:v4.31.0` |
-| FAF Mathlib pin | `fabf563a7c95a166b8d7b6efca11c8b4dc9d911f` (the v4.31.0 release tag) |
+| FAF toolchain | `leanprover/lean4:v4.34.0` |
+| FAF Mathlib pin | `5ed2965256430c3649e86755f9576b54eca72435` (the v4.34.0 release tag) |
 
-Upstream and FAF therefore share a toolchain but pin *different* Mathlib commits, weeks
-apart. The two patches below are exactly the drift between them.
+Upstream and FAF share a toolchain and pin Mathlib commits a few weeks apart. At this
+pair of pins that drift costs nothing: no patch is needed.
 
 ## Module closure
 
-25 PFR-internal modules, 6,074 lines, listed in topological build order in
+27 PFR-internal modules, 6,085 lines, listed in topological build order in
 `CLOSURE.txt`. It is **derived, not curated**: `closure.py` walks `import` edges from the
 four entropy-bearing modules
 
@@ -61,56 +58,27 @@ mean the closure had reached beyond information theory and should be treated as 
 regression.
 
 Files are kept at **upstream module paths** (`PFR/ForMathlib/…`, `PFR/Mathlib/…`) so that
-`diff` against an upstream checkout stays readable. This mirrors how `ProvabilityLogic/`
-is vendored in this repository.
+`diff` against an upstream checkout stays readable.
 
 ## Local patches
 
-Two, both recorded as unified diffs in `patches/`, both **compatibility only**. Neither
-changes a statement, a definition, or a proof of any mathematical fact.
+**None.** The committed tree is byte-identical to upstream at the commit above;
+`vendor-pfr.sh --verify` re-derives the closure from upstream and diffs it against the
+committed tree, reporting `IDENTICAL`. If that ever fails, the committed tree has drifted
+from its recorded provenance and the difference must be classified (mathematics vs.
+compatibility) before anything is merged.
 
-### `0001-drop-obsolete-positivity-extension.patch`
-
-`PFR/ForMathlib/Entropy/Measure.lean` ends with a `positivity` tactic extension for
-`measureMutualInfo`. It does not elaborate against FAF's Mathlib:
-`Mathlib.Meta.Positivity.PositivityExt.eval` takes its partial-order argument as
-`Q(PartialOrder $α)` here, where upstream's Mathlib pin had `Option _`.
-
-The extension is **removed**, not repaired. Consequences:
-
-- the theorem it wrapped, `measureMutualInfo_nonneg`, is defined above it and is
-  **untouched**, still proved, and re-exported through `ShannonInformation.API`;
-- the only loss is automation: `positivity` will not discharge `0 ≤ Im[μ]` by itself.
-  Cite `measureMutualInfo_nonneg` instead.
-
-Repairing rather than removing it would be a fine follow-up, but it would mean FAF
-maintaining a tactic extension against a moving Mathlib API for no mathematical gain.
-
-### `0002-funext-for-MeasurableEquiv-map_symm.patch`
-
-In `PFR/ForMathlib/Entropy/Kernel/Basic.lean`, `entropy_prodMkLeft_unit` closes with
-`rw [← MeasurableEquiv.map_symm]`. That rewrite cannot fire against FAF's Mathlib, where
-the lemma is stated *applied to a measure*
-
-```lean
-lemma map_symm {μ : Measure α} (e : β ≃ᵐ α) : μ.map e.symm = μ.comap e
-```
-
-while the goal at that point is an equality of the *functions* `Measure.map` and
-`Measure.comap`. A `funext ν` before the rewrite is the whole fix. The statement being
-proved is unchanged.
-
-### Anything else?
-
-No. `vendor-pfr.sh --verify` re-derives the closure from upstream, applies these two
-patches, and diffs the result against the committed tree; it reports `IDENTICAL`. If that
-ever fails, the committed tree has drifted from its recorded provenance and the difference
-must be classified (mathematics vs. compatibility) before anything is merged.
+Earlier vendorings (from `01c9b66`, on `v4.31.0`) carried two compatibility patches —
+dropping a `positivity` extension whose `Mathlib.Meta.Positivity` signature had moved,
+and a `funext` before a `MeasurableEquiv.map_symm` rewrite. Both drifts are resolved
+upstream at this commit, so the patches are retired rather than carried forward. Should a
+future bump need one again, it goes in `patches/` as a numbered unified diff with a
+written justification, and `vendor-pfr.sh` applies whatever that directory holds.
 
 ## Reproducing and updating
 
 ```sh
-# regenerate PFR/ from upstream + patches (overwrites the committed tree)
+# regenerate PFR/ from upstream (+ any patches; overwrites the committed tree)
 ShannonInformation/vendor/vendor-pfr.sh
 
 # audit only: regenerate into a temp dir and diff against the committed tree
@@ -119,12 +87,13 @@ ShannonInformation/vendor/vendor-pfr.sh --verify
 
 To move to a newer upstream commit:
 
-1. bump `PFR_REV` in `vendor-pfr.sh` and the tables above;
+1. bump `PFR_REV` in `vendor-pfr.sh` and the tables above (prefer a commit on FAF's
+   toolchain: that is what makes the tree patch-free);
 2. run the script without `--verify` and rebuild (`lake build PFR ShannonInformation`);
 3. for each new breakage, decide whether the fix is *compatibility* or *mathematics*.
-   Compatibility fixes get a new numbered patch in `patches/` with a written
-   justification, like the two above. A change that alters a mathematical statement is
-   **not** a vendoring patch — it must be taken upstream, not carried here;
+   Compatibility fixes get a numbered patch in `patches/` with a written justification. A
+   change that alters a mathematical statement is **not** a vendoring patch — it must be
+   taken upstream, not carried here;
 4. re-run `--verify` so the committed tree and its provenance agree again;
 5. re-check `ShannonInformation/SCOPE.md`: a new upstream version may have relaxed
    hypotheses, which would change what FAF can honestly claim.
@@ -133,5 +102,5 @@ To move to a newer upstream commit:
 
 FAF has **not** formalized Shannon information theory. It is consuming a pinned,
 kernel-checked formalization produced by the PFR project, vendored so that the dependency
-cannot disappear if upstream moves. The mathematics is theirs; the vendoring, the two
-compatibility patches, the consumer API and the scope analysis are FAF's.
+cannot disappear if upstream moves. The mathematics is theirs; the vendoring, the consumer
+API and the scope analysis are FAF's.

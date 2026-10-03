@@ -1,7 +1,7 @@
 import LogicalInduction.Framework.Theory.RepresentsComputations
 import Foundation.FirstOrder.Arithmetic.R0.Representation
 import Foundation.FirstOrder.Arithmetic.PeanoMinus.Basic
-import Foundation.FirstOrder.Arithmetic.Induction.Basic
+import Foundation.FirstOrder.Arithmetic.Induction
 
 /-!
 # One code formula, two value fibers: provable exclusivity for quoted decisions

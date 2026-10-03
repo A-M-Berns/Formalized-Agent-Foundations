@@ -665,7 +665,7 @@ lemma cellVert_swap_pivot_vertex {n : ℕ} (P : Fin (n+2) → ℤ) (σ : Equiv.P
   simp +decide [ Finset.sum_ite, Equiv.swap_apply_def ];
   rw [ show ( Finset.filter ( fun x => x.castSucc < k0 ) Finset.univ : Finset ( Fin ( n + 1 ) ) ) = Finset.filter ( fun x => x.castSucc < k0 ∧ x ≠ a ∧ x ≠ b ) Finset.univ ∪ { a } from ?_, Finset.filter_union ];
   · rw [ Finset.filter_union, Finset.filter_singleton ] ; simp +decide [ Finset.filter_singleton ] ; ring_nf;
-    split_ifs <;> simp_all +decide [ Finset.filter_insert ] <;> try ring_nf;
+    split_ifs <;> try simp_all +decide [ Finset.filter_insert ] <;> try ring_nf;
     all_goals congr! 3;
     all_goals first
       | exact congrArg Finset.card

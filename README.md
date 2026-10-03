@@ -115,7 +115,7 @@ formally refuted here, with a corrected replacement proved in its place.
 ## Building
 
 The toolchain is pinned in [`lean-toolchain`](lean-toolchain) (currently
-`leanprover/lean4:v4.31.0`); install [`elan`](https://github.com/leanprover/elan) and
+`leanprover/lean4:v4.34.0`); install [`elan`](https://github.com/leanprover/elan) and
 it will fetch that version automatically.
 
 ```sh

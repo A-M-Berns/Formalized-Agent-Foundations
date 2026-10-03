@@ -8,12 +8,11 @@
 
 import ModalAgents.Cooperation
 
-open FFL FFL.Modal
-open FFL.Entailment FFL.Modal.Entailment
+open LogicGL Formula
 
 /-- GL-level behavioral equivalence restricted to modal agents. -/
 def BehavEquiv (X X' : ModalAgent) : Prop :=
-  ∀ Y, Modal.GL ⊢ outcome X Y 🡘 outcome X' Y
+  ∀ Y, (outcome X Y 🡘 outcome X' Y) ∈ (LogicGL : Logic ℕ)
 
 @[inherit_doc] scoped[ModalAgent] infix:50 " ≈ " => BehavEquiv
 
@@ -21,14 +20,14 @@ namespace BehavEquiv
 
 open scoped ModalAgent
 
-@[refl] lemma refl (X : ModalAgent) : X ≈ X := fun _ => E!_id
+@[refl] lemma refl (X : ModalAgent) : X ≈ X := fun _ => GL.iff_refl
 
 @[symm] lemma symm {X X' : ModalAgent} (h : X ≈ X') : X' ≈ X :=
-  fun Y => E!_symm (h Y)
+  fun Y => GL.iff_symm (h Y)
 
 @[trans] lemma trans {X X' X'' : ModalAgent} (h₁ : X ≈ X') (h₂ : X' ≈ X'') :
     X ≈ X'' :=
-  fun Y => E!_trans (h₁ Y) (h₂ Y)
+  fun Y => GL.iff_trans (h₁ Y) (h₂ Y)
 
 end BehavEquiv
 
@@ -39,45 +38,40 @@ behaviorally equivalent opponents give GL-equivalent outcome formulas.
 
 Paper node: Theorem 4.8 (§4). -/
 theorem modalAgent_behavioral (X : ModalAgent) {Y Z : ModalAgent} (h : Y ≈ Z) :
-    Modal.GL ⊢ outcome X Y 🡘 outcome X Z := by
+    (outcome X Y 🡘 outcome X Z) ∈ (LogicGL : Logic ℕ) := by
   have hY := outcome_fixed_point X Y
   have hZ := outcome_fixed_point X Z
-  have hcong : Modal.GL ⊢
-      X.formula⟦substFull (outcome Y X)
+  have hcong :
+      (X.formula⟦substFull (outcome Y X)
         (fun j : Fin X.arity => outcome Y (X.references j))⟧ 🡘
       X.formula⟦substFull (outcome Z X)
-        (fun j : Fin X.arity => outcome Z (X.references j))⟧ := by
+        (fun j : Fin X.arity => outcome Z (X.references j))⟧) ∈ (LogicGL : Logic ℕ) := by
     apply subst_congr
     intro a
     match a with
     | 0 => exact h X
     | k+1 =>
-      show Modal.GL ⊢
-        (if hk : k < X.arity then outcome Y (X.references ⟨k, hk⟩) else .atom (k+1)) 🡘
-        (if hk : k < X.arity then outcome Z (X.references ⟨k, hk⟩) else .atom (k+1))
+      show ((if hk : k < X.arity then outcome Y (X.references ⟨k, hk⟩) else .atom (k+1)) 🡘
+        (if hk : k < X.arity then outcome Z (X.references ⟨k, hk⟩) else .atom (k+1))) ∈
+          (LogicGL : Logic ℕ)
       by_cases hk : k < X.arity
       · simp only [dif_pos hk]
         exact h (X.references ⟨k, hk⟩)
       · simp only [dif_neg hk]
-        exact E!_id
-  exact E!_trans hY (E!_trans hcong (E!_symm hZ))
+        exact GL.iff_refl
+  exact GL.iff_trans hY (GL.iff_trans hcong (GL.iff_symm hZ))
 
 namespace BehavEquiv
 
 /-- Behavioral equivalence transports an outcome in both agent positions. -/
 lemma outcome_congr {X X' Y Y' : ModalAgent} (hX : X ≈ X') (hY : Y ≈ Y') :
-    Modal.GL ⊢ outcome X Y 🡘 outcome X' Y' :=
-  E!_trans (hX Y) (modalAgent_behavioral X' hY)
+    (outcome X Y 🡘 outcome X' Y') ∈ (LogicGL : Logic ℕ) :=
+  GL.iff_trans (hX Y) (modalAgent_behavioral X' hY)
 
 /-- Cooperation is invariant under behavioral equivalence in both positions. -/
 lemma cooperates_iff {X X' Y Y' : ModalAgent} (hX : X ≈ X') (hY : Y ≈ Y') :
-    Cooperates X Y ↔ Cooperates X' Y' := by
-  have h := outcome_congr hX hY
-  constructor
-  · intro hp
-    exact ⟨and₁ ⨀ h.some ⨀ hp.some⟩
-  · intro hp
-    exact ⟨and₂ ⨀ h.some ⨀ hp.some⟩
+    Cooperates X Y ↔ Cooperates X' Y' :=
+  ⟨GL.iff_mp (outcome_congr hX hY), GL.iff_mpr (outcome_congr hX hY)⟩
 
 /-- Defection-as-unprovability is invariant under behavioral equivalence. -/
 lemma defects_iff {X X' Y Y' : ModalAgent} (hX : X ≈ X') (hY : Y ≈ Y') :
@@ -86,12 +80,8 @@ lemma defects_iff {X X' Y Y' : ModalAgent} (hX : X ≈ X') (hY : Y ≈ Y') :
 
 /-- Provable defection is invariant under behavioral equivalence. -/
 lemma provablyDefects_iff {X X' Y Y' : ModalAgent} (hX : X ≈ X') (hY : Y ≈ Y') :
-    ProvablyDefects X Y ↔ ProvablyDefects X' Y' := by
-  have h := neg_congruence! (outcome_congr hX hY)
-  constructor
-  · intro hp
-    exact ⟨and₁ ⨀ h.some ⨀ hp.some⟩
-  · intro hp
-    exact ⟨and₂ ⨀ h.some ⨀ hp.some⟩
+    ProvablyDefects X Y ↔ ProvablyDefects X' Y' :=
+  ⟨GL.iff_mp (GL.neg_congr (outcome_congr hX hY)),
+    GL.iff_mpr (GL.neg_congr (outcome_congr hX hY))⟩
 
 end BehavEquiv

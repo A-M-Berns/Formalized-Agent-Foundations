@@ -17,14 +17,13 @@
   discipline that avoids this is uniform — do the work generically, over abstract closed
   terms and abstract sentences, and instantiate at `cliqueBot` by plain term application,
   which is unification only. Where a propositional step is needed at the big term, it is
-  routed through `iff_of_E!` or a `private lemma` proved by `cl_prover` on abstract
+  routed through `iff_of_E` or a `private lemma` proved by `cl_prover` on abstract
   sentences, never `cl_prover` on the goal itself.
 -/
 
 import ModalAgents.Arithmetic
 
-open FFL FFL.Modal
-open FFL.Entailment FFL.Modal.Entailment
+open FFL FFL.Entailment
 open FFL.FirstOrder FFL.FirstOrder.Arithmetic FFL.FirstOrder.ProvabilityAbstraction
 
 /-! ## Agents -/
@@ -47,22 +46,26 @@ local instance : (𝗜𝚺₁ : ArithmeticTheory) ⪯ T :=
 local instance : (𝗣𝗔⁻ : ArithmeticTheory) ⪯ T :=
   Entailment.WeakerThan.trans (𝓣 := (𝗣𝗔 : ArithmeticTheory)) inferInstance inferInstance
 
+local instance : (𝗥₀ : ArithmeticTheory) ⪯ T :=
+  Entailment.WeakerThan.trans (𝓣 := (𝗣𝗔⁻ : ArithmeticTheory)) inferInstance inferInstance
+
 /-- The realization the paper's modal-agent definition reads `φ` under: atom `0` is
 "the opponent `Z` cooperates with me", and atom `i + 1` is "`Z` cooperates with my
 `i`-th reference agent". Atoms beyond the reference list are irrelevant — the modal
 formula does not mention them — and are sent to `⊥`. -/
-noncomputable def opponentRealization (T : ArithmeticTheory) [T.Δ₁]
-    (Z X : Agent) {n : ℕ} (W : Fin n → Agent) :
-    _root_.Realization ℕ T.standardProvability :=
+noncomputable def opponentRealization (Z X : Agent) {n : ℕ} (W : Fin n → Agent) :
+    _root_.Realization ℕ ℒₒᵣ :=
   ⟨fun a => match a with
     | 0 => Z.app X
-    | j + 1 => if h : j < n then Z.app (W ⟨j, h⟩) else ⊥⟩
+    | j + 1 => if h : j < n then Z.app (W ⟨j, h⟩) else (⊥ : ArithmeticSentence)⟩
 
 /-- **Modal agent of rank `k`** (Barasz, §4): an agent `X` is a modal agent of rank `k`
 when there are modal agents `W₁,…,Wₙ` of rank `< k` and a fully modalized formula
 `φ(p, q₁,…,qₙ)` with, for every agent `Z`,
 
-`PA ⊢ [X(Z)] 🡘 φ([Z(X)], [Z(W₁)],…,[Z(Wₙ)])`.
+`PA ⊢ [X(Z)] 🡘 φ([Z(X)], [Z(W₁)],…,[Z(Wₙ)])`,
+
+where `□` is read as `T`'s standard provability predicate.
 
 Atom `0` of `φ` is the paper's `p` and atom `i + 1` is `qᵢ`, matching the `GL`-level
 `ModalAgent` convention in `ModalAgents/ModalAgent.lean`. "Fully modalized" is
@@ -70,12 +73,12 @@ Atom `0` of `φ` is the paper's `p` and atom `i + 1` is `qᵢ`, matching the `GL
 `□`. -/
 inductive IsModalAgentOfRank (T : ArithmeticTheory) [T.Δ₁] : ℕ → Agent → Prop
   | intro {k n : ℕ} {X : Agent} (W : Fin n → Agent) (rank : Fin n → ℕ)
-      (φ : Modal.Formula ℕ)
+      (φ : _root_.Formula ℕ)
       (modalized : ∀ i, i ≤ n → Modalized i φ)
       (rank_lt : ∀ i, rank i < k)
       (refs : ∀ i, IsModalAgentOfRank T (rank i) (W i))
       (defn : ∀ Z : Agent,
-        T ⊢ X.app Z 🡘 arithInterp (opponentRealization T Z X W) φ) :
+        T ⊢ X.app Z 🡘 φ.interpret (opponentRealization Z X W) T.standardProvability) :
       IsModalAgentOfRank T k X
 
 /-- An agent is a **modal agent** when it has some rank. -/
@@ -92,11 +95,11 @@ and `IsModalAgent` are inhabited, so `modalAgent_isBehavioral` is not a statemen
 an empty class, and `cliqueBot_not_modalAgent` separates CliqueBot from a class that has
 members. -/
 lemma cooperateBot_isModalAgentOfRank_zero : IsModalAgentOfRank T 0 (⊤ : Agent) := by
-  refine .intro (n := 0) Fin.elim0 Fin.elim0 ⊤ (fun i _ => by simp [Modalized])
+  refine .intro (n := 0) Fin.elim0 Fin.elim0 ⊤ (fun i _ => by simp [_root_.Modalized])
     (fun i => i.elim0) (fun i => i.elim0) (fun Z => ?_)
   have h : ((⊤ : Agent).app Z) = (⊤ : ArithmeticSentence) := by simp [Agent.app]
   rw [h]
-  show T ⊢ (⊤ : ArithmeticSentence) 🡘 ((⊥ : ArithmeticSentence) 🡒 ⊥)
+  show T ⊢ (⊤ : ArithmeticSentence) 🡘 ((⊥ : ArithmeticSentence) 🡒 (⊥ : ArithmeticSentence))
   cl_prover
 
 /-! ## Behavioral agents (Barasz, §4) -/
@@ -129,13 +132,13 @@ theorem modalAgent_isBehavioral {k : ℕ} {X : Agent}
   intro Y Z hYZ
   cases hX with
   | @intro _ n _ W rank φ _ _ _ hdef =>
-    refine E!_trans (hdef Y) (E!_trans ?_ (E!_symm (hdef Z)))
+    refine E_trans (hdef Y) (E_trans ?_ (E_symm (hdef Z)))
     refine arithmetic_modal_substitution (fun a => ?_) φ
     match a with
     | 0 => exact hYZ _
     | j + 1 =>
-      show T ⊢ (if h : j < n then Y.app (W ⟨j, h⟩) else ⊥) 🡘
-        (if h : j < n then Z.app (W ⟨j, h⟩) else ⊥)
+      show T ⊢ (if h : j < n then Y.app (W ⟨j, h⟩) else (⊥ : ArithmeticSentence)) 🡘
+        (if h : j < n then Z.app (W ⟨j, h⟩) else (⊥ : ArithmeticSentence))
       by_cases h : j < n
       · simp only [dif_pos h]; exact hYZ _
       · simp only [dif_neg h]; cl_prover
@@ -190,21 +193,22 @@ lemma cliqueBot_app (Z : Agent) :
 /-- A syntactically different CliqueBot: the same formula conjoined with `⊤`. It is a
 different formula, hence has a different Gödel number, hence CliqueBot defects against
 it — while being logically, and therefore behaviorally, equivalent to CliqueBot. -/
-noncomputable def cliqueBotVariant : Agent := cliqueBot ⋏ ⊤
+noncomputable def cliqueBotVariant : Agent := cliqueBot ⋏ (⊤ : Agent)
 
 /-- CliqueBot's variant is a genuinely different formula.
 
 Kept structural on purpose: `cliqueBot` is a `parameterizedFixedpoint`, so any proof
-that computes its `complexity` to a numeral forces the kernel to whnf the entire quined
-term and blows up.  `Semiformula.ne_of_ne_complexity` plus the *generic* congruence
-`complexity (φ ⋏ ⊤) = max φ.complexity 0 + 1` settles it with `cliqueBot.complexity`
-held abstract. -/
+that computes its `complexity` to a numeral — or lets the unifier unfold it while matching
+a connective — forces the kernel to whnf the entire quined term and blows up. The fact is
+therefore proved for an *abstract* agent `φ` (`Semiformula.ne_of_ne_complexity` plus the
+generic congruence `complexity (φ ⋏ ⊤) = max φ.complexity 0 + 1`) and instantiated at
+`cliqueBot` by application, which is unification against a syntactically identical term
+and never computation. -/
 lemma cliqueBotVariant_ne : (cliqueBotVariant : Agent) ≠ cliqueBot := by
-  refine Semiformula.ne_of_ne_complexity ?_
-  show (cliqueBot ⋏ ⊤ : Agent).complexity ≠ (cliqueBot : Agent).complexity
-  rw [Semiformula.complexity_and, Semiformula.complexity_top]
-  generalize (cliqueBot : Agent).complexity = c
-  omega
+  have key : ∀ φ : Agent, (φ ⋏ (⊤ : Agent) : Agent) ≠ φ := fun φ =>
+    Semiformula.ne_of_ne_complexity (by
+      rw [Semiformula.complexity_and, Semiformula.complexity_top]; omega)
+  exact key cliqueBot
 
 omit [T.Δ₁] in
 /-- A closed term is provably equal to itself: the equality axiom `∀ x, x = x`,
@@ -220,22 +224,23 @@ lemma provable_eq_self (t : ClosedTerm ℒₒᵣ) : T ⊢ “!!t = !!t” := by
   simpa using hsp ⨀ hax
 
 omit [T.Δ₁] in
-/-- Distinct agents have provably distinct Gödel numbers. This is `R₀`'s axiom `Ω₃`
-(`n ≠ m → R₀ ⊢ ↑n ≠ ↑m`) read through `⌜X⌝ = ↑(encode X)`; it needs the *numerals* to
-differ, which injectivity of `Encodable.encode` supplies, and never their values. -/
+/-- Distinct agents have provably distinct Gödel numbers. Read through
+`⌜X⌝ = ↑(encode X)`, this is the true `Σ₁` sentence `↑n ≠ ↑m` for distinct numerals,
+which every extension of `R₀` proves (`sigma_one_completeness`); it needs the
+*numerals* to differ, which injectivity of `Encodable.encode` supplies, and never
+their values. -/
 lemma provable_ne_of_ne {X Y : Agent} (hne : X ≠ Y) :
     T ⊢ “!!(⌜X⌝ : ClosedTerm ℒₒᵣ) ≠ !!(⌜Y⌝)” := by
   have henc : Encodable.encode X ≠ Encodable.encode Y :=
     fun hc => hne (Encodable.encode_injective hc)
   have hR : T ⊢ “!!(↑(Encodable.encode X) : ClosedTerm ℒₒᵣ) ≠ !!(↑(Encodable.encode Y))” :=
-    Entailment.WeakerThan.pbl (𝓢 := (𝗥₀ : ArithmeticTheory))
-      (Entailment.by_axm (R0.Ω₃ _ _ henc))
+    sigma_one_completeness (by simp) (by simp [models_iff, henc])
   simpa only [← Arithmetic.gödelNumber'_eq_coe_encode] using hR
 
 omit [T.Δ₁] [𝗣𝗔 ⪯ T] in
 /-- Conjoining `⊤` changes nothing, propositionally. Stated over an abstract sentence so
 that the `cliqueBot`-sized instance is an application. -/
-private lemma iff_and_top (A : ArithmeticSentence) : T ⊢ A 🡘 A ⋏ ⊤ := by cl_prover
+private lemma iff_and_top (A : ArithmeticSentence) : T ⊢ A 🡘 (A ⋏ (⊤ : ArithmeticSentence)) := by cl_prover
 
 omit [T.Δ₁] [𝗣𝗔 ⪯ T] in
 /-- Transporting a refutation across a provable equivalence. Abstract for the same
@@ -250,15 +255,17 @@ differ only by a conjoined `⊤`, so `PA` proves them equivalent. This is the pa
 lemma cliqueBot_behaviorallyEquivalent_variant :
     BehaviorallyEquivalent T cliqueBot cliqueBotVariant := by
   intro Z
-  have hv : (cliqueBotVariant.app Z) = (cliqueBot.app Z ⋏ ⊤) := by
-    simp [cliqueBotVariant, Agent.app]
+  -- generic over the agent, so that `cliqueBot` is never unfolded by `simp`
+  have hv : ∀ φ : Agent, (φ ⋏ (⊤ : Agent) : Agent).app Z = (φ.app Z ⋏ (⊤ : ArithmeticSentence)) :=
+    fun φ => by simp [Agent.app]
+  unfold cliqueBotVariant
   rw [hv]
   exact iff_and_top _
 
 omit [T.Δ₁] in
 /-- **CliqueBot cooperates with itself**: its own code is of course its own code. -/
 lemma cliqueBot_cooperates_self : T ⊢ cliqueBot.app cliqueBot :=
-  (iff_of_E! (cliqueBot_app (T := T) cliqueBot)).mpr (provable_eq_self _)
+  (iff_of_E (cliqueBot_app (T := T) cliqueBot)).mpr (provable_eq_self _)
 
 omit [T.Δ₁] in
 /-- **CliqueBot defects against its variant**: the variant's code is not CliqueBot's,
@@ -280,10 +287,10 @@ lemma cliqueBot_not_isBehavioral [Entailment.Consistent T] :
     ¬ IsBehavioral T cliqueBot := by
   intro hB
   have hcoop : T ⊢ cliqueBot.app cliqueBotVariant :=
-    (iff_of_E!
+    (iff_of_E
       (hB cliqueBot cliqueBotVariant cliqueBot_behaviorallyEquivalent_variant)).mp
       cliqueBot_cooperates_self
-  exact Entailment.Consistent.not_bot inferInstance
+  exact Entailment.Consistent.not_bot (𝓢 := T)
     (Entailment.neg_mdp cliqueBot_defects_variant hcoop)
 
 /-- **CliqueBot is not a modal agent.**
@@ -303,4 +310,3 @@ theorem cliqueBot_not_modalAgent [Entailment.Consistent T] :
   exact cliqueBot_not_isBehavioral (modalAgent_isBehavioral hk)
 
 end
-

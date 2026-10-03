@@ -238,10 +238,7 @@ NON_PAPER_LIBRARIES = {
     "AxiomAudit": "the checked endpoint inventory itself — a gate, not a formalization",
     "Scratchpad": "scratch verification of the Mathlib/Foundation substrate; excluded "
                   "from the default target",
-    "ProvabilityLogic": "vendored subset of FormalizedFormalLogic/ProvabilityLogic "
-                        "(pinned in lakefile.lean) — dependency code, not a paper "
-                        "formalized by this project",
-    "PFR": "vendored subset of teorth/pfr @ 01c9b66 (Apache-2.0) supplying Shannon "
+    "PFR": "vendored subset of teorth/pfr @ 6569112 (Apache-2.0) supplying Shannon "
            "information theory, which the pinned Mathlib lacks — dependency code, not a "
            "paper formalized by this project; see ShannonInformation/vendor/PROVENANCE.md",
     "ShannonInformation": "shared, paper-neutral consumer surface over the vendored PFR "

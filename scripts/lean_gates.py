@@ -109,28 +109,19 @@ AUDITED = {
                           "entropy substrate",
     "PFR": "vendored subset of teorth/pfr — dependency code, audited anyway: it is "
            "compiled into this environment and the Shannon layer rests on it",
-    "ProvabilityLogic": "vendored subset of FormalizedFormalLogic/ProvabilityLogic — "
-                        "same reasoning; ModalAgents' GL fixed point rests on it. "
-                        "Checked on its built closure; see PARTIAL below",
     "APITests": "the client-style smoke tests; they are declarations in this "
                 "environment like any other",
     "AxiomAudit": "the inventory target itself",
 }
 
-# Audited libraries that are *not* `@[default_target]`s. `lake build` compiles only
-# the modules an audited library imports from them, so the committed source tree
-# overstates what exists: the coverage here is the built closure, and the gate
-# asserts that it is non-empty rather than that it is complete. Stated rather than
-# hidden, because "we replayed ProvabilityLogic" would otherwise read as a claim
-# about all 34 of its modules when it is a claim about the ones ModalAgents needs.
-#
-# The audit still covers what matters even where replay does not reach: an axiom in
-# an unbuilt vendored module cannot affect a result nobody imports, and one in a
-# built module propagates into the importing library's audited declarations.
-PARTIAL = {
-    "ProvabilityLogic": "not a `@[default_target]`; only the modules ModalAgents "
-                        "imports are compiled",
-}
+# Audited libraries that are *not* `@[default_target]`s: `lake build` compiles only
+# the modules an audited library imports from them, so the coverage is the built
+# closure and the gate asserts that it is non-empty rather than complete. Empty
+# today — ProvabilityLogic, the one such library, is now a package dependency like
+# Foundation and Mathlib (its oleans live under `.lake/packages/`), outside the
+# replay the way they are. An axiom there would still propagate into the importing
+# library's audited declarations, which is what the audit checks.
+PARTIAL: dict[str, str] = {}
 
 # Committed modules that `lake build` does not compile, each with the reason it is
 # not a finding. This list is what stops "the build did not produce it" from being
