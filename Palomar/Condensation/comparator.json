@@ -1,0 +1,12 @@
+{
+  "challenge_module": "Palomar.Condensation.Challenge",
+  "solution_module": "Palomar.Condensation.Solution",
+  "theorem_names": [
+    "TODO.fill_in_challenge_theorem_names"
+  ],
+  "permitted_axioms": [
+    "propext",
+    "Quot.sound",
+    "Classical.choice"
+  ]
+}

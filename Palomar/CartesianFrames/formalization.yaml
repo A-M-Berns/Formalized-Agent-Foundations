@@ -1,0 +1,178 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/mathlib-initiative/formalization.yaml/main/schema/formalization.schema.json
+# formalization.yaml (v0.4) for the Palomar entry `CartesianFrames`.
+#
+# Two fields remain for Anson: `project.description` (the public abstract) and the
+# `automation`/`review` details. Everything else is filled from the entry itself.
+
+version: "v0.4"
+
+project:
+  name: "The Decomposition Theorem for Cartesian frames"
+  # TODO(Anson): public abstract, shown in the registry. Max 10,000 characters.
+  # The Challenge module docstring carries the full informal account and can be
+  # condensed for this field.
+  description: ""
+  authors:
+    - "Anson Berns"
+  responsible_maintainers:
+    - "Anson Berns"
+  license: "Apache-2.0"
+
+sources:
+  - title: "Cartesian Frames"
+    authors:
+      - "Scott Garrabrant"
+      - "Daniel Herrmann"
+      - "Rob Lopez-Wild"
+    id: "arXiv:2109.10996"
+    type: "article"
+    location: "Theorem 24 (§2.4), with Definitions 1, 2, 5, 6, 7, 12, 13, 18, 19"
+    relationship: "formalizes"
+    note: >-
+      Formalized from the arXiv v1 text. This entry compares Theorem 24 only; the
+      supporting definitions are restated in the Challenge because a challenge may not
+      import the development that proves them.
+
+# None known. This is deliberately empty rather than self-referential: the Solution
+# transports from the `CartesianFrames` library in *this same repository*, which makes
+# this an ordinary submission and not a thin wrapper (CONTRIBUTING.md §6.5). The
+# `repository` key is omitted for the same reason — this repository is the substantive
+# development, which is the default.
+related_formalizations: []
+
+# PROPOSED — verified to exist in the PalomarSubmission taxonomy snapshots, but not
+# settled. TODO(Anson): confirm or replace. Classify the mathematics, not the tooling.
+classification:
+  arxiv:
+    - "cs.AI"
+    - "math.CT"
+  msc2020:
+    - "18B99"
+    - "91A99"
+
+status:
+  scope: >-
+    One theorem: the Decomposition Theorem (Theorem 24, §2.4), which factors the
+    subagent relation on Cartesian frames into a multiplicative step followed by an
+    additive one. Subagency is stated in the paper's primary categorical form
+    (Definition 13); the equivalent currying (Definition 14) and covering
+    (Definition 50) presentations are not used, so no equivalence between them is
+    assumed. The additive and multiplicative relations are Definitions 18 and 19, the
+    direct forms, not the currying variants of Definitions 20 and 21. Nothing else
+    from the paper is claimed by this entry.
+  # The deliberate placeholder in the Challenge module is excluded, per the v0.4
+  # instruction; the Solution has no sorries.
+  sorry_count: 0
+  sorry_in_definitions: 0
+  axioms:
+    - "propext"
+    - "Quot.sound"
+    - "Classical.choice"
+  main_results:
+    - declaration: "Palomar.CartesianFrames.Frame.subagent_iff_exists_multSubagent_addSubagent"
+      file: "Palomar/CartesianFrames/Solution.lean"
+      sorry_count: 0
+      axioms:
+        - "propext"
+        - "Quot.sound"
+        - "Classical.choice"
+      comparator_config: "Palomar/CartesianFrames/comparator.json"
+
+automation:
+  methods:
+    - method: "agent"
+      models: []            # TODO(Anson)
+      framework: ""         # TODO(Anson)
+      tool_setup: ""        # TODO(Anson)
+      prompting_notes: ""   # TODO(Anson)
+    - method: "autonomous"
+      models: []            # TODO(Anson)
+      framework: ""         # TODO(Anson)
+      tool_setup: ""        # TODO(Anson)
+      prompting_notes: ""   # TODO(Anson)
+  spend_usd: ""             # TODO(Anson)
+  notes: >-
+    The underlying `CartesianFrames` formalization was produced by orchestrated AI
+    agents — parallel prover/auditor/fixer agents under adversarial cross-checking —
+    with human direction and review. The Challenge restatement and the transport in the
+    Solution were written for this submission. TODO(Anson): expand, and name the models
+    and harness in the `methods` entries above.
+
+fidelity:
+  divergences: >-
+    The paper works with arbitrary sets; here a set is a Lean type and the agent,
+    environment and world carriers share one universe. No cardinality restriction is
+    imposed, and the existential in the conclusion ranges over frames in that same
+    universe.
+
+    The Challenge restates the nine definitions it needs rather than importing them
+    from the `CartesianFrames` library in this same repository,
+    because Palomar restricts a challenge's import closure to Lean core, Mathlib, Tau
+    Ceti and CSLib. Each restatement was checked against the upstream library by
+    proving an `Iff` between the two renderings of every relation the theorem mentions
+    (`Subagent`, `AddSubagent`, `MultSubagent`, and the `BiextEquiv` they are stated up
+    to); those bridge lemmas are in the Solution and are what the transport rests on,
+    so the correspondence is proved rather than asserted.
+
+    Frame isomorphism is spelled out directly in the Challenge instead of being taken
+    from Mathlib's category theory, to keep the statement auditable without category
+    theory. It is isomorphism in the paper's `Chu(W)`, and the Solution proves it
+    agrees with the upstream categorical rendering.
+
+review:
+  status: ""            # TODO(Anson): unchecked | agent-reviewed | self-assessed | ...
+  reviewers: []
+  notes: >-
+    TODO(Anson). Note for whoever fills this in: the upstream `CartesianFrames` library
+    carries this repository's standing gates (axiom-clean endpoint inventory, paper-node
+    provenance checking), but the Challenge restatement written for this entry is newer
+    than any of that review.
+
+alignment:
+  namespace: "Palomar.CartesianFrames.Frame"
+  statements:
+    - source: "Theorem 24 (§2.4), the Decomposition Theorem"
+      lean: "subagent_iff_exists_multSubagent_addSubagent"
+      module: "Palomar.CartesianFrames.Challenge"
+      status: "proved"
+      note: "Proof transported from CartesianFrames.Frame.subagent_iff_exists_multSubagent_addSubagent."
+    - source: "Definition 1, Cartesian frame"
+      lean: "Frame"
+      module: "Palomar.CartesianFrames.Challenge"
+      status: "proved"
+    - source: "Definition 2, frame morphism"
+      lean: "Hom"
+      module: "Palomar.CartesianFrames.Challenge"
+      status: "proved"
+    - source: "Definition 5, the relations ∼"
+      lean: "agentSetoid, envSetoid"
+      module: "Palomar.CartesianFrames.Challenge"
+      status: "proved"
+    - source: "Definition 6, the biextensional collapse"
+      lean: "collapse"
+      module: "Palomar.CartesianFrames.Challenge"
+      status: "proved"
+    - source: "Definition 7, biextensional equivalence"
+      lean: "BiextEquiv"
+      module: "Palomar.CartesianFrames.Challenge"
+      status: "proved"
+    - source: "Definition 12, the frame ⊥"
+      lean: "bot"
+      module: "Palomar.CartesianFrames.Challenge"
+      status: "proved"
+    - source: "Definition 13, subagent (categorical)"
+      lean: "Subagent"
+      module: "Palomar.CartesianFrames.Challenge"
+      status: "proved"
+    - source: "Definition 18, additive subagent"
+      lean: "AddSubagent"
+      module: "Palomar.CartesianFrames.Challenge"
+      status: "proved"
+    - source: "Definition 19, multiplicative subagent"
+      lean: "MultSubagent"
+      module: "Palomar.CartesianFrames.Challenge"
+      status: "proved"
+
+acknowledgements: >-
+  The upstream formalization builds on Mathlib. The Cartesian Frames paper is by Scott
+  Garrabrant, Daniel Herrmann and Rob Lopez-Wild.
