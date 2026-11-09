@@ -13,6 +13,14 @@ Driven by `.github/workflows/pin-bump.yml`. Three subcommands, one per job:
               packages that move, and the toolchain if it moves. `lake update` is the
               workflow's business, not this script's.
 
+  restore     After `lake update`: put back every manifest entry that did not bump.
+              `lake update <pkg>` re-resolves <pkg>'s *transitive* dependencies from
+              <pkg>'s own manifest, so bumping EconCSLib alone dragged Mathlib from the
+              root's pin to EconCSLib's (the 2026-11 failure). This step restores the
+              root's entries for everything outside the bump set, textually, from the
+              committed manifest. Skipped when the toolchain moves: that month everything
+              re-resolves together by design.
+
   publish     Read the artifacts and the run's own job list, then open a pull request
               (green), open/update a `pin-bump` issue (red), or close a stale one
               (recovered). The only subcommand that writes anywhere; it handles files as
@@ -36,8 +44,9 @@ why the others cannot:
     says. Today that is Foundation: the pin is the last upstream commit that still
     contains `Foundation.Modal`, which `ModalAgents` is stated over (lakefile.lean), and
     moving past it is a migration, not a bump.
-  * Mathlib pins are reported, never used as a gate: the root's Mathlib wins in Lake,
-    and a disagreement is a thing the build settles.
+  * Mathlib pins are reported, never used as a gate: the root's Mathlib is kept — by
+    the `restore` step, because `lake update <pkg>` would otherwise move inherited pins
+    to <pkg>'s own manifest — and a disagreement is a thing the build settles.
 
 A held package is information in the pull request body or the run summary, not a red
 issue; a red issue is for a run that tried something and failed. A month in which nothing
@@ -261,6 +270,62 @@ def rewrite(args):
         write(TOOLCHAIN, report["new_toolchain"] + "\n")
     print("rewrote", LAKEFILE, "for", ", ".join(report["bumped"]) or "(no package)",
           "; toolchain", report["new_toolchain"])
+    return 0
+
+
+# ----------------------------------------------------------------------------- restore
+
+# A manifest entry as Lake prints it: `configFile` is always the last key, so each
+# entry runs from its `{"url"` to the next `"configFile": "..."}`. Both texts compared
+# below come from the same Lake printer (the toolchain did not move on this path), so
+# swapping whole entry blocks preserves the file's formatting.
+MANIFEST_ENTRY_RE = re.compile(r'\{"url":.*?"configFile": "[^"]*"\}', re.S)
+
+
+def manifest_blocks(text):
+    names = [p["name"] for p in json.loads(text)["packages"]]
+    spans = list(MANIFEST_ENTRY_RE.finditer(text))
+    if len(spans) != len(names):
+        raise RuntimeError("manifest parse mismatch: %d entries in JSON, %d blocks in text"
+                           % (len(names), len(spans)))
+    return dict(zip(names, (m.group(0) for m in spans))), names, spans
+
+
+def restore(args):
+    with open(args.report, encoding="utf-8") as f:
+        report = json.load(f)
+    if report["status"] != "ok":
+        raise RuntimeError("restore called on a report with status %r" % report["status"])
+    if report["new_toolchain"] != report["old_toolchain"]:
+        print("toolchain moved; every pin re-resolves together, nothing to restore")
+        return 0
+    committed = subprocess.run(["git", "show", "HEAD:%s" % MANIFEST], cwd=ROOT,
+                               check=True, capture_output=True, text=True).stdout
+    old_blocks, _, _ = manifest_blocks(committed)
+    new_text = read(MANIFEST)
+    new_blocks, new_names, spans = manifest_blocks(new_text)
+    bumped = set(report["bumped"])
+    restored, added = [], []
+    out, pos = [], 0
+    for name, span in zip(new_names, spans):
+        if name in bumped:
+            continue
+        if name not in old_blocks:
+            added.append(name)  # a new transitive dependency; the build settles it
+            continue
+        if new_blocks[name] != old_blocks[name]:
+            out.append(new_text[pos:span.start()])
+            out.append(old_blocks[name])
+            pos = span.end()
+            restored.append(name)
+    out.append(new_text[pos:])
+    write(MANIFEST, "".join(out))
+    ml = mathlib_entry(read(MANIFEST))
+    if report.get("old_mathlib") and (not ml or ml["rev"] != report["old_mathlib"]):
+        raise RuntimeError("after restore, Mathlib is %r, not the root's %s"
+                           % (ml and ml["rev"], report["old_mathlib"]))
+    print("restored:", ", ".join(restored) or "(nothing had moved)",
+          "; new transitive deps kept:", ", ".join(added) or "(none)")
     return 0
 
 
@@ -497,13 +562,16 @@ def main():
     a.add_argument("--out", default="pin-bump")
     b = sub.add_parser("rewrite")
     b.add_argument("--report", default="pin-bump/report.json")
+    r = sub.add_parser("restore")
+    r.add_argument("--report", default="pin-bump/report.json")
     c = sub.add_parser("publish")
     c.add_argument("--report-dir", default="pin-bump")
     c.add_argument("--pins-dir", default="pins")
     c.add_argument("--prepare-result", required=True)
     c.add_argument("--validate-result", required=True)
     args = ap.parse_args()
-    return {"preflight": preflight, "rewrite": rewrite, "publish": publish}[args.cmd](args)
+    return {"preflight": preflight, "rewrite": rewrite, "restore": restore,
+            "publish": publish}[args.cmd](args)
 
 
 if __name__ == "__main__":
