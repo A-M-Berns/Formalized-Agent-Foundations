@@ -156,7 +156,7 @@ require Foundation from git
 -- (`SafeParetoImprovements/Game.lean`); paper-facing statements never name an EconCSLib
 -- internal directly.
 require EconCSLib from git
-  "https://github.com/gametheoryinlean/EconCSLib" @ "cef01c709a7d238f076b45818f2ff2629518efe3"
+  "https://github.com/gametheoryinlean/EconCSLib" @ "55229910db21f09a441df6c31f48420680359a4c"
 
 -- Vendored subset of FormalizedFormalLogic/ProvabilityLogic @ 7ed4a427 (2026-07-27,
 -- the last upstream commit in CI lockstep with the Foundation pin above): the
