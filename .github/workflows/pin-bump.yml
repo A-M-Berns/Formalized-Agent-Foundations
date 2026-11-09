@@ -56,11 +56,23 @@ jobs:
           ./elan-init -y --default-toolchain "$(cat lean-toolchain)"
           echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
 
+      # MATHLIB_NO_CACHE_ON_UPDATE: Mathlib's post-update hook builds and runs `cache get`,
+      # pointless here (the validation job fetches its own cache) and a crash when the
+      # checked-out Mathlib disagrees with the toolchain — which `lake update <pkg>` makes
+      # happen, because it re-resolves <pkg>'s transitive deps from <pkg>'s own manifest.
+      # The restore step below puts every entry outside the bump set back to the root's,
+      # so the proposed manifest is "the bump and nothing else" (2026-11 failure).
       - name: lake update
         if: steps.preflight.outputs.status == 'ok'
+        env:
+          MATHLIB_NO_CACHE_ON_UPDATE: "1"
         run: |
           set -o pipefail
           lake update $(cat pin-bump/update-args) 2>&1 | tee pin-bump/lake-update.log
+
+      - name: Restore inherited pins that did not move
+        if: steps.preflight.outputs.status == 'ok'
+        run: python3 scripts/pin_bump.py restore --report pin-bump/report.json
 
       - name: Upload bumped pin files
         if: steps.preflight.outputs.status == 'ok'
